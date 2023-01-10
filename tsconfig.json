@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
-    "target": "es2016",
-    "module": "commonjs",
+    "target": "esnext",
+    "module": "esnext",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
+    "baseUrl": "./",
     "skipLibCheck": true
   },
   "paths": {
@@ -13,6 +14,6 @@
       "src/editor/*"
     ]
   },
-  "include":["src"],
+  "include":["src", "./typings"],
   "exclude":[]
 }
