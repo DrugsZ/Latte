@@ -1,19 +1,17 @@
 {
-  "compilerOptions": {
-    /* Visit https://aka.ms/tsconfig to read more about this file */
-    "target": "esnext",
-    "module": "esnext",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "baseUrl": "./",
-    "skipLibCheck": true
-  },
-  "paths": {
-    "editor/*": [
-      "src/editor/*"
-    ]
-  },
-  "include":["src", "./typings"],
-  "exclude":[]
+    "compilerOptions": {
+        /* Visit https://aka.ms/tsconfig to read more about this file */
+        "target": "esnext",
+        "module": "esnext",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "baseUrl": "./",
+        "skipLibCheck": true
+    },
+    "paths": {
+        "Cditor/*": ["src/*"]
+    },
+    "include": ["src", "./typings"],
+    "exclude": []
 }
