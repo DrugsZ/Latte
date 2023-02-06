@@ -7,11 +7,17 @@
         "forceConsistentCasingInFileNames": true,
         "strict": true,
         "baseUrl": "./",
-        "skipLibCheck": true
-    },
-    "paths": {
-        "Cditor/*": ["src/*"]
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "allowJs": true,
+        "paths": {
+            "Cditor/*": ["./src/*"]
+        }
     },
     "include": ["src", "./typings"],
-    "exclude": []
+    "exclude": ["webpack.config.js"]
 }
