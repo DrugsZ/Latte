@@ -1,5 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const WebpackBar = require('webpackbar');
+
 
 module.exports = {
   entry: './src/main.ts',
@@ -29,5 +31,8 @@ module.exports = {
       { test: /\.([cm]?ts|tsx)$/, loader: "ts-loader" }
     ]
   },
-  plugins: [new HtmlWebpackPlugin()],
+  plugins: [
+    new HtmlWebpackPlugin(),
+    new WebpackBar()
+  ],
 }
