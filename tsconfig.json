@@ -4,6 +4,7 @@
         "target": "esnext",
         "module": "esnext",
         "esModuleInterop": true,
+        "noEmitOnError": false,
         "forceConsistentCasingInFileNames": true,
         "strict": true,
         "baseUrl": "./",
@@ -14,6 +15,10 @@
         "moduleResolution": "node",
         "resolveJsonModule": true,
         "allowJs": true,
+        "noEmit": true,
+        "allowSyntheticDefaultImports": true,
+        "strictPropertyInitialization": false,
+        "noImplicitAny": false,
         "paths": {
             "Cditor/*": ["./src/*"]
         }

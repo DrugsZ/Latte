@@ -28,7 +28,15 @@ module.exports = {
   },
   module: {
     rules: [
-      { test: /\.([cm]?ts|tsx)$/, loader: "ts-loader" }
+      { test: /\.([cm]?ts|tsx)$/, use: [
+          {
+            loader: 'ts-loader',
+            options: {
+              transpileOnly: true
+            }
+          }
+        ]
+      }
     ]
   },
   plugins: [
