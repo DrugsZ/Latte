@@ -9,7 +9,7 @@ class ViewModel {
     constructor(model: ModelData) {
         this._modelData = model
         this._focusPath = [this._modelData.getCurrentState().children[0].id]
-        this._view = new View(model)
+        this._view = new View(model, this)
     }
 
     get focusPath(): string[] {
@@ -19,14 +19,14 @@ class ViewModel {
     set focusPath(value: string[]) {
         this._focusPath = value
         const [curPage] = value
-        this.focusPage = curPage
+        this.focusPageId = curPage
     }
 
-    get focusPage(): string {
+    get focusPageId(): string {
         return this._focusPath[0]
     }
 
-    set focusPage(value: string) {
+    set focusPageId(value: string) {
         this._focusPath = [value]
     }
 }
