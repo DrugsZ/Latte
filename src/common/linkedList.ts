@@ -118,4 +118,12 @@ export class LinkedList<E> {
         // done
         this.#size -= 1
     }
+
+    *[Symbol.iterator](): Iterator<E> {
+		let node = this.#first;
+		while (node !== Node.Undefined) {
+			yield node.element;
+			node = node.next;
+		}
+	}
 }
