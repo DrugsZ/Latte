@@ -27,7 +27,7 @@ interface SolidColorFill extends BaseFill {
 
 type Fill = SolidColorFill
 
-type Transform = [number, number, number, number, number, number]
+type Transform = [[number, number, number], [number, number, number]]
 
 interface BaseNode {
     id: string
