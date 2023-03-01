@@ -1,10 +1,16 @@
 import View from 'Cditor/core/view'
 import ModelData from 'Cditor/core/modelData'
+import { Emitter } from 'Cditor/common/event'
+import Viewport from 'Cditor/core/viewport'
 
 class ViewModel {
     private _focusPath: string[] = []
     private _view: View
     private _modelData: ModelData | null
+    private _viewport: Viewport
+
+    private readonly _onFocusPageChange = new Emitter<string>()
+    public readonly onFocusPageChange = this._onFocusPageChange.event
 
     constructor(model: ModelData) {
         this._modelData = model
@@ -28,6 +34,7 @@ class ViewModel {
 
     set focusPageId(value: string) {
         this._focusPath = [value]
+        this._onFocusPageChange.fire(value)
     }
 }
 
