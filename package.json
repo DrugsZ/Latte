@@ -25,6 +25,7 @@
   "devDependencies": {
     "@commitlint/cli": "^17.4.1",
     "@commitlint/config-conventional": "^17.4.0",
+    "@soda/friendly-errors-webpack-plugin": "^1.8.1",
     "@typescript-eslint/eslint-plugin": "^5.13.0",
     "@typescript-eslint/parser": "^5.0.0",
     "eslint": "^8.31.0",
