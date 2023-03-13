@@ -1,70 +1,92 @@
 type ElementType =
-    | 'FRAME'
-    | 'TEXT'
-    | 'GROUP'
-    | 'RECTANGLE'
-    | 'Vector'
-    | 'LINE'
-    | 'ARROW'
-    | 'ELLIPSE'
-    | 'POLYGON'
-    | 'STAR'
+  | 'FRAME'
+  | 'TEXT'
+  | 'GROUP'
+  | 'RECTANGLE'
+  | 'Vector'
+  | 'LINE'
+  | 'ARROW'
+  | 'ELLIPSE'
+  | 'POLYGON'
+  | 'STAR'
 
 interface BaseFill {
-    type: string
-    visible: boolean
-    opacity: number
+  type: string
+  visible: boolean
+  opacity: number
 }
 
 interface SolidColorFill extends BaseFill {
-    type: 'SOLID'
-    color: {
-        r: number
-        g: number
-        b: number
-    }
+  type: 'SOLID'
+  color: {
+    r: number
+    g: number
+    b: number
+  }
 }
 
 type Fill = SolidColorFill
 
 type Transform = [[number, number, number], [number, number, number]]
 
-interface BaseNode {
-    id: string
-    type: string
-    name: string
+interface DefaultIDType {
+  sessionID: number
+  localID: number
 }
 
-interface CditorDocument extends BaseNode {
-    type: 'DOCUMENT'
-    children: PAGE[]
+declare global {
+  const EditorElementTypeKind: typeof EditorElementTypeKind
 }
 
-interface PAGE extends BaseNode {
-    type: 'PAGE'
-    backgrounds: Fill[]
-    children: CditorElement[]
-}
-
-interface CditorElement extends BaseNode {
-    type: ElementType
-    hidden: boolean
-    locked: boolean
+interface BaseNodeSchema {
+  guid: DefaultIDType
+  parentIndex: {
+    guid: DefaultIDType
+    position: number
+  }
+  type: EditorElementTypeKind
+  name: string
+  visible: boolean
+  opacity: number
+  transform: {
+    a: number
+    b: number
+    c: number
+    d: number
+    tx: number
+    ty: number
+  }
+  size: {
     x: number
     y: number
-    width: number
-    height: number
-    relativeTransform: Transform
-    absoluteTransform?: Transform
-    opacity: number
-    fills: Fill[]
+  }
+  locked: boolean
+  fills?: Fill[]
 }
 
-interface RectangleElement extends Element {
-    type: 'RECTANGLE'
-    radius: [number, number, number, number]
+interface CditorDocument extends BaseNodeSchema {
+  type: EditorElementTypeKind.DOCUMENT
+}
+
+interface PAGE extends BaseNodeSchema {
+  type: EditorElementTypeKind.PAGE
+  backgrounds: Fill[]
+}
+
+interface RectangleElement extends BaseNodeSchema {
+  type: EditorElementTypeKind.RECTANGLE
+  radius: [number, number, number, number]
+}
+
+interface FrameElement extends BaseNodeSchema {
+  type: EditorElementTypeKind.FRAME
 }
 
 interface Window {
-    test: any
+  test: any
+}
+
+interface CditorFile {
+  elements: BaseNodeSchema[]
+  sessionID: number
 }
