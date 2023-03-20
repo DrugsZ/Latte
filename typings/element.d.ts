@@ -90,3 +90,10 @@ interface CditorFile {
   elements: BaseNodeSchema[]
   sessionID: number
 }
+
+interface RectBBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}

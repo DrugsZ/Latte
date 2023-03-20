@@ -1,10 +1,3 @@
-export interface IRectBBox {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
 abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
   type: string
   private _id: DefaultIDType
@@ -16,7 +9,7 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
     this._elementData = element
   }
 
-  getBoundingClientRect(): IRectBBox {
+  getBoundingClientRect(): RectBBox {
     const { size, transform } = this._elementData
     const { tx: x, ty: y } = transform
     const { x: width, y: height } = size
@@ -55,7 +48,7 @@ export abstract class HightBaseElement<
   protected _children: BaseElement<BaseNodeSchema>[] = []
 
   getBoundingClientRect() {
-    const bBox: IRectBBox = {
+    const bBox: RectBBox = {
       x: 0,
       y: 0,
       width: 0,
