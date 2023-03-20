@@ -34,7 +34,7 @@ export const createElement = (element: BaseNodeSchema) => {
   return new Ctr(element)
 }
 
-class RenderService {
+class RenderContext {
   private _elements: Map<string, BaseElement> = new Map()
   private _root: EditorDocument
 
@@ -71,4 +71,4 @@ class RenderService {
   }
 }
 
-export default RenderService
+export default RenderContext
