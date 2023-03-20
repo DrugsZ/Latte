@@ -1,47 +1,60 @@
-import { createPageModel, createDefaultDocument } from 'Cditor/common/schema'
+import {
+  createDefaultElement,
+  createDefaultDocument,
+} from 'Cditor/common/schema'
 
 interface IUpdatePayload {
-    data: CditorElement | PAGE
+  data: BaseNodeSchema
 }
 
 interface ISchemaModel {
-    updateModel(payload: IUpdatePayload): void
-    addChild(payload: IUpdatePayload): void
-    removeChild(target: string): void
+  updateModel(payload: IUpdatePayload): void
+  addChild(payload: IUpdatePayload): void
+  removeChild(target: DefaultIDType): void
 }
 
 class ModelData implements ISchemaModel {
-    private _model: CditorDocument = createDefaultDocument()
+  private _model: CditorFile = createDefaultDocument()
 
-    constructor(model?: CditorDocument) {
-        this._initModel(model)
+  constructor(model?: CditorFile) {
+    this._initModel(model)
+  }
+  updateModel(payload: { data: PAGE }): void {
+    this._model.elements = this._model.elements.map((item) =>
+      JSON.stringify(item.guid) === JSON.stringify(payload.data.guid)
+        ? payload.data
+        : item
+    )
+  }
+  addChild() {
+    this._model?.elements.push(
+      createDefaultElement({
+        guid: {
+          sessionID: 1,
+          localID: 1,
+        },
+        position: 1,
+      })
+    )
+  }
+  removeChild(target: DefaultIDType) {
+    const newChildren = this._model?.elements.filter(
+      (item) => JSON.stringify(item.guid) === JSON.stringify(target)
+    )
+    this._model = {
+      ...this._model,
+      elements: newChildren || [],
     }
-    updateModel(payload: { data: PAGE }): void {
-        this._model.children = this._model.children.map((item) =>
-            item.id === payload.data.id ? payload.data : item
-        )
-    }
-    addChild() {
-        this._model?.children.push(createPageModel())
-    }
-    removeChild(target: string) {
-        const newChildren = this._model?.children.filter(
-            (item) => item.id === target
-        )
-        this._model = {
-            ...this._model,
-            children: newChildren || [],
-        }
-    }
+  }
 
-    getCurrentState() {
-        return this._model
+  getCurrentState() {
+    return this._model
+  }
+  private _initModel(model?: CditorFile) {
+    if (model) {
+      this._model = model
     }
-    private _initModel(model?: CditorDocument) {
-        if (model) {
-            this._model = model
-        }
-    }
+  }
 }
 
 export default ModelData

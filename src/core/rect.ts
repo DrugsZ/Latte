@@ -1,20 +1,11 @@
 import BaseElement from 'Cditor/core/baseElement'
 
 class Rect extends BaseElement {
-  getBoundingClientRect() {
-    return {
-      x: this._elementData.x,
-      y: this._elementData.y,
-      width: this._elementData.width,
-      height: this._elementData.height,
-    }
-  }
-
   render(ctx: CanvasRenderingContext2D): void {
-    const { x, y, height, width } = this._elementData
+    const { size, transform } = this._elementData
+    const { a, b, c, d, tx: x, ty: y } = transform
+    const { x: width, y: height } = size
     ctx.fillStyle = this.getFills()
-    const { relativeTransform } = this._elementData
-    const [[a, c], [b, d]] = relativeTransform
     const centerX = x + width / 2
     const centerY = y + height / 2
     ctx.translate(centerX, centerY)

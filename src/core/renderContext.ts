@@ -69,6 +69,10 @@ class RenderContext {
       ;(parentNode as HightBaseElement).pushChild(...value)
     })
   }
+
+  public getPages(): Page[] {
+    return this._root.getChildren() as Page[]
+  }
 }
 
 export default RenderContext
