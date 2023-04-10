@@ -97,3 +97,13 @@ interface RectBBox {
   width: number
   height: number
 }
+
+interface RenderObject {
+  type: string
+  x: number
+  y: number
+  width: number
+  height: number
+  transform: number[]
+  fills: string
+}

@@ -2,6 +2,7 @@ import {
   createDefaultElement,
   createDefaultDocument,
 } from 'Cditor/common/schema'
+import { Emitter } from 'Cditor/common/event'
 
 interface IUpdatePayload {
   data: BaseNodeSchema
@@ -13,8 +14,19 @@ interface ISchemaModel {
   removeChild(target: DefaultIDType): void
 }
 
+interface ChangeEvent {
+  type: 'DELETE' | 'CREATE' | 'CHANGE'
+  value: Element
+}
+
 class ModelData implements ISchemaModel {
   private _model: CditorFile = createDefaultDocument()
+
+  private readonly _onDataChange = new Emitter<CditorFile>()
+  private readonly onDataChange = this._onDataChange.event
+
+  private readonly _onElementChange = new Emitter<ChangeEvent[]>()
+  private readonly onElementChange = this._onElementChange.event
 
   constructor(model?: CditorFile) {
     this._initModel(model)
@@ -25,6 +37,7 @@ class ModelData implements ISchemaModel {
         ? payload.data
         : item
     )
+    this._onDataChange.fire(this._model)
   }
   addChild() {
     this._model?.elements.push(
@@ -36,6 +49,7 @@ class ModelData implements ISchemaModel {
         position: 1,
       })
     )
+    this._onDataChange.fire(this._model)
   }
   removeChild(target: DefaultIDType) {
     const newChildren = this._model?.elements.filter(
@@ -45,6 +59,7 @@ class ModelData implements ISchemaModel {
       ...this._model,
       elements: newChildren || [],
     }
+    this._onDataChange.fire(this._model)
   }
 
   getCurrentState() {

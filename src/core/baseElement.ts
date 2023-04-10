@@ -9,6 +9,9 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
     this._elementData = element
   }
 
+  get id(): string {
+    return JSON.stringify(this._id)
+  }
   getBoundingClientRect(): RectBBox {
     const { size, transform } = this._elementData
     const { tx: x, ty: y } = transform
@@ -21,7 +24,7 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
     }
   }
 
-  abstract render(ctx: CanvasRenderingContext2D): void
+  abstract render(): RenderObject
 
   getFills() {
     const { fills } = this._elementData
@@ -80,22 +83,19 @@ export abstract class HightBaseElement<
     )
   }
 
-  render(ctx: CanvasRenderingContext2D): void {
+  render() {
     const { size, transform } = this._elementData
     const { a, b, c, d, tx: x, ty: y } = transform
     const { x: width, y: height } = size
-    ctx.fillStyle = this.getFills()
-    ctx.fillRect(x, y, width, height)
-    if (this._children.length) {
-      const centerX = x + width / 2
-      const centerY = y + height / 2
-      ctx.translate(centerX, centerY)
-      ctx.transform(a, b, c, d, 0, 0)
-      this._children.forEach((element) => {
-        ctx.save()
-        element.render(ctx)
-        ctx.restore()
-      })
+
+    return {
+      type: 'frame',
+      x,
+      y,
+      width,
+      height,
+      transform: [a, b, c, d, 0, 0],
+      fills: this.getFills(),
     }
   }
 }

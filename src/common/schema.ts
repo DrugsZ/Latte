@@ -1,42 +1,45 @@
-import dayjs from 'dayjs'
-
 let uuid = 0
-export const getUUId = () => `${dayjs().format()}_${++uuid}`
+export const getUUId = () => ({
+  sessionID: 1,
+  localID: ++uuid,
+})
 
 export const isRect = (type: ElementType) => type === 'RECTANGLE'
 
-export const createDefaultElement = (): CditorElement => ({
-    id: getUUId(),
-    type: 'RECTANGLE',
-    name: '',
-    hidden: false,
-    locked: false,
+export const createDefaultElement = (parentInfo: {
+  guid: DefaultIDType
+  position: number
+}): BaseNodeSchema => ({
+  guid: getUUId(),
+  type: 'RECTANGLE',
+  name: '',
+  visible: true,
+  locked: false,
+  parentInfo,
+  size: {
     x: 0,
     y: 0,
-    width: 0,
-    height: 0,
-    relativeTransform: [1, 0, 0, 1, 0, 0],
-    absoluteTransform: [1, 0, 0, 1, 0, 0],
-    opacity: 1,
-    fills: [],
+  },
+  transform: {
+    a: 1,
+    b: 0,
+    c: 0,
+    d: 1,
+    tx: 0,
+    ty: 0,
+  },
+  opacity: 1,
+  fills: [],
 })
 
-export const createPageModel = () =>
-    ({
-        id: getUUId(),
-        type: 'PAGE',
-        name: '',
-        children: [] as CditorElement[],
-    } as PAGE)
+export const createPageModel = createDefaultElement
 
-export const createDefaultDocument = (): CditorDocument => ({
-    id: getUUId(),
-    type: 'DOCUMENT',
-    name: '',
-    children: [createPageModel()],
+export const createDefaultDocument = (): CditorFile => ({
+  elements: [],
+  sessionID: 1,
 })
 
 export const createElement = () => {
-    const defaultElement = createDefaultElement()
-    return defaultElement
+  const defaultElement = createDefaultElement()
+  return defaultElement
 }

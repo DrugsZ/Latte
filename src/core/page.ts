@@ -1,4 +1,4 @@
-import { HightBaseElement } from 'Cditor/core/baseElement'
+import BaseElement, { HightBaseElement } from 'Cditor/core/baseElement'
 
 // class Page extends HightBaseElement {
 //   private _model: PAGE
@@ -113,6 +113,22 @@ import { HightBaseElement } from 'Cditor/core/baseElement'
 //   }
 // }
 
-class Page extends HightBaseElement {}
+class Page extends HightBaseElement {
+  private _visibleElements: BaseElement[] = []
+
+  constructor(params) {
+    super(params)
+    this._visibleElements = this._children
+  }
+
+  public getVisibleElementRenderObjects(): RenderObject[] {
+    return this._visibleElements.map((item) => item.render())
+  }
+
+  public setVisibleArea(value: RectBBox) {}
+  // onViewportChange(viewport: RectBBox) {}
+
+  // onZoomChange(zoom: number) {}
+}
 
 export default Page

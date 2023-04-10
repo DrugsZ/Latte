@@ -1,5 +1,6 @@
 import { Emitter } from 'Cditor/common/event'
 import Page from 'Cditor/core/page'
+import DomElementObserver from 'Cditor/core/domElementObserver'
 
 class Viewport {
   private _x: number = 0
@@ -50,34 +51,36 @@ class EditorZoom {
 
 class ViewportAndZoomService {
   private _viewportAndZoomMaps: Map<
-    Page,
+    string,
     {
       viewport: Viewport
       zoom: EditorZoom
     }
   > = new Map()
 
+  constructor(private readonly renderDOMObserver: DomElementObserver) {}
+
   private _initInstanceForPage(page: Page) {
     const size = page.getBoundingClientRect()
     const viewport = new Viewport(size)
     const zoom = new EditorZoom()
-    this._viewportAndZoomMaps.set(page, {
+    this._viewportAndZoomMaps.set(page.id, {
       viewport,
       zoom,
     })
   }
   getViewport(page: Page): Viewport {
-    if (!this._viewportAndZoomMaps.has(page)) {
+    if (!this._viewportAndZoomMaps.has(page.id)) {
       this._initInstanceForPage(page)
     }
-    const result = this._viewportAndZoomMaps.get(page)
+    const result = this._viewportAndZoomMaps.get(page.id)
     return result!.viewport
   }
   getZoom(page: Page): EditorZoom {
-    if (!this._viewportAndZoomMaps.has(page)) {
+    if (!this._viewportAndZoomMaps.has(page.id)) {
       this._initInstanceForPage(page)
     }
-    const result = this._viewportAndZoomMaps.get(page)
+    const result = this._viewportAndZoomMaps.get(page.id)
     return result!.zoom
   }
 }
