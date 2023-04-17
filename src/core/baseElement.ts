@@ -12,7 +12,7 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
   get id(): string {
     return JSON.stringify(this._id)
   }
-  getBoundingClientRect(): RectBBox {
+  getBoundingClientRect(): Rectangle {
     const { size, transform } = this._elementData
     const { tx: x, ty: y } = transform
     const { x: width, y: height } = size
@@ -27,10 +27,10 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
   abstract render(): RenderObject
 
   getFills() {
-    const { fills } = this._elementData
+    const { fillPaints } = this._elementData
     let colorStr = ''
-    if (!fills) return colorStr
-    fills.forEach((item) => {
+    if (!fillPaints) return colorStr
+    fillPaints.forEach((item) => {
       if (item.type === 'SOLID') {
         const { color } = item
         colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
@@ -51,7 +51,7 @@ export abstract class HightBaseElement<
   protected _children: BaseElement<BaseNodeSchema>[] = []
 
   getBoundingClientRect() {
-    const bBox: RectBBox = {
+    const bBox: Rectangle = {
       x: 0,
       y: 0,
       width: 0,

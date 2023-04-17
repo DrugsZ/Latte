@@ -61,7 +61,7 @@ interface BaseNodeSchema {
     y: number
   }
   locked: boolean
-  fills?: Fill[]
+  fillPaints?: Fill[]
 }
 
 interface CditorDocument extends BaseNodeSchema {
@@ -91,7 +91,7 @@ interface CditorFile {
   sessionID: number
 }
 
-interface RectBBox {
+interface Rectangle {
   x: number
   y: number
   width: number
