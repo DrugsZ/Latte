@@ -1,13 +1,13 @@
 import ModelData from 'Cditor/core/modelData'
 import { Emitter } from 'Cditor/common/event'
-import ViewportAndZoomService from 'Cditor/core/viewportAndZoomService'
+import CameraService from 'Cditor/core/CameraService'
 import DomElementObserver from 'Cditor/core/domElementObserver'
 import Page from 'Cditor/core/page'
 
 class ViewModel {
   private _focusPath: DefaultIDType[] = []
   private _modelData: ModelData
-  private _viewportAndZoomService: ViewportAndZoomService
+  private _cameraService: CameraService
   private _canvasObserver: DomElementObserver
 
   private readonly _onFocusPageChange = new Emitter<DefaultIDType>()
@@ -17,9 +17,7 @@ class ViewModel {
     this._modelData = model
     this._focusPath = [this._modelData.getCurrentState().elements[0].guid]
     this._canvasObserver = new DomElementObserver(_domElement)
-    this._viewportAndZoomService = new ViewportAndZoomService(
-      this._canvasObserver
-    )
+    this._cameraService = new CameraService(this._canvasObserver.canvasSize)
   }
 
   get focusPath(): DefaultIDType[] {
@@ -42,11 +40,15 @@ class ViewModel {
   }
 
   getViewport(page: Page) {
-    return this._viewportAndZoomService.getViewport(page)
+    return this._cameraService.getViewport(page)
   }
 
   getZoom(page: Page) {
-    return this._viewportAndZoomService.getZoom(page)
+    return this._cameraService.getZoom(page)
+  }
+
+  getCamera(page: Page) {
+    return this._cameraService.getCamera(page)
   }
 
   getCurrentState() {

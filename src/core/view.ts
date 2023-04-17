@@ -1,29 +1,36 @@
-import ModelData from 'Cditor/core/modelData'
 import ViewModel from 'Cditor/core/viewModel'
 import RenderContext from 'Cditor/core/renderContext'
 import Page from 'Cditor/core/page'
+import RenderService from 'Cditor/core/renderService'
 
-enum RenderEnum {
+export enum RenderEnum {
   ViewportChange,
   ZoomChange,
   ElementChange,
-}
-
-function getRealRenderArea(viewport, zoom): RectBBox {
-  return {
-    x: 0,
-    y: 0,
-    width: 800,
-    height: 800,
-  }
 }
 
 export default class View {
   private _renderContext: RenderContext
   private _shouldRender: boolean = true
   private _focusPageInstance: Page
+  private _cacheRenderBox: Rectangle = {
+    x: 0,
+    y: 0,
+    width: 1500,
+    height: 1000,
+  }
 
-  constructor(private _viewModel: ViewModel) {
+  private _lastMovePosition: {
+    x: number
+    y: number
+  }
+  private _isMouseDown: boolean = false
+
+  constructor(
+    private _viewModel: ViewModel,
+    private readonly _renderService: RenderService,
+    private readonly _renderDOM: HTMLCanvasElement
+  ) {
     this._initElement()
     this._viewModel.onFocusPageChange(this.onFocusPageChange)
 
@@ -31,11 +38,10 @@ export default class View {
       if (index === 0) {
         this._focusPageInstance = page
       }
-      const currentViewport = this._viewModel.getViewport(page)
-      const currentZoom = this._viewModel.getZoom(page)
-      currentViewport.onViewportChange(this._onViewportChange)
-      currentZoom.onZoomChange(this._onZoomChange)
+      const currentCamera = this._viewModel.getCamera(page)
+      currentCamera.onCameraViewChange(e => this._onCameraViewChange(e))
     })
+    this._bindViewMouseEvents()
   }
 
   private _initElement() {
@@ -45,7 +51,7 @@ export default class View {
 
   private onFocusPageChange(e: DefaultIDType) {
     const pages = this._renderContext.getPages()
-    const current = pages.find((item) => item.id === JSON.stringify(e))
+    const current = pages.find(item => item.id === JSON.stringify(e))
     if (current) {
       this._focusPageInstance = current
     }
@@ -59,9 +65,9 @@ export default class View {
     return this._shouldRender
   }
 
-  private _onViewportChange(box: RectBBox) {
-    const curRenderArea = getRealRenderArea()
-    this._focusPageInstance.setVisibleArea(curRenderArea)
+  private _onCameraViewChange(box: Rectangle) {
+    this._focusPageInstance.setVisibleArea(box)
+    this._cacheRenderBox = box
     this._shouldRender = true
   }
 
@@ -69,13 +75,53 @@ export default class View {
     this._shouldRender = true
   }
 
-  private _onZoomChange(zoom: number) {
-    const curRenderArea = getRealRenderArea()
-    this._focusPageInstance.setVisibleArea(curRenderArea)
-    this._shouldRender = true
-  }
-
   get visibleElementRenderObjects() {
     return this._focusPageInstance.getVisibleElementRenderObjects()
+  }
+
+  public render() {
+    this._scheduleRender()
+  }
+
+  private _scheduleRender() {
+    requestAnimationFrame(() => {
+      if (this.shouldRender()) {
+        this._renderService.draw(
+          this.visibleElementRenderObjects,
+          this._cacheRenderBox
+        )
+        this._shouldRender = false
+      }
+      this._scheduleRender()
+    })
+  }
+
+  private _bindViewMouseEvents() {
+    this._renderDOM.addEventListener('mousedown', e => {
+      this._lastMovePosition = {
+        x: e.clientX,
+        y: e.clientY,
+      }
+      this._isMouseDown = true
+    })
+    this._renderDOM.addEventListener('mousemove', e => {
+      if (!this._isMouseDown) {
+        return
+      }
+      const newX = e.clientX
+      const newY = e.clientY
+      const currentCamera = this._viewModel.getCamera(this._focusPageInstance)
+      currentCamera.move(
+        newX - this._lastMovePosition.x,
+        newY - this._lastMovePosition.y
+      )
+      this._lastMovePosition = {
+        x: newX,
+        y: newY,
+      }
+    })
+    this._renderDOM.addEventListener('mouseup', () => {
+      this._isMouseDown = false
+    })
   }
 }
