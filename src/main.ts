@@ -2,10 +2,10 @@ import Editor from 'Cditor/core/editor'
 
 const initCanvas = () => {
   const canvas = document.createElement('canvas')
-  canvas.setAttribute('width', '800')
-  canvas.setAttribute('height', '800')
-  canvas.style.width = '800px'
-  canvas.style.height = '800px'
+  canvas.setAttribute('width', '1500')
+  canvas.setAttribute('height', '1000')
+  canvas.style.width = '1500px'
+  canvas.style.height = '1000px'
   return canvas
 }
 

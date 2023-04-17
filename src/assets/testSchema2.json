@@ -1,0 +1,412 @@
+{
+  "type": "NODE_CHANGES",
+  "sessionID": 0,
+  "ackID": 0,
+  "pasteID": 1447531920,
+  "pasteFileKey": "2ZXNCmXqCfTwbsZafJQ1lo",
+  "pasteIsPartiallyOutsideEnclosingFrame": false,
+  "pastePageId": {
+    "sessionID": 0,
+    "localID": 1
+  },
+  "isCut": false,
+  "pasteEditorType": "DESIGN",
+  "publishedAssetGuids": [],
+  "elements": [
+    {
+      "guid": {
+        "sessionID": 0,
+        "localID": 0
+      },
+      "phase": "CREATED",
+      "type": "DOCUMENT",
+      "name": "Document",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": 0,
+        "c": 0,
+        "d": 1,
+        "ty": 0
+      },
+      "mask": false,
+      "maskIsOutline": false,
+      "maskType": "ALPHA"
+    },
+    {
+      "guid": {
+        "sessionID": 0,
+        "localID": 1
+      },
+      "phase": "CREATED",
+      "parentIndex": {
+        "guid": {
+          "sessionID": 0,
+          "localID": 0
+        },
+        "position": "!"
+      },
+      "type": "CANVAS",
+      "name": "Page 1",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": 0,
+        "c": 0,
+        "d": 1,
+        "ty": 0
+      },
+      "mask": false,
+      "maskIsOutline": false,
+      "maskType": "ALPHA",
+      "backgroundOpacity": 1,
+      "backgroundColor": {
+        "r": 0.9607843160629272,
+        "g": 0.9607843160629272,
+        "b": 0.9607843160629272,
+        "a": 1
+      },
+      "backgroundEnabled": true
+    },
+    {
+      "guid": {
+        "sessionID": 0,
+        "localID": 2
+      },
+      "phase": "CREATED",
+      "parentIndex": {
+        "guid": {
+          "sessionID": 0,
+          "localID": 0
+        },
+        "position": "~"
+      },
+      "type": "CANVAS",
+      "name": "Internal Only Canvas",
+      "visible": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": 0,
+        "c": 0,
+        "d": 1,
+        "ty": 0
+      },
+      "mask": false,
+      "maskIsOutline": false,
+      "maskType": "ALPHA",
+      "internalOnly": true
+    },
+    {
+      "guid": {
+        "sessionID": 1,
+        "localID": 3
+      },
+      "phase": "CREATED",
+      "parentIndex": {
+        "guid": {
+          "sessionID": 0,
+          "localID": 1
+        },
+        "position": "!"
+      },
+      "type": "ROUNDED_RECTANGLE",
+      "name": "Rectangle 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": {
+        "x": 499,
+        "y": 340
+      },
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": 71,
+        "c": 0,
+        "d": 1,
+        "ty": 91
+      },
+      "dashPattern": [],
+      "mask": false,
+      "maskType": "ALPHA",
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 0.8509804010391235,
+            "g": 0.8509804010391235,
+            "b": 0.8509804010391235,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ],
+      "strokePaints": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "commandsBlob": 0,
+          "styleID": 0
+        }
+      ],
+      "strokeGeometry": [],
+      "rectangleTopLeftCornerRadius": 0,
+      "rectangleTopRightCornerRadius": 0,
+      "rectangleBottomLeftCornerRadius": 0,
+      "rectangleBottomRightCornerRadius": 0,
+      "rectangleCornerRadiiIndependent": false,
+      "rectangleCornerToolIndependent": false,
+      "proportionsConstrained": false,
+      "horizontalConstraint": "MIN",
+      "miterLimit": 4,
+      "verticalConstraint": "MIN",
+      "handleMirroring": "NONE",
+      "cornerSmoothing": 0
+    },
+    {
+      "guid": {
+        "sessionID": 1,
+        "localID": 4
+      },
+      "phase": "CREATED",
+      "parentIndex": {
+        "guid": {
+          "sessionID": 0,
+          "localID": 1
+        },
+        "position": "\""
+      },
+      "type": "ROUNDED_RECTANGLE",
+      "name": "Rectangle 2",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": {
+        "x": 499,
+        "y": 340
+      },
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": 668,
+        "c": 0,
+        "d": 1,
+        "ty": 431
+      },
+      "dashPattern": [],
+      "mask": false,
+      "maskType": "ALPHA",
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 0.9624999761581421,
+            "g": 0.10026043653488159,
+            "b": 0.10026043653488159,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ],
+      "strokePaints": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "commandsBlob": 0,
+          "styleID": 0
+        }
+      ],
+      "strokeGeometry": [],
+      "rectangleTopLeftCornerRadius": 0,
+      "rectangleTopRightCornerRadius": 0,
+      "rectangleBottomLeftCornerRadius": 0,
+      "rectangleBottomRightCornerRadius": 0,
+      "rectangleCornerRadiiIndependent": false,
+      "rectangleCornerToolIndependent": false,
+      "proportionsConstrained": false,
+      "horizontalConstraint": "MIN",
+      "miterLimit": 4,
+      "verticalConstraint": "MIN",
+      "handleMirroring": "NONE",
+      "cornerSmoothing": 0
+    },
+    {
+      "guid": {
+        "sessionID": 1,
+        "localID": 5
+      },
+      "phase": "CREATED",
+      "parentIndex": {
+        "guid": {
+          "sessionID": 0,
+          "localID": 1
+        },
+        "position": "!O"
+      },
+      "type": "ROUNDED_RECTANGLE",
+      "name": "Rectangle 3",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": {
+        "x": 499,
+        "y": 340
+      },
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": 59,
+        "c": 0,
+        "d": 1,
+        "ty": 514
+      },
+      "dashPattern": [],
+      "mask": false,
+      "maskType": "ALPHA",
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 0.9958333373069763,
+            "g": 0.9586555361747742,
+            "b": 0.06638890504837036,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ],
+      "strokePaints": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "commandsBlob": 0,
+          "styleID": 0
+        }
+      ],
+      "strokeGeometry": [],
+      "rectangleTopLeftCornerRadius": 0,
+      "rectangleTopRightCornerRadius": 0,
+      "rectangleBottomLeftCornerRadius": 0,
+      "rectangleBottomRightCornerRadius": 0,
+      "rectangleCornerRadiiIndependent": false,
+      "rectangleCornerToolIndependent": false,
+      "proportionsConstrained": false,
+      "horizontalConstraint": "MIN",
+      "miterLimit": 4,
+      "verticalConstraint": "MIN",
+      "handleMirroring": "NONE",
+      "cornerSmoothing": 0
+    },
+    {
+      "guid": {
+        "sessionID": 1,
+        "localID": 6
+      },
+      "phase": "CREATED",
+      "parentIndex": {
+        "guid": {
+          "sessionID": 0,
+          "localID": 1
+        },
+        "position": "!7"
+      },
+      "type": "ROUNDED_RECTANGLE",
+      "name": "Rectangle 4",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": {
+        "x": 499,
+        "y": 340
+      },
+      "transform": {
+        "a": 1,
+        "b": 0,
+        "tx": -359,
+        "c": 0,
+        "d": 1,
+        "ty": -45
+      },
+      "dashPattern": [],
+      "mask": false,
+      "maskType": "ALPHA",
+      "cornerRadius": 0,
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 0.10833333432674408,
+            "g": 0.06048611178994179,
+            "b": 0.06048611178994179,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ],
+      "strokePaints": [],
+      "fillGeometry": [
+        {
+          "windingRule": "NONZERO",
+          "commandsBlob": 0,
+          "styleID": 0
+        }
+      ],
+      "strokeGeometry": [],
+      "rectangleTopLeftCornerRadius": 0,
+      "rectangleTopRightCornerRadius": 0,
+      "rectangleBottomLeftCornerRadius": 0,
+      "rectangleBottomRightCornerRadius": 0,
+      "rectangleCornerRadiiIndependent": false,
+      "rectangleCornerToolIndependent": false,
+      "proportionsConstrained": false,
+      "horizontalConstraint": "MIN",
+      "miterLimit": 4,
+      "verticalConstraint": "MIN",
+      "handleMirroring": "NONE",
+      "cornerSmoothing": 0
+    }
+  ],
+  "blobs": [
+    "AQAAAAAAAAAAAgCA+UMAAAAAAgCA+UMAAKpDAgAAAAAAAKpDAgAAAAAAAAAAAA=="
+  ]
+}
