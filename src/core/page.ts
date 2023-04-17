@@ -125,7 +125,21 @@ class Page extends HightBaseElement {
     return this._visibleElements.map((item) => item.render())
   }
 
-  public setVisibleArea(value: RectBBox) {}
+  public setVisibleArea(value: Rectangle) {
+    const {
+      x: visibleX,
+      y: visibleY,
+      width: visibleWidth,
+      height: visibleHeight,
+    } = value
+    this._visibleElements = this._children.filter((child) => {
+      const childRect = child.getBoundingClientRect()
+      const { x, y, width, height } = childRect
+      const xIsVisible = x < visibleX + visibleWidth && x + width > visibleX
+      const yIsVisible = y < visibleY + visibleHeight && y + height > visibleY
+      return xIsVisible && yIsVisible
+    })
+  }
   // onViewportChange(viewport: RectBBox) {}
 
   // onZoomChange(zoom: number) {}
