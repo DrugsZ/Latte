@@ -1,6 +1,6 @@
 abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
   type: string
-  private _id: DefaultIDType
+  private _id: string
   protected _elementData: T
 
   constructor(element: T) {
@@ -30,7 +30,7 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
     const { fillPaints } = this._elementData
     let colorStr = ''
     if (!fillPaints) return colorStr
-    fillPaints.forEach((item) => {
+    fillPaints.forEach(item => {
       if (item.type === 'SOLID') {
         const { color } = item
         colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
@@ -57,7 +57,7 @@ export abstract class HightBaseElement<
       width: 0,
       height: 0,
     }
-    this._children.forEach((element) => {
+    this._children.forEach(element => {
       const elementBBox = element.getBoundingClientRect()
       bBox.x = Math.min(bBox.x, elementBBox.x)
       bBox.y = Math.min(bBox.y, elementBBox.y)
@@ -79,7 +79,7 @@ export abstract class HightBaseElement<
 
   removeChild(removeChild: BaseElement) {
     this._children = this._children?.filter(
-      (child) => !Object.is(child, removeChild)
+      child => !Object.is(child, removeChild)
     )
   }
 

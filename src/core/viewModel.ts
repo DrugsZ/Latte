@@ -1,13 +1,12 @@
 import ModelData from 'Cditor/core/modelData'
 import { Emitter } from 'Cditor/common/event'
-import CameraService from 'Cditor/core/CameraService'
+import CameraService from 'Cditor/core/cameraService'
 import DomElementObserver from 'Cditor/core/domElementObserver'
-import Page from 'Cditor/core/page'
 
 class ViewModel {
   private _focusPath: DefaultIDType[] = []
   private _modelData: ModelData
-  private _cameraService: CameraService
+  private _cameraService: CameraService<string>
   private _canvasObserver: DomElementObserver
 
   private readonly _onFocusPageChange = new Emitter<DefaultIDType>()
@@ -18,6 +17,7 @@ class ViewModel {
     this._focusPath = [this._modelData.getCurrentState().elements[0].guid]
     this._canvasObserver = new DomElementObserver(_domElement)
     this._cameraService = new CameraService(this._canvasObserver.canvasSize)
+    window._cameraService = this._cameraService
   }
 
   get focusPath(): DefaultIDType[] {
@@ -39,16 +39,23 @@ class ViewModel {
     this._onFocusPageChange.fire(value)
   }
 
-  getViewport(page: Page) {
-    return this._cameraService.getViewport(page)
+  getViewport(id: string) {
+    return this._cameraService.getViewport(id)
   }
 
-  getZoom(page: Page) {
-    return this._cameraService.getZoom(page)
+  getZoom(id: string) {
+    return this._cameraService.getZoom(id)
   }
 
-  getCamera(page: Page) {
-    return this._cameraService.getCamera(page)
+  getCamera(id: string) {
+    return this._cameraService.getCamera(id)
+  }
+
+  createCamera(id: string, size: Rectangle) {
+    return this._cameraService.createCamera(id, {
+      size,
+      padding: 0.1,
+    })
   }
 
   getCurrentState() {

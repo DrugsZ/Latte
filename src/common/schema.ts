@@ -7,7 +7,7 @@ export const getUUId = () => ({
 export const isRect = (type: ElementType) => type === 'RECTANGLE'
 
 export const createDefaultElement = (parentInfo: {
-  guid: DefaultIDType
+  guid: string
   position: number
 }): BaseNodeSchema => ({
   guid: getUUId(),

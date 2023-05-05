@@ -1,12 +1,17 @@
 class RenderService {
   constructor(private readonly _canvas: HTMLCanvasElement) {}
 
-  public draw(renderObjects: RenderObject[], renderBox: Rectangle) {
+  public draw(
+    renderObjects: RenderObject[],
+    renderBox: Rectangle,
+    zoom: number
+  ): void {
     const ctx = this._canvas.getContext('2d') as CanvasRenderingContext2D
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height)
     ctx.fillStyle = '#f5f5f5'
     ctx.fillRect(0, 0, this._canvas.width, this._canvas.height)
+    ctx.scale(zoom, zoom)
     ctx.translate(-renderBox.x, -renderBox.y)
     renderObjects.forEach(item => {
       ctx.save()

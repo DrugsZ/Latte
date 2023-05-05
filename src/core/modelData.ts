@@ -11,7 +11,7 @@ interface IUpdatePayload {
 interface ISchemaModel {
   updateModel(payload: IUpdatePayload): void
   addChild(payload: IUpdatePayload): void
-  removeChild(target: DefaultIDType): void
+  removeChild(target: string): void
 }
 
 interface ChangeEvent {
@@ -32,7 +32,7 @@ class ModelData implements ISchemaModel {
     this._initModel(model)
   }
   updateModel(payload: { data: PAGE }): void {
-    this._model.elements = this._model.elements.map((item) =>
+    this._model.elements = this._model.elements.map(item =>
       JSON.stringify(item.guid) === JSON.stringify(payload.data.guid)
         ? payload.data
         : item
@@ -51,9 +51,9 @@ class ModelData implements ISchemaModel {
     )
     this._onDataChange.fire(this._model)
   }
-  removeChild(target: DefaultIDType) {
+  removeChild(target: string) {
     const newChildren = this._model?.elements.filter(
-      (item) => JSON.stringify(item.guid) === JSON.stringify(target)
+      item => JSON.stringify(item.guid) === JSON.stringify(target)
     )
     this._model = {
       ...this._model,
