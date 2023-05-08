@@ -52,20 +52,22 @@ export abstract class HightBaseElement<
 
   getBoundingClientRect() {
     const bBox: Rectangle = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
+      x: Infinity,
+      y: Infinity,
+      width: -Infinity,
+      height: -Infinity,
     }
     this._children.forEach(element => {
       const elementBBox = element.getBoundingClientRect()
       bBox.x = Math.min(bBox.x, elementBBox.x)
       bBox.y = Math.min(bBox.y, elementBBox.y)
-      bBox.width = Math.max(bBox.width, elementBBox.width + elementBBox.x)
-      bBox.height = Math.max(bBox.height, elementBBox.height + elementBBox.y)
+      bBox.width =
+        Math.max(bBox.width + bBox.x, elementBBox.width + elementBBox.x) -
+        bBox.x
+      bBox.height =
+        Math.max(bBox.height + bBox.y, elementBBox.height + elementBBox.y) -
+        bBox.y
     })
-    bBox.width -= bBox.x
-    bBox.height -= bBox.y
     return bBox
   }
 

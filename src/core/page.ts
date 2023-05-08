@@ -137,17 +137,6 @@ class Page extends HightBaseElement {
       const { x, y, width, height } = childRect
       const xIsVisible = x < visibleX + visibleWidth && x + width > visibleX
       const yIsVisible = y < visibleY + visibleHeight && y + height > visibleY
-      if (
-        child.id ===
-        JSON.stringify({
-          sessionID: 2,
-          localID: 5,
-        })
-      ) {
-        console.log(x, visibleX + visibleWidth, x + width, visibleX)
-        console.log(y, visibleY + visibleHeight, y + height, visibleY)
-        console.log(xIsVisible, yIsVisible)
-      }
 
       return xIsVisible && yIsVisible
     })

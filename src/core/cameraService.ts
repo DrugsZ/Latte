@@ -70,7 +70,8 @@ class CameraService<T = any> {
     const paddingHeight = canRenderHeight - size.height
 
     const currentSize = {
-      ...size,
+      width: canRenderWidth,
+      height: canRenderHeight,
       x: size.x - paddingWidth / 2,
       y: size.y - paddingHeight / 2,
     }
