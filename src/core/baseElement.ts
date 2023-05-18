@@ -1,12 +1,17 @@
-abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
+import { EventTarget } from 'Cditor/core/EventTarget'
+
+abstract class BaseElement<
+  T extends BaseNodeSchema = BaseNodeSchema
+> extends EventTarget {
   type: string
   private _id: string
   protected _elementData: T
   parentNode: HightBaseElement | null = null
 
   constructor(element: T) {
+    super()
     this.type = element.type
-    this._id = element.guid
+    this._id = JSON.stringify(element.guid)
     this._elementData = element
   }
 

@@ -46,7 +46,7 @@ class RenderContext {
     const cachedChildElements: {
       [key: string]: BaseElement[]
     } = {}
-    elements.forEach((elm) => {
+    elements.forEach(elm => {
       const currentNode = createElement(elm)
       this._elements.set(JSON.stringify(elm.guid), currentNode)
       if (currentNode instanceof EditorDocument) {
@@ -66,7 +66,7 @@ class RenderContext {
       if (!parentNode) {
         return
       }
-      ;(parentNode as HightBaseElement).pushChild(...value)
+      ;(parentNode as HightBaseElement).addChild(...value)
     })
   }
 
