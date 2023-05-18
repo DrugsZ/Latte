@@ -2,6 +2,7 @@ abstract class BaseElement<T extends BaseNodeSchema = BaseNodeSchema> {
   type: string
   private _id: string
   protected _elementData: T
+  parentNode: HightBaseElement | null = null
 
   constructor(element: T) {
     this.type = element.type
@@ -75,14 +76,20 @@ export abstract class HightBaseElement<
     return this._children
   }
 
-  pushChild(...child: BaseElement[]) {
+  addChild(...child: BaseElement[]) {
     this._children?.push(...child)
+    child.forEach(c => (c.parentNode = this))
   }
 
   removeChild(removeChild: BaseElement) {
-    this._children = this._children?.filter(
-      child => !Object.is(child, removeChild)
-    )
+    this._children = this._children?.filter(child => {
+      const willReserve = !Object.is(child, removeChild)
+      if (!willReserve) {
+        child.parentNode = null
+        return false
+      }
+      return willReserve
+    })
   }
 
   render() {
