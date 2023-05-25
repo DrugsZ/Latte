@@ -188,19 +188,11 @@ export abstract class FederatedEvent<N extends Event = Event, T = any> {
    */
   view: any
 
-  /**
-   * added for compatibility with DOM Event,
-   * deprecated props and methods
-   */
-  abstract initEvent(): void
-  abstract initUIEvent(): void
   which: number
   returnValue: boolean
   srcElement: IEventTarget
   readonly composed = false
   isTrusted: boolean
-
-  abstract clone(): void
 
   NONE = 0
   CAPTURING_PHASE = 1

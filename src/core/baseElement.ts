@@ -1,6 +1,6 @@
 import { EventTarget } from 'Cditor/core/EventTarget'
 
-abstract class BaseElement<
+export abstract class BaseElement<
   T extends BaseNodeSchema = BaseNodeSchema
 > extends EventTarget {
   type: string
