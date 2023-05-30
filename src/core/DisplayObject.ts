@@ -1,6 +1,6 @@
 import { EventTarget } from 'Cditor/core/EventTarget'
 
-export abstract class BaseElement<
+export abstract class DisplayObject<
   T extends BaseNodeSchema = BaseNodeSchema
 > extends EventTarget {
   type: string
@@ -53,8 +53,8 @@ export abstract class BaseElement<
 
 export abstract class HightBaseElement<
   T extends BaseNodeSchema = BaseNodeSchema
-> extends BaseElement<T> {
-  protected _children: BaseElement<BaseNodeSchema>[] = []
+> extends DisplayObject<T> {
+  protected _children: DisplayObject<BaseNodeSchema>[] = []
 
   getBoundingClientRect() {
     const bBox: Rectangle = {
@@ -81,12 +81,12 @@ export abstract class HightBaseElement<
     return this._children
   }
 
-  addChild(...child: BaseElement[]) {
+  addChild(...child: DisplayObject[]) {
     this._children?.push(...child)
     child.forEach(c => (c.parentNode = this))
   }
 
-  removeChild(removeChild: BaseElement) {
+  removeChild(removeChild: DisplayObject) {
     this._children = this._children?.filter(child => {
       const willReserve = !Object.is(child, removeChild)
       if (!willReserve) {
@@ -114,4 +114,4 @@ export abstract class HightBaseElement<
   }
 }
 
-export default BaseElement
+export default DisplayObject

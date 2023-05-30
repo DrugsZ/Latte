@@ -1,4 +1,4 @@
-import BaseElement, { HightBaseElement } from 'Cditor/core/baseElement'
+import DisplayObject, { HightBaseElement } from 'Cditor/core/DisplayObject'
 import EditorDocument from 'Cditor/core/document'
 import Rect from 'Cditor/core/rect'
 import Page from 'Cditor/core/page'
@@ -35,7 +35,7 @@ export const createElement = (element: BaseNodeSchema) => {
 }
 
 class RenderContext {
-  private _elements: Map<string, BaseElement> = new Map()
+  private _elements: Map<string, DisplayObject> = new Map()
   private _root: EditorDocument
 
   constructor(elements: BaseNodeSchema[]) {
@@ -44,7 +44,7 @@ class RenderContext {
 
   private _initElements(elements: BaseNodeSchema[]) {
     const cachedChildElements: {
-      [key: string]: BaseElement[]
+      [key: string]: DisplayObject[]
     } = {}
     elements.forEach(elm => {
       const currentNode = createElement(elm)

@@ -4,7 +4,7 @@ import { FederatedMouseEvent } from 'Cditor/core/FederatedMouseEvent'
 import { FederatedPointerEvent } from 'Cditor/core/FederatedPointerEvent'
 import { FederatedWheelEvent } from 'Cditor/core/FederatedWheelEvent'
 import type { IEventTarget } from 'Cditor/core/interfaces'
-import type BaseElement from 'Cditor/core/baseElement'
+import type DisplayObject from 'Cditor/core/DisplayObject'
 
 const PROPAGATION_LIMIT = 2048
 export class EventService {
@@ -126,7 +126,7 @@ export class EventService {
     return event
   }
 
-  public propagationPath(target: BaseElement): BaseElement[] {
+  public propagationPath(target: DisplayObject): DisplayObject[] {
     const propagationPath = [target]
 
     for (let i = 0; i < PROPAGATION_LIMIT && target !== this._rootTarget; i++) {

@@ -1,4 +1,4 @@
-import { HightBaseElement } from 'Cditor/core/baseElement'
+import { HightBaseElement } from 'Cditor/core/DisplayObject'
 
 class EditorDocument extends HightBaseElement {}
 

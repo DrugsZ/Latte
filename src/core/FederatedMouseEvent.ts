@@ -1,6 +1,6 @@
 import { Point } from 'Cditor/core//Point'
 import { FederatedEvent } from 'Cditor/core/FederatedEvent'
-import type { BaseElement } from 'Cditor/core/baseElement'
+import type { DisplayObject } from 'Cditor/core/DisplayObject'
 
 export class FederatedMouseEvent
   extends FederatedEvent<MouseEvent | PointerEvent | TouchEvent>
@@ -22,7 +22,7 @@ export class FederatedMouseEvent
   metaKey: boolean
 
   /** This is currently not implemented in the Federated Events API. */
-  relatedTarget: BaseElement | null
+  relatedTarget: DisplayObject | null
 
   /** Whether the "shift" key was pressed when this mouse event occurred. */
   shiftKey: boolean

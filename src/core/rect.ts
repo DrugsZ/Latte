@@ -1,6 +1,6 @@
-import BaseElement from 'Cditor/core/baseElement'
+import DisplayObject from 'Cditor/core/DisplayObject'
 
-class Rect extends BaseElement {
+class Rect extends DisplayObject {
   static TYPE = 'rect'
   render() {
     const { size, transform } = this._elementData

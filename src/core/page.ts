@@ -1,4 +1,4 @@
-import BaseElement, { HightBaseElement } from 'Cditor/core/baseElement'
+import DisplayObject, { HightBaseElement } from 'Cditor/core/DisplayObject'
 
 // class Page extends HightBaseElement {
 //   private _model: PAGE
@@ -114,7 +114,7 @@ import BaseElement, { HightBaseElement } from 'Cditor/core/baseElement'
 // }
 
 class Page extends HightBaseElement {
-  private _visibleElements: BaseElement[] = []
+  private _visibleElements: DisplayObject[] = []
 
   constructor(params) {
     super(params)
