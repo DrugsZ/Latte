@@ -107,3 +107,8 @@ interface RenderObject {
   transform: number[]
   fills: string
 }
+
+interface IPoint {
+  x: number
+  y: number
+}
