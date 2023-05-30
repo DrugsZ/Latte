@@ -6,7 +6,7 @@ export abstract class DisplayObject<
   type: string
   private _id: string
   protected _elementData: T
-  parentNode: HightBaseElement | null = null
+  parentNode: Container | null = null
 
   constructor(element: T) {
     super()
@@ -51,7 +51,7 @@ export abstract class DisplayObject<
   }
 }
 
-export abstract class HightBaseElement<
+export abstract class Container<
   T extends BaseNodeSchema = BaseNodeSchema
 > extends DisplayObject<T> {
   protected _children: DisplayObject<BaseNodeSchema>[] = []

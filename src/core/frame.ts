@@ -1,5 +1,5 @@
-import { HightBaseElement } from 'Cditor/core/DisplayObject'
+import { Container } from 'Cditor/core/DisplayObject'
 
-class Frame extends HightBaseElement<FrameElement> {}
+class Frame extends Container<FrameElement> {}
 
 export default Frame

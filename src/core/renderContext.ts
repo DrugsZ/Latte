@@ -1,4 +1,4 @@
-import DisplayObject, { HightBaseElement } from 'Cditor/core/DisplayObject'
+import DisplayObject, { Container } from 'Cditor/core/DisplayObject'
 import EditorDocument from 'Cditor/core/document'
 import Rect from 'Cditor/core/rect'
 import Page from 'Cditor/core/page'
@@ -66,7 +66,7 @@ class RenderContext {
       if (!parentNode) {
         return
       }
-      ;(parentNode as HightBaseElement).addChild(...value)
+      ;(parentNode as Container).addChild(...value)
     })
   }
 

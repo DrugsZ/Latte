@@ -1,5 +1,5 @@
-import { HightBaseElement } from 'Cditor/core/DisplayObject'
+import { Container } from 'Cditor/core/DisplayObject'
 
-class EditorDocument extends HightBaseElement {}
+class EditorDocument extends Container {}
 
 export default EditorDocument
