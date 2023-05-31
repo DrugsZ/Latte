@@ -1,6 +1,6 @@
 import type { IEventTarget } from 'Cditor/core/interfaces'
 import type { EventService } from 'Cditor/core/EventService'
-import { Point } from 'Cditor/core//Point'
+import { Point } from 'Cditor/math/Point'
 
 /**
  * An DOM-compatible synthetic event implementation that is "forwarded" on behalf of an original

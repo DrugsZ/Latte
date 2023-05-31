@@ -1,4 +1,4 @@
-import { Point } from 'Cditor/core//Point'
+import { Point } from 'Cditor/math/Point'
 import { FederatedEvent } from 'Cditor/core/FederatedEvent'
 import type { DisplayObject } from 'Cditor/core/DisplayObject'
 

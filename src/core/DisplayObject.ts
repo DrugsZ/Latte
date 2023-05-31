@@ -1,12 +1,23 @@
 import { EventTarget } from 'Cditor/core/EventTarget'
+import { Transform } from 'Cditor/core/Transform'
+import { Bounds } from 'Cditor/core/Bounds'
 
 export abstract class DisplayObject<
   T extends BaseNodeSchema = BaseNodeSchema
 > extends EventTarget {
   type: string
+
   private _id: string
+
   protected _elementData: T
+
   parentNode: Container | null = null
+
+  transform: Transform = new Transform()
+
+  private _bounds: Bounds = new Bounds()
+
+  private _localBounds: Bounds = new Bounds()
 
   constructor(element: T) {
     super()
