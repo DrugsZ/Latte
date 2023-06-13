@@ -1,6 +1,7 @@
 import { EventTarget } from 'Cditor/core/EventTarget'
 import { Transform } from 'Cditor/core/Transform'
 import { Bounds } from 'Cditor/core/Bounds'
+import type { Container } from 'Cditor/core//Container'
 
 export abstract class DisplayObject<
   T extends BaseNodeSchema = BaseNodeSchema
@@ -18,6 +19,22 @@ export abstract class DisplayObject<
   private _bounds: Bounds = new Bounds()
 
   private _localBounds: Bounds = new Bounds()
+
+  getWorldTransform() {
+    if (!this.transform.localDirty && !this.transform.worldDirty) {
+      return this.transform.getWorldTransform()
+    }
+    if (this.transform.worldDirty && this.parentNode) {
+      const parentTransform = this.parentNode.getWorldTransform()
+      this.transform.updateWorldTransform(parentTransform)
+      return this.transform.getWorldTransform()
+    }
+    return this.transform.getWorldTransform()
+  }
+
+  getLocalTransform() {
+    return this.transform.getLocalTransform()
+  }
 
   constructor(element: T) {
     super()
@@ -61,68 +78,3 @@ export abstract class DisplayObject<
     return JSON.stringify(guid)
   }
 }
-
-export abstract class Container<
-  T extends BaseNodeSchema = BaseNodeSchema
-> extends DisplayObject<T> {
-  protected _children: DisplayObject<BaseNodeSchema>[] = []
-
-  getBoundingClientRect() {
-    const bBox: Rectangle = {
-      x: Infinity,
-      y: Infinity,
-      width: -Infinity,
-      height: -Infinity,
-    }
-    this._children.forEach(element => {
-      const elementBBox = element.getBoundingClientRect()
-      bBox.x = Math.min(bBox.x, elementBBox.x)
-      bBox.y = Math.min(bBox.y, elementBBox.y)
-      bBox.width =
-        Math.max(bBox.width + bBox.x, elementBBox.width + elementBBox.x) -
-        bBox.x
-      bBox.height =
-        Math.max(bBox.height + bBox.y, elementBBox.height + elementBBox.y) -
-        bBox.y
-    })
-    return bBox
-  }
-
-  getChildren() {
-    return this._children
-  }
-
-  addChild(...child: DisplayObject[]) {
-    this._children?.push(...child)
-    child.forEach(c => (c.parentNode = this))
-  }
-
-  removeChild(removeChild: DisplayObject) {
-    this._children = this._children?.filter(child => {
-      const willReserve = !Object.is(child, removeChild)
-      if (!willReserve) {
-        child.parentNode = null
-        return false
-      }
-      return willReserve
-    })
-  }
-
-  render() {
-    const { size, transform } = this._elementData
-    const { a, b, c, d, tx: x, ty: y } = transform
-    const { x: width, y: height } = size
-
-    return {
-      type: 'frame',
-      x,
-      y,
-      width,
-      height,
-      transform: [a, b, c, d, 0, 0],
-      fills: this.getFills(),
-    }
-  }
-}
-
-export default DisplayObject

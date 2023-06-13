@@ -1,4 +1,5 @@
-import DisplayObject, { Container } from 'Cditor/core/DisplayObject'
+import { DisplayObject } from 'Cditor/core/DisplayObject'
+import { Container } from 'Cditor/core/Container'
 import EditorDocument from 'Cditor/core/document'
 import Rect from 'Cditor/core/rect'
 import Page from 'Cditor/core/page'

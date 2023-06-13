@@ -1,4 +1,4 @@
-import DisplayObject, { Container } from 'Cditor/core/DisplayObject'
+import DisplayObject, { Container } from 'Cditor/core/Container'
 
 // class Page extends HightBaseElement {
 //   private _model: PAGE
