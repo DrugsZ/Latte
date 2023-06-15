@@ -1,6 +1,6 @@
 import ModelData from 'Cditor/core/modelData'
 import { Emitter } from 'Cditor/common/event'
-import CameraService from 'Cditor/core/cameraService'
+import CameraService from 'Cditor/core/CameraService'
 import DomElementObserver from 'Cditor/core/domElementObserver'
 
 class ViewModel {

@@ -3,7 +3,7 @@ import RenderContext from 'Cditor/core/renderContext'
 import Page from 'Cditor/core/page'
 import RenderService from 'Cditor/core/renderService'
 import MouseHandler from 'Cditor/core/mouseHandler'
-import { Camera } from 'Cditor/core/cameraService'
+import { Camera } from 'Cditor/core/CameraService'
 
 export enum RenderEnum {
   ViewportChange,
