@@ -4,7 +4,7 @@ import { FederatedMouseEvent } from 'Cditor/core/FederatedMouseEvent'
 import { FederatedPointerEvent } from 'Cditor/core/FederatedPointerEvent'
 import { FederatedWheelEvent } from 'Cditor/core/FederatedWheelEvent'
 import type { IEventTarget } from 'Cditor/core/interfaces'
-import type DisplayObject from 'Cditor/core/DisplayObject'
+import type { DisplayObject } from 'Cditor/core/DisplayObject'
 
 const PROPAGATION_LIMIT = 2048
 export class EventService {
