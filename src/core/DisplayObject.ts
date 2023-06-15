@@ -2,6 +2,17 @@ import { EventTarget } from 'Cditor/core/EventTarget'
 import { Transform } from 'Cditor/core/Transform'
 import { Bounds } from 'Cditor/core/Bounds'
 import type { Container } from 'Cditor/core//Container'
+import type { Matrix } from 'Cditor/math/Matrix'
+
+export interface IBaseRenderObject {
+  type: string
+  x: number
+  y: number
+  transform: Matrix
+  fills: Fill[]
+  // stroke: string
+  // blendMode: string
+}
 
 export abstract class DisplayObject<
   T extends BaseNodeSchema = BaseNodeSchema
@@ -20,6 +31,13 @@ export abstract class DisplayObject<
 
   private _localBounds: Bounds = new Bounds()
 
+  constructor(element: T) {
+    super()
+    this.type = element.type
+    this._id = JSON.stringify(element.guid)
+    this._elementData = element
+  }
+
   getWorldTransform() {
     if (!this.transform.localDirty && !this.transform.worldDirty) {
       return this.transform.getWorldTransform()
@@ -36,11 +54,8 @@ export abstract class DisplayObject<
     return this.transform.getLocalTransform()
   }
 
-  constructor(element: T) {
-    super()
-    this.type = element.type
-    this._id = JSON.stringify(element.guid)
-    this._elementData = element
+  getPosition() {
+    return this.transform.getPosition()
   }
 
   get id(): string {
@@ -58,19 +73,10 @@ export abstract class DisplayObject<
     }
   }
 
-  abstract render(): RenderObject
+  abstract render(): IBaseRenderObject
 
   getFills() {
-    const { fillPaints } = this._elementData
-    let colorStr = ''
-    if (!fillPaints) return colorStr
-    fillPaints.forEach(item => {
-      if (item.type === 'SOLID') {
-        const { color } = item
-        colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
-      }
-    })
-    return colorStr
+    return this._elementData.fillPaints ?? []
   }
 
   getGuidKey() {

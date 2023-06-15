@@ -1,10 +1,15 @@
-import DisplayObject from 'Cditor/core/DisplayObject'
+import type { IBaseRenderObject } from 'Cditor/core/DisplayObject'
+import { DisplayObject } from 'Cditor/core/DisplayObject'
 
+interface IRectRenderObject extends IBaseRenderObject {
+  width: number
+  height: number
+}
 class Rect extends DisplayObject {
   static TYPE = 'rect'
-  render() {
-    const { size, transform } = this._elementData
-    const { a, b, c, d, tx: x, ty: y } = transform
+  render(): IRectRenderObject {
+    const { size } = this._elementData
+    const { x, y } = this.getPosition()
     const { x: width, y: height } = size
 
     return {
@@ -13,7 +18,7 @@ class Rect extends DisplayObject {
       y,
       width,
       height,
-      transform: [a, b, c, d, 0, 0],
+      transform: this.getWorldTransform(),
       fills: this.getFills(),
     }
   }
