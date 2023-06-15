@@ -121,7 +121,7 @@ class Page extends Container {
     this._visibleElements = this._children
   }
 
-  public getVisibleElementRenderObjects(): RenderObject[] {
+  public getVisibleElementRenderObjects() {
     return this._visibleElements.map(item => item.render())
   }
 
