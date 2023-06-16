@@ -63,7 +63,6 @@ class CameraService<T = any> {
     const widthRatio = (fullWidth * (1 - padding)) / width
     const heightRatio = (fullHeight * (1 - padding)) / height
     const minRatio = Math.min(widthRatio, heightRatio)
-    const currentZoom = minRatio
     const canRenderWidth = fullWidth / minRatio
     const canRenderHeight = fullHeight / minRatio
     const paddingWidth = canRenderWidth - size.width
@@ -72,11 +71,11 @@ class CameraService<T = any> {
     const currentSize = {
       width: canRenderWidth,
       height: canRenderHeight,
-      x: size.x - paddingWidth / 2,
-      y: size.y - paddingHeight / 2,
+      x: size.x + (Math.sign(size.x) * paddingWidth) / 2,
+      y: size.y + (Math.sign(size.y) * paddingHeight) / 2,
     }
 
-    const newCamera = new Camera(currentSize, currentZoom)
+    const newCamera = new Camera(currentSize, minRatio)
     this._cameraMaps.set(id, newCamera)
     return newCamera
   }
