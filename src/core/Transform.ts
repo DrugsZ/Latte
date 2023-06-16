@@ -2,7 +2,7 @@ import { Matrix } from 'Cditor/math/Matrix'
 import { Point } from 'Cditor/math/Point'
 
 export class Transform {
-  private _localTransform: Matrix = new Matrix()
+  private _localTransform: Matrix
   private _worldTransform: Matrix = new Matrix()
   private _position: Point = new Point(0, 0)
   private _scale: Point = new Point(0, 0)
@@ -12,6 +12,25 @@ export class Transform {
   private _localRotation: number = 0
   localDirty: boolean = false
   worldDirty: boolean = false
+
+  constructor(transform: {
+    a: number
+    b: number
+    c: number
+    d: number
+    tx: number
+    ty: number
+  }) {
+    const { a, b, c, d, tx, ty } = transform
+    this._localTransform = new Matrix(a, b, c, d, tx, ty)
+    this.decomposeMatrix()
+  }
+
+  decomposeMatrix() {
+    this._localPosition = Matrix.getTranslation(this._localTransform)
+    this._localScale = Matrix.getScale(this._localTransform)
+    this._localRotation = Matrix.getRotation(this._localTransform)
+  }
 
   updateWorldTransform(contextMatrix: Matrix) {
     const localTransform = this.getLocalTransform()
@@ -31,11 +50,9 @@ export class Transform {
     return this._localTransform
   }
 
-  setLocalTransform(localTransform: Matrix) {
-    this._localTransform = localTransform
-    this._localPosition = Matrix.getTranslation(this._localTransform)
-    this._localScale = Matrix.getScale(this._localTransform)
-    this._localRotation = Matrix.getRotation(this._localTransform)
+  setLocalTransform(...localTransform: Parameters<Matrix['set']>) {
+    this._localTransform.set(...localTransform)
+    this.decomposeMatrix()
     this.localDirty = true
   }
 

@@ -16,7 +16,9 @@ export class Matrix {
 
   public ty: number
 
-  constructor(a = 0, b = 0, c = 0, d = 0, tx = 0, ty = 0) {
+  public array: Float32Array | null = null
+
+  constructor(a = 1, b = 0, c = 0, d = 1, tx = 0, ty = 0) {
     this.a = a
     this.b = b
     this.c = c
@@ -87,5 +89,39 @@ export class Matrix {
     out.tx = (ac * aty - ad * atx) * det
     out.ty = (ab * atx - aa * aty) * det
     return out
+  }
+
+  set(
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    tx: number,
+    ty: number
+  ): this {
+    this.a = a
+    this.b = b
+    this.c = c
+    this.d = d
+    this.tx = tx
+    this.ty = ty
+
+    return this
+  }
+
+  toArray(out: Float32Array) {
+    if (!this.array) {
+      this.array = new Float32Array(6)
+    }
+    const array = out || this.array
+
+    array[0] = this.a
+    array[1] = this.b
+    array[2] = this.c
+    array[3] = this.d
+    array[4] = this.tx
+    array[5] = this.ty
+
+    return array
   }
 }

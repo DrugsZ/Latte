@@ -25,7 +25,7 @@ export abstract class DisplayObject<
 
   parentNode: Container | null = null
 
-  transform: Transform = new Transform()
+  transform: Transform
 
   private _bounds: Bounds = new Bounds()
 
@@ -36,6 +36,7 @@ export abstract class DisplayObject<
     this.type = element.type
     this._id = JSON.stringify(element.guid)
     this._elementData = element
+    this.transform = new Transform(this._elementData.transform)
   }
 
   getWorldTransform() {
