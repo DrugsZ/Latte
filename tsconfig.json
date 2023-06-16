@@ -1,28 +1,28 @@
 {
-    "compilerOptions": {
-        /* Visit https://aka.ms/tsconfig to read more about this file */
-        "target": "esnext",
-        "module": "esnext",
-        "esModuleInterop": true,
-        "noEmitOnError": false,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true,
-        "baseUrl": "./",
-        "rootDir": "./src",
-        "outDir": "./dist",
-        "skipLibCheck": true,
-        "sourceMap": true,
-        "moduleResolution": "node",
-        "resolveJsonModule": true,
-        "allowJs": true,
-        "noEmit": true,
-        "allowSyntheticDefaultImports": true,
-        "strictPropertyInitialization": false,
-        "noImplicitAny": false,
-        "paths": {
-            "Cditor/*": ["./src/*"]
-        }
-    },
-    "include": ["src", "./typings"],
-    "exclude": ["webpack.config.js"]
+  "compilerOptions": {
+    /* Visit https://aka.ms/tsconfig to read more about this file */
+    "target": "esnext",
+    "module": "esnext",
+    "esModuleInterop": true,
+    "noEmitOnError": false,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "baseUrl": "./",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "strictPropertyInitialization": false,
+    "noImplicitAny": false,
+    "paths": {
+      "Cditor/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "./typings"],
+  "exclude": ["webpack.*.js"]
 }
