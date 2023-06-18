@@ -1,3 +1,6 @@
+import { getEditorShapeRender } from 'Cditor/core/RenderContributionRegistry'
+import { IBaseRenderObject } from 'Cditor/core/DisplayObject'
+
 class RenderService {
   private _ctx: CanvasRenderingContext2D
   constructor(private readonly _canvas: HTMLCanvasElement) {
@@ -5,7 +8,7 @@ class RenderService {
   }
 
   public draw(
-    renderObjects: RenderObject[],
+    renderObjects: IBaseRenderObject[],
     renderBox: Rectangle,
     zoom: number
   ): void {
@@ -15,15 +18,19 @@ class RenderService {
     ctx.translate(-renderBox.x, -renderBox.y)
     renderObjects.forEach(item => {
       ctx.save()
-      const { x, y, width, height, transform, fills } = item
-      const [a, b, c, d] = transform
-      ctx.fillStyle = fills
-      const centerX = x + width / 2
-      const centerY = y + height / 2
-      ctx.translate(centerX, centerY)
-      ctx.transform(a, b, c, d, 0, 0)
-      ctx.translate(-centerX, -centerY)
-      ctx.fillRect(x, y, width, height)
+      const { fills } = item
+      let colorStr = ''
+      fills.forEach(i => {
+        if (i.type === 'SOLID') {
+          const { color } = i
+          colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
+        }
+      })
+      ctx.beginPath()
+      ctx.fillStyle = colorStr
+      const shapeRender = getEditorShapeRender(item.type)
+      shapeRender?.(item, ctx)
+      ctx.fill()
       ctx.restore()
     })
   }
@@ -38,7 +45,7 @@ class RenderService {
   ) {
     const ctx = this._ctx
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.clearRect(area.x, a.y, area.width, area.height)
+    ctx.clearRect(area.x, area.y, area.width, area.height)
     ctx.fillStyle = '#f5f5f5'
     ctx.fillRect(0, 0, area.width, area.height)
   }
