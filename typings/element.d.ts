@@ -18,33 +18,40 @@ interface TransformObject {
   tx: number
   ty: number
 }
+
+declare enum FillType {
+  SOLID = 'SOLID',
+  GRADIENT_LINEAR = 'GRADIENT_LINEAR',
+  GRADIENT_RADIAL = 'GRADIENT_RADIAL',
+  GRADIENT_ANGULAR = 'GRADIENT_ANGULAR',
+  GRADIENT_DIAMOND = 'GRADIENT_DIAMOND',
+  IMAGE = 'IMAGE',
+}
+
+declare enum BlendModeType {
+  NORMAL = 'NORMAL',
+  DARKEN = 'DARKEN',
+  MULTIPLY = 'MULTIPLY',
+  COLOR_BURN = 'COLOR_BURN',
+  LIGHTEN = 'LIGHTEN',
+  SCREEN = 'SCREEN',
+  COLOR_DODGE = 'COLOR_DODGE',
+  OVERLAY = 'OVERLAY',
+  SOFT_LIGHT = 'SOFT_LIGHT',
+  HARD_LIGHT = 'HARD_LIGHT',
+  DIFFERENCE = 'DIFFERENCE',
+  EXCLUSION = 'EXCLUSION',
+  HUE = 'HUE',
+  SATURATION = 'SATURATION',
+  COLOR = 'COLOR',
+  LUMINOSITY = 'LUMINOSITY',
+}
+
 interface BaseFill {
-  type:
-    | 'SOLID'
-    | 'GRADIENT_LINEAR'
-    | 'GRADIENT_RADIAL'
-    | 'GRADIENT_ANGULAR'
-    | 'GRADIENT_DIAMOND'
-    | 'IMAGE'
+  type: FillType
   visible: boolean
   opacity: number
-  blendMode:
-    | 'NORMAL'
-    | 'DARKEN'
-    | 'MULTIPLY'
-    | 'COLOR_BURN'
-    | 'LIGHTEN'
-    | 'SCREEN'
-    | 'COLOR_DODGE'
-    | 'OVERLAY'
-    | 'SOFT_LIGHT'
-    | 'HARD_LIGHT'
-    | 'DIFFERENCE'
-    | 'EXCLUSION'
-    | 'HUE'
-    | 'SATURATION'
-    | 'COLOR'
-    | 'LUMINOSITY'
+  blendMode: BlendModeType
 }
 
 interface FillColor {
@@ -60,30 +67,30 @@ interface FillColorStop {
 }
 
 interface SolidColorFill extends BaseFill {
-  type: 'SOLID'
+  type: FillType.SOLID
   color: FillColor
 }
 
 interface GradientLinearFill extends BaseFill {
-  type: 'GRADIENT_LINEAR'
+  type: FillType.GRADIENT_LINEAR
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
 interface GradientRadialFill extends BaseFill {
-  type: 'GRADIENT_RADIAL'
+  type: FillType.GRADIENT_RADIAL
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
 interface GradientAngularFill extends BaseFill {
-  type: 'GRADIENT_ANGULAR'
+  type: FillType.GRADIENT_ANGULAR
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
 interface GradientDiamondFill extends BaseFill {
-  type: 'GRADIENT_DIAMOND'
+  type: FillType.GRADIENT_DIAMOND
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
@@ -100,8 +107,11 @@ interface DefaultIDType {
   localID: number
 }
 
-declare global {
-  const EditorElementTypeKind: typeof EditorElementTypeKind
+declare enum EditorElementTypeKind {
+  RECTANGLE = 'RECTANGLE',
+  FRAME = 'FRAME',
+  PAGE = 'CANVAS',
+  DOCUMENT = 'DOCUMENT',
 }
 
 interface BaseNodeSchema {

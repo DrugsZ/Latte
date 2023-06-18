@@ -5,7 +5,7 @@ import type { Container } from 'Cditor/core//Container'
 import type { Matrix } from 'Cditor/math/Matrix'
 
 export interface IBaseRenderObject {
-  type: string
+  type: EditorElementTypeKind
   x: number
   y: number
   transform: Matrix
@@ -14,10 +14,17 @@ export interface IBaseRenderObject {
   // blendMode: string
 }
 
+export enum EditorElementTypeKind {
+  RECTANGLE = 'RECTANGLE',
+  FRAME = 'FRAME',
+  PAGE = 'CANVAS',
+  DOCUMENT = 'DOCUMENT',
+}
+
 export abstract class DisplayObject<
   T extends BaseNodeSchema = BaseNodeSchema
 > extends EventTarget {
-  type: string
+  type: EditorElementTypeKind
 
   private _id: string
 

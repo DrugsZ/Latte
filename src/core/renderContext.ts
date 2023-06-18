@@ -1,16 +1,9 @@
-import { DisplayObject } from 'Cditor/core/DisplayObject'
+import { DisplayObject, EditorElementTypeKind } from 'Cditor/core/DisplayObject'
 import { Container } from 'Cditor/core/Container'
 import EditorDocument from 'Cditor/core/document'
-import Rect from 'Cditor/core/rect'
+import Rect from 'Cditor/elements/Rect'
 import Page from 'Cditor/core/page'
 import Frame from 'Cditor/core/frame'
-
-const enum EditorElementTypeKind {
-  RECTANGLE = 'RECTANGLE',
-  FRAME = 'FRAME',
-  PAGE = 'CANVAS',
-  DOCUMENT = 'DOCUMENT',
-}
 
 export const createElement = (element: BaseNodeSchema) => {
   const { type } = element
