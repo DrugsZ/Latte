@@ -67,7 +67,7 @@ class RenderContext {
       if (!parentNode) {
         return
       }
-      ;(parentNode as Container).addChild(...value)
+      ;(parentNode as Container).appendChild(...value)
     })
   }
 

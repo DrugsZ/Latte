@@ -3,7 +3,7 @@ import { Point } from 'Cditor/math/Point'
 
 export class Transform {
   private _localTransform: Matrix
-  private _worldTransform: Matrix = new Matrix()
+  private _worldTransform: Matrix
   private _position: Point = new Point(0, 0)
   private _scale: Point = new Point(0, 0)
   private _rotation: number = 0
@@ -23,6 +23,7 @@ export class Transform {
   }) {
     const { a, b, c, d, tx, ty } = transform
     this._localTransform = new Matrix(a, b, c, d, tx, ty)
+    this._worldTransform = new Matrix(a, b, c, d, tx, ty)
     this.decomposeMatrix()
   }
 

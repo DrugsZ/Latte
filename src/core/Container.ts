@@ -30,10 +30,12 @@ export abstract class Container<
     return this._children
   }
 
-  addChild(...child: DisplayObject[]) {
+  appendChild(...child: DisplayObject[]) {
     this._children?.push(...child)
     child.forEach(c => {
+      c.parentNode?.removeChild(c)
       c.parentNode = this
+      c.transform.worldDirty = true
     })
   }
 
