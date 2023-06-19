@@ -17,7 +17,6 @@ class ViewModel {
     this._focusPath = [this._modelData.getCurrentState().elements[0].guid]
     this._canvasObserver = new DomElementObserver(_domElement)
     this._cameraService = new CameraService(this._canvasObserver.canvasSize)
-    window._cameraService = this._cameraService
   }
 
   get focusPath(): DefaultIDType[] {

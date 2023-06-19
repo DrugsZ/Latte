@@ -6,7 +6,8 @@
   "scripts": {
     "start": "webpack serve --open --config webpack.dev.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --config webpack.prod.js"
+    "build": "webpack --config webpack.prod.js",
+    "lint": "eslint src/"
   },
   "repository": {
     "type": "git",
@@ -46,7 +47,6 @@
     "webpackbar": "^5.0.2"
   },
   "dependencies": {
-    "dayjs": "^1.11.7",
     "eventemitter3": "^5.0.1"
   }
 }
