@@ -14,7 +14,10 @@ class ViewModel {
 
   constructor(model: ModelData, _domElement: HTMLCanvasElement) {
     this._modelData = model
-    this._focusPath = [this._modelData.getCurrentState().elements[0].guid]
+    const firstPage = this._modelData
+      .getCurrentState()
+      .elements.find(item => item.type === 'CANVAS')
+    this._focusPath = [firstPage?.guid]
     this._canvasObserver = new DomElementObserver(_domElement)
     this._cameraService = new CameraService(this._canvasObserver.canvasSize)
   }

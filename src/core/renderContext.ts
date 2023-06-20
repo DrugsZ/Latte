@@ -2,6 +2,7 @@ import { DisplayObject, EditorElementTypeKind } from 'Cditor/core/DisplayObject'
 import { Container } from 'Cditor/core/Container'
 import EditorDocument from 'Cditor/core/document'
 import Rect from 'Cditor/elements/Rect'
+import Ellipse from 'Cditor/elements/Ellipse'
 import Page from 'Cditor/core/page'
 import Frame from 'Cditor/core/frame'
 
@@ -11,6 +12,9 @@ export const createElement = (element: BaseNodeSchema) => {
   switch (type) {
     case EditorElementTypeKind.RECTANGLE:
       Ctr = Rect
+      break
+    case EditorElementTypeKind.ELLIPSE:
+      Ctr = Ellipse
       break
     case EditorElementTypeKind.PAGE:
       Ctr = Page

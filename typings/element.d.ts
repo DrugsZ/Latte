@@ -66,41 +66,41 @@ interface FillColorStop {
   position: number
 }
 
-interface SolidColorFill extends BaseFill {
+interface SolidColorPaint extends BaseFill {
   type: FillType.SOLID
   color: FillColor
 }
 
-interface GradientLinearFill extends BaseFill {
+interface GradientLinearPaint extends BaseFill {
   type: FillType.GRADIENT_LINEAR
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
-interface GradientRadialFill extends BaseFill {
+interface GradientRadialPaint extends BaseFill {
   type: FillType.GRADIENT_RADIAL
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
-interface GradientAngularFill extends BaseFill {
+interface GradientAngularPaint extends BaseFill {
   type: FillType.GRADIENT_ANGULAR
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
-interface GradientDiamondFill extends BaseFill {
+interface GradientDiamondPaint extends BaseFill {
   type: FillType.GRADIENT_DIAMOND
   stops: [FillColorStop, FillColorStop]
   transform: TransformObject
 }
 
-type Fill =
-  | SolidColorFill
-  | GradientLinearFill
-  | GradientRadialFill
-  | GradientAngularFill
-  | GradientDiamondFill
+type Paint =
+  | SolidColorPaint
+  | GradientLinearPaint
+  | GradientRadialPaint
+  | GradientAngularPaint
+  | GradientDiamondPaint
 
 interface DefaultIDType {
   sessionID: number
@@ -109,12 +109,23 @@ interface DefaultIDType {
 
 declare enum EditorElementTypeKind {
   RECTANGLE = 'RECTANGLE',
+  ELLIPSE = 'ELLIPSE',
   FRAME = 'FRAME',
   PAGE = 'CANVAS',
   DOCUMENT = 'DOCUMENT',
 }
 
-interface BaseNodeSchema {
+interface NodeStrokeSchema {
+  strokeWeight: number
+  strokeAlign: 'INSIDE' | 'CENTER' | 'OUTSIDE'
+  strokeJoin: 'MITER' | 'BEVEL' | 'ROUND'
+  miterAngle: number
+  strokeStyle: 'SOLID' | 'DASH'
+  dashCap: 'NONE' | 'SQUARE' | 'ROUND'
+  strokePaints?: Paint[]
+}
+
+interface BaseNodeSchema extends NodeStrokeSchema {
   guid: DefaultIDType
   parentIndex: {
     guid: DefaultIDType
@@ -130,7 +141,7 @@ interface BaseNodeSchema {
     y: number
   }
   locked: boolean
-  fillPaints?: Fill[]
+  fillPaints?: Paint[]
 }
 
 interface CditorDocument extends BaseNodeSchema {
@@ -139,7 +150,7 @@ interface CditorDocument extends BaseNodeSchema {
 
 interface PAGE extends BaseNodeSchema {
   type: EditorElementTypeKind.PAGE
-  backgrounds: Fill[]
+  backgrounds: Paint[]
 }
 
 interface RectangleElement extends BaseNodeSchema {

@@ -1,6 +1,16 @@
-import { getEditorShapeRender } from 'Cditor/core/RenderContributionRegistry'
-import { IBaseRenderObject } from 'Cditor/core/DisplayObject'
+import {
+  getEditorShapeRender,
+  registerEditorShapeRender,
+} from 'Cditor/core/RenderContributionRegistry'
+import {
+  IBaseRenderObject,
+  EditorElementTypeKind,
+} from 'Cditor/core/DisplayObject'
+import { RectShapeRender } from 'Cditor/render/shape/Rect'
+import { EllipseShapeRender } from 'Cditor/render/shape/Ellipse'
 
+registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
+registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
 class RenderService {
   private _ctx: CanvasRenderingContext2D
   constructor(private readonly _canvas: HTMLCanvasElement) {
@@ -19,7 +29,7 @@ class RenderService {
     renderObjects.forEach(item => {
       ctx.save()
       const { fills } = item
-      let colorStr = ''
+      let colorStr = '#f5f5f5'
       fills.forEach(i => {
         if (i.type === 'SOLID') {
           const { color } = i

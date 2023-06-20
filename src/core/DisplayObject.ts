@@ -9,13 +9,14 @@ export interface IBaseRenderObject {
   x: number
   y: number
   transform: Matrix
-  fills: Fill[]
+  fills: Paint[]
   // stroke: string
   // blendMode: string
 }
 
 export enum EditorElementTypeKind {
   RECTANGLE = 'RECTANGLE',
+  ELLIPSE = 'ELLIPSE',
   FRAME = 'FRAME',
   PAGE = 'CANVAS',
   DOCUMENT = 'DOCUMENT',
