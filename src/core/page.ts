@@ -122,7 +122,7 @@ class Page extends Container {
   }
 
   public getVisibleElementRenderObjects() {
-    return this._visibleElements.map(item => item.render())
+    return this._visibleElements
   }
 
   public setVisibleArea(value: Rectangle) {

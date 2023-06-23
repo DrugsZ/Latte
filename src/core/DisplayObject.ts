@@ -2,17 +2,6 @@ import { EventTarget } from 'Cditor/core/EventTarget'
 import { Transform } from 'Cditor/core/Transform'
 import { Bounds } from 'Cditor/core/Bounds'
 import type { Container } from 'Cditor/core//Container'
-import type { Matrix } from 'Cditor/math/Matrix'
-
-export interface IBaseRenderObject {
-  type: EditorElementTypeKind
-  x: number
-  y: number
-  transform: Matrix
-  fills: Paint[]
-  // stroke: string
-  // blendMode: string
-}
 
 export enum EditorElementTypeKind {
   RECTANGLE = 'RECTANGLE',
@@ -82,10 +71,29 @@ export abstract class DisplayObject<
     }
   }
 
-  abstract render(): IBaseRenderObject
-
   getFills() {
     return this._elementData.fillPaints ?? []
+  }
+
+  get width() {
+    return this._elementData.size.x
+  }
+
+  get height() {
+    return this._elementData.size.y
+  }
+
+  get x() {
+    return this.transform.getPosition().x
+  }
+
+  get y() {
+    return this.transform.getPosition().y
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  getBorder(): number | number[] | null {
+    return null
   }
 
   getGuidKey() {

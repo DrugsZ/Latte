@@ -144,6 +144,11 @@ interface BaseNodeSchema extends NodeStrokeSchema {
   fillPaints?: Paint[]
 }
 
+interface BaseNodeCornerSchema extends BaseNodeSchema {
+  cornerRadius: number
+  cornerSmoothing: number
+}
+
 interface CditorDocument extends BaseNodeSchema {
   type: EditorElementTypeKind.DOCUMENT
 }
@@ -153,9 +158,17 @@ interface PAGE extends BaseNodeSchema {
   backgrounds: Paint[]
 }
 
-interface RectangleElement extends BaseNodeSchema {
+interface RectangleElement extends BaseNodeCornerSchema {
   type: EditorElementTypeKind.RECTANGLE
-  radius: [number, number, number, number]
+  cornerRadius: number | 'MIXED'
+  topLeftRadius: number
+  topRightRadius: number
+  bottomLeftRadius: number
+  bottomRightRadius: number
+  strokeTopWeight: number
+  strokeBottomWeight: number
+  strokeLeftWeight: number
+  strokeRightWeight: number
 }
 
 interface FrameElement extends BaseNodeSchema {

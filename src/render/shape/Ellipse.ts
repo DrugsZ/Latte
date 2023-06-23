@@ -1,13 +1,13 @@
 /* eslint-disable class-methods-use-this */
 import type { EditorShapeRender } from 'Cditor/core/RenderContributionRegistry'
-import type { IEllipseRenderObject } from 'Cditor/elements/Ellipse'
+import Ellipse from 'Cditor/elements/Ellipse'
 
 export class EllipseShapeRender implements EditorShapeRender {
-  public render = (
-    renderObject: IEllipseRenderObject,
-    ctx: CanvasRenderingContext2D
-  ) => {
-    const { x, y, radiusX, radiusY, transform } = renderObject
+  public render = (renderObject: Ellipse, ctx: CanvasRenderingContext2D) => {
+    const { x, y, width, height } = renderObject
+    const radiusX = width / 2
+    const radiusY = height / 2
+    const transform = renderObject.getWorldTransform()
     const { a, b, c, d } = transform
     const centerX = x + radiusX
     const centerY = y + radiusY

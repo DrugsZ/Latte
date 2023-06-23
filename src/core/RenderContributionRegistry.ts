@@ -1,4 +1,6 @@
-import { IBaseRenderObject } from 'Cditor/core/DisplayObject'
+import type { DisplayObject } from 'Cditor/core/DisplayObject'
+import Rect from 'Cditor/elements/Rect'
+import Ellipse from 'Cditor/elements/Ellipse'
 
 enum FillType {
   SOLID = 'SOLID',
@@ -15,7 +17,7 @@ export interface IEditorFillRenderContributionDescription {
 }
 
 export type ShapeRender = (
-  renderObject: IBaseRenderObject,
+  renderObject: DisplayObject | Rect | Ellipse,
   ctx: CanvasRenderingContext2D
 ) => void
 

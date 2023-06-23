@@ -1,26 +1,19 @@
-import type { IBaseRenderObject } from 'Cditor/core/DisplayObject'
 import { DisplayObject, EditorElementTypeKind } from 'Cditor/core/DisplayObject'
 
-export interface IRectRenderObject extends IBaseRenderObject {
-  width: number
-  height: number
-}
-class Rect extends DisplayObject {
+class Rect extends DisplayObject<RectangleElement> {
   static TYPE = EditorElementTypeKind.RECTANGLE
-  override render(): IRectRenderObject {
-    const { size } = this._elementData
-    const { x, y } = this.getPosition()
-    const { x: width, y: height } = size
 
-    return {
-      type: Rect.TYPE,
-      x,
-      y,
-      width,
-      height,
-      transform: this.getWorldTransform(),
-      fills: this.getFills(),
+  getBorder() {
+    const { cornerRadius } = this._elementData
+    if (cornerRadius === 'MIXED') {
+      return [
+        this._elementData.topLeftRadius,
+        this._elementData.topRightRadius,
+        this._elementData.bottomLeftRadius,
+        this._elementData.bottomRightRadius,
+      ]
     }
+    return cornerRadius
   }
 }
 
