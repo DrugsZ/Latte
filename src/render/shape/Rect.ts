@@ -1,8 +1,13 @@
 /* eslint-disable class-methods-use-this */
 import Rect from 'Latte/elements/Rect'
-import type { EditorShapeRender } from 'Latte/render/RenderContributionRegistry'
+import { EditorElementTypeKind } from 'Latte/core/DisplayObject'
+import { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
 
-export class RectShapeRender implements EditorShapeRender {
+export class RectShapeRender
+  implements
+    IEditorShapeRenderContributionDescription<EditorElementTypeKind.RECTANGLE>
+{
+  readonly id = EditorElementTypeKind.RECTANGLE
   private static hasBorder(renderObject: Rect) {
     return renderObject.getBorder() !== null
   }

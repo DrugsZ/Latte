@@ -1,8 +1,14 @@
 /* eslint-disable class-methods-use-this */
-import type { EditorShapeRender } from 'Latte/render/RenderContributionRegistry'
+import { EditorElementTypeKind } from 'Latte/core/DisplayObject'
+import { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
 import Ellipse from 'Latte/elements/Ellipse'
 
-export class EllipseShapeRender implements EditorShapeRender {
+export class EllipseShapeRender
+  implements
+    IEditorShapeRenderContributionDescription<EditorElementTypeKind.ELLIPSE>
+{
+  readonly id: EditorElementTypeKind.ELLIPSE
+
   public render = (renderObject: Ellipse, ctx: CanvasRenderingContext2D) => {
     const { x, y, width, height } = renderObject
     const radiusX = width / 2

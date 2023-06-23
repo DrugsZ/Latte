@@ -1,127 +1,108 @@
-import type { DisplayObject } from 'Latte/core/DisplayObject'
 import { FillType } from 'Latte/core/DisplayObject'
 import Rect from 'Latte/elements/Rect'
 import Ellipse from 'Latte/elements/Ellipse'
 
-export interface IEditorFillRenderContributionDescription {
-  readonly id: FillType
-  readonly render: (fill: SolidColorPaint) => void
+export interface EditorTypeRenderCtor<T> {
+  new (): T
 }
 
-export type ShapeRender = (
-  renderObject: DisplayObject | Rect | Ellipse,
-  ctx: CanvasRenderingContext2D
-) => void
-
-export type FillRender = (
-  fill: SolidColorPaint,
-  ctx: CanvasRenderingContext2D
-) => void
-
-export interface EditorShapeRender {
-  render: ShapeRender
+export interface EditorTypeRender<T = (...arg) => any> {
+  render: T
 }
 
-export interface EditorFillRender {
-  render: FillRender
-}
+export class EditorRenderTypeContributionRegistry<
+  K extends FillType | EditorElementTypeKind,
+  C extends EditorTypeRender
+> {
+  public static readonly INSTANCE = new EditorRenderTypeContributionRegistry()
 
-export interface EditorShapeRenderCtor {
-  new (): EditorShapeRender
-}
-
-export interface EditorFillRenderCtor {
-  new (): EditorFillRender
-}
-
-export class EditorRenderContributionRegistry {
-  public static readonly INSTANCE = new EditorRenderContributionRegistry()
-
-  private readonly _editorFillRender: {
-    [fillType in FillType]: EditorFillRenderCtor
+  private readonly _editorTypeRender: {
+    [key in K]: EditorTypeRenderCtor<C>
   }
 
-  private readonly _editorFillRenderInstanceCache: {
-    [fillType in FillType]: EditorFillRender
+  private readonly _editorTypeRenderInstanceCache: {
+    [key in K]: C
   }
-
-  private readonly _editorShapeRender: {
-    [shapeType in EditorElementTypeKind]: EditorShapeRenderCtor
-  }
-
-  private readonly _editorShapeRenderInstanceCache: {
-    [shapeType in EditorElementTypeKind]: EditorShapeRender
-  }
-  // private readonly editorStrokeRender: {
-  //   [fillType: FillType]: (fill: SolidColorFill) => void
-  // }
 
   constructor() {
-    this._editorShapeRender = Object.create(null)
-    this._editorShapeRenderInstanceCache = Object.create(null)
-    this._editorFillRender = Object.create(null)
-    this._editorFillRenderInstanceCache = Object.create(null)
+    this._editorTypeRender = Object.create(null)
+    this._editorTypeRenderInstanceCache = Object.create(null)
   }
 
-  public registerEditorShapeRender(
-    id: EditorElementTypeKind,
-    renderCtr: EditorShapeRenderCtor
-  ) {
-    this._editorShapeRender[id] = renderCtr
+  public registerEditorTypeRender(id: K, renderCtr: EditorTypeRenderCtor<C>) {
+    this._editorTypeRender[id] = renderCtr
   }
 
-  public getEditorShapeRender(id: EditorElementTypeKind) {
-    if (!this._editorShapeRenderInstanceCache[id]) {
-      const Ctr = this._editorShapeRender[id]
+  public getEditorTypeRender(id: K) {
+    if (!this._editorTypeRenderInstanceCache[id]) {
+      const Ctr = this._editorTypeRender[id]
       if (Ctr) {
-        this._editorShapeRenderInstanceCache[id] = new Ctr()
+        this._editorTypeRenderInstanceCache[id] = new Ctr()
       }
     }
-    return (this._editorShapeRenderInstanceCache[id] || {}).render
-  }
-
-  public registerEditorFillRender(
-    id: FillType,
-    renderCtr: EditorFillRenderCtor
-  ) {
-    this._editorFillRender[id] = renderCtr
-  }
-
-  public getEditorFillRender(id: FillType) {
-    if (!this._editorFillRenderInstanceCache[id]) {
-      const Ctr = this._editorFillRender[id]
-      if (Ctr) {
-        this._editorFillRenderInstanceCache[id] = new Ctr()
-      }
-    }
-    return (this._editorFillRenderInstanceCache[id] || {}).render
+    return (this._editorTypeRenderInstanceCache[id] || {}).render
   }
 }
 
-export function registerEditorShapeRender(
-  id: EditorElementTypeKind,
-  renderCtr: EditorShapeRenderCtor
-) {
-  EditorRenderContributionRegistry.INSTANCE.registerEditorShapeRender(
-    id,
-    renderCtr
-  )
+export interface IEditorFillRenderContributionDescription {
+  readonly id: FillType
+  readonly render: (
+    fill: SolidColorPaint,
+    ctx: CanvasRenderingContext2D
+  ) => void
 }
 
-export function getEditorShapeRender(id: EditorElementTypeKind) {
-  return EditorRenderContributionRegistry.INSTANCE.getEditorShapeRender(id)
-}
+class EditorRenderFillContributionRegistry extends EditorRenderTypeContributionRegistry<
+  FillType,
+  IEditorFillRenderContributionDescription
+> {}
 
 export function registerEditorFillRender(
   id: FillType,
-  renderCtr: EditorFillRenderCtor
+  renderCtr: EditorTypeRenderCtor<IEditorFillRenderContributionDescription>
 ) {
-  EditorRenderContributionRegistry.INSTANCE.registerEditorFillRender(
+  EditorRenderFillContributionRegistry.INSTANCE.registerEditorTypeRender(
     id,
     renderCtr
   )
 }
 
 export function getEditorFillRender(id: FillType) {
-  return EditorRenderContributionRegistry.INSTANCE.getEditorFillRender(id)
+  return EditorRenderFillContributionRegistry.INSTANCE.getEditorTypeRender(id)
+}
+
+interface ShapeRenderTypeMaps {
+  [EditorElementTypeKind.RECTANGLE]: Rect
+  [EditorElementTypeKind.ELLIPSE]: Ellipse
+  [EditorElementTypeKind.DOCUMENT]: null
+  [EditorElementTypeKind.FRAME]: null
+  [EditorElementTypeKind.PAGE]: null
+}
+export interface IEditorShapeRenderContributionDescription<
+  T extends EditorElementTypeKind = any
+> {
+  readonly id: EditorElementTypeKind
+  readonly render: (
+    renderObject: ShapeRenderTypeMaps[T],
+    ctx: CanvasRenderingContext2D
+  ) => void
+}
+
+class EditorRenderShapeContributionRegistry extends EditorRenderTypeContributionRegistry<
+  EditorElementTypeKind,
+  IEditorShapeRenderContributionDescription
+> {}
+
+export function registerEditorShapeRender<T extends EditorElementTypeKind>(
+  id: T,
+  renderCtr: EditorTypeRenderCtor<IEditorShapeRenderContributionDescription<T>>
+) {
+  EditorRenderShapeContributionRegistry.INSTANCE.registerEditorTypeRender(
+    id,
+    renderCtr
+  )
+}
+
+export function getEditorShapeRender(id: EditorElementTypeKind) {
+  return EditorRenderShapeContributionRegistry.INSTANCE.getEditorTypeRender(id)
 }
