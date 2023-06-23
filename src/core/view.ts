@@ -1,7 +1,7 @@
 import ViewModel from 'Cditor/core/viewModel'
 import RenderContext from 'Cditor/core/renderContext'
 import Page from 'Cditor/core/page'
-import RenderService from 'Cditor/core/renderService'
+import RenderService from 'Cditor/render/renderService'
 import MouseHandler from 'Cditor/core/mouseHandler'
 import { Camera } from 'Cditor/core/CameraService'
 

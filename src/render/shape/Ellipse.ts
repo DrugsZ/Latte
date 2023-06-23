@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import type { EditorShapeRender } from 'Cditor/core/RenderContributionRegistry'
+import type { EditorShapeRender } from 'Cditor/render/RenderContributionRegistry'
 import Ellipse from 'Cditor/elements/Ellipse'
 
 export class EllipseShapeRender implements EditorShapeRender {

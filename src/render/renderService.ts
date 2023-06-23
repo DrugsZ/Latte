@@ -1,15 +1,20 @@
 import {
   getEditorShapeRender,
   registerEditorShapeRender,
-} from 'Cditor/core/RenderContributionRegistry'
-import { EditorElementTypeKind } from 'Cditor/core/DisplayObject'
+  registerEditorFillRender,
+  getEditorFillRender,
+} from 'Cditor/render/RenderContributionRegistry'
+import { EditorElementTypeKind, FillType } from 'Cditor/core/DisplayObject'
 import { RectShapeRender } from 'Cditor/render/shape/Rect'
 import { EllipseShapeRender } from 'Cditor/render/shape/Ellipse'
 import Rect from 'Cditor/elements/Rect'
 import Ellipse from 'Cditor/elements/Ellipse'
+import { SolidColorFillRender } from 'Cditor/render/fill/solid'
+import { DEFAULT_BACKGROUND_COLOR } from 'Cditor/constants'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
+registerEditorFillRender(FillType.SOLID, SolidColorFillRender)
 class RenderService {
   private _ctx: CanvasRenderingContext2D
   constructor(private readonly _canvas: HTMLCanvasElement) {
@@ -28,15 +33,15 @@ class RenderService {
     renderObjects.forEach(item => {
       ctx.save()
       const fills = item.getFills()
-      let colorStr = '#f5f5f5'
       fills.forEach(i => {
-        if (i.type === 'SOLID') {
-          const { color } = i
-          colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
-        }
+        // if (i.type === 'SOLID') {
+        // const { color } = i
+        // colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
+        const fillRender = getEditorFillRender(i.type)
+        fillRender(i, ctx)
+        // }
       })
       ctx.beginPath()
-      ctx.fillStyle = colorStr
       const shapeRender = getEditorShapeRender(item.type)
       shapeRender?.(item, ctx)
       ctx.fill()
@@ -55,7 +60,7 @@ class RenderService {
     const ctx = this._ctx
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(area.x, area.y, area.width, area.height)
-    ctx.fillStyle = '#f5f5f5'
+    ctx.fillStyle = DEFAULT_BACKGROUND_COLOR
     ctx.fillRect(0, 0, area.width, area.height)
   }
 }

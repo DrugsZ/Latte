@@ -1,1 +1,2 @@
 export const EDITOR_PAGE_DEFAULT_PADDING_VALUE = 50
+export const DEFAULT_BACKGROUND_COLOR = '#f5f5f5'

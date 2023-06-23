@@ -1,15 +1,7 @@
 import type { DisplayObject } from 'Cditor/core/DisplayObject'
+import { FillType } from 'Cditor/core/DisplayObject'
 import Rect from 'Cditor/elements/Rect'
 import Ellipse from 'Cditor/elements/Ellipse'
-
-enum FillType {
-  SOLID = 'SOLID',
-  GRADIENT_LINEAR = 'GRADIENT_LINEAR',
-  GRADIENT_RADIAL = 'GRADIENT_RADIAL',
-  GRADIENT_ANGULAR = 'GRADIENT_ANGULAR',
-  GRADIENT_DIAMOND = 'GRADIENT_DIAMOND',
-  IMAGE = 'IMAGE',
-}
 
 export interface IEditorFillRenderContributionDescription {
   readonly id: FillType
@@ -21,20 +13,38 @@ export type ShapeRender = (
   ctx: CanvasRenderingContext2D
 ) => void
 
+export type FillRender = (
+  fill: SolidColorPaint,
+  ctx: CanvasRenderingContext2D
+) => void
+
 export interface EditorShapeRender {
   render: ShapeRender
+}
+
+export interface EditorFillRender {
+  render: FillRender
 }
 
 export interface EditorShapeRenderCtor {
   new (): EditorShapeRender
 }
 
+export interface EditorFillRenderCtor {
+  new (): EditorFillRender
+}
+
 export class EditorRenderContributionRegistry {
   public static readonly INSTANCE = new EditorRenderContributionRegistry()
 
-  private readonly editorFillRender: {
-    [fillType in FillType]: (fill: SolidColorPaint) => void
+  private readonly _editorFillRender: {
+    [fillType in FillType]: EditorFillRenderCtor
   }
+
+  private readonly _editorFillRenderInstanceCache: {
+    [fillType in FillType]: EditorFillRender
+  }
+
   private readonly _editorShapeRender: {
     [shapeType in EditorElementTypeKind]: EditorShapeRenderCtor
   }
@@ -49,6 +59,8 @@ export class EditorRenderContributionRegistry {
   constructor() {
     this._editorShapeRender = Object.create(null)
     this._editorShapeRenderInstanceCache = Object.create(null)
+    this._editorFillRender = Object.create(null)
+    this._editorFillRenderInstanceCache = Object.create(null)
   }
 
   public registerEditorShapeRender(
@@ -67,6 +79,23 @@ export class EditorRenderContributionRegistry {
     }
     return (this._editorShapeRenderInstanceCache[id] || {}).render
   }
+
+  public registerEditorFillRender(
+    id: FillType,
+    renderCtr: EditorFillRenderCtor
+  ) {
+    this._editorFillRender[id] = renderCtr
+  }
+
+  public getEditorFillRender(id: FillType) {
+    if (!this._editorFillRenderInstanceCache[id]) {
+      const Ctr = this._editorFillRender[id]
+      if (Ctr) {
+        this._editorFillRenderInstanceCache[id] = new Ctr()
+      }
+    }
+    return (this._editorFillRenderInstanceCache[id] || {}).render
+  }
 }
 
 export function registerEditorShapeRender(
@@ -81,4 +110,18 @@ export function registerEditorShapeRender(
 
 export function getEditorShapeRender(id: EditorElementTypeKind) {
   return EditorRenderContributionRegistry.INSTANCE.getEditorShapeRender(id)
+}
+
+export function registerEditorFillRender(
+  id: FillType,
+  renderCtr: EditorFillRenderCtor
+) {
+  EditorRenderContributionRegistry.INSTANCE.registerEditorFillRender(
+    id,
+    renderCtr
+  )
+}
+
+export function getEditorFillRender(id: FillType) {
+  return EditorRenderContributionRegistry.INSTANCE.getEditorFillRender(id)
 }

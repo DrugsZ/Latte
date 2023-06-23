@@ -2,7 +2,7 @@ import ModelData from 'Cditor/core/modelData'
 import ViewModel from 'Cditor/core/viewModel'
 import model from 'Cditor/assets/testSchema2.json'
 import View from 'Cditor/core/view'
-import RenderService from 'Cditor/core/renderService'
+import RenderService from 'Cditor/render/renderService'
 
 class Editor {
   private _modelData: ModelData | null

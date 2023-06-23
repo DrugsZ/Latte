@@ -11,6 +11,15 @@ export enum EditorElementTypeKind {
   DOCUMENT = 'DOCUMENT',
 }
 
+export enum FillType {
+  SOLID = 'SOLID',
+  GRADIENT_LINEAR = 'GRADIENT_LINEAR',
+  GRADIENT_RADIAL = 'GRADIENT_RADIAL',
+  GRADIENT_ANGULAR = 'GRADIENT_ANGULAR',
+  GRADIENT_DIAMOND = 'GRADIENT_DIAMOND',
+  IMAGE = 'IMAGE',
+}
+
 export abstract class DisplayObject<
   T extends BaseNodeSchema = BaseNodeSchema
 > extends EventTarget {
