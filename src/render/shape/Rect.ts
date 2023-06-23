@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
-import Rect from 'Cditor/elements/Rect'
-import type { EditorShapeRender } from 'Cditor/render/RenderContributionRegistry'
+import Rect from 'Latte/elements/Rect'
+import type { EditorShapeRender } from 'Latte/render/RenderContributionRegistry'
 
 export class RectShapeRender implements EditorShapeRender {
   private static hasBorder(renderObject: Rect) {

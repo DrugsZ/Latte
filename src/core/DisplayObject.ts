@@ -1,7 +1,7 @@
-import { EventTarget } from 'Cditor/core/EventTarget'
-import { Transform } from 'Cditor/core/Transform'
-import { Bounds } from 'Cditor/core/Bounds'
-import type { Container } from 'Cditor/core//Container'
+import { EventTarget } from 'Latte/core/EventTarget'
+import { Transform } from 'Latte/core/Transform'
+import { Bounds } from 'Latte/core/Bounds'
+import type { Container } from 'Latte/core//Container'
 
 export enum EditorElementTypeKind {
   RECTANGLE = 'RECTANGLE',

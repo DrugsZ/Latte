@@ -1,7 +1,7 @@
-import { isBoolean, isObject, isFunction } from 'Cditor/utils/assert'
+import { isBoolean, isObject, isFunction } from 'Latte/utils/assert'
 import EventEmitter from 'eventemitter3'
-import { FederatedEvent } from 'Cditor/core/FederatedEvent'
-import type { IEventTarget } from 'Cditor/core/interfaces'
+import { FederatedEvent } from 'Latte/core/FederatedEvent'
+import type { IEventTarget } from 'Latte/core/interfaces'
 
 /**
  * Objects that can receive events and may have listeners for them.

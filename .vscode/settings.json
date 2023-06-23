@@ -1,9 +1,9 @@
 {
-    "editor.codeActionsOnSave": {
-        "source.fixAll": true
-    },
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "prettier.semi": false,
-    "prettier.useEditorConfig": false,
-    "cSpell.words": ["Cditor"]
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.semi": false,
+  "prettier.useEditorConfig": false,
+  "cSpell.words": ["Latte"]
 }

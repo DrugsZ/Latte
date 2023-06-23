@@ -1,4 +1,4 @@
-import { DisplayObject } from 'Cditor/core/DisplayObject'
+import { DisplayObject } from 'Latte/core/DisplayObject'
 
 export abstract class Container<
   T extends BaseNodeSchema = BaseNodeSchema

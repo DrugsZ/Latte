@@ -1,4 +1,4 @@
-import { DisplayObject, EditorElementTypeKind } from 'Cditor/core/DisplayObject'
+import { DisplayObject, EditorElementTypeKind } from 'Latte/core/DisplayObject'
 
 class Rect extends DisplayObject<RectangleElement> {
   static TYPE = EditorElementTypeKind.RECTANGLE

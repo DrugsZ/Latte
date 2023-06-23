@@ -1,4 +1,4 @@
-import { Emitter } from 'Cditor/common/event'
+import { Emitter } from 'Latte/common/event'
 
 export class Camera {
   private _zoom: number = 1

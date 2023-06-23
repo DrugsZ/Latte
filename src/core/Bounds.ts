@@ -1,4 +1,4 @@
-import { Rectangle } from 'Cditor/core//Rectangle'
+import { Rectangle } from 'Latte/core//Rectangle'
 
 export class Bounds {
   public minX: number = Infinity

@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
-import type { EditorShapeRender } from 'Cditor/render/RenderContributionRegistry'
-import Ellipse from 'Cditor/elements/Ellipse'
+import type { EditorShapeRender } from 'Latte/render/RenderContributionRegistry'
+import Ellipse from 'Latte/elements/Ellipse'
 
 export class EllipseShapeRender implements EditorShapeRender {
   public render = (renderObject: Ellipse, ctx: CanvasRenderingContext2D) => {

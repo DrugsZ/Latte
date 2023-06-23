@@ -1,8 +1,8 @@
 import {
   createDefaultElement,
   createDefaultDocument,
-} from 'Cditor/common/schema'
-import { Emitter } from 'Cditor/common/event'
+} from 'Latte/common/schema'
+import { Emitter } from 'Latte/common/event'
 
 interface IUpdatePayload {
   data: BaseNodeSchema

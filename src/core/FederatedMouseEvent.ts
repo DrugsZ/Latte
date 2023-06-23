@@ -1,6 +1,6 @@
-import { Point } from 'Cditor/math/Point'
-import { FederatedEvent } from 'Cditor/core/FederatedEvent'
-import type { DisplayObject } from 'Cditor/core/DisplayObject'
+import { Point } from 'Latte/math/Point'
+import { FederatedEvent } from 'Latte/core/FederatedEvent'
+import type { DisplayObject } from 'Latte/core/DisplayObject'
 
 export class FederatedMouseEvent
   extends FederatedEvent<MouseEvent | PointerEvent | TouchEvent>

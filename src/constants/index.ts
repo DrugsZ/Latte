@@ -1,2 +1,2 @@
-export * from 'Cditor/constants/editor'
-export * from 'Cditor/constants/error'
+export * from 'Latte/constants/editor'
+export * from 'Latte/constants/error'

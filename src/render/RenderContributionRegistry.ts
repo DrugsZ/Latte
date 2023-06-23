@@ -1,7 +1,7 @@
-import type { DisplayObject } from 'Cditor/core/DisplayObject'
-import { FillType } from 'Cditor/core/DisplayObject'
-import Rect from 'Cditor/elements/Rect'
-import Ellipse from 'Cditor/elements/Ellipse'
+import type { DisplayObject } from 'Latte/core/DisplayObject'
+import { FillType } from 'Latte/core/DisplayObject'
+import Rect from 'Latte/elements/Rect'
+import Ellipse from 'Latte/elements/Ellipse'
 
 export interface IEditorFillRenderContributionDescription {
   readonly id: FillType

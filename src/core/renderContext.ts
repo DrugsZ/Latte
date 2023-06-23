@@ -1,10 +1,10 @@
-import { DisplayObject, EditorElementTypeKind } from 'Cditor/core/DisplayObject'
-import { Container } from 'Cditor/core/Container'
-import EditorDocument from 'Cditor/core/document'
-import Rect from 'Cditor/elements/Rect'
-import Ellipse from 'Cditor/elements/Ellipse'
-import Page from 'Cditor/core/page'
-import Frame from 'Cditor/core/frame'
+import { DisplayObject, EditorElementTypeKind } from 'Latte/core/DisplayObject'
+import { Container } from 'Latte/core/Container'
+import EditorDocument from 'Latte/core/document'
+import Rect from 'Latte/elements/Rect'
+import Ellipse from 'Latte/elements/Ellipse'
+import Page from 'Latte/core/page'
+import Frame from 'Latte/core/frame'
 
 export const createElement = (element: BaseNodeSchema) => {
   const { type } = element

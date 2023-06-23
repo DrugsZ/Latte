@@ -20,7 +20,7 @@
     "strictPropertyInitialization": false,
     "noImplicitAny": false,
     "paths": {
-      "Cditor/*": ["./src/*"]
+      "Latte/*": ["./src/*"]
     }
   },
   "include": ["src", "./typings"],

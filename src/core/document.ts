@@ -1,4 +1,4 @@
-import { Container } from 'Cditor/core/Container'
+import { Container } from 'Latte/core/Container'
 
 class EditorDocument extends Container {}
 

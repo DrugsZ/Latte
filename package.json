@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DrugsZ/Cditor.git"
+    "url": "git+https://github.com/DrugsZ/Latte.git"
   },
   "keywords": [
     "canvas",
@@ -21,9 +21,9 @@
   "author": "FateLee",
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/DrugsZ/Cditor/issues"
+    "url": "https://github.com/DrugsZ/Latte/issues"
   },
-  "homepage": "https://github.com/DrugsZ/Cditor#readme",
+  "homepage": "https://github.com/DrugsZ/Latte#readme",
   "devDependencies": {
     "@commitlint/cli": "^17.4.1",
     "@commitlint/config-conventional": "^17.4.0",

@@ -3,14 +3,14 @@ import {
   registerEditorShapeRender,
   registerEditorFillRender,
   getEditorFillRender,
-} from 'Cditor/render/RenderContributionRegistry'
-import { EditorElementTypeKind, FillType } from 'Cditor/core/DisplayObject'
-import { RectShapeRender } from 'Cditor/render/shape/Rect'
-import { EllipseShapeRender } from 'Cditor/render/shape/Ellipse'
-import Rect from 'Cditor/elements/Rect'
-import Ellipse from 'Cditor/elements/Ellipse'
-import { SolidColorFillRender } from 'Cditor/render/fill/solid'
-import { DEFAULT_BACKGROUND_COLOR } from 'Cditor/constants'
+} from 'Latte/render/RenderContributionRegistry'
+import { EditorElementTypeKind, FillType } from 'Latte/core/DisplayObject'
+import { RectShapeRender } from 'Latte/render/shape/Rect'
+import { EllipseShapeRender } from 'Latte/render/shape/Ellipse'
+import Rect from 'Latte/elements/Rect'
+import Ellipse from 'Latte/elements/Ellipse'
+import { SolidColorFillRender } from 'Latte/render/fill/solid'
+import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)

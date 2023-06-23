@@ -1,8 +1,8 @@
-import ModelData from 'Cditor/core/modelData'
-import ViewModel from 'Cditor/core/viewModel'
-import model from 'Cditor/assets/testSchema2.json'
-import View from 'Cditor/core/view'
-import RenderService from 'Cditor/render/renderService'
+import ModelData from 'Latte/core/modelData'
+import ViewModel from 'Latte/core/viewModel'
+import model from 'Latte/assets/testSchema2.json'
+import View from 'Latte/core/view'
+import RenderService from 'Latte/render/renderService'
 
 class Editor {
   private _modelData: ModelData | null

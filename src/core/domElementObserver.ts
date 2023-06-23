@@ -1,4 +1,4 @@
-import { Emitter } from 'Cditor/common/event'
+import { Emitter } from 'Latte/common/event'
 
 class DomElementObserver {
   private _domCacheWidth: number

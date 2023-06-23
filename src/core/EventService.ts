@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
-import { FederatedEvent } from 'Cditor/core/FederatedEvent'
-import { FederatedMouseEvent } from 'Cditor/core/FederatedMouseEvent'
-import { FederatedPointerEvent } from 'Cditor/core/FederatedPointerEvent'
-import { FederatedWheelEvent } from 'Cditor/core/FederatedWheelEvent'
-import type { IEventTarget } from 'Cditor/core/interfaces'
-import type { DisplayObject } from 'Cditor/core/DisplayObject'
+import { FederatedEvent } from 'Latte/core/FederatedEvent'
+import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
+import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
+import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
+import type { IEventTarget } from 'Latte/core/interfaces'
+import type { DisplayObject } from 'Latte/core/DisplayObject'
 
 const PROPAGATION_LIMIT = 2048
 export class EventService {

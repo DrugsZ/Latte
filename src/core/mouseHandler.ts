@@ -1,4 +1,4 @@
-import View from 'Cditor/core/view'
+import View from 'Latte/core/view'
 
 class MouseHandler {
   private _isMouseDown: boolean

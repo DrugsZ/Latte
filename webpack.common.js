@@ -22,7 +22,7 @@ module.exports = {
       ".mjs": [".mjs", ".mts"]
     },
     alias: {
-      'Cditor': path.resolve(__dirname, "src")
+      'Latte': path.resolve(__dirname, "src")
     }
   },
   module: {

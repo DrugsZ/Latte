@@ -1,5 +1,5 @@
-import { Matrix } from 'Cditor/math/Matrix'
-import { Point } from 'Cditor/math/Point'
+import { Matrix } from 'Latte/math/Matrix'
+import { Point } from 'Latte/math/Point'
 
 export class Transform {
   private _localTransform: Matrix

@@ -1,4 +1,4 @@
-import Editor from 'Cditor/core/editor'
+import Editor from 'Latte/core/editor'
 
 const initCanvas = ({ width = 800, height = 800 }) => {
   const canvas = document.createElement('canvas')
