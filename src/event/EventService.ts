@@ -16,7 +16,11 @@ export class EventService {
     }[]
   > = {}
 
-  private _rootTarget = document
+  private _eventPool: Map<typeof FederatedEvent, FederatedEvent[]> = new Map()
+
+  constructor(private _rootTarget: IEventTarget) {
+    this._init()
+  }
 
   private _addEventMapping(
     type: string,
@@ -33,8 +37,25 @@ export class EventService {
     this._mappingTable[type].sort((a, b) => a.priority - b.priority)
   }
 
-  private init() {
+  mapEvent(e: FederatedEvent) {
+    // if (!this.rootTarget) {
+    //   return
+    // }
+
+    const mappers = this._mappingTable[e.type]
+
+    if (mappers) {
+      for (let i = 0, j = mappers.length; i < j; i++) {
+        mappers[i].fn(e)
+      }
+    } else {
+      console.warn(`[EventService]: Event mapping not defined for ${e.type}`)
+    }
+  }
+
+  private _init() {
     this._addEventMapping('pointerdown', this._onPointerDown)
+    this._addEventMapping('mousedown', this._onPointerDown)
     this._addEventMapping('pointerup', this._onPointerUp)
     this._addEventMapping('pointermove', this._onPointerMove)
     this._addEventMapping('pointerout', this._onPointerOut)
@@ -104,12 +125,48 @@ export class EventService {
     to.viewport.copyFrom(from.viewport)
   }
 
-  private async createPointerEvent(
+  private allocateEvent<T extends FederatedEvent>(constructor: {
+    new (boundary: EventService): T
+  }): T {
+    if (!this._eventPool.has(constructor as any)) {
+      this._eventPool.set(constructor as any, [])
+    }
+
+    // @ts-ignore
+    const event =
+      (this._eventPool.get(constructor as any).pop() as T) ||
+      new constructor(this)
+
+    event.eventPhase = event.NONE
+    event.currentTarget = null
+    event.path = []
+    event.target = null
+
+    return event
+  }
+
+  private freeEvent<T extends FederatedEvent>(event: T) {
+    if (event.manager !== this)
+      throw new Error(
+        'It is illegal to free an event not managed by this EventBoundary!'
+      )
+
+    const { constructor } = event
+
+    if (!this._eventPool.has(constructor as any)) {
+      this._eventPool.set(constructor as any, [])
+    }
+
+    // @ts-ignore
+    this._eventPool.get(constructor as any).push(event)
+  }
+
+  private async _createPointerEvent(
     from: FederatedPointerEvent,
     type?: string,
     target?: IEventTarget
   ): Promise<FederatedPointerEvent> {
-    const event = new FederatedPointerEvent(this)
+    const event = this.allocateEvent(FederatedPointerEvent)
 
     EventService.copyPointerData(from, event)
     EventService.copyMouseData(from, event)
@@ -118,11 +175,26 @@ export class EventService {
     event.nativeEvent = from.nativeEvent
     event.originalEvent = from
 
-    event.target = target!
+    event.target = target || this._rootTarget
     if (typeof type === 'string') {
       event.type = type
     }
 
+    return event
+  }
+
+  private async _createWheelEvent(
+    from: FederatedWheelEvent
+  ): Promise<FederatedWheelEvent> {
+    const event = this.allocateEvent(FederatedWheelEvent)
+
+    EventService.copyWheelData(from, event)
+    EventService.copyMouseData(from, event)
+    EventService.copyData(from, event)
+
+    event.nativeEvent = from.nativeEvent
+    event.originalEvent = from
+    event.target = this._rootTarget
     return event
   }
 
@@ -145,18 +217,73 @@ export class EventService {
   }
 
   private _onPointerDown = async (from: FederatedEvent) => {
+    console.log(from)
     if (!(from instanceof FederatedPointerEvent)) {
       return
     }
 
     const now = performance.now()
-    const e = await this.createPointerEvent(from)
+    const e = await this._createPointerEvent(from)
+    this.freeEvent(e)
   }
-  private _onPointerUp = async (from: FederatedEvent) => {}
-  private _onPointerMove = async (from: FederatedEvent) => {}
-  private _onPointerOut = async (from: FederatedEvent) => {}
-  private _onPointerOver = async (from: FederatedEvent) => {}
-  private _onPointerDown = async (from: FederatedEvent) => {}
-  private _onPointerUpOutside = async (from: FederatedEvent) => {}
-  private _onWheel = async (from: FederatedEvent) => {}
+  private _onPointerUp = async (from: FederatedEvent) => {
+    console.log(from)
+    if (!(from instanceof FederatedPointerEvent)) {
+      return
+    }
+
+    const now = performance.now()
+    const e = await this._createPointerEvent(from)
+    this.freeEvent(e)
+  }
+  private _onPointerMove = async (from: FederatedEvent) => {
+    console.log(from)
+    if (!(from instanceof FederatedPointerEvent)) {
+      return
+    }
+
+    const now = performance.now()
+    const e = await this._createPointerEvent(from)
+    this.freeEvent(e)
+  }
+  private _onPointerOut = async (from: FederatedEvent) => {
+    console.log(from)
+    if (!(from instanceof FederatedPointerEvent)) {
+      return
+    }
+
+    const now = performance.now()
+    const e = await this._createPointerEvent(from)
+    this.freeEvent(e)
+  }
+  private _onPointerOver = async (from: FederatedEvent) => {
+    console.log(from)
+    if (!(from instanceof FederatedPointerEvent)) {
+      return
+    }
+
+    const now = performance.now()
+    const e = await this._createPointerEvent(from)
+    this.freeEvent(e)
+  }
+  private _onPointerUpOutside = async (from: FederatedEvent) => {
+    console.log(from)
+    if (!(from instanceof FederatedPointerEvent)) {
+      return
+    }
+
+    const now = performance.now()
+    const e = await this._createPointerEvent(from)
+    this.freeEvent(e)
+  }
+  private _onWheel = async (from: FederatedEvent) => {
+    console.log(from)
+    if (!(from instanceof FederatedWheelEvent)) {
+      return
+    }
+
+    const now = performance.now()
+    const e = await this._createWheelEvent(from)
+    this.freeEvent(e)
+  }
 }

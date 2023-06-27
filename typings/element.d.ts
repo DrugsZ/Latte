@@ -179,7 +179,7 @@ interface Window {
   test: any
 }
 
-interface CditorFile {
+interface LatteFile {
   elements: BaseNodeSchema[]
   sessionID: number
 }

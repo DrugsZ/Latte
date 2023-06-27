@@ -4,6 +4,8 @@ import Page from 'Latte/core/page'
 import RenderService from 'Latte/render/renderService'
 import MouseHandler from 'Latte/core/mouseHandler'
 import { Camera } from 'Latte/core/CameraService'
+import { EventBind } from 'Latte/event/EventBind'
+import { EventService } from 'Latte/event/EventService'
 
 export enum RenderEnum {
   ViewportChange,
@@ -16,6 +18,8 @@ export default class View {
   private _shouldRender: boolean = true
   private _focusPageInstance: Page
   private _mouseHandler: MouseHandler
+  private _eventBind: EventBind
+  private _eventService: EventService
 
   constructor(
     private _viewModel: ViewModel,
@@ -36,6 +40,8 @@ export default class View {
       currentCamera.onCameraViewChange(e => this._onCameraViewChange(e))
     })
     this._mouseHandler = new MouseHandler(this._renderDOM, this)
+    this._eventService = new EventService(this._renderContext.getRoot())
+    this._eventBind = new EventBind(this._renderDOM, this._eventService)
   }
 
   private _initElement() {

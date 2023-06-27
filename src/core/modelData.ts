@@ -20,15 +20,15 @@ interface ChangeEvent {
 }
 
 class ModelData implements ISchemaModel {
-  private _model: CditorFile = createDefaultDocument()
+  private _model: LatteFile = createDefaultDocument()
 
-  private readonly _onDataChange = new Emitter<CditorFile>()
+  private readonly _onDataChange = new Emitter<LatteFile>()
   private readonly onDataChange = this._onDataChange.event
 
   private readonly _onElementChange = new Emitter<ChangeEvent[]>()
   private readonly onElementChange = this._onElementChange.event
 
-  constructor(model?: CditorFile) {
+  constructor(model?: LatteFile) {
     this._initModel(model)
   }
   updateModel(payload: { data: PAGE }): void {
@@ -65,7 +65,7 @@ class ModelData implements ISchemaModel {
   getCurrentState() {
     return this._model
   }
-  private _initModel(model?: CditorFile) {
+  private _initModel(model?: LatteFile) {
     if (model) {
       this._model = model
     }

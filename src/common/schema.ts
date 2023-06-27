@@ -34,7 +34,7 @@ export const createDefaultElement = (parentInfo: {
 
 export const createPageModel = createDefaultElement
 
-export const createDefaultDocument = (): CditorFile => ({
+export const createDefaultDocument = (): LatteFile => ({
   elements: [],
   sessionID: 1,
 })
