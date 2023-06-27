@@ -1,6 +1,6 @@
 import { DisplayObject, EditorElementTypeKind } from 'Latte/core/DisplayObject'
 import { Container } from 'Latte/core/Container'
-import EditorDocument from 'Latte/core/document'
+import { EditorDocument } from 'Latte/elements/document'
 import Rect from 'Latte/elements/Rect'
 import Ellipse from 'Latte/elements/Ellipse'
 import Page from 'Latte/core/page'
@@ -8,7 +8,7 @@ import Frame from 'Latte/core/frame'
 
 export const createElement = (element: BaseNodeSchema) => {
   const { type } = element
-  let Ctr: any = null
+  let Ctr: any = Rect
   switch (type) {
     case EditorElementTypeKind.RECTANGLE:
       Ctr = Rect
@@ -70,6 +70,10 @@ class RenderContext {
 
   public getPages(): Page[] {
     return this._root.getChildren() as Page[]
+  }
+
+  public getRoot(): EditorDocument {
+    return this._root
   }
 }
 

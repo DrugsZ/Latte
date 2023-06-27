@@ -1,5 +1,5 @@
 import type { IEventTarget } from 'Latte/core/interfaces'
-import type { EventService } from 'Latte/core/EventService'
+import type { EventService } from 'Latte/event/EventService'
 import { Point } from 'Latte/math/Point'
 
 /**
