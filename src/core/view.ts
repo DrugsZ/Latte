@@ -6,6 +6,7 @@ import MouseHandler from 'Latte/core/mouseHandler'
 import { Camera } from 'Latte/core/CameraService'
 import { EventBind } from 'Latte/event/EventBind'
 import { EventService } from 'Latte/event/EventService'
+import { PickService } from 'Latte/event/PickService'
 
 export enum RenderEnum {
   ViewportChange,
@@ -20,6 +21,7 @@ export default class View {
   private _mouseHandler: MouseHandler
   private _eventBind: EventBind
   private _eventService: EventService
+  private _pickService: PickService = new PickService()
 
   constructor(
     private _viewModel: ViewModel,
@@ -41,7 +43,11 @@ export default class View {
     })
     this._mouseHandler = new MouseHandler(this._renderDOM, this)
     this._eventService = new EventService(this._renderContext.getRoot())
-    this._eventBind = new EventBind(this._renderDOM, this._eventService)
+    this._eventBind = new EventBind(
+      this._renderDOM,
+      this._eventService,
+      this._pickService
+    )
   }
 
   private _initElement() {

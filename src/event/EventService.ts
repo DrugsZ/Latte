@@ -5,6 +5,9 @@ import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
 import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
 import type { IEventTarget } from 'Latte/core/interfaces'
 import type { DisplayObject } from 'Latte/core/DisplayObject'
+import { Point } from 'Latte/math/Point'
+
+type Picker = (event: Point) => IEventTarget | null
 
 const PROPAGATION_LIMIT = 2048
 export class EventService {
@@ -18,8 +21,14 @@ export class EventService {
 
   private _eventPool: Map<typeof FederatedEvent, FederatedEvent[]> = new Map()
 
+  private _pickHandler: Picker
+
   constructor(private _rootTarget: IEventTarget) {
     this._init()
+  }
+
+  public setPickHandler(pickHandler: Picker) {
+    this._pickHandler = pickHandler
   }
 
   private _addEventMapping(
@@ -175,7 +184,7 @@ export class EventService {
     event.nativeEvent = from.nativeEvent
     event.originalEvent = from
 
-    event.target = target || this._rootTarget
+    event.target = target || this._pickHandler(event.canvas) || this._rootTarget
     if (typeof type === 'string') {
       event.type = type
     }

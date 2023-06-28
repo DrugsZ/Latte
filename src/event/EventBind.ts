@@ -16,11 +16,13 @@ export interface FormattedPointerEvent extends PointerEvent {
 }
 
 const MOUSE_POINTER_ID = 1
+import type { IPickerService } from 'Latte/event/PickService'
 
 export class EventBind {
   constructor(
     private readonly _view: HTMLCanvasElement,
-    private _eventService: EventService
+    private _eventService: EventService,
+    private _pickService: IPickerService
   ) {
     this._init()
   }
@@ -67,6 +69,7 @@ export class EventBind {
   private _onPointerDown(nativeEvent: MouseEvent) {
     const event = EventBind.normalizeToPointerData(nativeEvent)
     this._eventService.mapEvent(event)
+    this._eventService.setPickHandler(this._pickService.pick)
   }
 
   private _onPointerMove(e: MouseEvent) {
