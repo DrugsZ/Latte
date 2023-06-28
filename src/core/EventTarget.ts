@@ -1,6 +1,5 @@
 import { isBoolean, isObject, isFunction } from 'Latte/utils/assert'
 import EventEmitter from 'eventemitter3'
-import { FederatedEvent } from 'Latte/core/FederatedEvent'
 import type { IEventTarget } from 'Latte/core/interfaces'
 
 /**
@@ -12,7 +11,7 @@ export class EventTarget implements IEventTarget {
   /**
    * event emitter
    */
-  private _emitter = new EventEmitter()
+  emitter = new EventEmitter()
 
   /**
    * support `capture` & `once` in options
@@ -32,15 +31,15 @@ export class EventTarget implements IEventTarget {
     const bindListener = isFunction(listener) ? listener : listener.handleEvent
 
     if (once) {
-      this._emitter.once(currentType, bindListener, context)
+      this.emitter.once(currentType, bindListener, context)
     } else {
-      this._emitter.on(currentType, bindListener, context)
+      this.emitter.on(currentType, bindListener, context)
     }
 
     return this
   }
   removeAllEventListeners() {
-    this._emitter.removeAllListeners()
+    this.emitter.removeAllListeners()
   }
   removeEventListener(
     type: string,
@@ -54,24 +53,8 @@ export class EventTarget implements IEventTarget {
     const currentType = capture ? `${type}capture` : type
     const bindListener = isFunction(listener) ? listener : listener.handleEvent
 
-    this._emitter.off(currentType, bindListener, context)
+    this.emitter.off(currentType, bindListener, context)
 
     return this
-  }
-
-  /**
-   * @see https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent
-   */
-  dispatchEvent<T extends FederatedEvent>(
-    e: T,
-    skipPropagate = false
-  ): boolean {
-    if (!(e instanceof FederatedEvent)) {
-      throw new Error(
-        'DisplayObject cannot propagate events outside of the Federated Events API'
-      )
-    }
-
-    return skipPropagate
   }
 }

@@ -61,7 +61,7 @@ export abstract class FederatedEvent<N extends Event = Event, T = any> {
   nativeEvent: N
 
   /** The original event that caused this event, if any. */
-  originalEvent: FederatedEvent<N>
+  originalEvent: FederatedEvent<N> | null
 
   /** Flags whether propagation was stopped. */
   propagationStopped = false

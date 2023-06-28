@@ -4,12 +4,13 @@ import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
 import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
 import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
 import type { IEventTarget } from 'Latte/core/interfaces'
-import type { DisplayObject } from 'Latte/core/DisplayObject'
 import { Point } from 'Latte/math/Point'
+import { isDisplayObject } from 'Latte/utils/assert'
 
 type Picker = (event: Point) => IEventTarget | null
 
 const PROPAGATION_LIMIT = 2048
+
 export class EventService {
   private _mappingTable: Record<
     string,
@@ -170,6 +171,47 @@ export class EventService {
     this._eventPool.get(constructor as any).push(event)
   }
 
+  private notifyTarget(e: FederatedEvent, type?: string) {
+    type = type ?? e.type
+    const key =
+      e.eventPhase === e.CAPTURING_PHASE || e.eventPhase === e.AT_TARGET
+        ? `${type}capture`
+        : type
+
+    this.notifyListeners(e, key)
+
+    if (e.eventPhase === e.AT_TARGET) {
+      this.notifyListeners(e, type)
+    }
+  }
+
+  private notifyListeners(e: FederatedEvent, type: string) {
+    // @ts-ignore
+    const emitter = e.currentTarget.emitter
+    // @ts-ignore
+    const listeners = (emitter._events as EmitterListeners)[type]
+
+    if (!listeners) return
+
+    if ('fn' in listeners) {
+      if (listeners.once) {
+        emitter.removeListener(type, listeners.fn, undefined, true)
+      }
+      listeners.fn.call(e.currentTarget || listeners.context, e)
+    } else {
+      for (
+        let i = 0;
+        i < listeners.length && !e.propagationImmediatelyStopped;
+        i++
+      ) {
+        if (listeners[i].once) {
+          emitter.removeListener(type, listeners[i].fn, undefined, true)
+        }
+        listeners[i].fn.call(e.currentTarget || listeners[i].context, e)
+      }
+    }
+  }
+
   private async _createPointerEvent(
     from: FederatedPointerEvent,
     type?: string,
@@ -207,17 +249,64 @@ export class EventService {
     return event
   }
 
-  public propagationPath(target: DisplayObject): DisplayObject[] {
+  dispatchEvent(e: FederatedEvent, type: string, skipPropagate?: boolean) {
+    if (!skipPropagate) {
+      e.propagationStopped = false
+      e.propagationImmediatelyStopped = false
+      this.propagate(e, type)
+    } else {
+      e.eventPhase = e.AT_TARGET
+      const canvas = this._rootTarget || null
+      e.currentTarget = canvas
+      this.notifyListeners(e, type)
+    }
+  }
+
+  propagate(e: FederatedEvent, type?: string) {
+    if (!e.target) {
+      return
+    }
+
+    // [target, parent, root, Canvas]
+    const composedPath = e.composedPath()
+
+    // event flow: capture -> target -> bubbling
+
+    // capture phase
+    e.eventPhase = e.CAPTURING_PHASE
+    for (let i = composedPath.length - 1; i >= 1; i--) {
+      e.currentTarget = composedPath[i]
+      this.notifyTarget(e, type)
+      if (e.propagationStopped || e.propagationImmediatelyStopped) return
+    }
+
+    // target phase
+    e.eventPhase = e.AT_TARGET
+    e.currentTarget = e.target
+    this.notifyTarget(e, type)
+    if (e.propagationStopped || e.propagationImmediatelyStopped) return
+
+    // find current target in composed path
+    const index = composedPath.indexOf(e.currentTarget)
+
+    // bubbling phase
+    e.eventPhase = e.BUBBLING_PHASE
+    for (let i = index + 1; i < composedPath.length; i++) {
+      e.currentTarget = composedPath[i]
+      this.notifyTarget(e, type)
+      if (e.propagationStopped || e.propagationImmediatelyStopped) return
+    }
+  }
+
+  public propagationPath(target: IEventTarget): IEventTarget[] {
     const propagationPath = [target]
 
     for (let i = 0; i < PROPAGATION_LIMIT && target !== this._rootTarget; i++) {
-      if (!target.parentNode) {
-        throw new Error('Cannot find propagation path to disconnected target')
+      if (isDisplayObject(target) && target.parentNode) {
+        propagationPath.push(target.parentNode)
+
+        target = target.parentNode
       }
-
-      propagationPath.push(target.parentNode)
-
-      target = target.parentNode
     }
 
     propagationPath.reverse()
@@ -226,35 +315,51 @@ export class EventService {
   }
 
   private _onPointerDown = async (from: FederatedEvent) => {
-    console.log(from)
     if (!(from instanceof FederatedPointerEvent)) {
       return
     }
 
-    const now = performance.now()
     const e = await this._createPointerEvent(from)
-    this.freeEvent(e)
-  }
-  private _onPointerUp = async (from: FederatedEvent) => {
-    console.log(from)
-    if (!(from instanceof FederatedPointerEvent)) {
-      return
-    }
+    this.dispatchEvent(e, 'pointerdown')
+    if (e.pointerType === 'mouse') {
+      const isRightButton = e.button === 2
 
-    const now = performance.now()
-    const e = await this._createPointerEvent(from)
+      this.dispatchEvent(e, isRightButton ? 'rightdown' : 'mousedown')
+    }
     this.freeEvent(e)
   }
+
   private _onPointerMove = async (from: FederatedEvent) => {
     console.log(from)
     if (!(from instanceof FederatedPointerEvent)) {
       return
     }
 
-    const now = performance.now()
     const e = await this._createPointerEvent(from)
+    this.dispatchEvent(e, 'pointermove')
+    if (e.pointerType === 'mouse') {
+      const isRightButton = e.button === 2
+
+      this.dispatchEvent(e, isRightButton ? 'rightmove' : 'mousemove')
+    }
     this.freeEvent(e)
   }
+
+  private _onPointerUp = async (from: FederatedEvent) => {
+    if (!(from instanceof FederatedPointerEvent)) {
+      return
+    }
+
+    const e = await this._createPointerEvent(from)
+    this.dispatchEvent(e, 'pointerup')
+    if (e.pointerType === 'mouse') {
+      const isRightButton = e.button === 2
+
+      this.dispatchEvent(e, isRightButton ? 'rightup' : 'mouseup')
+    }
+    this.freeEvent(e)
+  }
+
   private _onPointerOut = async (from: FederatedEvent) => {
     console.log(from)
     if (!(from instanceof FederatedPointerEvent)) {
