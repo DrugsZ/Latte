@@ -69,6 +69,7 @@ export class EventBind {
     this._onPointerMove = this._onPointerMove.bind(this)
     this._onPointerUp = this._onPointerUp.bind(this)
     this._onPointerOver = this._onPointerOver.bind(this)
+    this._onWheel = this._onWheel.bind(this)
   }
 
   private _init() {
@@ -80,6 +81,12 @@ export class EventBind {
     this._view.addEventListener('pointermove', this._onPointerMove.bind(this))
     this._view.addEventListener('pointerup', this._onPointerUp.bind(this))
     this._view.addEventListener('pointerover', this._onPointerOver.bind(this))
+
+    this._view.addEventListener('wheel', this._onWheel, {
+      passive: true,
+      capture: true,
+    })
+
     this._eventService.setPickHandler(this._pickService.pick)
   }
 
@@ -152,6 +159,29 @@ export class EventBind {
     }
 
     return normalizedEvents as PointerEvent[]
+  }
+
+  protected normalizeWheelEvent(nativeEvent: WheelEvent): FederatedWheelEvent {
+    const event = this._rootWheelEvent
+
+    this.transferMouseData(event, nativeEvent)
+    event.deltaX = nativeEvent.deltaX
+    event.deltaY = nativeEvent.deltaY
+    event.deltaZ = nativeEvent.deltaZ
+    event.deltaMode = nativeEvent.deltaMode
+
+    const { x, y } = this.client2Viewport({
+      x: event.offsetX,
+      y: event.offsetY,
+    })
+    event.canvas = new Point(x, y)
+    event.global.copyFrom(event.screen)
+    event.offset.copyFrom(event.screen)
+
+    event.nativeEvent = nativeEvent
+    event.type = nativeEvent.type
+
+    return event
   }
 
   private transferMouseData(
@@ -302,5 +332,11 @@ export class EventBind {
 
       this._eventService.mapEvent(federatedEvent)
     }
+  }
+
+  private _onWheel(nativeEvent: WheelEvent): void {
+    const wheelEvent = this.normalizeWheelEvent(nativeEvent)
+
+    this._eventService.mapEvent(wheelEvent)
   }
 }
