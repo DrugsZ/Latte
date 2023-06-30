@@ -1,4 +1,4 @@
-import View from 'Latte/core/view'
+import View from 'Latte/core/View'
 
 class MouseHandler {
   private _isMouseDown: boolean
