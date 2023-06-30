@@ -46,7 +46,8 @@ export default class View {
     this._eventBind = new EventBind(
       this._renderDOM,
       this._eventService,
-      this._pickService
+      this._pickService,
+      this.client2Viewport
     )
   }
 
@@ -104,5 +105,15 @@ export default class View {
       }
       this._scheduleRender()
     })
+  }
+
+  public client2Viewport(client: IPoint) {
+    const currentCamera = this._viewModel.getCamera(this._focusPageInstance.id)
+    const scale = currentCamera.getZoom()
+    const d = currentCamera.getViewport()
+    return {
+      x: client.x * scale + d.x,
+      y: client.y * scale + d.y,
+    }
   }
 }

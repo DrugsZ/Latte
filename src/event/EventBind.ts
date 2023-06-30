@@ -3,6 +3,14 @@ import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
 import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
 import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
 
+export const TOUCH_TO_POINTER: Record<string, string> = {
+  touchstart: 'pointerdown',
+  touchend: 'pointerup',
+  touchendoutside: 'pointerupoutside',
+  touchmove: 'pointermove',
+  touchcancel: 'pointercancel',
+}
+
 export interface FormattedPointerEvent extends PointerEvent {
   isPrimary: boolean
   width: number
@@ -18,6 +26,26 @@ export interface FormattedPointerEvent extends PointerEvent {
   type: string
 }
 
+export interface FormattedTouch extends Touch {
+  button: number
+  buttons: number
+  isPrimary: boolean
+  width: number
+  height: number
+  tiltX: number
+  tiltY: number
+  pointerType: string
+  pointerId: number
+  pressure: number
+  twist: number
+  tangentialPressure: number
+  layerY: number
+  offsetX: number
+  offsetY: number
+  isNormalized: boolean
+  type: string
+}
+
 const MOUSE_POINTER_ID = 1
 import type { IPickerService } from 'Latte/event/PickService'
 import { Point } from 'Latte/math/Point'
@@ -26,27 +54,79 @@ export class EventBind {
   private _rootPointerEvent = new FederatedPointerEvent(null)
   private _rootWheelEvent = new FederatedWheelEvent(null)
 
+  private readonly _supportsTouchEvents = 'ontouchstart' in globalThis
+
+  private readonly _supportsPointerEvents = !!globalThis.PointerEvent
+
   constructor(
     private readonly _view: HTMLCanvasElement,
-    private _eventService: EventService,
-    private _pickService: IPickerService
+    private readonly _eventService: EventService,
+    private readonly _pickService: IPickerService,
+    private readonly client2Viewport: (client: IPoint) => IPoint
   ) {
     this._init()
+    this._onPointerDown = this._onPointerDown.bind(this)
+    this._onPointerMove = this._onPointerMove.bind(this)
+    this._onPointerUp = this._onPointerUp.bind(this)
+    this._onPointerOver = this._onPointerOver.bind(this)
   }
 
   private _init() {
     this._view.addEventListener('mousedown', this._onPointerDown.bind(this))
     this._view.addEventListener('mousemove', this._onPointerMove.bind(this))
     this._view.addEventListener('mouseup', this._onPointerUp.bind(this))
+    this._view.addEventListener('mouseover', this._onPointerOver.bind(this))
+    this._view.addEventListener('pointerdown', this._onPointerDown.bind(this))
+    this._view.addEventListener('pointermove', this._onPointerMove.bind(this))
+    this._view.addEventListener('pointerup', this._onPointerUp.bind(this))
+    this._view.addEventListener('pointerover', this._onPointerOver.bind(this))
     this._eventService.setPickHandler(this._pickService.pick)
   }
 
-  private static normalizeToPointerData(
+  private _normalizeToPointerData(
     event: TouchEvent | MouseEvent | PointerEvent
-  ): PointerEvent {
-    let normalizedEvents
+  ): PointerEvent[] {
+    const normalizedEvents: any[] = []
 
-    if (event instanceof MouseEvent) {
+    if (this._supportsTouchEvents && event instanceof TouchEvent) {
+      for (let i = 0, li = event.changedTouches.length; i < li; i++) {
+        const touch = event.changedTouches[i] as FormattedTouch
+
+        if (typeof touch.button === 'undefined') touch.button = 0
+        if (typeof touch.buttons === 'undefined') touch.buttons = 1
+        if (typeof touch.isPrimary === 'undefined') {
+          touch.isPrimary =
+            event.touches.length === 1 && event.type === 'touchstart'
+        }
+        if (typeof touch.width === 'undefined') touch.width = touch.radiusX || 1
+        if (typeof touch.height === 'undefined')
+          touch.height = touch.radiusY || 1
+        if (typeof touch.tiltX === 'undefined') touch.tiltX = 0
+        if (typeof touch.tiltY === 'undefined') touch.tiltY = 0
+        if (typeof touch.pointerType === 'undefined')
+          touch.pointerType = 'touch'
+        if (typeof touch.pointerId === 'undefined')
+          touch.pointerId = touch.identifier || 0
+        if (typeof touch.pressure === 'undefined')
+          touch.pressure = touch.force || 0.5
+        if (typeof touch.twist === 'undefined') touch.twist = 0
+        if (typeof touch.tangentialPressure === 'undefined')
+          touch.tangentialPressure = 0
+
+        // mark the touch as normalized, just so that we know we did it
+        touch.isNormalized = true
+        touch.type = event.type
+
+        normalizedEvents.push(touch)
+      }
+    }
+    // apparently PointerEvent subclasses MouseEvent, so yay
+    else if (
+      !globalThis.MouseEvent ||
+      (event instanceof MouseEvent &&
+        (!this._supportsPointerEvents ||
+          !(event instanceof globalThis.PointerEvent)))
+    ) {
       const tempEvent = event as FormattedPointerEvent
 
       if (typeof tempEvent.isPrimary === 'undefined') tempEvent.isPrimary = true
@@ -66,12 +146,12 @@ export class EventBind {
       // mark the mouse event as normalized, just so that we know we did it
       tempEvent.isNormalized = true
 
-      normalizedEvents = tempEvent
+      normalizedEvents.push(tempEvent)
     } else {
-      normalizedEvents = event
+      normalizedEvents.push(event)
     }
 
-    return normalizedEvents as PointerEvent
+    return normalizedEvents as PointerEvent[]
   }
 
   private transferMouseData(
@@ -115,12 +195,11 @@ export class EventBind {
     event.tiltY = nativeEvent.tiltY
     event.twist = nativeEvent.twist
     this.transferMouseData(event, nativeEvent)
-
-    // this.mapPositionToPoint(
-    //   event.canvas,
-    //   nativeEvent.clientX,
-    //   nativeEvent.clientY
-    // )
+    const { x, y } = this.client2Viewport({
+      x: event.offsetX,
+      y: event.offsetY,
+    })
+    event.canvas = new Point(x, y)
     event.global.copyFrom(event.canvas)
     event.offset.copyFrom(event.canvas)
 
@@ -131,20 +210,97 @@ export class EventBind {
     if (event.type.startsWith('mouse')) {
       event.type = event.type.replace('mouse', 'pointer')
     }
-
+    if (event.type.startsWith('touch')) {
+      event.type = TOUCH_TO_POINTER[event.type] || event.type
+    }
     return event
   }
 
   private _onPointerDown(nativeEvent: MouseEvent) {
-    const event = EventBind.normalizeToPointerData(nativeEvent)
-    this._eventService.mapEvent(event)
+    const events = this._normalizeToPointerData(nativeEvent)
+    for (let i = 0, j = events.length; i < j; i++) {
+      const nativeEvent = events[i]
+      const federatedEvent = this.bootstrapEvent(
+        this._rootPointerEvent,
+        nativeEvent
+      )
+
+      this._eventService.mapEvent(federatedEvent)
+    }
   }
 
-  private _onPointerMove(e: MouseEvent) {
-    this._eventService.mapEvent(e)
+  private _onPointerMove(nativeEvent: MouseEvent) {
+    if (
+      this._supportsTouchEvents &&
+      (nativeEvent as PointerEvent).pointerType === 'touch'
+    ) {
+      return
+    }
+
+    const events = this._normalizeToPointerData(nativeEvent)
+    for (let i = 0, j = events.length; i < j; i++) {
+      const nativeEvent = events[i]
+      const federatedEvent = this.bootstrapEvent(
+        this._rootPointerEvent,
+        nativeEvent
+      )
+
+      this._eventService.mapEvent(federatedEvent)
+    }
   }
 
-  private _onPointerUp(e: MouseEvent) {
-    this._eventService.mapEvent(e)
+  private _onPointerUp(nativeEvent: MouseEvent) {
+    if (
+      this._supportsTouchEvents &&
+      (nativeEvent as PointerEvent).pointerType === 'touch'
+    ) {
+      return
+    }
+    const $element = this._view
+
+    let outside = 'outside'
+    try {
+      outside =
+        $element &&
+        nativeEvent.target &&
+        nativeEvent.target !== $element &&
+        $element.contains &&
+        !$element.contains(nativeEvent.target as Node)
+          ? 'outside'
+          : ''
+    } catch (e) {
+      // nativeEvent.target maybe not Node, such as Window
+      // @see https://github.com/antvis/G/issues/1235
+    }
+    const events = this._normalizeToPointerData(nativeEvent)
+    for (let i = 0, j = events.length; i < j; i++) {
+      const nativeEvent = events[i]
+      const federatedEvent = this.bootstrapEvent(
+        this._rootPointerEvent,
+        nativeEvent
+      )
+      federatedEvent.type += outside
+      this._eventService.mapEvent(federatedEvent)
+    }
+  }
+
+  private _onPointerOver(nativeEvent: MouseEvent) {
+    if (
+      this._supportsTouchEvents &&
+      (nativeEvent as PointerEvent).pointerType === 'touch'
+    ) {
+      return
+    }
+
+    const events = this._normalizeToPointerData(nativeEvent)
+    for (let i = 0, j = events.length; i < j; i++) {
+      const nativeEvent = events[i]
+      const federatedEvent = this.bootstrapEvent(
+        this._rootPointerEvent,
+        nativeEvent
+      )
+
+      this._eventService.mapEvent(federatedEvent)
+    }
   }
 }
