@@ -21,7 +21,7 @@ export default class View {
   private _mouseHandler: MouseHandler
   private _eventBind: EventBind
   private _eventService: EventService
-  private _pickService: PickService = new PickService()
+  private _pickService: PickService
 
   constructor(
     private _viewModel: ViewModel,
@@ -41,8 +41,10 @@ export default class View {
       )
       currentCamera.onCameraViewChange(e => this._onCameraViewChange(e))
     })
+    this._pickService = new PickService(this._focusPageInstance)
     this._mouseHandler = new MouseHandler(this._renderDOM, this)
     this._eventService = new EventService(this._renderContext.getRoot())
+    this.client2Viewport = this.client2Viewport.bind(this)
     this._eventBind = new EventBind(
       this._renderDOM,
       this._eventService,
@@ -66,6 +68,10 @@ export default class View {
 
   public getPages(): Page[] {
     return this._renderContext.getPages()
+  }
+
+  public getFocusPageInstance() {
+    return this._focusPageInstance
   }
 
   public shouldRender() {

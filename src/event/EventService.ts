@@ -403,7 +403,6 @@ export class EventService {
   }
 
   private _onPointerMove = async (from: FederatedEvent) => {
-    console.log(from)
     if (!(from instanceof FederatedPointerEvent)) {
       return
     }
