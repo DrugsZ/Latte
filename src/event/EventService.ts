@@ -301,8 +301,7 @@ export class EventService {
     if (!e.target) {
       return
     }
-
-    // [target, parent, root, Canvas]
+    // [target, parent, root]
     const composedPath = e.composedPath()
 
     // event flow: capture -> target -> bubbling
@@ -343,8 +342,6 @@ export class EventService {
         target = target.parentNode
       }
     }
-
-    propagationPath.reverse()
 
     return propagationPath
   }

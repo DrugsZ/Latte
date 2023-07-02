@@ -41,7 +41,7 @@ export default class View {
       )
       currentCamera.onCameraViewChange(e => this._onCameraViewChange(e))
     })
-    this._pickService = new PickService(this._focusPageInstance)
+    this._pickService = new PickService(this.visibleElementRenderObjects)
     this._mouseHandler = new MouseHandler(this._renderDOM, this)
     this._eventService = new EventService(this._renderContext.getRoot())
     this.client2Viewport = this.client2Viewport.bind(this)
@@ -118,8 +118,8 @@ export default class View {
     const scale = currentCamera.getZoom()
     const d = currentCamera.getViewport()
     return {
-      x: client.x * scale + d.x,
-      y: client.y * scale + d.y,
+      x: client.x / scale + d.x,
+      y: client.y / scale + d.y,
     }
   }
 }

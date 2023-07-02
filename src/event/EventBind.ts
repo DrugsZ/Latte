@@ -64,23 +64,26 @@ export class EventBind {
     private readonly _pickService: IPickerService,
     private readonly client2Viewport: (client: IPoint) => IPoint
   ) {
-    this._init()
     this._onPointerDown = this._onPointerDown.bind(this)
     this._onPointerMove = this._onPointerMove.bind(this)
     this._onPointerUp = this._onPointerUp.bind(this)
     this._onPointerOver = this._onPointerOver.bind(this)
     this._onWheel = this._onWheel.bind(this)
+    this._init()
   }
 
   private _init() {
-    this._view.addEventListener('mousedown', this._onPointerDown.bind(this))
-    this._view.addEventListener('mousemove', this._onPointerMove.bind(this))
-    this._view.addEventListener('mouseup', this._onPointerUp.bind(this))
-    this._view.addEventListener('mouseover', this._onPointerOver.bind(this))
-    this._view.addEventListener('pointerdown', this._onPointerDown.bind(this))
-    this._view.addEventListener('pointermove', this._onPointerMove.bind(this))
-    this._view.addEventListener('pointerup', this._onPointerUp.bind(this))
-    this._view.addEventListener('pointerover', this._onPointerOver.bind(this))
+    if (this._supportsPointerEvents) {
+      this._view.addEventListener('pointerdown', this._onPointerDown.bind(this))
+      this._view.addEventListener('pointermove', this._onPointerMove.bind(this))
+      this._view.addEventListener('pointerup', this._onPointerUp.bind(this))
+      this._view.addEventListener('pointerover', this._onPointerOver.bind(this))
+    } else {
+      this._view.addEventListener('mousedown', this._onPointerDown.bind(this))
+      this._view.addEventListener('mousemove', this._onPointerMove.bind(this))
+      this._view.addEventListener('mouseup', this._onPointerUp.bind(this))
+      this._view.addEventListener('mouseover', this._onPointerOver.bind(this))
+    }
 
     this._view.addEventListener('wheel', this._onWheel, {
       passive: true,
@@ -161,7 +164,7 @@ export class EventBind {
     return normalizedEvents as PointerEvent[]
   }
 
-  protected normalizeWheelEvent(nativeEvent: WheelEvent): FederatedWheelEvent {
+  private _normalizeWheelEvent(nativeEvent: WheelEvent): FederatedWheelEvent {
     const event = this._rootWheelEvent
 
     this.transferMouseData(event, nativeEvent)
@@ -171,8 +174,8 @@ export class EventBind {
     event.deltaMode = nativeEvent.deltaMode
 
     const { x, y } = this.client2Viewport({
-      x: event.offsetX,
-      y: event.offsetY,
+      x: nativeEvent.offsetX,
+      y: nativeEvent.offsetY,
     })
     event.canvas = new Point(x, y)
     event.global.copyFrom(event.screen)
@@ -226,8 +229,8 @@ export class EventBind {
     event.twist = nativeEvent.twist
     this.transferMouseData(event, nativeEvent)
     const { x, y } = this.client2Viewport({
-      x: event.offsetX,
-      y: event.offsetY,
+      x: nativeEvent.offsetX,
+      y: nativeEvent.offsetY,
     })
     event.canvas = new Point(x, y)
     event.global.copyFrom(event.canvas)
@@ -254,7 +257,6 @@ export class EventBind {
         this._rootPointerEvent,
         nativeEvent
       )
-
       this._eventService.mapEvent(federatedEvent)
     }
   }
@@ -335,7 +337,7 @@ export class EventBind {
   }
 
   private _onWheel(nativeEvent: WheelEvent): void {
-    const wheelEvent = this.normalizeWheelEvent(nativeEvent)
+    const wheelEvent = this._normalizeWheelEvent(nativeEvent)
 
     this._eventService.mapEvent(wheelEvent)
   }
