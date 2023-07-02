@@ -6,24 +6,23 @@ export abstract class Container<
   protected _children: DisplayObject<BaseNodeSchema>[] = []
 
   getBoundingClientRect() {
-    const bBox: Rectangle = {
-      x: Infinity,
-      y: Infinity,
-      width: -Infinity,
-      height: -Infinity,
-    }
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
     this._children.forEach(element => {
       const elementBBox = element.getBoundingClientRect()
-      bBox.x = Math.min(bBox.x, elementBBox.x)
-      bBox.y = Math.min(bBox.y, elementBBox.y)
-      bBox.width =
-        Math.max(bBox.width + bBox.x, elementBBox.width + elementBBox.x) -
-        bBox.x
-      bBox.height =
-        Math.max(bBox.height + bBox.y, elementBBox.height + elementBBox.y) -
-        bBox.y
+      minX = Math.min(minX, elementBBox.x)
+      minY = Math.min(minY, elementBBox.y)
+      maxX = Math.max(maxX, elementBBox.x + elementBBox.width)
+      maxY = Math.max(maxY, elementBBox.y + elementBBox.height)
     })
-    return bBox
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    } as Rectangle
   }
 
   getChildren() {
