@@ -65,14 +65,12 @@ class CameraService<T = any> {
     const minRatio = Math.min(widthRatio, heightRatio)
     const canRenderWidth = fullWidth / minRatio
     const canRenderHeight = fullHeight / minRatio
-    const paddingWidth = canRenderWidth - size.width
-    const paddingHeight = canRenderHeight - size.height
 
     const currentSize = {
       width: canRenderWidth,
       height: canRenderHeight,
-      x: size.x + (Math.sign(size.x) * paddingWidth) / 2,
-      y: size.y + (Math.sign(size.y) * paddingHeight) / 2,
+      x: size.x + (width - canRenderWidth) / 2,
+      y: size.y + (height - canRenderHeight) / 2,
     }
 
     const newCamera = new Camera(currentSize, minRatio)
