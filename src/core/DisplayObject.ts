@@ -84,6 +84,10 @@ export abstract class DisplayObject<
     return this._elementData.fillPaints ?? []
   }
 
+  getZIndex() {
+    return this._elementData.parentIndex.position
+  }
+
   get width() {
     return this._elementData.size.x
   }

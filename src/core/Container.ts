@@ -1,4 +1,5 @@
 import { DisplayObject } from 'Latte/core/DisplayObject'
+import { compareASCII } from 'Latte/math/ZIndex'
 
 export abstract class Container<
   T extends BaseNodeSchema = BaseNodeSchema
@@ -29,13 +30,30 @@ export abstract class Container<
     return this._children
   }
 
+  private _appendChild(child: DisplayObject) {
+    const childLength = this._children.length
+    let index = 0
+    let isAddEnd = false
+    while (index < childLength && !isAddEnd) {
+      const compareChild = this._children[index]
+      const compareZIndex = compareChild.getZIndex()
+      const currentZIndex = child.getZIndex()
+      if (compareASCII(compareZIndex, currentZIndex)) {
+        isAddEnd = true
+      } else {
+        index++
+      }
+    }
+    this._children.splice(index, 0, child)
+    child.parentNode?.removeChild(child)
+    child.parentNode = this
+    child.transform.worldDirty = true
+  }
+
   appendChild(...child: DisplayObject[]) {
-    this._children?.push(...child)
-    child.forEach(c => {
-      c.parentNode?.removeChild(c)
-      c.parentNode = this
-      c.transform.worldDirty = true
-    })
+    child.forEach(item => {
+      this._appendChild(item)
+    }, this)
   }
 
   removeChild(removeChild: DisplayObject) {

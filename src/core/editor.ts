@@ -1,6 +1,6 @@
 import ModelData from 'Latte/core/modelData'
 import ViewModel from 'Latte/core/viewModel'
-import model from 'Latte/assets/testSchema2.json'
+import model from 'Latte/assets/testSchema4.json'
 import View from 'Latte/core/View'
 import RenderService from 'Latte/render/renderService'
 

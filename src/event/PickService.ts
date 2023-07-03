@@ -5,9 +5,9 @@ import { isRect, isEllipse } from 'Latte/utils/assert'
 import type Ellipse from 'Latte/elements/Ellipse'
 import type Rect from 'Latte/elements/Rect'
 
-let isDownMode = false
+// let isDownMode = false
 
-export const setDown = mode => (isDownMode = mode)
+// export const setDown = mode => (isDownMode = mode)
 export interface IPickerService {
   pick(point: Point): IEventTarget | null
 }
@@ -30,18 +30,21 @@ export class PickService implements IPickerService {
 
   pick(point: Point): IEventTarget | null {
     let target: any = null
-    if (isDownMode) {
-      console.log(point)
-    }
-    this._visibleElementRenderObjects.forEach(item => {
+    const findElements = this._visibleElementRenderObjects.slice().reverse()
+    findElements.some(item => {
+      // if (isDownMode) {
+      //   console.log('call')
+      // }
       if (isRect(item) && this._isPointInRect(point, item)) {
         target = item
+        return true
       }
       if (isEllipse(item) && this._isPointInEllipse(point, item)) {
         target = item
+        return true
       }
     })
-    setDown(false)
+    // setDown(false)
     return target
   }
 }

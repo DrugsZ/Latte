@@ -129,7 +129,7 @@ interface BaseNodeSchema extends NodeStrokeSchema {
   guid: DefaultIDType
   parentIndex: {
     guid: DefaultIDType
-    position: number
+    position: string
   }
   type: EditorElementTypeKind
   name: string
