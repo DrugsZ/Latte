@@ -1,4 +1,4 @@
-import { Point } from 'Latte/math/Point'
+import { Point } from 'Latte/common/Point'
 import { IEventTarget } from 'Latte/core/interfaces'
 import type DisplayObject from 'Latte/core/Container'
 import { isRect, isEllipse } from 'Latte/utils/assert'

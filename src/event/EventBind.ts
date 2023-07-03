@@ -48,7 +48,7 @@ export interface FormattedTouch extends Touch {
 
 const MOUSE_POINTER_ID = 1
 import type { IPickerService } from 'Latte/event/PickService'
-import { Point } from 'Latte/math/Point'
+import { Point } from 'Latte/common/Point'
 
 export class EventBind {
   private _rootPointerEvent = new FederatedPointerEvent(null)

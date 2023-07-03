@@ -1,5 +1,5 @@
 import { DisplayObject } from 'Latte/core/DisplayObject'
-import { compareASCII } from 'Latte/math/ZIndex'
+import { compareASCII } from 'Latte/math/zIndex'
 
 export abstract class Container<
   T extends BaseNodeSchema = BaseNodeSchema

@@ -1,5 +1,5 @@
-import { Matrix } from 'Latte/math/Matrix'
-import { Point } from 'Latte/math/Point'
+import { Matrix } from 'Latte/math/matrix'
+import { Point } from 'Latte/common/Point'
 
 export class Transform {
   private _localTransform: Matrix

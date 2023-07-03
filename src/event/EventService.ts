@@ -4,7 +4,7 @@ import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
 import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
 import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
 import type { IEventTarget } from 'Latte/core/interfaces'
-import { Point } from 'Latte/math/Point'
+import { Point } from 'Latte/common/Point'
 import { isDisplayObject } from 'Latte/utils/assert'
 
 type Picker = (event: Point) => IEventTarget | null

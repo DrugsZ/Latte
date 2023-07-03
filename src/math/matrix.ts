@@ -1,4 +1,4 @@
-import { Point } from './Point'
+import { Point } from 'Latte/common/Point'
 
 const degrees = 180 / Math.PI
 

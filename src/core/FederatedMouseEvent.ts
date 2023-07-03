@@ -1,4 +1,4 @@
-import { Point } from 'Latte/math/Point'
+import { Point } from 'Latte/common/Point'
 import { FederatedEvent } from 'Latte/core/FederatedEvent'
 import type { DisplayObject } from 'Latte/core/DisplayObject'
 

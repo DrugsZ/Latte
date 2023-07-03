@@ -1,6 +1,6 @@
 import type { IEventTarget } from 'Latte/core/interfaces'
 import type { EventService } from 'Latte/event/EventService'
-import { Point } from 'Latte/math/Point'
+import { Point } from 'Latte/common/Point'
 
 /**
  * An DOM-compatible synthetic event implementation that is "forwarded" on behalf of an original
