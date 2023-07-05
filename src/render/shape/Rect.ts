@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
 import Rect from 'Latte/elements/Rect'
-import { EditorElementTypeKind } from 'Latte/core/DisplayObject'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
 
 export class RectShapeRender

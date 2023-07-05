@@ -5,7 +5,7 @@ import {
 import { Emitter } from 'Latte/common/event'
 
 interface IUpdatePayload {
-  data: BaseNodeSchema
+  data: BaseElementSchema
 }
 
 interface ISchemaModel {

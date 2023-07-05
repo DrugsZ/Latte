@@ -2,9 +2,9 @@ import { DisplayObject } from 'Latte/core/DisplayObject'
 import { compareASCII } from 'Latte/math/zIndex'
 
 export abstract class Container<
-  T extends BaseNodeSchema = BaseNodeSchema
+  T extends BaseElementSchema = BaseElementSchema
 > extends DisplayObject<T> {
-  protected _children: DisplayObject<BaseNodeSchema>[] = []
+  protected _children: DisplayObject<BaseElementSchema>[] = []
 
   getBoundingClientRect() {
     let minX = Infinity

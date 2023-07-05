@@ -4,7 +4,7 @@ import {
   registerEditorFillRender,
   getEditorFillRender,
 } from 'Latte/render/RenderContributionRegistry'
-import { EditorElementTypeKind, FillType } from 'Latte/core/DisplayObject'
+import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
 import { RectShapeRender } from 'Latte/render/shape/Rect'
 import { EllipseShapeRender } from 'Latte/render/shape/Ellipse'
 import Rect from 'Latte/elements/Rect'

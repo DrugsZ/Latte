@@ -2,26 +2,10 @@ import { EventTarget } from 'Latte/core/EventTarget'
 import { Transform } from 'Latte/core/Transform'
 import { Bounds } from 'Latte/core/Bounds'
 import type { Container } from 'Latte/core//Container'
-
-export enum EditorElementTypeKind {
-  RECTANGLE = 'RECTANGLE',
-  ELLIPSE = 'ELLIPSE',
-  FRAME = 'FRAME',
-  PAGE = 'CANVAS',
-  DOCUMENT = 'DOCUMENT',
-}
-
-export enum FillType {
-  SOLID = 'SOLID',
-  GRADIENT_LINEAR = 'GRADIENT_LINEAR',
-  GRADIENT_RADIAL = 'GRADIENT_RADIAL',
-  GRADIENT_ANGULAR = 'GRADIENT_ANGULAR',
-  GRADIENT_DIAMOND = 'GRADIENT_DIAMOND',
-  IMAGE = 'IMAGE',
-}
+import type { EditorElementTypeKind } from 'Latte/constants/schema'
 
 export abstract class DisplayObject<
-  T extends BaseNodeSchema = BaseNodeSchema
+  T extends BaseElementSchema = BaseElementSchema
 > extends EventTarget {
   type: EditorElementTypeKind
 

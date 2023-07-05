@@ -6,7 +6,7 @@ import Ellipse from 'Latte/elements/Ellipse'
 import Page from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 
-export const createElement = (element: BaseNodeSchema) => {
+export const createElement = (element: BaseElementSchema) => {
   const { type } = element
   let Ctr: any = Rect
   switch (type) {
@@ -36,11 +36,11 @@ class RenderContext {
   private _elements: Map<string, DisplayObject> = new Map()
   private _root: EditorDocument
 
-  constructor(elements: BaseNodeSchema[]) {
+  constructor(elements: BaseElementSchema[]) {
     this._initElements(elements)
   }
 
-  private _initElements(elements: BaseNodeSchema[]) {
+  private _initElements(elements: BaseElementSchema[]) {
     const cachedChildElements: {
       [key: string]: DisplayObject[]
     } = {}

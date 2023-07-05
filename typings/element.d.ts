@@ -115,6 +115,22 @@ declare enum EditorElementTypeKind {
   DOCUMENT = 'DOCUMENT',
 }
 
+interface BaseNodeSchema {
+  type: EditorElementTypeKind
+  guid: DefaultIDType
+  name: string
+  visible: boolean
+  opacity: number
+  transform: TransformObject
+}
+
+interface BaseChildNodeSchema extends BaseNodeSchema {
+  parentIndex: {
+    guid: DefaultIDType
+    position: string
+  }
+}
+
 interface NodeStrokeSchema {
   strokeWeight: number
   strokeAlign: 'INSIDE' | 'CENTER' | 'OUTSIDE'
@@ -125,17 +141,8 @@ interface NodeStrokeSchema {
   strokePaints?: Paint[]
 }
 
-interface BaseNodeSchema extends NodeStrokeSchema {
-  guid: DefaultIDType
-  parentIndex: {
-    guid: DefaultIDType
-    position: string
-  }
-  type: EditorElementTypeKind
+interface BaseElementSchema extends NodeStrokeSchema, BaseChildNodeSchema {
   name: string
-  visible: boolean
-  opacity: number
-  transform: TransformObject
   size: {
     x: number
     y: number
@@ -151,25 +158,20 @@ interface LatteFile {
   guid: DefaultIDType
 }
 
-interface LatteDocument {
+interface LatteDocument extends BaseNodeSchema {
   type: EditorElementTypeKind.DOCUMENT
-  guid: DefaultIDType
-  name: string
-  visible: boolean
-  opacity: number
-  transform: TransformObject
 }
 
-interface PAGE extends BaseNodeSchema {
+interface PAGE extends BaseChildNodeSchema {
   type: EditorElementTypeKind.PAGE
   backgrounds: Paint[]
 }
 
-interface FrameElement extends BaseNodeSchema {
+interface FrameElement extends BaseElementSchema {
   type: EditorElementTypeKind.FRAME
 }
 
-interface BaseNodeCornerSchema extends BaseNodeSchema {
+interface BaseNodeCornerSchema extends BaseElementSchema {
   cornerRadius: number
   cornerSmoothing: number
 }

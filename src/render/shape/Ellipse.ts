@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import { EditorElementTypeKind } from 'Latte/core/DisplayObject'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
 import Ellipse from 'Latte/elements/Ellipse'
 

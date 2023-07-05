@@ -1,9 +1,11 @@
-import { Point } from 'Latte/common/Point'
-import { IEventTarget } from 'Latte/core/interfaces'
+/* eslint-disable class-methods-use-this */
+import type { Point } from 'Latte/common/Point'
+import type { IEventTarget } from 'Latte/core/interfaces'
 import type DisplayObject from 'Latte/core/Container'
 import { isRect, isEllipse } from 'Latte/utils/assert'
 import type Ellipse from 'Latte/elements/Ellipse'
 import type Rect from 'Latte/elements/Rect'
+import { inBox } from 'Latte/math/inPointerInPath'
 
 // let isDownMode = false
 
@@ -17,24 +19,24 @@ export class PickService implements IPickerService {
     this.pick = this.pick.bind(this)
   }
 
-  private _isPointInEllipse = (point: Point, item: Ellipse) => {
-    return false
-  }
+  private _isPointInEllipse = (point: Point, item: Ellipse) => false
 
   private _isPointInRect = (point: Point, item: Rect) => {
     const { x, y, width, height } = item
-    return (
-      point.x > x && point.x < width + x && point.y > y && point.y < height + y
-    )
+    const fills = item.getFills()
+    if (!fills) return false
+    const border = item.getBorder()
+    const currentBorders = Array.isArray(border) ? border : [border]
+    const hasBorder = currentBorders.some(item => item !== 0)
+    if (!hasBorder) {
+      return inBox(x, y, width, height, point.x, point.y)
+    }
   }
 
   pick(point: Point): IEventTarget | null {
     let target: any = null
     const findElements = this._visibleElementRenderObjects.slice().reverse()
     findElements.some(item => {
-      // if (isDownMode) {
-      //   console.log('call')
-      // }
       if (isRect(item) && this._isPointInRect(point, item)) {
         target = item
         return true
@@ -44,7 +46,6 @@ export class PickService implements IPickerService {
         return true
       }
     })
-    // setDown(false)
     return target
   }
 }
