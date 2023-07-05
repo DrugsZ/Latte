@@ -39,7 +39,7 @@ export const DEFAULT_LATTE_FILE: LatteFile = {
   sessionID: 0,
   guid: {
     sessionID: 0,
-    localID: 1,
+    localID: -1,
   },
   elements: [],
 }
