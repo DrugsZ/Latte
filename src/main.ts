@@ -14,4 +14,4 @@ const bodyRect = document.body.getBoundingClientRect()
 const canvas = initCanvas(bodyRect)
 document.body.appendChild(canvas)
 const test = new Editor(canvas)
-window.test = test
+// window.test = test

@@ -144,18 +144,34 @@ interface BaseNodeSchema extends NodeStrokeSchema {
   fillPaints?: Paint[]
 }
 
-interface BaseNodeCornerSchema extends BaseNodeSchema {
-  cornerRadius: number
-  cornerSmoothing: number
+interface LatteFile {
+  type: 'NODE_CHANGES'
+  elements: BaseNodeSchema[]
+  sessionID: number
+  guid: DefaultIDType
 }
 
-interface CditorDocument extends BaseNodeSchema {
+interface LatteDocument {
   type: EditorElementTypeKind.DOCUMENT
+  guid: DefaultIDType
+  name: string
+  visible: boolean
+  opacity: number
+  transform: TransformObject
 }
 
 interface PAGE extends BaseNodeSchema {
   type: EditorElementTypeKind.PAGE
   backgrounds: Paint[]
+}
+
+interface FrameElement extends BaseNodeSchema {
+  type: EditorElementTypeKind.FRAME
+}
+
+interface BaseNodeCornerSchema extends BaseNodeSchema {
+  cornerRadius: number
+  cornerSmoothing: number
 }
 
 interface RectangleElement extends BaseNodeCornerSchema {
@@ -169,19 +185,6 @@ interface RectangleElement extends BaseNodeCornerSchema {
   strokeBottomWeight: number
   strokeLeftWeight: number
   strokeRightWeight: number
-}
-
-interface FrameElement extends BaseNodeSchema {
-  type: EditorElementTypeKind.FRAME
-}
-
-interface Window {
-  test: any
-}
-
-interface LatteFile {
-  elements: BaseNodeSchema[]
-  sessionID: number
 }
 
 interface Rectangle {
