@@ -5,7 +5,11 @@ import type DisplayObject from 'Latte/core/Container'
 import { isRect, isEllipse } from 'Latte/utils/assert'
 import type Ellipse from 'Latte/elements/Ellipse'
 import type Rect from 'Latte/elements/Rect'
-import { inBox } from 'Latte/math/inPointerInPath'
+import {
+  inBox,
+  inRectWithRadius,
+  ellipseDistance,
+} from 'Latte/math/inPointerInPath'
 
 // let isDownMode = false
 
@@ -19,18 +23,41 @@ export class PickService implements IPickerService {
     this.pick = this.pick.bind(this)
   }
 
-  private _isPointInEllipse = (point: Point, item: Ellipse) => false
+  private _isPointInEllipse = (point: Point, item: Ellipse) => {
+    const { width, height } = item
+    const { x, y } = point
+    const radiusX = width / 2
+    const radiusY = height / 2
+    const squareX = (x - radiusX) * (x - radiusX)
+    const squareY = (y - radiusY) * (y - radiusY)
+
+    return ellipseDistance(squareX, squareY, radiusX, radiusY)
+  }
 
   private _isPointInRect = (point: Point, item: Rect) => {
     const { x, y, width, height } = item
     const fills = item.getFills()
     if (!fills) return false
     const border = item.getBorder()
-    const currentBorders = Array.isArray(border) ? border : [border]
-    const hasBorder = currentBorders.some(item => item !== 0)
+    const currentBorders: [number, number, number, number] = Array.isArray(
+      border
+    )
+      ? border
+      : [border, border, border, border]
+    const hasBorder = currentBorders.some(b => b !== 0)
     if (!hasBorder) {
       return inBox(x, y, width, height, point.x, point.y)
     }
+    return inRectWithRadius(
+      x,
+      y,
+      width,
+      height,
+      currentBorders,
+      0,
+      point.x,
+      point.y
+    )
   }
 
   pick(point: Point): IEventTarget | null {
@@ -45,6 +72,7 @@ export class PickService implements IPickerService {
         target = item
         return true
       }
+      return false
     })
     return target
   }

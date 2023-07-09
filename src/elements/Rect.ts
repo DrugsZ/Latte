@@ -1,9 +1,10 @@
-import { DisplayObject, EditorElementTypeKind } from 'Latte/core/DisplayObject'
+import { DisplayObject } from 'Latte/core/DisplayObject'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
 
 class Rect extends DisplayObject<RectangleElement> {
   static TYPE = EditorElementTypeKind.RECTANGLE
 
-  getBorder() {
+  getBorder(): number | [number, number, number, number] {
     const { cornerRadius } = this._elementData
     if (cornerRadius === 'MIXED') {
       return [
