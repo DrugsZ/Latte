@@ -1,5 +1,6 @@
-import { DisplayObject, EditorElementTypeKind } from 'Latte/core/DisplayObject'
-import { Container } from 'Latte/core/Container'
+import type { DisplayObject } from 'Latte/core/DisplayObject'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
+import type { Container } from 'Latte/core/Container'
 import { EditorDocument } from 'Latte/elements/document'
 import Rect from 'Latte/elements/Rect'
 import Ellipse from 'Latte/elements/Ellipse'

@@ -1,11 +1,13 @@
 /* eslint-disable no-param-reassign */
-import { FederatedEvent } from 'Latte/core/FederatedEvent'
+import type { FederatedEvent } from 'Latte/core/FederatedEvent'
 import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
 import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
 import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
 import type { IEventTarget } from 'Latte/core/interfaces'
-import { Point } from 'Latte/common/Point'
+import type { Point } from 'Latte/common/Point'
 import { isDisplayObject } from 'Latte/utils/assert'
+
+import { setDown } from 'Latte/event/PickService'
 
 type Picker = (event: Point) => IEventTarget | null
 type TrackingData = {
@@ -222,7 +224,7 @@ export class EventService {
 
   private _notifyListeners(e: FederatedEvent, type: string) {
     // @ts-ignore
-    const emitter = e.currentTarget.emitter
+    const { emitter } = e.currentTarget
     // @ts-ignore
     const listeners = (emitter._events as EmitterListeners)[type]
 
@@ -385,7 +387,7 @@ export class EventService {
     if (!(from instanceof FederatedPointerEvent)) {
       return
     }
-
+    setDown(true)
     const e = await this._createPointerEvent(from)
     this.dispatchEvent(e, 'pointerdown')
     if (e.pointerType === 'mouse') {
@@ -397,6 +399,7 @@ export class EventService {
 
     trackingData.pressTargetsByButton[from.button] = e.composedPath()
     this._freeEvent(e)
+    setDown(false)
   }
 
   private _onPointerMove = async (from: FederatedEvent) => {

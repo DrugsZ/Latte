@@ -1,7 +1,4 @@
-import {
-  createDefaultElement,
-  createDefaultDocument,
-} from 'Latte/common/schema'
+import { createDefaultElement, createDefaultFile } from 'Latte/common/schema'
 import { Emitter } from 'Latte/common/event'
 
 interface IUpdatePayload {
@@ -20,7 +17,7 @@ interface ChangeEvent {
 }
 
 class ModelData implements ISchemaModel {
-  private _model: LatteFile = createDefaultDocument()
+  private _model: LatteFile = createDefaultFile()
 
   private readonly _onDataChange = new Emitter<LatteFile>()
   private readonly onDataChange = this._onDataChange.event

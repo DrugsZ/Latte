@@ -68,6 +68,25 @@ export class Matrix {
     return Math.atan2(mat.b, mat.a) * degrees
   }
 
+  applyInvertToPoint<P extends IPoint = Point>(pos: IPoint, newPos?: P): P {
+    newPos = (newPos || new Point()) as P
+
+    const id = 1 / (this.a * this.d + this.c * -this.b)
+
+    const { x, y } = pos
+
+    newPos.x =
+      this.d * id * x +
+      -this.c * id * y +
+      (this.ty * this.c - this.tx * this.d) * id
+    newPos.y =
+      this.a * id * y +
+      -this.b * id * x +
+      (-this.ty * this.a + this.tx * this.b) * id
+
+    return newPos
+  }
+
   invert() {
     const aa = this.a
     const ab = this.b

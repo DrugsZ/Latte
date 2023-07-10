@@ -7,8 +7,8 @@ import {
 import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
 import { RectShapeRender } from 'Latte/render/shape/Rect'
 import { EllipseShapeRender } from 'Latte/render/shape/Ellipse'
-import Rect from 'Latte/elements/Rect'
-import Ellipse from 'Latte/elements/Ellipse'
+import type Rect from 'Latte/elements/Rect'
+import type Ellipse from 'Latte/elements/Ellipse'
 import { SolidColorFillRender } from 'Latte/render/fill/solid'
 import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
 

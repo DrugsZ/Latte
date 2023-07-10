@@ -1,6 +1,6 @@
-import { FillType } from 'Latte/core/DisplayObject'
-import Rect from 'Latte/elements/Rect'
-import Ellipse from 'Latte/elements/Ellipse'
+import type { FillType } from 'Latte/constants/schema'
+import type Rect from 'Latte/elements/Rect'
+import type Ellipse from 'Latte/elements/Ellipse'
 
 export interface EditorTypeRenderCtor<T> {
   new (): T

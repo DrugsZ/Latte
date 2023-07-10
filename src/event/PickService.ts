@@ -11,9 +11,9 @@ import {
   ellipseDistance,
 } from 'Latte/math/inPointerInPath'
 
-// let isDownMode = false
+let isDownMode = false
 
-// export const setDown = mode => (isDownMode = mode)
+export const setDown = mode => (isDownMode = mode)
 export interface IPickerService {
   pick(point: Point): IEventTarget | null
 }
@@ -31,11 +31,11 @@ export class PickService implements IPickerService {
     const squareX = (x - radiusX) * (x - radiusX)
     const squareY = (y - radiusY) * (y - radiusY)
 
-    return ellipseDistance(squareX, squareY, radiusX, radiusY)
+    return ellipseDistance(squareX, squareY, radiusX, radiusY) <= 1
   }
 
   private _isPointInRect = (point: Point, item: Rect) => {
-    const { x, y, width, height } = item
+    const { width, height } = item
     const fills = item.getFills()
     if (!fills) return false
     const border = item.getBorder()
@@ -46,11 +46,11 @@ export class PickService implements IPickerService {
       : [border, border, border, border]
     const hasBorder = currentBorders.some(b => b !== 0)
     if (!hasBorder) {
-      return inBox(x, y, width, height, point.x, point.y)
+      return inBox(0, 0, width, height, point.x, point.y)
     }
     return inRectWithRadius(
-      x,
-      y,
+      0,
+      0,
       width,
       height,
       currentBorders,
@@ -64,11 +64,15 @@ export class PickService implements IPickerService {
     let target: any = null
     const findElements = this._visibleElementRenderObjects.slice().reverse()
     findElements.some(item => {
-      if (isRect(item) && this._isPointInRect(point, item)) {
+      const localPosition = item.getWorldTransform().applyInvertToPoint(point)
+      if (isDownMode) {
+        console.log(point, localPosition, item.x, item.y, item.type)
+      }
+      if (isRect(item) && this._isPointInRect(localPosition, item)) {
         target = item
         return true
       }
-      if (isEllipse(item) && this._isPointInEllipse(point, item)) {
+      if (isEllipse(item) && this._isPointInEllipse(localPosition, item)) {
         target = item
         return true
       }
