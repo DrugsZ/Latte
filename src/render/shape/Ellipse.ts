@@ -15,11 +15,11 @@ export class EllipseShapeRender
     const radiusY = height / 2
     const transform = renderObject.getWorldTransform()
     const { a, b, c, d } = transform
-    const centerX = x + radiusX
-    const centerY = y + radiusY
-    ctx.translate(centerX, centerY)
-    ctx.transform(a, b, c, d, 0, 0)
+    const centerX = radiusX
+    const centerY = radiusY
     ctx.translate(-centerX, -centerY)
+    ctx.transform(a, b, c, d, 0, 0)
+    ctx.translate(centerX, centerY)
     ctx.ellipse(x, y, radiusX, radiusY, 0, 0, 2 * Math.PI)
   }
 }

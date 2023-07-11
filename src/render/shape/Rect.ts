@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
-import Rect from 'Latte/elements/Rect'
+import type Rect from 'Latte/elements/Rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
-import { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
+import type { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
 
 export class RectShapeRender
   implements
@@ -16,11 +16,11 @@ export class RectShapeRender
     const { x, y, width, height } = renderObject
     const transform = renderObject.getWorldTransform()
     const { a, b, c, d } = transform
-    const centerX = x + width / 2
-    const centerY = y + height / 2
-    ctx.translate(centerX, centerY)
-    ctx.transform(a, b, c, d, 0, 0)
+    const centerX = width / 2
+    const centerY = height / 2
     ctx.translate(-centerX, -centerY)
+    ctx.transform(a, b, c, d, 0, 0)
+    ctx.translate(centerX, centerY)
     if (RectShapeRender.hasBorder(renderObject)) {
       const borders = renderObject.getBorder()
       ctx.roundRect(x, y, width, height, borders)
