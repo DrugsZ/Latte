@@ -104,8 +104,7 @@ export default class View {
       if (this.shouldRender()) {
         this._renderService.draw(
           this.visibleElementRenderObjects,
-          this._viewModel.getCamera(this._focusPageInstance.id).getViewport(),
-          this._viewModel.getCamera(this._focusPageInstance.id).getZoom()
+          this._viewModel.getCamera(this._focusPageInstance.id)
         )
         this._shouldRender = false
       }
@@ -115,11 +114,13 @@ export default class View {
 
   public client2Viewport(client: IPoint) {
     const currentCamera = this._viewModel.getCamera(this._focusPageInstance.id)
-    const scale = currentCamera.getZoom()
-    const d = currentCamera.getViewport()
+    const vpMatrix = currentCamera.getViewPortMatrix()
+    const zoom = vpMatrix[0]
+    const dx = vpMatrix[4]
+    const dy = vpMatrix[5]
     return {
-      x: client.x / scale + d.x,
-      y: client.y / scale + d.y,
+      x: client.x / zoom + dx,
+      y: client.y / zoom + dy,
     }
   }
 }
