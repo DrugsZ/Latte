@@ -84,7 +84,8 @@ export interface IEditorShapeRenderContributionDescription<
   readonly id: EditorElementTypeKind
   readonly render: (
     renderObject: ShapeRenderTypeMaps[T],
-    ctx: CanvasRenderingContext2D
+    ctx: CanvasRenderingContext2D,
+    contextMatrix: Float32Array
   ) => void
 }
 

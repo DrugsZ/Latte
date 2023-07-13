@@ -1,4 +1,4 @@
-import ModelData from 'Latte/core/modelData'
+import type ModelData from 'Latte/core/modelData'
 import { Emitter } from 'Latte/common/event'
 import CameraService from 'Latte/core/CameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'

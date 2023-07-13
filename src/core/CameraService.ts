@@ -39,14 +39,20 @@ export class Camera {
     this._matrix[1] = 0
     this._matrix[2] = 0
     this._matrix[3] = this._zoom
-    this._matrix[4] = this._zoom * tx
-    this._matrix[5] = this._zoom * ty
+    this._matrix[4] = tx
+    this._matrix[5] = ty
     this._onCameraViewChange.fire(this)
   }
 
   move(x: number, y: number) {
     this._position.x += x
     this._position.y += y
+    this._updateMatrix()
+  }
+
+  setPosition(x: number, y: number) {
+    this._position.x = x
+    this._position.y = y
     this._updateMatrix()
   }
 
@@ -84,11 +90,14 @@ class CameraService<T = any> {
     const { size, padding = 0 } = options
     const { width, height } = size
     const { width: fullWidth, height: fullHeight } = fullSize
-    const widthRatio = width / (fullWidth * (1 - padding))
-    const heightRatio = height / (fullHeight * (1 - padding))
+    const widthRatio = (fullWidth * (1 - padding)) / width
+    const heightRatio = (fullHeight * (1 - padding)) / height
     const minRatio = Math.min(widthRatio, heightRatio)
+    const viewportCenterX = size.x + width / 2
+    const viewportCenterY = size.y + height / 2
 
-    const newCamera = new Camera(size, minRatio)
+    const newCamera = new Camera(fullSize, minRatio)
+    newCamera.setPosition(viewportCenterX, viewportCenterY)
     this._cameraMaps.set(id, newCamera)
     return newCamera
   }
