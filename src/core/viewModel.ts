@@ -45,10 +45,6 @@ class ViewModel {
     return this._cameraService.getViewport(id)
   }
 
-  getZoom(id: string) {
-    return this._cameraService.getZoom(id)
-  }
-
   getCamera(id: string) {
     return this._cameraService.getCamera(id)
   }

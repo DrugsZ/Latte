@@ -88,6 +88,10 @@ export abstract class DisplayObject<
     return this.transform.getPosition().y
   }
 
+  get visible() {
+    return this._elementData.visible
+  }
+
   // eslint-disable-next-line class-methods-use-this
   getBorder(): number | number[] | null {
     return null

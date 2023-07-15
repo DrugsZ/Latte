@@ -61,11 +61,15 @@ export class Camera {
   }
 
   getViewport(): Rectangle {
+    const renderCenterX = this._position.x
+    const renderCenterY = this._position.y
+    const renderWidth = this._viewport.width / this._zoom
+    const renderHeight = this._viewport.height / this._zoom
     return {
-      x: this._matrix[4],
-      y: this._matrix[5],
-      width: this._zoom * this._viewport.width,
-      height: this._zoom * this._viewport.height,
+      x: renderCenterX - renderWidth / 2,
+      y: renderCenterY - renderHeight / 2,
+      width: renderWidth,
+      height: renderHeight,
     }
   }
 }

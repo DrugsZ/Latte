@@ -12,6 +12,9 @@ export abstract class Container<
     let maxX = -Infinity
     let maxY = -Infinity
     this._children.forEach(element => {
+      if (!element.visible) {
+        return
+      }
       const elementBBox = element.getBoundingClientRect()
       minX = Math.min(minX, elementBBox.x)
       minY = Math.min(minY, elementBBox.y)
