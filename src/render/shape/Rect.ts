@@ -2,7 +2,7 @@
 import type Rect from 'Latte/elements/Rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import type { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
-import { Matrix, getTranslation } from 'Latte/math/matrix'
+import { Matrix } from 'Latte/math/matrix'
 
 export class RectShapeRender
   implements
@@ -22,9 +22,6 @@ export class RectShapeRender
   ) => {
     const { width, height } = renderObject
     const transform = renderObject.getWorldTransform()
-    const centerX = -(width / 2)
-    const centerY = -(height / 2)
-    const [tx1, ty1] = getTranslation([0, 0], transform, [centerX, centerY])
     Matrix.multiply(this._tempMatrix, contextMatrix, transform)
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)

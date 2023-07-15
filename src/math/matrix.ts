@@ -13,8 +13,8 @@ export const getTranslation = (
   if (origin) {
     const ox = origin[0]
     const oy = origin[1]
-    out[0] += ox - matrix.a * ox + matrix.c * oy
-    out[1] += oy - matrix.b * ox + matrix.d * oy
+    out[0] += ox - (matrix.a * ox + matrix.c * oy)
+    out[1] += oy - (matrix.b * ox + matrix.d * oy)
   }
 
   return out
