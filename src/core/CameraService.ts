@@ -33,8 +33,8 @@ export class Camera {
   }
 
   private _updateMatrix() {
-    const tx = this._viewport.width / 2 - this._position.x
-    const ty = this._viewport.height / 2 - this._position.y
+    const tx = this._viewport.width / 2 - this._position.x * this._zoom
+    const ty = this._viewport.height / 2 - this._position.y * this._zoom
     this._matrix[0] = this._zoom
     this._matrix[1] = 0
     this._matrix[2] = 0
