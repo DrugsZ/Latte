@@ -2,30 +2,34 @@
 import type Rect from 'Latte/elements/Rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import type { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
+import { Matrix } from 'Latte/math/matrix'
 
 export class RectShapeRender
   implements
     IEditorShapeRenderContributionDescription<EditorElementTypeKind.RECTANGLE>
 {
   readonly id = EditorElementTypeKind.RECTANGLE
+  private _tempMatrix = new Matrix()
+
   private static hasBorder(renderObject: Rect) {
     return renderObject.getBorder() !== null
   }
 
-  public render = (renderObject: Rect, ctx: CanvasRenderingContext2D) => {
-    const { x, y, width, height } = renderObject
+  public render = (
+    renderObject: Rect,
+    ctx: CanvasRenderingContext2D,
+    contextMatrix: Matrix
+  ) => {
+    const { width, height } = renderObject
     const transform = renderObject.getWorldTransform()
-    const { a, b, c, d } = transform
-    const centerX = width / 2
-    const centerY = height / 2
-    ctx.translate(-centerX, -centerY)
-    ctx.transform(a, b, c, d, 0, 0)
-    ctx.translate(centerX, centerY)
+    Matrix.multiply(this._tempMatrix, contextMatrix, transform)
+    const { a, b, c, d, tx, ty } = this._tempMatrix
+    ctx.setTransform(a, b, c, d, tx, ty)
     if (RectShapeRender.hasBorder(renderObject)) {
       const borders = renderObject.getBorder()
-      ctx.roundRect(x, y, width, height, borders)
+      ctx.roundRect(0, 0, width, height, borders)
       return
     }
-    ctx.rect(x, y, width, height)
+    ctx.rect(0, 0, width, height)
   }
 }

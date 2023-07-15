@@ -1,4 +1,4 @@
-import View from 'Latte/core/View'
+import type View from 'Latte/core/View'
 
 class MouseHandler {
   private _isMouseDown: boolean
@@ -31,7 +31,8 @@ class MouseHandler {
       const newX = (e as MouseEvent).movementX
       const newY = (e as MouseEvent).movementY
       const currentCamera = this._view.getCurrentCamera()
-      currentCamera.move(newX, newY)
+      const vpMatrix = currentCamera.getViewPortMatrix()
+      currentCamera.move(-newX / vpMatrix[0], -newY / vpMatrix[3])
     })
   }
 }

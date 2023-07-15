@@ -2,6 +2,24 @@ import { Point } from 'Latte/common/Point'
 
 const degrees = 180 / Math.PI
 
+export const getTranslation = (
+  out: [number, number],
+  matrix: Matrix,
+  origin?: [number, number]
+) => {
+  out[0] = matrix.tx
+  out[1] = matrix.ty
+
+  if (origin) {
+    const ox = origin[0]
+    const oy = origin[1]
+    out[0] += ox - (matrix.a * ox + matrix.c * oy)
+    out[1] += oy - (matrix.b * ox + matrix.d * oy)
+  }
+
+  return out
+}
+
 /* eslint-disable no-param-reassign */
 export class Matrix {
   public a: number
@@ -128,7 +146,7 @@ export class Matrix {
     return this
   }
 
-  toArray(out: Float32Array) {
+  toArray(out: Float32Array = new Float32Array(6)) {
     if (!this.array) {
       this.array = new Float32Array(6)
     }

@@ -1,6 +1,7 @@
 import type { FillType } from 'Latte/constants/schema'
 import type Rect from 'Latte/elements/Rect'
 import type Ellipse from 'Latte/elements/Ellipse'
+import type { Matrix } from 'Latte/math/matrix'
 
 export interface EditorTypeRenderCtor<T> {
   new (): T
@@ -84,7 +85,8 @@ export interface IEditorShapeRenderContributionDescription<
   readonly id: EditorElementTypeKind
   readonly render: (
     renderObject: ShapeRenderTypeMaps[T],
-    ctx: CanvasRenderingContext2D
+    ctx: CanvasRenderingContext2D,
+    contextMatrix: Matrix
   ) => void
 }
 

@@ -1,42 +1,76 @@
+import { Point } from 'Latte/common/Point'
 import { Emitter } from 'Latte/common/event'
 
 export class Camera {
   private _zoom: number = 1
-  private _viewport: Rectangle
+  private _viewport: {
+    width: number
+    height: number
+  }
+  private _position: Point
+  private _matrix = new Float32Array(6)
 
-  constructor(size: Rectangle, zoom: number = 1) {
-    this._viewport = size
+  constructor(
+    size: {
+      width: number
+      height: number
+    },
+    zoom: number = 1
+  ) {
+    this._viewport = {
+      ...size,
+    }
     this._zoom = zoom
+    this._position = new Point(size.width / 2, size.height / 2)
   }
 
   private readonly _onCameraViewChange = new Emitter<Camera>()
   public readonly onCameraViewChange = this._onCameraViewChange.event
 
-  getZoom() {
-    return this._zoom
-  }
-
   setZoom(value: number) {
     this._zoom = value
-    this._onCameraViewChange.fire(this)
+    this._updateMatrix()
   }
 
-  getViewport() {
-    return this._viewport
-  }
-
-  setViewport(size: Rectangle) {
-    this._viewport = { ...this._viewport, ...size }
+  private _updateMatrix() {
+    const tx = this._viewport.width / 2 - this._position.x * this._zoom
+    const ty = this._viewport.height / 2 - this._position.y * this._zoom
+    this._matrix[0] = this._zoom
+    this._matrix[1] = 0
+    this._matrix[2] = 0
+    this._matrix[3] = this._zoom
+    this._matrix[4] = tx
+    this._matrix[5] = ty
     this._onCameraViewChange.fire(this)
   }
 
   move(x: number, y: number) {
-    const { x: oldX, y: oldY } = this._viewport
-    this.setViewport({
-      ...this._viewport,
-      x: oldX - x,
-      y: oldY - y,
-    })
+    this._position.x += x
+    this._position.y += y
+    this._updateMatrix()
+  }
+
+  setPosition(x: number, y: number) {
+    this._position.x = x
+    this._position.y = y
+    this._updateMatrix()
+  }
+
+  getViewPortMatrix() {
+    return this._matrix
+  }
+
+  getViewport(): Rectangle {
+    const renderCenterX = this._position.x
+    const renderCenterY = this._position.y
+    const renderWidth = this._viewport.width / this._zoom
+    const renderHeight = this._viewport.height / this._zoom
+    return {
+      x: renderCenterX - renderWidth / 2,
+      y: renderCenterY - renderHeight / 2,
+      width: renderWidth,
+      height: renderHeight,
+    }
   }
 }
 
@@ -63,17 +97,11 @@ class CameraService<T = any> {
     const widthRatio = (fullWidth * (1 - padding)) / width
     const heightRatio = (fullHeight * (1 - padding)) / height
     const minRatio = Math.min(widthRatio, heightRatio)
-    const canRenderWidth = fullWidth / minRatio
-    const canRenderHeight = fullHeight / minRatio
+    const viewportCenterX = size.x + width / 2
+    const viewportCenterY = size.y + height / 2
 
-    const currentSize = {
-      width: canRenderWidth,
-      height: canRenderHeight,
-      x: size.x + (width - canRenderWidth) / 2,
-      y: size.y + (height - canRenderHeight) / 2,
-    }
-
-    const newCamera = new Camera(currentSize, minRatio)
+    const newCamera = new Camera(fullSize, minRatio)
+    newCamera.setPosition(viewportCenterX, viewportCenterY)
     this._cameraMaps.set(id, newCamera)
     return newCamera
   }
@@ -83,13 +111,6 @@ class CameraService<T = any> {
     }
     const result = this._cameraMaps.get(id)
     return result!.getViewport()
-  }
-  getZoom(id: T) {
-    if (!this._cameraMaps.has(id)) {
-      throw Error(`can not found camera by id: ${id}`)
-    }
-    const result = this._cameraMaps.get(id)
-    return result!.getZoom()
   }
 
   getCamera(id: T) {

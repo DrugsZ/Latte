@@ -11,6 +11,8 @@ import type Rect from 'Latte/elements/Rect'
 import type Ellipse from 'Latte/elements/Ellipse'
 import { SolidColorFillRender } from 'Latte/render/fill/solid'
 import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
+import type { Camera } from 'Latte/core/CameraService'
+import { Matrix } from 'Latte/math/matrix'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
@@ -21,32 +23,47 @@ class RenderService {
     this._ctx = this._canvas.getContext('2d') as CanvasRenderingContext2D
   }
 
-  public draw(
-    renderObjects: (Rect | Ellipse)[],
-    renderBox: Rectangle,
-    zoom: number
-  ): void {
+  public draw(renderObjects: (Rect | Ellipse)[], camera: Camera): void {
     this._clearDrawArea()
     const ctx = this._ctx
-    ctx.scale(zoom, zoom)
-    ctx.translate(-renderBox.x, -renderBox.y)
+    const vpMatrix = camera.getViewPortMatrix()
+    ctx.setTransform(
+      vpMatrix[0],
+      vpMatrix[1],
+      vpMatrix[2],
+      vpMatrix[3],
+      vpMatrix[4],
+      vpMatrix[5]
+    )
+    // ctx.fillStyle = 'red'
+    // ctx.beginPath()
+    // ctx.rect(-200, -200, 100, 100)
+    // ctx.closePath()
+    // ctx.fill()
+    const contextMatrix = new Matrix(
+      vpMatrix[0],
+      vpMatrix[1],
+      vpMatrix[2],
+      vpMatrix[3],
+      vpMatrix[4],
+      vpMatrix[5]
+    )
+    // const contextMatrix = new Matrix(1, 0, 0, 1, vpMatrix[4], vpMatrix[5])
     renderObjects.forEach(item => {
       ctx.save()
       const fills = item.getFills()
       fills.forEach(i => {
-        // if (i.type === 'SOLID') {
-        // const { color } = i
-        // colorStr = `rgb(${255 * color.r}, ${255 * color.g}, ${255 * color.b})`
         const fillRender = getEditorFillRender(i.type)
         fillRender(i, ctx)
-        // }
       })
       ctx.beginPath()
       const shapeRender = getEditorShapeRender(item.type)
-      shapeRender?.(item, ctx)
+      shapeRender?.(item, ctx, contextMatrix)
       ctx.fill()
+      ctx.closePath()
       ctx.restore()
     })
+    // ctx.restore()
   }
 
   private _clearDrawArea(
@@ -58,7 +75,9 @@ class RenderService {
     }
   ) {
     const ctx = this._ctx
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.resetTransform()
+    this._canvas.width = area.width
+    this._canvas.height = area.height
     ctx.clearRect(area.x, area.y, area.width, area.height)
     ctx.fillStyle = DEFAULT_BACKGROUND_COLOR
     ctx.fillRect(0, 0, area.width, area.height)
