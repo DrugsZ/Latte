@@ -95,6 +95,8 @@ export abstract class DisplayObject<
 
   getBounds() {
     const worldMatrix = this.getWorldTransform()
+    const x = worldMatrix.tx
+    const y = worldMatrix.ty
     const [tx, ty] = Matrix.getTranslation([0, 0], worldMatrix, [
       this.x,
       this.y,
@@ -103,19 +105,19 @@ export abstract class DisplayObject<
     tempMatrix.tx = tx
     tempMatrix.ty = ty
     // tl
-    tempPoint.x = this.x
-    tempPoint.y = this.y
+    tempPoint.x = x
+    tempPoint.y = y
     this._bounds.addPoint(tempPoint)
     // tr
-    tempPoint.x = this.x + this.width
+    tempPoint.x = x + this.width
     Matrix.apply(tempPoint, tempMatrix, tempPoint)
     this._bounds.addPoint(tempPoint)
     // br
-    tempPoint.y = this.y + this.height
+    tempPoint.y = y + this.height
     Matrix.apply(tempPoint, tempMatrix, tempPoint)
     this._bounds.addPoint(tempPoint)
     // bl
-    tempPoint.x = this.x
+    tempPoint.x = x
     Matrix.apply(tempPoint, tempMatrix, tempPoint)
     this._bounds.addPoint(tempPoint)
 
