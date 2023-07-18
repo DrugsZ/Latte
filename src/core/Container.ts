@@ -6,27 +6,15 @@ export abstract class Container<
 > extends DisplayObject<T> {
   protected _children: DisplayObject<BaseElementSchema>[] = []
 
-  getBoundingClientRect() {
-    let minX = Infinity
-    let minY = Infinity
-    let maxX = -Infinity
-    let maxY = -Infinity
+  getBounds() {
     this._children.forEach(element => {
       if (!element.visible) {
         return
       }
-      const elementBBox = element.getBoundingClientRect()
-      minX = Math.min(minX, elementBBox.x)
-      minY = Math.min(minY, elementBBox.y)
-      maxX = Math.max(maxX, elementBBox.x + elementBBox.width)
-      maxY = Math.max(maxY, elementBBox.y + elementBBox.height)
+      const elementBBox = element.getBounds()
+      this._bounds.merge(elementBBox)
     })
-    return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-    } as Rectangle
+    return this._bounds
   }
 
   getChildren() {

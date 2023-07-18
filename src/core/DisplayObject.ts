@@ -20,22 +20,9 @@ export abstract class DisplayObject<
 
   transform: Transform
 
-  private _bounds: Bounds = new Bounds()
+  protected _bounds: Bounds = new Bounds()
 
-  private _localBounds: Bounds = new Bounds()
-
-  static setFromTransformedBounds(element: DisplayObject): void {
-    const { x, y, width, height } = element
-    const worldMatrix = element.getWorldTransform()
-    const tl = {
-      x,
-      y,
-    }
-    const br = {
-      x: tl.x + width,
-      y: tl.y + height,
-    }
-  }
+  protected _localBounds: Bounds = new Bounds()
 
   constructor(element: T) {
     super()
@@ -68,18 +55,6 @@ export abstract class DisplayObject<
   get id(): string {
     return JSON.stringify(this._id)
   }
-  getBoundingClientRect(): Rectangle {
-    const { size, transform } = this._elementData
-    const { tx: x, ty: y } = transform
-    const { x: width, y: height } = size
-    return {
-      x,
-      y,
-      width,
-      height,
-    }
-  }
-
   getFills() {
     return this._elementData.fillPaints ?? []
   }
@@ -145,5 +120,10 @@ export abstract class DisplayObject<
     this._bounds.addPoint(tempPoint)
 
     return this._bounds
+  }
+
+  getBoundingClientRect() {
+    const bounds = this.getBounds()
+    return bounds.getRectangle()
   }
 }
