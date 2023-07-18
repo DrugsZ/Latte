@@ -49,4 +49,10 @@ export class Bounds {
 
     return rect
   }
+
+  merge(bound: Bounds) {
+    const { minX, minY, maxX, maxY } = bound
+    this.addPoint({ x: minX, y: minY })
+    this.addPoint({ x: maxX, y: maxY })
+  }
 }
