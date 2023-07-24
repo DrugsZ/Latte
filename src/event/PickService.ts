@@ -11,9 +11,6 @@ import {
   ellipseDistance,
 } from 'Latte/math/inPointerInPath'
 
-let isDownMode = false
-
-export const setDown = mode => (isDownMode = mode)
 export interface IPickerService {
   pick(point: Point): IEventTarget | null
 }
@@ -65,9 +62,6 @@ export class PickService implements IPickerService {
     const findElements = this._visibleElementRenderObjects.slice().reverse()
     findElements.some(item => {
       const localPosition = item.getWorldTransform().applyInvertToPoint(point)
-      if (isDownMode) {
-        console.log(point, localPosition, item.x, item.y, item.type)
-      }
       if (isRect(item) && this._isPointInRect(localPosition, item)) {
         target = item
         return true

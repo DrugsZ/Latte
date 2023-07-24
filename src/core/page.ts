@@ -115,14 +115,12 @@ import { Container } from 'Latte/core/Container'
 // }
 
 class Page extends Container {
-  private _visibleElements: DisplayObject[] = []
-
-  constructor(params) {
-    super(params)
-    this._visibleElements = this._children
-  }
+  private _visibleElements: DisplayObject[]
 
   public getVisibleElementRenderObjects() {
+    if (!this._visibleElements) {
+      this._visibleElements = this._children.filter(child => child.visible)
+    }
     return this._visibleElements
   }
 
@@ -144,9 +142,6 @@ class Page extends Container {
       return xIsVisible && yIsVisible
     })
   }
-  // onViewportChange(viewport: RectBBox) {}
-
-  // onZoomChange(zoom: number) {}
 }
 
 export default Page

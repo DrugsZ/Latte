@@ -2,24 +2,6 @@ import { Point } from 'Latte/common/Point'
 
 const degrees = 180 / Math.PI
 
-export const getTranslation = (
-  out: [number, number],
-  matrix: Matrix,
-  origin?: [number, number]
-) => {
-  out[0] = matrix.tx
-  out[1] = matrix.ty
-
-  if (origin) {
-    const ox = origin[0]
-    const oy = origin[1]
-    out[0] += ox - (matrix.a * ox + matrix.c * oy)
-    out[1] += oy - (matrix.b * ox + matrix.d * oy)
-  }
-
-  return out
-}
-
 /* eslint-disable no-param-reassign */
 export class Matrix {
   public a: number
@@ -74,6 +56,33 @@ export class Matrix {
 
   static getTranslation(mat: Matrix) {
     return new Point(mat.tx, mat.ty)
+  }
+
+  static fromMatrixOrigin = (
+    out: [number, number],
+    matrix: Matrix,
+    origin?: [number, number]
+  ) => {
+    if (origin) {
+      const ox = origin[0]
+      const oy = origin[1]
+      out[0] = ox - (matrix.a * ox + matrix.c * oy)
+      out[1] = oy - (matrix.b * ox + matrix.d * oy)
+    }
+
+    return out
+  }
+
+  static apply<P extends IPoint = Point>(
+    pos: IPoint,
+    a: Matrix,
+    newPos?: P
+  ): P {
+    newPos = (newPos || new Point()) as P
+    newPos.x = a.a * pos.x + a.c * pos.y + a.tx
+    newPos.y = a.b * pos.x + a.d * pos.y + a.ty
+
+    return newPos
   }
 
   /**
@@ -160,5 +169,18 @@ export class Matrix {
     array[5] = this.ty
 
     return array
+  }
+
+  clone(): Matrix {
+    const matrix = new Matrix()
+
+    matrix.a = this.a
+    matrix.b = this.b
+    matrix.c = this.c
+    matrix.d = this.d
+    matrix.tx = this.tx
+    matrix.ty = this.ty
+
+    return matrix
   }
 }

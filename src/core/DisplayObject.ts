@@ -3,7 +3,11 @@ import { Transform } from 'Latte/core/Transform'
 import { Bounds } from 'Latte/core/Bounds'
 import type { Container } from 'Latte/core//Container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
+import { Matrix } from 'Latte/math/matrix'
+import { Point } from 'Latte/common/Point'
 
+const beforeTransformPoint = new Point(0, 0)
+const afterTransformPoint = new Point(0, 0)
 export abstract class DisplayObject<
   T extends BaseElementSchema = BaseElementSchema
 > extends EventTarget {
@@ -17,9 +21,9 @@ export abstract class DisplayObject<
 
   transform: Transform
 
-  private _bounds: Bounds = new Bounds()
+  protected _bounds: Bounds = new Bounds()
 
-  private _localBounds: Bounds = new Bounds()
+  protected _localBounds: Bounds = new Bounds()
 
   constructor(element: T) {
     super()
@@ -52,18 +56,6 @@ export abstract class DisplayObject<
   get id(): string {
     return JSON.stringify(this._id)
   }
-  getBoundingClientRect(): Rectangle {
-    const { size, transform } = this._elementData
-    const { tx: x, ty: y } = transform
-    const { x: width, y: height } = size
-    return {
-      x,
-      y,
-      width,
-      height,
-    }
-  }
-
   getFills() {
     return this._elementData.fillPaints ?? []
   }
@@ -100,5 +92,43 @@ export abstract class DisplayObject<
   getGuidKey() {
     const { guid } = this._elementData
     return JSON.stringify(guid)
+  }
+
+  getBounds() {
+    const worldMatrix = this.getWorldTransform()
+    const x = worldMatrix.tx
+    const y = worldMatrix.ty
+    const [tx, ty] = Matrix.fromMatrixOrigin([0, 0], worldMatrix, [
+      this.x,
+      this.y,
+    ])
+    const tempMatrix = worldMatrix.clone()
+    tempMatrix.tx = tx
+    tempMatrix.ty = ty
+    // tl
+    beforeTransformPoint.x = x
+    beforeTransformPoint.y = y
+    this._bounds.addPoint(beforeTransformPoint)
+    // tr
+    beforeTransformPoint.x = x + this.width
+    Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
+    this._bounds.addPoint(afterTransformPoint)
+    // br
+    beforeTransformPoint.x = x + this.width
+    beforeTransformPoint.y = y + this.height
+    Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
+    this._bounds.addPoint(afterTransformPoint)
+    // bl
+    beforeTransformPoint.x = x
+    beforeTransformPoint.y = y + this.height
+    Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
+    this._bounds.addPoint(afterTransformPoint)
+
+    return this._bounds
+  }
+
+  getBoundingClientRect() {
+    const bounds = this.getBounds()
+    return bounds.getRectangle()
   }
 }
