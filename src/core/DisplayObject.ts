@@ -6,7 +6,8 @@ import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/math/matrix'
 import { Point } from 'Latte/common/Point'
 
-const tempPoint = new Point(0, 0)
+const beforeTransformPoint = new Point(0, 0)
+const afterTransformPoint = new Point(0, 0)
 export abstract class DisplayObject<
   T extends BaseElementSchema = BaseElementSchema
 > extends EventTarget {
@@ -105,21 +106,23 @@ export abstract class DisplayObject<
     tempMatrix.tx = tx
     tempMatrix.ty = ty
     // tl
-    tempPoint.x = x
-    tempPoint.y = y
-    this._bounds.addPoint(tempPoint)
+    beforeTransformPoint.x = x
+    beforeTransformPoint.y = y
+    this._bounds.addPoint(beforeTransformPoint)
     // tr
-    tempPoint.x = x + this.width
-    Matrix.apply(tempPoint, tempMatrix, tempPoint)
-    this._bounds.addPoint(tempPoint)
+    beforeTransformPoint.x = x + this.width
+    Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
+    this._bounds.addPoint(afterTransformPoint)
     // br
-    tempPoint.y = y + this.height
-    Matrix.apply(tempPoint, tempMatrix, tempPoint)
-    this._bounds.addPoint(tempPoint)
+    beforeTransformPoint.x = x + this.width
+    beforeTransformPoint.y = y + this.height
+    Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
+    this._bounds.addPoint(afterTransformPoint)
     // bl
-    tempPoint.x = x
-    Matrix.apply(tempPoint, tempMatrix, tempPoint)
-    this._bounds.addPoint(tempPoint)
+    beforeTransformPoint.x = x
+    beforeTransformPoint.y = y + this.height
+    Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
+    this._bounds.addPoint(afterTransformPoint)
 
     return this._bounds
   }
