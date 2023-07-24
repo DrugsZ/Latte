@@ -97,7 +97,7 @@ export abstract class DisplayObject<
     const worldMatrix = this.getWorldTransform()
     const x = worldMatrix.tx
     const y = worldMatrix.ty
-    const [tx, ty] = Matrix.getTranslation([0, 0], worldMatrix, [
+    const [tx, ty] = Matrix.fromMatrixOrigin([0, 0], worldMatrix, [
       this.x,
       this.y,
     ])
