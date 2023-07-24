@@ -32,7 +32,7 @@ class MouseHandler {
       const newY = (e as MouseEvent).movementY
       const currentCamera = this._view.getCurrentCamera()
       const vpMatrix = currentCamera.getViewPortMatrix()
-      currentCamera.move(-newX / vpMatrix[0], -newY / vpMatrix[3])
+      currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
     })
   }
 }

@@ -1,5 +1,6 @@
 import { Point } from 'Latte/common/Point'
 import { Emitter } from 'Latte/common/event'
+import { Matrix } from 'Latte/math/matrix'
 
 export class Camera {
   private _zoom: number = 1
@@ -8,7 +9,7 @@ export class Camera {
     height: number
   }
   private _position: Point
-  private _matrix = new Float32Array(6)
+  private _matrix = new Matrix()
 
   constructor(
     size: {
@@ -35,12 +36,12 @@ export class Camera {
   private _updateMatrix() {
     const tx = this._viewport.width / 2 - this._position.x * this._zoom
     const ty = this._viewport.height / 2 - this._position.y * this._zoom
-    this._matrix[0] = this._zoom
-    this._matrix[1] = 0
-    this._matrix[2] = 0
-    this._matrix[3] = this._zoom
-    this._matrix[4] = tx
-    this._matrix[5] = ty
+    this._matrix.a = this._zoom
+    this._matrix.b = 0
+    this._matrix.c = 0
+    this._matrix.d = this._zoom
+    this._matrix.tx = tx
+    this._matrix.ty = ty
     this._onCameraViewChange.fire(this)
   }
 

@@ -1,7 +1,9 @@
 import type { EventService } from 'Latte/event/EventService'
 import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
-import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
+import type { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
 import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
+import type { IPickerService } from 'Latte/event/PickService'
+import { Point } from 'Latte/common/Point'
 
 export const TOUCH_TO_POINTER: Record<string, string> = {
   touchstart: 'pointerdown',
@@ -47,8 +49,6 @@ export interface FormattedTouch extends Touch {
 }
 
 const MOUSE_POINTER_ID = 1
-import type { IPickerService } from 'Latte/event/PickService'
-import { Point } from 'Latte/common/Point'
 
 export class EventBind {
   private _rootPointerEvent = new FederatedPointerEvent(null)

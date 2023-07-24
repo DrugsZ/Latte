@@ -7,8 +7,6 @@ import type { IEventTarget } from 'Latte/core/interfaces'
 import type { Point } from 'Latte/common/Point'
 import { isDisplayObject } from 'Latte/utils/assert'
 
-import { setDown } from 'Latte/event/PickService'
-
 type Picker = (event: Point) => IEventTarget | null
 type TrackingData = {
   pressTargetsByButton: Record<number, IEventTarget[]>
@@ -387,7 +385,6 @@ export class EventService {
     if (!(from instanceof FederatedPointerEvent)) {
       return
     }
-    setDown(true)
     const e = await this._createPointerEvent(from)
     this.dispatchEvent(e, 'pointerdown')
     if (e.pointerType === 'mouse') {
@@ -399,7 +396,6 @@ export class EventService {
 
     trackingData.pressTargetsByButton[from.button] = e.composedPath()
     this._freeEvent(e)
-    setDown(false)
   }
 
   private _onPointerMove = async (from: FederatedEvent) => {

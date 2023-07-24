@@ -28,27 +28,14 @@ class RenderService {
     const ctx = this._ctx
     const vpMatrix = camera.getViewPortMatrix()
     ctx.setTransform(
-      vpMatrix[0],
-      vpMatrix[1],
-      vpMatrix[2],
-      vpMatrix[3],
-      vpMatrix[4],
-      vpMatrix[5]
+      vpMatrix.a,
+      vpMatrix.b,
+      vpMatrix.c,
+      vpMatrix.d,
+      vpMatrix.tx,
+      vpMatrix.ty
     )
-    // ctx.fillStyle = 'red'
-    // ctx.beginPath()
-    // ctx.rect(-200, -200, 100, 100)
-    // ctx.closePath()
-    // ctx.fill()
-    const contextMatrix = new Matrix(
-      vpMatrix[0],
-      vpMatrix[1],
-      vpMatrix[2],
-      vpMatrix[3],
-      vpMatrix[4],
-      vpMatrix[5]
-    )
-    // const contextMatrix = new Matrix(1, 0, 0, 1, vpMatrix[4], vpMatrix[5])
+
     renderObjects.forEach(item => {
       ctx.save()
       const fills = item.getFills()
@@ -58,7 +45,7 @@ class RenderService {
       })
       ctx.beginPath()
       const shapeRender = getEditorShapeRender(item.type)
-      shapeRender?.(item, ctx, contextMatrix)
+      shapeRender?.(item, ctx, vpMatrix)
       ctx.fill()
       ctx.closePath()
       ctx.restore()

@@ -115,12 +115,6 @@ export default class View {
   public client2Viewport(client: IPoint) {
     const currentCamera = this._viewModel.getCamera(this._focusPageInstance.id)
     const vpMatrix = currentCamera.getViewPortMatrix()
-    const zoom = vpMatrix[0]
-    const dx = vpMatrix[4]
-    const dy = vpMatrix[5]
-    return {
-      x: client.x / zoom + dx,
-      y: client.y / zoom + dy,
-    }
+    return vpMatrix.applyInvertToPoint(client)
   }
 }
