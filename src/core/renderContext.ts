@@ -1,11 +1,27 @@
+import {
+  getEditorShapeRender,
+  getEditorFillRender,
+  registerEditorShapeRender,
+  registerEditorFillRender,
+} from 'Latte/render/RenderContributionRegistry'
+import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
+import { RectShapeRender } from 'Latte/render/shape/Rect'
+import { EllipseShapeRender } from 'Latte/render/shape/Ellipse'
+import { SolidColorFillRender } from 'Latte/render/fill/solid'
 import type { DisplayObject } from 'Latte/core/DisplayObject'
-import { EditorElementTypeKind } from 'Latte/constants/schema'
+
 import type { Container } from 'Latte/core/Container'
 import { EditorDocument } from 'Latte/elements/document'
 import Rect from 'Latte/elements/Rect'
 import Ellipse from 'Latte/elements/Ellipse'
 import Page from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
+import { ViewPart } from 'Latte/view/ViewPart'
+import type { Camera } from 'Latte/core/CameraService'
+
+registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
+registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
+registerEditorFillRender(FillType.SOLID, SolidColorFillRender)
 
 export const createElement = (element: BaseElementSchema) => {
   const { type } = element
@@ -33,11 +49,13 @@ export const createElement = (element: BaseElementSchema) => {
   return new Ctr(element)
 }
 
-class RenderContext {
+class RenderContext extends ViewPart {
   private _elements: Map<string, DisplayObject> = new Map()
   private _root: EditorDocument
+  private _focusPageId: string
 
   constructor(elements: BaseElementSchema[]) {
+    super()
     this._initElements(elements)
   }
 
@@ -67,6 +85,11 @@ class RenderContext {
       }
       ;(parentNode as Container).appendChild(...value)
     })
+    this.setShouldRender()
+  }
+
+  public onFocusPageChange(_focusPageId: string) {
+    this._focusPageId = _focusPageId
   }
 
   public getPages(): Page[] {
@@ -75,6 +98,34 @@ class RenderContext {
 
   public getRoot(): EditorDocument {
     return this._root
+  }
+
+  public render(ctx: CanvasRenderingContext2D, camera: Camera) {
+    const focusPage = this.getPages().find(
+      item => item.id === this._focusPageId
+    )
+    if (!focusPage) {
+      return
+    }
+    const renderObjects = focusPage.getVisibleElementRenderObjects()
+    if (renderObjects.length === 0) {
+      return
+    }
+    const vpMatrix = camera.getViewPortMatrix()
+    renderObjects.forEach(item => {
+      ctx.save()
+      const fills = item.getFills()
+      fills.forEach(i => {
+        const fillRender = getEditorFillRender(i.type)
+        fillRender(i, ctx)
+      })
+      ctx.beginPath()
+      const shapeRender = getEditorShapeRender(item.type)
+      shapeRender?.(item, ctx, vpMatrix)
+      ctx.fill()
+      ctx.closePath()
+      ctx.restore()
+    })
   }
 }
 

@@ -7,6 +7,9 @@ import type { Camera } from 'Latte/core/CameraService'
 import { EventBind } from 'Latte/event/EventBind'
 import { EventService } from 'Latte/event/EventService'
 import { PickService } from 'Latte/event/PickService'
+import { SelectBox } from 'Latte/view/SelectBox'
+import { DisplayObject } from 'Latte/core/DisplayObject'
+import type { ViewPart } from 'Latte/view/ViewPart'
 
 export enum RenderEnum {
   ViewportChange,
@@ -22,6 +25,8 @@ export default class View {
   private _eventBind: EventBind
   private _eventService: EventService
   private _pickService: PickService
+  private _selectBox: SelectBox = new SelectBox()
+  private _viewParts: ViewPart[] = []
 
   constructor(
     private _viewModel: ViewModel,
@@ -34,6 +39,7 @@ export default class View {
     this.getPages().forEach((page, index) => {
       if (index === 0) {
         this._focusPageInstance = page
+        this._renderContext.onFocusPageChange(page.id)
       }
       const currentCamera = this._viewModel.createCamera(
         page.id,
@@ -51,11 +57,19 @@ export default class View {
       this._pickService,
       this.client2Viewport
     )
+    this._renderContext.getRoot().addEventListener('pointerdown', e => {
+      const { target } = e
+      if (target instanceof DisplayObject) {
+        this._selectBox.addOrRemoveElement(target)
+      }
+    })
+    this._viewParts.push(this._selectBox)
   }
 
   private _initElement() {
     const file = this._viewModel.getCurrentState()
     this._renderContext = new RenderContext(file.elements)
+    this._viewParts.push(this._renderContext)
   }
 
   private onFocusPageChange(e: DefaultIDType) {
@@ -64,6 +78,7 @@ export default class View {
     if (current) {
       this._focusPageInstance = current
     }
+    this._renderContext.onFocusPageChange(JSON.stringify(e))
   }
 
   public getPages(): Page[] {
@@ -80,7 +95,8 @@ export default class View {
 
   private _onCameraViewChange(camera: Camera) {
     this._focusPageInstance.setVisibleArea(camera.getViewport())
-    this._shouldRender = true
+    this._renderContext.forceShouldRender()
+    this._selectBox.forceShouldRender()
   }
 
   private _onElementChange() {
@@ -99,16 +115,42 @@ export default class View {
     return this._viewModel.getCamera(this._focusPageInstance.id)
   }
 
+  private _getViewPartsToRender(): ViewPart[] {
+    const result: ViewPart[] = []
+    let resultLen = 0
+    this._viewParts.forEach(viewPart => {
+      if (viewPart.shouldRender()) {
+        result[resultLen++] = viewPart
+      }
+    })
+    return result
+  }
+
   private _scheduleRender() {
     requestAnimationFrame(() => {
-      if (this.shouldRender()) {
-        this._renderService.draw(
-          this.visibleElementRenderObjects,
-          this._viewModel.getCamera(this._focusPageInstance.id)
-        )
-        this._shouldRender = false
-      }
+      // if (this.shouldRender()) {
+      //   const camera = this._viewModel.getCamera(this._focusPageInstance.id)
+      //   this._renderService.draw(this.visibleElementRenderObjects, camera)
+      //   this._shouldRender = false
+      // }
+      this._actualRender()
       this._scheduleRender()
+    })
+  }
+
+  private _actualRender() {
+    // const viewPartsToRender = this._getViewPartsToRender()
+    const viewPartsToRender = this._viewParts
+    // if (viewPartsToRender.length === 0) {
+    //   // Nothing to render
+    //   return
+    // }
+    const camera = this._viewModel.getCamera(this._focusPageInstance.id)
+    this._renderService.prepareRender(camera)
+    const ctx = this._renderService.getCanvasRenderingContext()
+    viewPartsToRender.forEach(viewPart => {
+      viewPart.render(ctx, camera)
+      viewPart.onDidRender()
     })
   }
 
