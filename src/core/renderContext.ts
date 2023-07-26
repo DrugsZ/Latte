@@ -18,6 +18,11 @@ import Page from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { ViewPart } from 'Latte/view/ViewPart'
 import type { Camera } from 'Latte/core/CameraService'
+import type {
+  ViewCameraUpdateEvent,
+  ViewElementChangeEvent,
+  ViewFocusPageChangeEvent,
+} from 'Latte/view/viewEvents'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
@@ -88,16 +93,25 @@ class RenderContext extends ViewPart {
     this.setShouldRender()
   }
 
-  public onFocusPageChange(_focusPageId: string) {
-    this._focusPageId = _focusPageId
-  }
-
   public getPages(): Page[] {
     return this._root.getChildren() as Page[]
   }
 
   public getRoot(): EditorDocument {
     return this._root
+  }
+
+  public override onCameraChange(event: ViewCameraUpdateEvent): boolean {
+    return true
+  }
+
+  public override onElementChange(event: ViewElementChangeEvent): boolean {
+    return true
+  }
+
+  public override onFocusPageChange(event: ViewFocusPageChangeEvent): boolean {
+    this._focusPageId = event.newFocusPageId
+    return true
   }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera) {

@@ -26,6 +26,14 @@ export class SelectBox extends ViewPart {
     this._boundDirty = false
   }
 
+  public override onCameraChange(event: ViewCameraUpdateEvent): boolean {
+    return true
+  }
+
+  public override onElementChange(event: ViewElementChangeEvent): boolean {
+    return true
+  }
+
   addOrRemoveElement(displayObject: DisplayObject) {
     if (this._selectElements.includes(displayObject)) {
       this._selectElements = this._selectElements.filter(
