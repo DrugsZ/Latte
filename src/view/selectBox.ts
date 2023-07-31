@@ -1,6 +1,9 @@
 import { Bounds } from 'Latte/core/bounds'
 import type { DisplayObject } from 'Latte/core/displayObject'
 import { ViewPart } from 'Latte/view/viewPart'
+import type * as viewEvents from 'Latte/view/viewEvents'
+import Page from 'Latte/core/page'
+import { EditorDocument } from 'Latte/elements/document'
 
 export class SelectBox extends ViewPart {
   private _renderBounds: Bounds = new Bounds()
@@ -26,15 +29,23 @@ export class SelectBox extends ViewPart {
     this._boundDirty = false
   }
 
-  public override onCameraChange(event: ViewCameraUpdateEvent): boolean {
+  public override onCameraChange(): boolean {
     return true
   }
 
-  public override onElementChange(event: ViewElementChangeEvent): boolean {
+  public override onElementChange(
+    event: viewEvents.ViewElementChangeEvent
+  ): boolean {
     return true
   }
 
   addOrRemoveElement(displayObject: DisplayObject) {
+    if (displayObject instanceof Page) {
+      return
+    }
+    if (displayObject instanceof EditorDocument) {
+      return
+    }
     if (this._selectElements.includes(displayObject)) {
       this._selectElements = this._selectElements.filter(
         item => item !== displayObject

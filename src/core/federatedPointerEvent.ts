@@ -1,4 +1,4 @@
-import { FederatedMouseEvent } from './FederatedMouseEvent';
+import { FederatedMouseEvent } from 'Latte/core/federatedMouseEvent';
 
 export class FederatedPointerEvent extends FederatedMouseEvent implements PointerEvent {
   /**

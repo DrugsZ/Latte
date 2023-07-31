@@ -1,15 +1,14 @@
-import type ViewModel from 'Latte/core/viewModel'
+import type { ViewModel } from 'Latte/core/viewModel'
 import RenderContext from 'Latte/core/renderContext'
-import type Page from 'Latte/core/page'
 import type RenderService from 'Latte/render/renderService'
 import MouseHandler from 'Latte/core/mouseHandler'
-import type { Camera } from 'Latte/core/cameraService'
 import { EventBind } from 'Latte/event/eventBind'
 import { EventService } from 'Latte/event/eventService'
 import { PickService } from 'Latte/event/pickService'
 import { SelectBox } from 'Latte/view/selectBox'
 import { DisplayObject } from 'Latte/core/displayObject'
-import type { ViewPart } from 'Latte/view/viewPart'
+import { ViewPart } from 'Latte/view/viewPart'
+import * as viewEvents from 'Latte/view/viewEvents'
 
 export enum RenderEnum {
   ViewportChange,
@@ -17,37 +16,37 @@ export enum RenderEnum {
   ElementChange,
 }
 
-export default class View {
+export default class View extends ViewPart {
   private _renderContext: RenderContext
-  private _shouldRender: boolean = true
-  private _focusPageInstance: Page
   private _mouseHandler: MouseHandler
   private _eventBind: EventBind
   private _eventService: EventService
   private _pickService: PickService
-  private _selectBox: SelectBox = new SelectBox()
+  private _selectBox: SelectBox
   private _viewParts: ViewPart[] = []
+  private _focusPageId: string
 
   constructor(
     private _viewModel: ViewModel,
     private readonly _renderService: RenderService,
     private readonly _renderDOM: HTMLCanvasElement
   ) {
+    super(_viewModel)
     this._initElement()
-    this._viewModel.onFocusPageChange(this.onFocusPageChange)
+    this._selectBox = new SelectBox(this._viewModel)
 
-    this.getPages().forEach((page, index) => {
+    this._renderContext.getPages().forEach((page, index) => {
       if (index === 0) {
-        this._focusPageInstance = page
-        this._renderContext.onFocusPageChange(page.id)
+        this._renderContext.onFocusPageChange(
+          new viewEvents.ViewFocusPageChangeEvent(page.id)
+        )
+        this._focusPageId = page.id
       }
-      const currentCamera = this._viewModel.createCamera(
-        page.id,
-        page.getBoundingClientRect()
-      )
-      currentCamera.onCameraViewChange(e => this._onCameraViewChange(e))
+      this._viewModel.createCamera(page.id, page.getBoundingClientRect())
     })
-    this._pickService = new PickService(this.visibleElementRenderObjects)
+    this._pickService = new PickService(
+      this._renderContext.visibleElementRenderObjects
+    )
     this._mouseHandler = new MouseHandler(this._renderDOM, this)
     this._eventService = new EventService(this._renderContext.getRoot())
     this.client2Viewport = this.client2Viewport.bind(this)
@@ -68,43 +67,8 @@ export default class View {
 
   private _initElement() {
     const file = this._viewModel.getCurrentState()
-    this._renderContext = new RenderContext(file.elements)
+    this._renderContext = new RenderContext(file.elements, this._viewModel)
     this._viewParts.push(this._renderContext)
-  }
-
-  private onFocusPageChange(e: DefaultIDType) {
-    const pages = this._renderContext.getPages()
-    const current = pages.find(item => item.id === JSON.stringify(e))
-    if (current) {
-      this._focusPageInstance = current
-    }
-    this._renderContext.onFocusPageChange(JSON.stringify(e))
-  }
-
-  public getPages(): Page[] {
-    return this._renderContext.getPages()
-  }
-
-  public getFocusPageInstance() {
-    return this._focusPageInstance
-  }
-
-  public shouldRender() {
-    return this._shouldRender
-  }
-
-  private _onCameraViewChange(camera: Camera) {
-    this._focusPageInstance.setVisibleArea(camera.getViewport())
-    this._renderContext.forceShouldRender()
-    this._selectBox.forceShouldRender()
-  }
-
-  private _onElementChange() {
-    this._shouldRender = true
-  }
-
-  get visibleElementRenderObjects() {
-    return this._focusPageInstance.getVisibleElementRenderObjects()
   }
 
   public render() {
@@ -112,7 +76,7 @@ export default class View {
   }
 
   public getCurrentCamera() {
-    return this._viewModel.getCamera(this._focusPageInstance.id)
+    return this._viewModel.getCamera(this._focusPageId)
   }
 
   private _getViewPartsToRender(): ViewPart[] {
@@ -128,35 +92,37 @@ export default class View {
 
   private _scheduleRender() {
     requestAnimationFrame(() => {
-      // if (this.shouldRender()) {
-      //   const camera = this._viewModel.getCamera(this._focusPageInstance.id)
-      //   this._renderService.draw(this.visibleElementRenderObjects, camera)
-      //   this._shouldRender = false
-      // }
       this._actualRender()
       this._scheduleRender()
     })
   }
 
   private _actualRender() {
-    // const viewPartsToRender = this._getViewPartsToRender()
-    const viewPartsToRender = this._viewParts
-    // if (viewPartsToRender.length === 0) {
-    //   // Nothing to render
-    //   return
-    // }
-    const camera = this._viewModel.getCamera(this._focusPageInstance.id)
+    const viewPartsToRender = this._getViewPartsToRender()
+    // const viewPartsToRender = this._viewParts
+    if (viewPartsToRender.length === 0) {
+      // Nothing to render
+      return
+    }
+    const camera = this._viewModel.getCamera(this._focusPageId)
     this._renderService.prepareRender(camera)
     const ctx = this._renderService.getCanvasRenderingContext()
-    viewPartsToRender.forEach(viewPart => {
+    this._viewParts.forEach(viewPart => {
       viewPart.render(ctx, camera)
       viewPart.onDidRender()
     })
   }
 
   public client2Viewport(client: IPoint) {
-    const currentCamera = this._viewModel.getCamera(this._focusPageInstance.id)
+    const currentCamera = this._viewModel.getCamera(this._focusPageId)
     const vpMatrix = currentCamera.getViewPortMatrix()
     return vpMatrix.applyInvertToPoint(client)
+  }
+
+  public override onFocusPageChange(
+    event: viewEvents.ViewFocusPageChangeEvent
+  ): boolean {
+    this._focusPageId = event.newFocusPageId
+    return true
   }
 }

@@ -3,7 +3,7 @@ import {
   getEditorFillRender,
   registerEditorShapeRender,
   registerEditorFillRender,
-} from 'Latte/render/shape/renderContributionRegistry'
+} from 'Latte/render/renderContributionRegistry'
 import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
 import { RectShapeRender } from 'Latte/render/shape/rect'
 import { EllipseShapeRender } from 'Latte/render/shape/ellipse'
@@ -23,6 +23,7 @@ import type {
   ViewElementChangeEvent,
   ViewFocusPageChangeEvent,
 } from 'Latte/view/viewEvents'
+import type { ViewModel } from 'Latte/core/viewModel'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
@@ -57,10 +58,10 @@ export const createElement = (element: BaseElementSchema) => {
 class RenderContext extends ViewPart {
   private _elements: Map<string, DisplayObject> = new Map()
   private _root: EditorDocument
-  private _focusPageId: string
+  private _focusPage?: Page
 
-  constructor(elements: BaseElementSchema[]) {
-    super()
+  constructor(elements: BaseElementSchema[], viewModel: ViewModel) {
+    super(viewModel)
     this._initElements(elements)
   }
 
@@ -102,6 +103,12 @@ class RenderContext extends ViewPart {
   }
 
   public override onCameraChange(event: ViewCameraUpdateEvent): boolean {
+    console.log(1)
+    if (!this._focusPage) {
+      return false
+    }
+    console.log(2)
+    this._focusPage.setVisibleArea(event.camera.getViewport())
     return true
   }
 
@@ -110,18 +117,22 @@ class RenderContext extends ViewPart {
   }
 
   public override onFocusPageChange(event: ViewFocusPageChangeEvent): boolean {
-    this._focusPageId = event.newFocusPageId
+    const focusPage = this.getPages().find(
+      item => item.id === event.newFocusPageId
+    )
+    this._focusPage = focusPage
     return true
   }
 
+  get visibleElementRenderObjects() {
+    return this._focusPage?.getVisibleElementRenderObjects()
+  }
+
   public render(ctx: CanvasRenderingContext2D, camera: Camera) {
-    const focusPage = this.getPages().find(
-      item => item.id === this._focusPageId
-    )
-    if (!focusPage) {
+    if (!this._focusPage) {
       return
     }
-    const renderObjects = focusPage.getVisibleElementRenderObjects()
+    const renderObjects = this._focusPage.getVisibleElementRenderObjects()
     if (renderObjects.length === 0) {
       return
     }

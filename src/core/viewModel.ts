@@ -2,12 +2,17 @@ import type ModelData from 'Latte/core/modelData'
 import { Emitter } from 'Latte/common/event'
 import CameraService from 'Latte/core/cameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'
+import { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
+import * as viewEvents from 'Latte/view/viewEvents'
+import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
 
-class ViewModel {
+export class ViewModel {
   private _focusPath: DefaultIDType[] = []
   private _modelData: ModelData
   private _cameraService: CameraService<string>
   private _canvasObserver: DomElementObserver
+
+  private readonly _eventDispatcher: ViewModelEventDispatcher
 
   private readonly _onFocusPageChange = new Emitter<DefaultIDType>()
   public readonly onFocusPageChange = this._onFocusPageChange.event
@@ -20,6 +25,13 @@ class ViewModel {
     this._focusPath = [firstPage?.guid]
     this._canvasObserver = new DomElementObserver(_domElement)
     this._cameraService = new CameraService(this._canvasObserver.canvasSize)
+    this._eventDispatcher = new ViewModelEventDispatcher()
+
+    this._cameraService.onCameraViewChange(event => {
+      this._eventDispatcher.emitViewEvent(
+        new viewEvents.ViewCameraUpdateEvent(event)
+      )
+    })
   }
 
   get focusPath(): DefaultIDType[] {
@@ -39,9 +51,12 @@ class ViewModel {
   set focusPageId(value: DefaultIDType) {
     this._focusPath = [value]
     this._onFocusPageChange.fire(value)
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewFocusPageChangeEvent(JSON.stringify(value))
+    )
   }
 
-  getViewport(id: string) {
+  public getViewport(id: string) {
     return this._cameraService.getViewport(id)
   }
 
@@ -49,16 +64,22 @@ class ViewModel {
     return this._cameraService.getCamera(id)
   }
 
-  createCamera(id: string, size: Rectangle) {
+  public createCamera(id: string, size: Rectangle) {
     return this._cameraService.createCamera(id, {
       size,
       padding: 0.1,
     })
   }
 
-  getCurrentState() {
+  public getCurrentState() {
     return this._modelData.getCurrentState()
   }
-}
 
-export default ViewModel
+  public addViewEventHandler(eventHandler: ViewEventHandler): void {
+    this._eventDispatcher.addViewEventHandler(eventHandler)
+  }
+
+  public removeViewEventHandler(eventHandler: ViewEventHandler): void {
+    this._eventDispatcher.removeViewEventHandler(eventHandler)
+  }
+}

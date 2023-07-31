@@ -16,7 +16,9 @@ export interface IPickerService {
 }
 
 export class PickService implements IPickerService {
-  constructor(private readonly _visibleElementRenderObjects: DisplayObject[]) {
+  constructor(
+    private readonly _visibleElementRenderObjects: DisplayObject[] | undefined
+  ) {
     this.pick = this.pick.bind(this)
   }
 
@@ -59,7 +61,8 @@ export class PickService implements IPickerService {
 
   pick(point: Point): IEventTarget | null {
     let target: any = null
-    const findElements = this._visibleElementRenderObjects.slice().reverse()
+    const findElements =
+      this._visibleElementRenderObjects?.slice().reverse() || []
     findElements.some(item => {
       const localPosition = item.getWorldTransform().applyInvertToPoint(point)
       if (isRect(item) && this._isPointInRect(localPosition, item)) {

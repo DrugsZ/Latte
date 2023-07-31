@@ -58,8 +58,12 @@ export class ViewEventHandler {
           break
         default:
           console.info('View received unknown event: ')
-          console.info(e)
+          console.info(event)
       }
     })
+
+    if (shouldRender) {
+      this._shouldRender = true
+    }
   }
 }
