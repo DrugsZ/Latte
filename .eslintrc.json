@@ -18,6 +18,7 @@
     "no-underscore-dangle": ["error", { "allowAfterThis": true }],
     "no-plusplus": "off",
     "no-param-reassign": "off",
+    "class-methods-use-this": "off",
     "no-restricted-imports": [
       "error",
       {
