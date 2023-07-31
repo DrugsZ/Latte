@@ -1,4 +1,4 @@
-import { DisplayObject } from 'Latte/core/DisplayObject'
+import { DisplayObject } from 'Latte/core/displayObject'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 
 class Ellipse extends DisplayObject {

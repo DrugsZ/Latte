@@ -1,6 +1,6 @@
-import { Bounds } from 'Latte/core/Bounds'
-import type { DisplayObject } from 'Latte/core/DisplayObject'
-import { ViewPart } from 'Latte/view/ViewPart'
+import { Bounds } from 'Latte/core/bounds'
+import type { DisplayObject } from 'Latte/core/displayObject'
+import { ViewPart } from 'Latte/view/viewPart'
 
 export class SelectBox extends ViewPart {
   private _renderBounds: Bounds = new Bounds()

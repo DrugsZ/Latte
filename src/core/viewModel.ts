@@ -1,6 +1,6 @@
 import type ModelData from 'Latte/core/modelData'
 import { Emitter } from 'Latte/common/event'
-import CameraService from 'Latte/core/CameraService'
+import CameraService from 'Latte/core/cameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'
 
 class ViewModel {

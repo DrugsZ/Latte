@@ -1,10 +1,10 @@
 /* eslint-disable class-methods-use-this */
 import type { Point } from 'Latte/common/Point'
 import type { IEventTarget } from 'Latte/core/interfaces'
-import type DisplayObject from 'Latte/core/Container'
+import type DisplayObject from 'Latte/core/container'
 import { isRect, isEllipse } from 'Latte/utils/assert'
-import type Ellipse from 'Latte/elements/Ellipse'
-import type Rect from 'Latte/elements/Rect'
+import type Ellipse from 'Latte/elements/ellipse'
+import type Rect from 'Latte/elements/rect'
 import {
   inBox,
   inRectWithRadius,

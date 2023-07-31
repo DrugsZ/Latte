@@ -1,7 +1,7 @@
 import ModelData from 'Latte/core/modelData'
 import ViewModel from 'Latte/core/viewModel'
 import model from 'Latte/assets/testSchema4.json'
-import View from 'Latte/core/View'
+import View from 'Latte/core/view'
 import RenderService from 'Latte/render/renderService'
 
 class Editor {

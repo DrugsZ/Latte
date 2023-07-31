@@ -1,0 +1,3 @@
+import { Container } from 'Latte/core/container'
+
+export class Group extends Container {}

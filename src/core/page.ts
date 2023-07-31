@@ -1,5 +1,5 @@
-import type DisplayObject from 'Latte/core/Container'
-import { Container } from 'Latte/core/Container'
+import type DisplayObject from 'Latte/core/container'
+import { Container } from 'Latte/core/container'
 
 // class Page extends HightBaseElement {
 //   private _model: PAGE

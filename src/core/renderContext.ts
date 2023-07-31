@@ -3,21 +3,21 @@ import {
   getEditorFillRender,
   registerEditorShapeRender,
   registerEditorFillRender,
-} from 'Latte/render/RenderContributionRegistry'
+} from 'Latte/render/shape/renderContributionRegistry'
 import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
-import { RectShapeRender } from 'Latte/render/shape/Rect'
-import { EllipseShapeRender } from 'Latte/render/shape/Ellipse'
+import { RectShapeRender } from 'Latte/render/shape/rect'
+import { EllipseShapeRender } from 'Latte/render/shape/ellipse'
 import { SolidColorFillRender } from 'Latte/render/fill/solid'
-import type { DisplayObject } from 'Latte/core/DisplayObject'
+import type { DisplayObject } from 'Latte/core/displayObject'
 
-import type { Container } from 'Latte/core/Container'
+import type { Container } from 'Latte/core/container'
 import { EditorDocument } from 'Latte/elements/document'
-import Rect from 'Latte/elements/Rect'
-import Ellipse from 'Latte/elements/Ellipse'
+import Rect from 'Latte/elements/rect'
+import Ellipse from 'Latte/elements/ellipse'
 import Page from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
-import { ViewPart } from 'Latte/view/ViewPart'
-import type { Camera } from 'Latte/core/CameraService'
+import { ViewPart } from 'Latte/view/viewPart'
+import type { Camera } from 'Latte/core/cameraService'
 import type {
   ViewCameraUpdateEvent,
   ViewElementChangeEvent,

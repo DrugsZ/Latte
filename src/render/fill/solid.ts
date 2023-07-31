@@ -1,5 +1,5 @@
 import type { FillType } from 'Latte/constants/schema'
-import type { IEditorFillRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
+import type { IEditorFillRenderContributionDescription } from 'Latte/render/shape/renderContributionRegistry'
 
 export class SolidColorFillRender
   implements IEditorFillRenderContributionDescription
