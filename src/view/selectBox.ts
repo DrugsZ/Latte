@@ -1,14 +1,20 @@
 import { Bounds } from 'Latte/core/bounds'
-import type { DisplayObject } from 'Latte/core/displayObject'
+import { DisplayObject } from 'Latte/core/displayObject'
 import { ViewPart } from 'Latte/view/viewPart'
 import type * as viewEvents from 'Latte/view/viewEvents'
 import Page from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
+import type { FederatedPointerEvent } from 'Latte/core/federatedPointerEvent'
 
 export class SelectBox extends ViewPart {
   private _renderBounds: Bounds = new Bounds()
   private _boundDirty: boolean = true
   private _selectElements: DisplayObject[] = []
+
+  constructor(context) {
+    super(context)
+    this.onCanvasMouseDown = this.onCanvasMouseDown.bind(this)
+  }
 
   getBounds() {
     if (this._boundDirty) {
@@ -29,6 +35,20 @@ export class SelectBox extends ViewPart {
     this._boundDirty = false
   }
 
+  public onCanvasMouseDown(e: FederatedPointerEvent) {
+    const { target } = e
+    if (target instanceof EditorDocument || target instanceof Page) {
+      this._selectElements = []
+      this._renderBounds.clear()
+      this._boundDirty = true
+      this.setShouldRender()
+      return
+    }
+    if (target instanceof DisplayObject) {
+      this.addOrRemoveElement(target)
+    }
+  }
+
   public override onCameraChange(): boolean {
     return true
   }
@@ -40,12 +60,6 @@ export class SelectBox extends ViewPart {
   }
 
   addOrRemoveElement(displayObject: DisplayObject) {
-    if (displayObject instanceof Page) {
-      return
-    }
-    if (displayObject instanceof EditorDocument) {
-      return
-    }
     if (this._selectElements.includes(displayObject)) {
       this._selectElements = this._selectElements.filter(
         item => item !== displayObject
@@ -58,6 +72,9 @@ export class SelectBox extends ViewPart {
   }
 
   render(ctx: CanvasRenderingContext2D) {
+    if (!this._selectElements.length) {
+      return
+    }
     const rect = this.getBounds().getRectangle()
     ctx.strokeStyle = 'red'
     ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)

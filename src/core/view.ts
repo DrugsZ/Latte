@@ -6,8 +6,8 @@ import { EventBind } from 'Latte/event/eventBind'
 import { EventService } from 'Latte/event/eventService'
 import { PickService } from 'Latte/event/pickService'
 import { SelectBox } from 'Latte/view/selectBox'
-import { DisplayObject } from 'Latte/core/displayObject'
-import { ViewPart } from 'Latte/view/viewPart'
+import { ViewEventHandler } from 'Latte/view/viewEventHandler'
+import type { ViewPart } from 'Latte/view/viewPart'
 import * as viewEvents from 'Latte/view/viewEvents'
 
 export enum RenderEnum {
@@ -16,7 +16,7 @@ export enum RenderEnum {
   ElementChange,
 }
 
-export default class View extends ViewPart {
+export default class View extends ViewEventHandler {
   private _renderContext: RenderContext
   private _mouseHandler: MouseHandler
   private _eventBind: EventBind
@@ -31,7 +31,7 @@ export default class View extends ViewPart {
     private readonly _renderService: RenderService,
     private readonly _renderDOM: HTMLCanvasElement
   ) {
-    super(_viewModel)
+    super()
     this._initElement()
     this._selectBox = new SelectBox(this._viewModel)
 
@@ -56,12 +56,9 @@ export default class View extends ViewPart {
       this._pickService,
       this.client2Viewport
     )
-    this._renderContext.getRoot().addEventListener('pointerdown', e => {
-      const { target } = e
-      if (target instanceof DisplayObject) {
-        this._selectBox.addOrRemoveElement(target)
-      }
-    })
+    this._renderContext
+      .getRoot()
+      .addEventListener('pointerdown', this._selectBox.onCanvasMouseDown)
     this._viewParts.push(this._selectBox)
   }
 

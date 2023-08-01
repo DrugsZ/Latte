@@ -103,11 +103,9 @@ class RenderContext extends ViewPart {
   }
 
   public override onCameraChange(event: ViewCameraUpdateEvent): boolean {
-    console.log(1)
     if (!this._focusPage) {
       return false
     }
-    console.log(2)
     this._focusPage.setVisibleArea(event.camera.getViewport())
     return true
   }
