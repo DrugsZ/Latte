@@ -55,82 +55,70 @@ export const createElement = (element: BaseElementSchema) => {
   return new Ctr(element)
 }
 
-class RenderContext extends ViewPart {
+class ElementRender extends ViewPart {
   private _elements: Map<string, DisplayObject> = new Map()
   private _root: EditorDocument
   private _focusPage?: Page
 
-  constructor(elements: BaseElementSchema[], viewModel: ViewModel) {
+  constructor(
+    viewModel: ViewModel,
+    private readonly _getVisibleElementRenderObjects: () => DisplayObject[]
+  ) {
     super(viewModel)
-    this._initElements(elements)
+    // this._initElements(elements)
   }
 
-  private _initElements(elements: BaseElementSchema[]) {
-    const cachedChildElements: {
-      [key: string]: DisplayObject[]
-    } = {}
-    elements.forEach(elm => {
-      const currentNode = createElement(elm)
-      this._elements.set(JSON.stringify(elm.guid), currentNode)
-      if (currentNode instanceof EditorDocument) {
-        this._root = currentNode
-        return
-      }
-      const { parentIndex } = elm
-      const { guid: parentGuid } = parentIndex
-      const parentGuidKey = JSON.stringify(parentGuid)
-      const currentChild =
-        cachedChildElements[parentGuidKey] ||
-        (cachedChildElements[parentGuidKey] = [])
-      currentChild.push(currentNode)
-    })
-    Object.entries(cachedChildElements).forEach(([key, value]) => {
-      const parentNode = this._elements.get(key)
-      if (!parentNode) {
-        return
-      }
-      ;(parentNode as Container).appendChild(...value)
-    })
-    this.setShouldRender()
-  }
+  // private _initElements(elements: BaseElementSchema[]) {
+  //   const cachedChildElements: {
+  //     [key: string]: DisplayObject[]
+  //   } = {}
+  //   elements.forEach(elm => {
+  //     const currentNode = createElement(elm)
+  //     this._elements.set(JSON.stringify(elm.guid), currentNode)
+  //     if (currentNode instanceof EditorDocument) {
+  //       this._root = currentNode
+  //       return
+  //     }
+  //     const { parentIndex } = elm
+  //     const { guid: parentGuid } = parentIndex
+  //     const parentGuidKey = JSON.stringify(parentGuid)
+  //     const currentChild =
+  //       cachedChildElements[parentGuidKey] ||
+  //       (cachedChildElements[parentGuidKey] = [])
+  //     currentChild.push(currentNode)
+  //   })
+  //   Object.entries(cachedChildElements).forEach(([key, value]) => {
+  //     const parentNode = this._elements.get(key)
+  //     if (!parentNode) {
+  //       return
+  //     }
+  //     ;(parentNode as Container).appendChild(...value)
+  //   })
+  //   this.setShouldRender()
+  // }
 
-  public getPages(): Page[] {
-    return this._root.getChildren() as Page[]
-  }
+  // public getPages(): Page[] {
+  //   return this._root.getChildren() as Page[]
+  // }
 
-  public getRoot(): EditorDocument {
-    return this._root
-  }
-
-  public override onCameraChange(event: ViewCameraUpdateEvent): boolean {
-    if (!this._focusPage) {
-      return false
-    }
-    this._focusPage.setVisibleArea(event.camera.getViewport())
-    return true
-  }
-
-  public override onElementChange(event: ViewElementChangeEvent): boolean {
-    return true
-  }
+  // public getRoot(): EditorDocument {
+  //   return this._root
+  // }
 
   public override onFocusPageChange(event: ViewFocusPageChangeEvent): boolean {
-    const focusPage = this.getPages().find(
-      item => item.id === event.newFocusPageId
-    )
-    this._focusPage = focusPage
+    // const focusPage = this.getPages().find(
+    //   item => item.id === event.newFocusPageId
+    // )
+    // this._focusPage = focusPage
     return true
   }
 
-  get visibleElementRenderObjects() {
-    return this._focusPage?.getVisibleElementRenderObjects()
-  }
+  // get visibleElementRenderObjects() {
+  //   return this._focusPage?.getVisibleElementRenderObjects()
+  // }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera) {
-    if (!this._focusPage) {
-      return
-    }
-    const renderObjects = this._focusPage.getVisibleElementRenderObjects()
+    const renderObjects = this._getVisibleElementRenderObjects()
     if (renderObjects.length === 0) {
       return
     }
@@ -152,4 +140,4 @@ class RenderContext extends ViewPart {
   }
 }
 
-export default RenderContext
+export default ElementRender

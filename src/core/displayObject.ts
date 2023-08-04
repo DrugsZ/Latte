@@ -54,7 +54,7 @@ export abstract class DisplayObject<
   }
 
   get id(): string {
-    return JSON.stringify(this._id)
+    return this._id
   }
   getFills() {
     return this._elementData.fillPaints ?? []
