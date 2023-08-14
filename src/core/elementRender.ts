@@ -10,7 +10,6 @@ import { EllipseShapeRender } from 'Latte/render/shape/ellipse'
 import { SolidColorFillRender } from 'Latte/render/fill/solid'
 import type { DisplayObject } from 'Latte/core/displayObject'
 
-import type { Container } from 'Latte/core/container'
 import { EditorDocument } from 'Latte/elements/document'
 import Rect from 'Latte/elements/rect'
 import Ellipse from 'Latte/elements/ellipse'
@@ -18,11 +17,7 @@ import Page from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { ViewPart } from 'Latte/view/viewPart'
 import type { Camera } from 'Latte/core/cameraService'
-import type {
-  ViewCameraUpdateEvent,
-  ViewElementChangeEvent,
-  ViewFocusPageChangeEvent,
-} from 'Latte/view/viewEvents'
+import type { ViewFocusPageChangeEvent } from 'Latte/view/viewEvents'
 import type { ViewModel } from 'Latte/core/viewModel'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
@@ -105,7 +100,7 @@ class ElementRender extends ViewPart {
   //   return this._root
   // }
 
-  public override onFocusPageChange(event: ViewFocusPageChangeEvent): boolean {
+  public override onFocusPageChange(): boolean {
     // const focusPage = this.getPages().find(
     //   item => item.id === event.newFocusPageId
     // )

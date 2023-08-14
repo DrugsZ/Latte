@@ -1,5 +1,5 @@
 import type { ViewModel } from 'Latte/core/viewModel'
-import ElementRender from 'Latte/core/renderContext'
+import ElementRender from 'Latte/core/elementRender'
 import type RenderService from 'Latte/render/renderService'
 import MouseHandler from 'Latte/core/mouseHandler'
 import { EventBind } from 'Latte/event/eventBind'
@@ -51,7 +51,7 @@ export default class View extends ViewEventHandler {
     // this._pickService = new PickService(
     //   this._viewModel.getVisibleElementRenderObjects
     // )
-    this._mouseHandler = new MouseHandler(this._renderDOM, this)
+    this._mouseHandler = new MouseHandler(this._viewModel.elementTreeRoot, this)
     this._eventService = new EventService(this._viewModel.elementTreeRoot)
     this.client2Viewport = this.client2Viewport.bind(this)
     this._eventBind = new EventBind(

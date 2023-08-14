@@ -1,7 +1,3 @@
 import { Container } from 'Latte/core/container'
 
-export class EditorDocument extends Container {
-  constructor(data) {
-    super(data)
-  }
-}
+export class EditorDocument extends Container {}

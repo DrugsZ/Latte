@@ -1,9 +1,10 @@
 import type View from 'Latte/core/view'
+import type { EventTarget } from 'Latte/core/eventTarget'
 
 class MouseHandler {
   private _isMouseDown: boolean
   constructor(
-    private readonly _element: Element,
+    private readonly _element: EventTarget,
     private readonly _view: View
   ) {
     this._bindMouseDownHandler()
