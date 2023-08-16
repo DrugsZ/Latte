@@ -8,12 +8,15 @@ import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import { ElementTree } from 'Latte/viewModel/elementTree'
 import type Page from 'Latte/core/page'
 import { PickService } from 'Latte/event/pickService'
+import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
+import { ViewMouseMode } from 'Latte/core/viewMouseMode'
 
 export class ViewModel {
   private _focusPageId: string = ''
   private _modelData: ModelData
   private _cameraService: CameraService<string>
   private _canvasObserver: DomElementObserver
+  private _viewMouseMode: ViewMouseMode = new ViewMouseMode()
   pickService: PickService
 
   private readonly _eventDispatcher: ViewModelEventDispatcher
@@ -112,5 +115,16 @@ export class ViewModel {
 
   public getCurrentCamera() {
     return this._cameraService.getCamera(this.focusPageId)
+  }
+
+  public setMouseMode(mode: ViewMouseModeType) {
+    this._viewMouseMode.setMode(mode)
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewMouseModeChangeEvent(mode)
+    )
+  }
+
+  public getMouseMode() {
+    return this._viewMouseMode.getMode()
   }
 }

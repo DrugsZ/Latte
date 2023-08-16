@@ -1,9 +1,11 @@
 import type { Camera } from 'Latte/core/cameraService'
+import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 
 export enum ViewEventType {
   ViewFocusPageChange,
   ViewCameraChange,
   ViewElementChange,
+  ViewMouseModelChange,
 }
 
 export class ViewFocusPageChangeEvent {
@@ -20,7 +22,13 @@ export class ViewElementChangeEvent {
   public readonly type = ViewEventType.ViewElementChange
 }
 
+export class ViewMouseModeChangeEvent {
+  public readonly type = ViewEventType.ViewMouseModelChange
+  constructor(public readonly viewMouseMode: ViewMouseModeType) {}
+}
+
 export type ViewEvent =
   | ViewFocusPageChangeEvent
   | ViewCameraUpdateEvent
   | ViewElementChangeEvent
+  | ViewMouseModeChangeEvent

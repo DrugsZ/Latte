@@ -34,6 +34,12 @@ export class ViewEventHandler {
     return false
   }
 
+  public onMouseModeChange(
+    event: viewEvents.ViewMouseModeChangeEvent
+  ): boolean {
+    return false
+  }
+
   public handleEvents(events: viewEvents.ViewEvent[]) {
     let shouldRender = false
 
@@ -53,6 +59,11 @@ export class ViewEventHandler {
 
         case viewEvents.ViewEventType.ViewElementChange:
           if (this.onElementChange(event)) {
+            shouldRender = true
+          }
+          break
+        case viewEvents.ViewEventType.ViewMouseModelChange:
+          if (this.onMouseModeChange(event)) {
             shouldRender = true
           }
           break
