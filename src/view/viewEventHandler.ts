@@ -26,6 +26,12 @@ export class ViewEventHandler {
     return false
   }
 
+  public onActiveSelectionChange(
+    event: viewEvents.ViewActiveSelectionChangeEvent
+  ): boolean {
+    return false
+  }
+
   public onCameraChange(event: viewEvents.ViewCameraUpdateEvent): boolean {
     return false
   }
@@ -47,6 +53,12 @@ export class ViewEventHandler {
       switch (event.type) {
         case viewEvents.ViewEventType.ViewFocusPageChange:
           if (this.onFocusPageChange(event)) {
+            shouldRender = true
+          }
+          break
+
+        case viewEvents.ViewEventType.ViewActiveSelectionChange:
+          if (this.onActiveSelectionChange(event)) {
             shouldRender = true
           }
           break

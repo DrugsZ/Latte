@@ -17,7 +17,6 @@ import Page from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { ViewPart } from 'Latte/view/viewPart'
 import type { Camera } from 'Latte/core/cameraService'
-import type { ViewFocusPageChangeEvent } from 'Latte/view/viewEvents'
 import type { ViewModel } from 'Latte/core/viewModel'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)

@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import type Rect from 'Latte/elements/rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
-import type { IEditorShapeRenderContributionDescription } from 'Latte/render/shape/renderContributionRegistry'
+import type { IEditorShapeRenderContributionDescription } from 'Latte/render/renderContributionRegistry'
 import { Matrix } from 'Latte/math/matrix'
 
 export class RectShapeRender

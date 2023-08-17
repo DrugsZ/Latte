@@ -8,6 +8,7 @@ import { EventService } from 'Latte/event/eventService'
 import { SelectBox } from 'Latte/view/selectBox'
 import { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import type { ViewPart } from 'Latte/view/viewPart'
+import { ViewController } from 'Latte/core/viewController'
 
 export enum RenderEnum {
   ViewportChange,
@@ -22,6 +23,7 @@ export default class View extends ViewEventHandler {
   private _eventService: EventService
   private _selectBox: SelectBox
   private _viewParts: ViewPart[] = []
+  private _viewController: ViewController
 
   constructor(
     private _viewModel: ViewModel,
@@ -34,6 +36,7 @@ export default class View extends ViewEventHandler {
       this._viewModel,
       this._viewModel.getVisibleElementRenderObjects
     )
+    this._viewController = new ViewController(this._viewModel)
     this._viewParts.push(this._renderElement)
 
     this._selectBox = new SelectBox(this._viewModel)

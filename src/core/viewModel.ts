@@ -10,6 +10,8 @@ import type Page from 'Latte/core/page'
 import { PickService } from 'Latte/event/pickService'
 import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import { ViewMouseMode } from 'Latte/core/viewMouseMode'
+import { ActiveSelection } from 'Latte/core/activeSelection'
+import type { DisplayObject } from 'Latte/core/displayObject'
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -24,6 +26,8 @@ export class ViewModel {
   private readonly _onFocusPageChange = new Emitter<string>()
   public readonly onFocusPageChange = this._onFocusPageChange.event
 
+  private _activeSelection: ActiveSelection
+
   private _elementTree: ElementTree
 
   constructor(model: ModelData, _domElement: HTMLCanvasElement) {
@@ -33,6 +37,7 @@ export class ViewModel {
     this._canvasObserver = new DomElementObserver(_domElement)
     this._cameraService = new CameraService(this._canvasObserver.canvasSize)
     this._eventDispatcher = new ViewModelEventDispatcher()
+    this._activeSelection = new ActiveSelection()
 
     this._cameraService.onCameraViewChange(event => {
       this._eventDispatcher.emitViewEvent(
@@ -126,5 +131,30 @@ export class ViewModel {
 
   public getMouseMode() {
     return this._viewMouseMode.getMode()
+  }
+
+  public addSelectElement(element: DisplayObject) {
+    this._activeSelection.addSelectElement(element)
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewActiveSelectionChangeEvent()
+    )
+  }
+
+  public removeSelectElement(element: DisplayObject) {
+    this._activeSelection.removeSelectElement(element)
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewActiveSelectionChangeEvent()
+    )
+  }
+
+  public clearSelection() {
+    this._activeSelection.clear()
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewActiveSelectionChangeEvent()
+    )
+  }
+
+  public getActiveSelection() {
+    return this._activeSelection
   }
 }

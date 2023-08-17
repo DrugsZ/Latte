@@ -25,6 +25,14 @@ export abstract class DisplayObject<
 
   protected _localBounds: Bounds = new Bounds()
 
+  protected _OBB: {
+    x: number
+    y: number
+    width: number
+    height: number
+    transform: Matrix
+  }
+
   constructor(element: T) {
     super()
     this.type = element.type
@@ -127,8 +135,18 @@ export abstract class DisplayObject<
     return this._bounds
   }
 
-  getBoundingClientRect() {
+  public getBoundingClientRect() {
     const bounds = this.getBounds()
     return bounds.getRectangle()
+  }
+  public getOBB() {
+    const { x, y, width, height } = this
+    return {
+      x,
+      y,
+      width,
+      height,
+      transform: this.transform.getWorldTransform(),
+    }
   }
 }

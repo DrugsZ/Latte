@@ -3,7 +3,7 @@ import type { Camera } from 'Latte/core/cameraService'
 import type { ViewModel } from 'Latte/core/viewModel'
 
 export abstract class ViewPart extends ViewEventHandler {
-  private _context: ViewModel
+  protected _context: ViewModel
 
   constructor(_context: ViewModel) {
     super()

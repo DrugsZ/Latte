@@ -1,51 +1,33 @@
-import { Bounds } from 'Latte/core/bounds'
 import { DisplayObject } from 'Latte/core/displayObject'
 import { ViewPart } from 'Latte/view/viewPart'
 import type * as viewEvents from 'Latte/view/viewEvents'
 import Page from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import type { FederatedPointerEvent } from 'Latte/core/federatedPointerEvent'
+import { Matrix } from 'Latte/math/matrix'
+import type { Camera } from 'Latte/core/cameraService'
 
 export class SelectBox extends ViewPart {
-  private _renderBounds: Bounds = new Bounds()
-  private _boundDirty: boolean = true
-  private _selectElements: DisplayObject[] = []
+  private _tempMatrix = new Matrix()
 
   constructor(context) {
     super(context)
     this.onCanvasMouseDown = this.onCanvasMouseDown.bind(this)
   }
 
-  getBounds() {
-    if (this._boundDirty) {
-      this._renderBounds.clear()
-      this._updateBounds()
-    }
-    return this._renderBounds
-  }
-
-  private _updateBounds() {
-    this._selectElements.forEach(element => {
-      if (!element.visible) {
-        return
-      }
-      const elementBBox = element.getBounds()
-      this._renderBounds.merge(elementBBox)
-    })
-    this._boundDirty = false
-  }
-
   public onCanvasMouseDown(e: FederatedPointerEvent) {
     const { target } = e
+    const activeSelection = this._context.getActiveSelection()
     if (target instanceof EditorDocument || target instanceof Page) {
-      this._selectElements = []
-      this._renderBounds.clear()
-      this._boundDirty = true
-      this.setShouldRender()
+      this._context.clearSelection()
       return
     }
     if (target instanceof DisplayObject) {
-      this.addOrRemoveElement(target)
+      if (activeSelection.hasSelected(target)) {
+        this._context.removeSelectElement(target)
+      } else {
+        this._context.addSelectElement(target)
+      }
     }
   }
 
@@ -59,24 +41,26 @@ export class SelectBox extends ViewPart {
     return true
   }
 
-  addOrRemoveElement(displayObject: DisplayObject) {
-    if (this._selectElements.includes(displayObject)) {
-      this._selectElements = this._selectElements.filter(
-        item => item !== displayObject
-      )
-    } else {
-      this._selectElements.push(displayObject)
-    }
-    this._boundDirty = true
-    this.setShouldRender()
+  public override onActiveSelectionChange(
+    event: viewEvents.ViewActiveSelectionChangeEvent
+  ): boolean {
+    return true
   }
 
-  render(ctx: CanvasRenderingContext2D) {
-    if (!this._selectElements.length) {
+  render(ctx: CanvasRenderingContext2D, camera: Camera) {
+    const activeSelection = this._context.getActiveSelection()
+    if (!activeSelection.hasActive()) {
       return
     }
-    const rect = this.getBounds().getRectangle()
-    ctx.strokeStyle = 'red'
-    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+    const rect = activeSelection.getOBB()!
+    Matrix.multiply(
+      this._tempMatrix,
+      camera.getViewPortMatrix(),
+      rect.transform
+    )
+    ctx.strokeStyle = 'yellow'
+    const { a, b, c, d, tx, ty } = this._tempMatrix
+    ctx.setTransform(a, b, c, d, tx, ty)
+    ctx.strokeRect(0, 0, rect.width, rect.height)
   }
 }
