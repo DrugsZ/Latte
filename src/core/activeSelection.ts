@@ -1,19 +1,10 @@
-import type { DisplayObject } from 'Latte/core/displayObject'
-import { Bounds } from 'Latte/core/bounds'
+import { DisplayObject } from 'Latte/core/displayObject'
 import { Matrix } from 'Latte/math/matrix'
 
-export class ActiveSelection {
-  private _elementData
-  private _cacheElementData
+const tempMatrix = new Matrix()
+
+export class ActiveSelection extends DisplayObject {
   private _objects: DisplayObject[] = []
-  private _bounds: Bounds = new Bounds()
-  private _OBB: {
-    x: number
-    y: number
-    width: number
-    height: number
-    transform: Matrix
-  } | null
   private _OBBDirty: boolean = false
 
   public addSelectElement(element: DisplayObject) {
@@ -30,7 +21,6 @@ export class ActiveSelection {
     this._objects = []
     this._OBBDirty = false
     this._bounds.clear()
-    this._OBB = null
   }
 
   _updateOBB() {
@@ -47,9 +37,11 @@ export class ActiveSelection {
         this._bounds.merge(elementBBox)
       })
       const rect = this._bounds.getRectangle()
+      tempMatrix.tx = rect.x
+      tempMatrix.ty = rect.y
       this._OBB = {
         ...rect,
-        transform: new Matrix(1, 0, 0, 1, rect.x, rect.y),
+        transform: tempMatrix,
       }
     }
     this._OBBDirty = false
