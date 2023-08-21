@@ -1,11 +1,26 @@
 import { DisplayObject } from 'Latte/core/displayObject'
 import { Matrix } from 'Latte/math/matrix'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
 
 const tempMatrix = new Matrix()
 
 export class ActiveSelection extends DisplayObject {
   private _objects: DisplayObject[] = []
   private _OBBDirty: boolean = false
+
+  constructor() {
+    super({
+      type: EditorElementTypeKind.RECTANGLE,
+      transform: {
+        a: 1,
+        b: 0,
+        c: 0,
+        d: 1,
+        tx: 0,
+        ty: 0,
+      },
+    })
+  }
 
   public addSelectElement(element: DisplayObject) {
     this._objects.push(element)

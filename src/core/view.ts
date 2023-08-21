@@ -42,19 +42,11 @@ export default class View extends ViewEventHandler {
     this._selectBox = new SelectBox(this._viewModel)
     this._viewParts.push(this._selectBox)
 
-    // this._renderContext.getPages().forEach((page, index) => {
-    //   if (index === 0) {
-    //     this._renderContext.onFocusPageChange(
-    //       new viewEvents.ViewFocusPageChangeEvent(page.id)
-    //     )
-    //     this._focusPageId = page.id
-    //   }
-    //   this._viewModel.createCamera(page.id, page.getBoundingClientRect())
-    // })
-    // this._pickService = new PickService(
-    //   this._viewModel.getVisibleElementRenderObjects
-    // )
-    this._mouseHandler = new MouseHandler(this._viewModel.elementTreeRoot, this)
+    this._mouseHandler = new MouseHandler(
+      this._viewModel.elementTreeRoot,
+      this,
+      this._viewController
+    )
     this._eventService = new EventService(this._viewModel.elementTreeRoot)
     this.client2Viewport = this.client2Viewport.bind(this)
     this._eventBind = new EventBind(
@@ -62,10 +54,6 @@ export default class View extends ViewEventHandler {
       this._eventService,
       this._viewModel.pickService,
       this.client2Viewport
-    )
-    this._viewModel.elementTreeRoot.addEventListener(
-      'pointerdown',
-      this._selectBox.onCanvasMouseDown
     )
   }
 

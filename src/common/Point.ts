@@ -2,17 +2,28 @@ export class Point {
   x = 0
   y = 0
 
+  public static equals(a: IPoint | null, b: IPoint | null): boolean {
+    if (!a && !b) {
+      return true
+    }
+    return !!a && !!b && a.x === b.x && a.y === b.y
+  }
+
   constructor(x = 0, y = 0) {
     this.x = x
     this.y = y
   }
 
-  clone(): Point {
+  public clone(): Point {
     return new Point(this.x, this.y)
   }
 
-  copyFrom(p: Point) {
+  public copyFrom(p: Point) {
     this.x = p.x
     this.y = p.y
+  }
+
+  public equals(other: Point): boolean {
+    return Point.equals(this, other)
   }
 }

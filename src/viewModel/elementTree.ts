@@ -1,6 +1,6 @@
 import Rect from 'Latte/elements/rect'
 import Ellipse from 'Latte/elements/ellipse'
-import Page from 'Latte/core/page'
+import { Page } from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { EditorDocument } from 'Latte/elements/document'
 import { EditorElementTypeKind } from 'Latte/constants/schema'

@@ -13,7 +13,7 @@ import type { DisplayObject } from 'Latte/core/displayObject'
 import { EditorDocument } from 'Latte/elements/document'
 import Rect from 'Latte/elements/rect'
 import Ellipse from 'Latte/elements/ellipse'
-import Page from 'Latte/core/page'
+import { Page } from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { ViewPart } from 'Latte/view/viewPart'
 import type { Camera } from 'Latte/core/cameraService'
@@ -59,57 +59,11 @@ class ElementRender extends ViewPart {
     private readonly _getVisibleElementRenderObjects: () => DisplayObject[]
   ) {
     super(viewModel)
-    // this._initElements(elements)
   }
-
-  // private _initElements(elements: BaseElementSchema[]) {
-  //   const cachedChildElements: {
-  //     [key: string]: DisplayObject[]
-  //   } = {}
-  //   elements.forEach(elm => {
-  //     const currentNode = createElement(elm)
-  //     this._elements.set(JSON.stringify(elm.guid), currentNode)
-  //     if (currentNode instanceof EditorDocument) {
-  //       this._root = currentNode
-  //       return
-  //     }
-  //     const { parentIndex } = elm
-  //     const { guid: parentGuid } = parentIndex
-  //     const parentGuidKey = JSON.stringify(parentGuid)
-  //     const currentChild =
-  //       cachedChildElements[parentGuidKey] ||
-  //       (cachedChildElements[parentGuidKey] = [])
-  //     currentChild.push(currentNode)
-  //   })
-  //   Object.entries(cachedChildElements).forEach(([key, value]) => {
-  //     const parentNode = this._elements.get(key)
-  //     if (!parentNode) {
-  //       return
-  //     }
-  //     ;(parentNode as Container).appendChild(...value)
-  //   })
-  //   this.setShouldRender()
-  // }
-
-  // public getPages(): Page[] {
-  //   return this._root.getChildren() as Page[]
-  // }
-
-  // public getRoot(): EditorDocument {
-  //   return this._root
-  // }
 
   public override onFocusPageChange(): boolean {
-    // const focusPage = this.getPages().find(
-    //   item => item.id === event.newFocusPageId
-    // )
-    // this._focusPage = focusPage
     return true
   }
-
-  // get visibleElementRenderObjects() {
-  //   return this._focusPage?.getVisibleElementRenderObjects()
-  // }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera) {
     const renderObjects = this._getVisibleElementRenderObjects()
