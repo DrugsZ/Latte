@@ -1,7 +1,7 @@
 import type View from 'Latte/core/view'
 import type { EventTarget } from 'Latte/core/eventTarget'
 import type { ViewController } from 'Latte/core/viewController'
-import { FormattedPointerEvent } from 'Latte/event/eventBind'
+import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
 
 class MouseDownState {
@@ -106,9 +106,15 @@ class MouseDownState {
 }
 
 class MouseDownOperation {
-  private _mouseDownState: MouseDownState
+  private _mouseDownState: MouseDownState = new MouseDownState()
+  private _isActive: boolean = false
 
-  constructor(private readonly _viewController: ViewController) {}
+  constructor(
+    private readonly _element: EventTarget,
+    private readonly _viewController: ViewController
+  ) {
+    this._bindMouseMove()
+  }
 
   public start(event: FormattedPointerEvent) {
     this._mouseDownState.setModifiers(event)
@@ -117,6 +123,31 @@ class MouseDownOperation {
       event.detail,
       new Point(event.clientX, event.clientY)
     )
+    this._startMonitoring()
+  }
+
+  private _bindMouseMove() {
+    this._element.addEventListener('mousemove', e => {
+      if (this._isActive) {
+        this._onMouseDownThenMove(e)
+      }
+    })
+  }
+
+  private _startMonitoring() {
+    this._isActive = true
+  }
+
+  private _onMouseDownThenMove(e: FormattedPointerEvent) {
+    console.log('isDrag')
+  }
+
+  public onPointerUp() {
+    this._isActive = false
+  }
+
+  public isActive() {
+    return this._isActive
   }
 
   private _dispatchMouse() {}
@@ -133,19 +164,25 @@ class MouseHandler {
     this._bindMouseDownHandler()
     this._bindMouseMoveHandler()
     this._bindMouseUpHandler()
-    this._mouseDownOperation = new MouseDownOperation(this._viewController)
+    this._mouseDownOperation = new MouseDownOperation(
+      this._element,
+      this._viewController
+    )
   }
 
   private _bindMouseDownHandler() {
-    this._element.addEventListener('mousedown', e => {
+    this._element.addEventListener('mousedown', (e: FormattedPointerEvent) => {
       this._isMouseDown = true
-      this._mouseDownOperation.start(e)
-      this._viewController.mouseDownOnCanvas(e)
+      this._viewController.emitMouseDown(e)
+      if (e.button === 0) {
+        this._mouseDownOperation.start(e)
+      }
     })
   }
 
   private _bindMouseUpHandler() {
     this._element.addEventListener('mouseup', () => {
+      this._mouseDownOperation.onPointerUp()
       this._isMouseDown = false
     })
   }

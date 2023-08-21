@@ -3,6 +3,7 @@ import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
+import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -31,7 +32,7 @@ export class ViewController {
   public changeViewMouseMove(mode: ViewMouseModeType) {
     this._viewMode.setMouseMode(mode)
   }
-  public mouseDownOnCanvas(e) {
+  public emitMouseDown(e: FormattedPointerEvent) {
     const { target } = e
     const activeSelection = this._viewMode.getActiveSelection()
     if (target instanceof EditorDocument || target instanceof Page) {
