@@ -4,6 +4,15 @@ import type { ViewController } from 'Latte/core/viewController'
 import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
 
+export enum MouseTarget {
+  BLINK,
+  SELECTION_CONTEXT,
+  SELECT_ROTATE,
+  SELECT_RESIZE,
+  SELECT_RESIZE_LIN,
+  ELEMENT,
+}
+
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
 
@@ -113,7 +122,7 @@ class MouseDownOperation {
     private readonly _element: EventTarget,
     private readonly _viewController: ViewController
   ) {
-    this._bindMouseMove()
+    this._element.addEventListener('mousemove', this._onMouseDownThenMove)
   }
 
   public start(event: FormattedPointerEvent) {
@@ -126,20 +135,14 @@ class MouseDownOperation {
     this._startMonitoring()
   }
 
-  private _bindMouseMove() {
-    this._element.addEventListener('mousemove', e => {
-      if (this._isActive) {
-        this._onMouseDownThenMove(e)
-      }
-    })
-  }
-
   private _startMonitoring() {
     this._isActive = true
   }
 
-  private _onMouseDownThenMove(e: FormattedPointerEvent) {
-    console.log('isDrag')
+  private _onMouseDownThenMove = (e: FormattedPointerEvent) => {
+    if (!this._isActive) {
+      return
+    }
   }
 
   public onPointerUp() {
