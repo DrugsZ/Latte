@@ -153,7 +153,7 @@ interface BaseElementSchema extends NodeStrokeSchema, BaseChildNodeSchema {
 
 interface LatteFile {
   type: 'NODE_CHANGES'
-  elements: BaseNodeSchema[]
+  elements: BaseElementSchema[]
   sessionID: number
   guid: DefaultIDType
 }

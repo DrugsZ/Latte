@@ -1,6 +1,6 @@
 import { Point } from 'Latte/common/Point'
-import { FederatedEvent } from 'Latte/core/FederatedEvent'
-import type { DisplayObject } from 'Latte/core/DisplayObject'
+import { FederatedEvent } from 'Latte/core/federatedEvent'
+import type { DisplayObject } from 'Latte/core/displayObject'
 
 export class FederatedMouseEvent
   extends FederatedEvent<MouseEvent | PointerEvent | TouchEvent>

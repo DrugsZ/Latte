@@ -1,4 +1,4 @@
-import { Container } from 'Latte/core/Container'
+import { Container } from 'Latte/core/container'
 
 class Frame extends Container<FrameElement> {}
 

@@ -1,8 +1,8 @@
-import type { EventService } from 'Latte/event/EventService'
-import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
-import type { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
-import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
-import type { IPickerService } from 'Latte/event/PickService'
+import type { EventService } from 'Latte/event/eventService'
+import { FederatedPointerEvent } from 'Latte/core/federatedPointerEvent'
+import type { FederatedMouseEvent } from 'Latte/core/federatedMouseEvent'
+import { FederatedWheelEvent } from 'Latte/core/federatedWheelEvent'
+import type { IPickerService } from 'Latte/event/pickService'
 import { Point } from 'Latte/common/Point'
 
 export const TOUCH_TO_POINTER: Record<string, string> = {

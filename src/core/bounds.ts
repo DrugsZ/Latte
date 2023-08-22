@@ -1,4 +1,4 @@
-import { Rectangle } from 'Latte/core//Rectangle'
+import { Rectangle } from 'Latte/core/rectangle'
 
 export class Bounds {
   public minX: number = Infinity

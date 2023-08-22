@@ -1,8 +1,8 @@
 /* eslint-disable no-param-reassign */
-import type { FederatedEvent } from 'Latte/core/FederatedEvent'
-import { FederatedMouseEvent } from 'Latte/core/FederatedMouseEvent'
-import { FederatedPointerEvent } from 'Latte/core/FederatedPointerEvent'
-import { FederatedWheelEvent } from 'Latte/core/FederatedWheelEvent'
+import type { FederatedEvent } from 'Latte/core/federatedEvent'
+import { FederatedMouseEvent } from 'Latte/core/federatedMouseEvent'
+import { FederatedPointerEvent } from 'Latte/core/federatedPointerEvent'
+import { FederatedWheelEvent } from 'Latte/core/federatedWheelEvent'
 import type { IEventTarget } from 'Latte/core/interfaces'
 import type { Point } from 'Latte/common/Point'
 import { isDisplayObject } from 'Latte/utils/assert'

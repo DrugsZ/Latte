@@ -1,7 +1,7 @@
-import { EventTarget } from 'Latte/core/EventTarget'
-import { Transform } from 'Latte/core/Transform'
-import { Bounds } from 'Latte/core/Bounds'
-import type { Container } from 'Latte/core//Container'
+import { EventTarget } from 'Latte/core/eventTarget'
+import { Transform } from 'Latte/core/transform'
+import { Bounds } from 'Latte/core/bounds'
+import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/math/matrix'
 import { Point } from 'Latte/common/Point'
@@ -24,6 +24,14 @@ export abstract class DisplayObject<
   protected _bounds: Bounds = new Bounds()
 
   protected _localBounds: Bounds = new Bounds()
+
+  protected _OBB: {
+    x: number
+    y: number
+    width: number
+    height: number
+    transform: Matrix
+  }
 
   constructor(element: T) {
     super()
@@ -54,7 +62,7 @@ export abstract class DisplayObject<
   }
 
   get id(): string {
-    return JSON.stringify(this._id)
+    return this._id
   }
   getFills() {
     return this._elementData.fillPaints ?? []
@@ -127,8 +135,18 @@ export abstract class DisplayObject<
     return this._bounds
   }
 
-  getBoundingClientRect() {
+  public getBoundingClientRect() {
     const bounds = this.getBounds()
     return bounds.getRectangle()
+  }
+  public getOBB() {
+    const { x, y, width, height } = this
+    return {
+      x,
+      y,
+      width,
+      height,
+      transform: this.transform.getWorldTransform(),
+    }
   }
 }

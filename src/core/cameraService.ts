@@ -77,6 +77,10 @@ export class Camera {
 
 class CameraService<T = any> {
   private _cameraMaps: Map<T, Camera> = new Map()
+  private _activeCamera: Camera
+
+  private readonly _onCameraViewChange = new Emitter<Camera>()
+  public readonly onCameraViewChange = this._onCameraViewChange.event
   constructor(
     public fullSize: {
       width: number
@@ -104,9 +108,13 @@ class CameraService<T = any> {
     const newCamera = new Camera(fullSize, minRatio)
     newCamera.setPosition(viewportCenterX, viewportCenterY)
     this._cameraMaps.set(id, newCamera)
+    newCamera.onCameraViewChange(event => {
+      this._onCameraViewChange.fire(event)
+      this._activeCamera = event
+    })
     return newCamera
   }
-  getViewport(id: T) {
+  public getViewport(id: T) {
     if (!this._cameraMaps.has(id)) {
       throw Error(`can not found camera by id: ${id}`)
     }
@@ -114,11 +122,15 @@ class CameraService<T = any> {
     return result!.getViewport()
   }
 
-  getCamera(id: T) {
+  public getCamera(id: T) {
     if (!this._cameraMaps.has(id)) {
       throw Error(`can not found camera by id: ${id}`)
     }
     return this._cameraMaps.get(id) as Camera
+  }
+
+  public getActiveCamera() {
+    return this._activeCamera
   }
 }
 

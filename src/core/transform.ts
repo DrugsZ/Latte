@@ -4,6 +4,7 @@ import { Point } from 'Latte/common/Point'
 export class Transform {
   private _localTransform: Matrix
   private _worldTransform: Matrix
+  private _contextTransform: Matrix | null
   private _position: Point = new Point(0, 0)
   private _scale: Point = new Point(0, 0)
   private _rotation: number = 0
@@ -35,11 +36,25 @@ export class Transform {
 
   updateWorldTransform(contextMatrix: Matrix) {
     const localTransform = this.getLocalTransform()
+    this._contextTransform = contextMatrix
     Matrix.multiply(this._worldTransform, localTransform, contextMatrix)
     this.worldDirty = false
   }
 
   getWorldTransform(): Matrix {
+    if (this.localDirty) {
+      const localTransform = this.getLocalTransform()
+      if (this._contextTransform) {
+        Matrix.multiply(
+          this._worldTransform,
+          localTransform,
+          this._contextTransform
+        )
+      } else {
+        this._worldTransform = localTransform.clone()
+      }
+      this.localDirty = false
+    }
     return this._worldTransform
   }
 
@@ -103,9 +118,9 @@ export class Transform {
     this._localTransform.b = sin * this._localScale.x
     this._localTransform.c = -sin * this._localScale.y
     this._localTransform.d = cos * this._localScale.y
-    this._localTransform.tx = this._position.x
-    this._localTransform.ty = this._position.y
+    this._localTransform.tx = this._localPosition.x
+    this._localTransform.ty = this._localPosition.y
 
-    return this._localPosition
+    return this._localTransform
   }
 }

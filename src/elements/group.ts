@@ -1,3 +1,3 @@
 import { Container } from 'Latte/core/container'
 
-export class EditorDocument extends Container {}
+export class Group extends Container {}

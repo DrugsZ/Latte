@@ -1,33 +1,21 @@
-import {
-  getEditorShapeRender,
-  registerEditorShapeRender,
-  registerEditorFillRender,
-  getEditorFillRender,
-} from 'Latte/render/RenderContributionRegistry'
-import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
-import { RectShapeRender } from 'Latte/render/shape/Rect'
-import { EllipseShapeRender } from 'Latte/render/shape/Ellipse'
-import type Rect from 'Latte/elements/Rect'
-import type Ellipse from 'Latte/elements/Ellipse'
-import { SolidColorFillRender } from 'Latte/render/fill/solid'
 import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
-import type { Camera } from 'Latte/core/CameraService'
-import { Matrix } from 'Latte/math/matrix'
+import type { Camera } from 'Latte/core/cameraService'
 
-registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
-registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
-registerEditorFillRender(FillType.SOLID, SolidColorFillRender)
 class RenderService {
   private _ctx: CanvasRenderingContext2D
   constructor(private readonly _canvas: HTMLCanvasElement) {
     this._ctx = this._canvas.getContext('2d') as CanvasRenderingContext2D
   }
 
-  public draw(renderObjects: (Rect | Ellipse)[], camera: Camera): void {
+  public getCanvasRenderingContext() {
+    return this._ctx
+  }
+
+  public prepareRender(camera: Camera) {
+    this._ctx.resetTransform()
     this._clearDrawArea()
-    const ctx = this._ctx
     const vpMatrix = camera.getViewPortMatrix()
-    ctx.setTransform(
+    this._ctx.setTransform(
       vpMatrix.a,
       vpMatrix.b,
       vpMatrix.c,
@@ -35,22 +23,6 @@ class RenderService {
       vpMatrix.tx,
       vpMatrix.ty
     )
-
-    renderObjects.forEach(item => {
-      ctx.save()
-      const fills = item.getFills()
-      fills.forEach(i => {
-        const fillRender = getEditorFillRender(i.type)
-        fillRender(i, ctx)
-      })
-      ctx.beginPath()
-      const shapeRender = getEditorShapeRender(item.type)
-      shapeRender?.(item, ctx, vpMatrix)
-      ctx.fill()
-      ctx.closePath()
-      ctx.restore()
-    })
-    // ctx.restore()
   }
 
   private _clearDrawArea(

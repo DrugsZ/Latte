@@ -1,4 +1,4 @@
-import { DisplayObject } from 'Latte/core/DisplayObject'
+import { DisplayObject } from 'Latte/core/displayObject'
 import { compareASCII } from 'Latte/math/zIndex'
 
 export abstract class Container<

@@ -1,10 +1,10 @@
 /* eslint-disable class-methods-use-this */
 import type { Point } from 'Latte/common/Point'
 import type { IEventTarget } from 'Latte/core/interfaces'
-import type DisplayObject from 'Latte/core/Container'
+import type DisplayObject from 'Latte/core/container'
 import { isRect, isEllipse } from 'Latte/utils/assert'
-import type Ellipse from 'Latte/elements/Ellipse'
-import type Rect from 'Latte/elements/Rect'
+import type Ellipse from 'Latte/elements/ellipse'
+import type Rect from 'Latte/elements/rect'
 import {
   inBox,
   inRectWithRadius,
@@ -16,7 +16,9 @@ export interface IPickerService {
 }
 
 export class PickService implements IPickerService {
-  constructor(private readonly _visibleElementRenderObjects: DisplayObject[]) {
+  constructor(
+    private readonly _getVisibleElementRenderObjects: () => DisplayObject[]
+  ) {
     this.pick = this.pick.bind(this)
   }
 
@@ -59,7 +61,8 @@ export class PickService implements IPickerService {
 
   pick(point: Point): IEventTarget | null {
     let target: any = null
-    const findElements = this._visibleElementRenderObjects.slice().reverse()
+    const findElements =
+      this._getVisibleElementRenderObjects().slice().reverse() || []
     findElements.some(item => {
       const localPosition = item.getWorldTransform().applyInvertToPoint(point)
       if (isRect(item) && this._isPointInRect(localPosition, item)) {

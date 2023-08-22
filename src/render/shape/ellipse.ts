@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
-import type { IEditorShapeRenderContributionDescription } from 'Latte/render/RenderContributionRegistry'
-import type Ellipse from 'Latte/elements/Ellipse'
+import type { IEditorShapeRenderContributionDescription } from 'Latte/render/renderContributionRegistry'
+import type Ellipse from 'Latte/elements/ellipse'
 import { Matrix } from 'Latte/math/matrix'
 
 export class EllipseShapeRender

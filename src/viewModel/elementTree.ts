@@ -1,11 +1,12 @@
-import type { DisplayObject } from 'Latte/core/DisplayObject'
-import { EditorElementTypeKind } from 'Latte/constants/schema'
-import type { Container } from 'Latte/core/Container'
-import { EditorDocument } from 'Latte/elements/document'
-import Rect from 'Latte/elements/Rect'
-import Ellipse from 'Latte/elements/Ellipse'
-import Page from 'Latte/core/page'
+import Rect from 'Latte/elements/rect'
+import Ellipse from 'Latte/elements/ellipse'
+import { Page } from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
+import { EditorDocument } from 'Latte/elements/document'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
+
+import type { DisplayObject } from 'Latte/core/displayObject'
+import type { Container } from 'Latte/core/container'
 
 export const createElement = (element: BaseElementSchema) => {
   const { type } = element
@@ -33,9 +34,9 @@ export const createElement = (element: BaseElementSchema) => {
   return new Ctr(element)
 }
 
-class RenderContext {
+export class ElementTree {
   private _elements: Map<string, DisplayObject> = new Map()
-  private _root: EditorDocument
+  public _document: EditorDocument
 
   constructor(elements: BaseElementSchema[]) {
     this._initElements(elements)
@@ -47,9 +48,9 @@ class RenderContext {
     } = {}
     elements.forEach(elm => {
       const currentNode = createElement(elm)
-      this._elements.set(JSON.stringify(elm.guid), currentNode)
+      this._elements.set(currentNode.id, currentNode)
       if (currentNode instanceof EditorDocument) {
-        this._root = currentNode
+        this._document = currentNode
         return
       }
       const { parentIndex } = elm
@@ -69,13 +70,11 @@ class RenderContext {
     })
   }
 
-  public getPages(): Page[] {
-    return this._root.getChildren() as Page[]
+  public getElementById(id: string) {
+    return this._elements.get(id)
   }
 
-  public getRoot(): EditorDocument {
-    return this._root
+  get document() {
+    return this._document
   }
 }
-
-export default RenderContext

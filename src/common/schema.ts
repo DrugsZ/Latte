@@ -48,3 +48,5 @@ export const createDefaultFile = () => {
   newFile.elements.push(page)
   return newFile
 }
+
+export const createDefaultElement = () => {}
