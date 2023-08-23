@@ -9,6 +9,7 @@ import { SelectBox } from 'Latte/view/selectBox'
 import { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import type { ViewPart } from 'Latte/view/viewPart'
 import { ViewController } from 'Latte/core/viewController'
+import { Matrix } from 'Latte/math/matrix'
 
 export enum RenderEnum {
   ViewportChange,
@@ -102,6 +103,6 @@ export default class View extends ViewEventHandler {
   public client2Viewport(client: IPoint) {
     const currentCamera = this._viewModel.getCurrentCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
-    return vpMatrix.applyInvertToPoint(client)
+    return Matrix.applyMatrixInvertToPoint(vpMatrix, client)
   }
 }

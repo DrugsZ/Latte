@@ -10,6 +10,7 @@ import {
   inRectWithRadius,
   ellipseDistance,
 } from 'Latte/math/inPointerInPath'
+import { Matrix } from 'Latte/math/matrix'
 
 export interface IPickerService {
   pick(point: Point): IEventTarget | null
@@ -64,7 +65,10 @@ export class PickService implements IPickerService {
     const findElements =
       this._getVisibleElementRenderObjects().slice().reverse() || []
     findElements.some(item => {
-      const localPosition = item.getWorldTransform().applyInvertToPoint(point)
+      const localPosition = Matrix.applyMatrixInvertToPoint(
+        item.transform,
+        point
+      )
       if (isRect(item) && this._isPointInRect(localPosition, item)) {
         target = item
         return true

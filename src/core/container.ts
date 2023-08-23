@@ -38,7 +38,6 @@ export abstract class Container<
     this._children.splice(index, 0, child)
     child.parentNode?.removeChild(child)
     child.parentNode = this
-    child.transform.worldDirty = true
   }
 
   appendChild(...child: DisplayObject[]) {
