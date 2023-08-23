@@ -3,7 +3,6 @@ import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 
 export enum ViewEventType {
   ViewFocusPageChange,
-  ViewActiveSelectionChange,
   ViewCameraChange,
   ViewElementChange,
   ViewMouseModelChange,
@@ -12,10 +11,6 @@ export enum ViewEventType {
 export class ViewFocusPageChangeEvent {
   public readonly type = ViewEventType.ViewFocusPageChange
   constructor(public readonly newFocusPageId: string) {}
-}
-
-export class ViewActiveSelectionChangeEvent {
-  public readonly type = ViewEventType.ViewActiveSelectionChange
 }
 
 export class ViewCameraUpdateEvent {
@@ -34,7 +29,6 @@ export class ViewMouseModeChangeEvent {
 
 export type ViewEvent =
   | ViewFocusPageChangeEvent
-  | ViewActiveSelectionChangeEvent
   | ViewCameraUpdateEvent
   | ViewElementChangeEvent
   | ViewMouseModeChangeEvent

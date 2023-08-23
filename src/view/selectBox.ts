@@ -13,10 +13,6 @@ export class SelectBox extends ViewPart {
     return true
   }
 
-  public override onActiveSelectionChange(): boolean {
-    return true
-  }
-
   render(ctx: CanvasRenderingContext2D, camera: Camera) {
     const activeSelection = this._context.getActiveSelection()
     if (!activeSelection.hasActive()) {
