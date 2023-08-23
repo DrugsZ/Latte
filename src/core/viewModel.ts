@@ -52,6 +52,23 @@ export class ViewModel {
     })
 
     this._initElementTree()
+
+    this._modelData.onElementChange(e => {
+      console.log(e)
+      e.forEach(item => {
+        const { value } = item
+        const currentNode = this._elementTree.getElementById(
+          JSON.stringify(value.guid)
+        )
+        if (currentNode) {
+          currentNode.setElementData(value)
+        }
+      })
+      this._eventDispatcher.emitViewEvent(
+        new viewEvents.ViewElementChangeEvent()
+      )
+      this._activeSelection.updateOBB()
+    })
   }
 
   private _initElementTree() {
@@ -135,26 +152,26 @@ export class ViewModel {
 
   public addSelectElement(element: DisplayObject) {
     this._activeSelection.addSelectElement(element)
-    this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewActiveSelectionChangeEvent()
-    )
+    this._eventDispatcher.emitViewEvent(new viewEvents.ViewElementChangeEvent())
   }
 
   public removeSelectElement(element: DisplayObject) {
     this._activeSelection.removeSelectElement(element)
-    this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewActiveSelectionChangeEvent()
-    )
+    this._eventDispatcher.emitViewEvent(new viewEvents.ViewElementChangeEvent())
   }
 
   public clearSelection() {
     this._activeSelection.clear()
-    this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewActiveSelectionChangeEvent()
-    )
+    this._eventDispatcher.emitViewEvent(new viewEvents.ViewElementChangeEvent())
   }
 
   public getActiveSelection() {
     return this._activeSelection
+  }
+
+  public updateElementData(element: Partial<BaseElementSchema>[]) {
+    this._modelData.updateChild({
+      data: element,
+    })
   }
 }

@@ -3,9 +3,10 @@ import type { EventTarget } from 'Latte/core/eventTarget'
 import type { ViewController } from 'Latte/core/viewController'
 import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
+import Rect from 'Latte/elements/rect'
 
 export enum MouseTarget {
-  BLINK,
+  BLANK,
   SELECTION_CONTEXT,
   SELECT_ROTATE,
   SELECT_RESIZE,
@@ -117,6 +118,7 @@ class MouseDownState {
 class MouseDownOperation {
   private _mouseDownState: MouseDownState = new MouseDownState()
   private _isActive: boolean = false
+  private _initialElement: DisplayObject | null = null
 
   constructor(
     private readonly _element: EventTarget,
@@ -132,21 +134,36 @@ class MouseDownOperation {
       event.detail,
       new Point(event.clientX, event.clientY)
     )
-    this._startMonitoring()
+    this._startMonitoring(event)
   }
 
-  private _startMonitoring() {
+  private _startMonitoring(event: FormattedPointerEvent) {
     this._isActive = true
+    if (event.target instanceof Rect) {
+      this._initialElement = event.target
+    }
+  }
+
+  private _stopMonitoring(event: FormattedPointerEvent) {
+    this._isActive = false
+    this._initialElement = null
   }
 
   private _onMouseDownThenMove = (e: FormattedPointerEvent) => {
     if (!this._isActive) {
       return
     }
+    if (!e.target) {
+      return
+    }
+    this._viewController.moveElement(this._initialElement, {
+      x: e.movementX,
+      y: e.movementY,
+    })
   }
 
-  public onPointerUp() {
-    this._isActive = false
+  public onPointerUp(event: FormattedPointerEvent) {
+    this._stopMonitoring(event)
   }
 
   public isActive() {
@@ -175,7 +192,7 @@ class MouseHandler {
 
   private _bindMouseDownHandler() {
     this._element.addEventListener('mousedown', (e: FormattedPointerEvent) => {
-      this._isMouseDown = true
+      // this._isMouseDown = true
       this._viewController.emitMouseDown(e)
       if (e.button === 0) {
         this._mouseDownOperation.start(e)

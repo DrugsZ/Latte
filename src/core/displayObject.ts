@@ -1,5 +1,4 @@
 import { EventTarget } from 'Latte/core/eventTarget'
-import { Transform } from 'Latte/core/transform'
 import { Bounds } from 'Latte/core/bounds'
 import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
@@ -19,18 +18,16 @@ export abstract class DisplayObject<
 
   parentNode: Container | null = null
 
-  transform: Transform
+  // _transform: Transform
 
   protected _bounds: Bounds = new Bounds()
-
-  protected _localBounds: Bounds = new Bounds()
 
   protected _OBB: {
     x: number
     y: number
     width: number
     height: number
-    transform: Matrix
+    transform: IMatrixLike
   }
 
   constructor(element: T) {
@@ -38,28 +35,42 @@ export abstract class DisplayObject<
     this.type = element.type
     this._id = JSON.stringify(element.guid)
     this._elementData = element
-    this.transform = new Transform(this._elementData.transform)
+    // this._transform = new Transform(this._elementData.transform)
   }
 
-  getWorldTransform() {
-    if (!this.transform.localDirty && !this.transform.worldDirty) {
-      return this.transform.getWorldTransform()
-    }
-    if (this.transform.worldDirty && this.parentNode) {
-      const parentTransform = this.parentNode.getWorldTransform()
-      this.transform.updateWorldTransform(parentTransform)
-      return this.transform.getWorldTransform()
-    }
-    return this.transform.getWorldTransform()
+  private static _translate(
+    element: DisplayObject,
+    point: IPoint
+  ): Partial<BaseElementSchema>[] {
+    const { x, y, transform } = element
+    const { x: movementX, y: movementY } = point
+    return [
+      {
+        guid: element.getGuidKey(),
+        transform: { ...transform, tx: x + movementX, ty: y + movementY },
+      },
+    ]
   }
 
-  getLocalTransform() {
-    return this.transform.getLocalTransform()
-  }
+  // getWorldTransform() {
+  //   if (!this._transform.localDirty && !this._transform.worldDirty) {
+  //     return this._transform.getWorldTransform()
+  //   }
+  //   if (this._transform.worldDirty && this.parentNode) {
+  //     const parentTransform = this.parentNode.getWorldTransform()
+  //     this._transform.updateWorldTransform(parentTransform)
+  //     return this._transform.getWorldTransform()
+  //   }
+  //   return this._transform.getWorldTransform()
+  // }
 
-  getPosition() {
-    return this.transform.getPosition()
-  }
+  // getLocalTransform() {
+  //   return this._transform.getLocalTransform()
+  // }
+
+  // getPosition() {
+  //   return this._transform.getPosition()
+  // }
 
   get id(): string {
     return this._id
@@ -81,15 +92,19 @@ export abstract class DisplayObject<
   }
 
   get x() {
-    return this.transform.getPosition().x
+    return this.transform.tx
   }
 
   get y() {
-    return this.transform.getPosition().y
+    return this.transform.ty
   }
 
   get visible() {
     return this._elementData.visible
+  }
+
+  get transform() {
+    return this._elementData.transform
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -99,18 +114,25 @@ export abstract class DisplayObject<
 
   getGuidKey() {
     const { guid } = this._elementData
-    return JSON.stringify(guid)
+    return guid
   }
 
   getBounds() {
-    const worldMatrix = this.getWorldTransform()
+    const worldMatrix = this.transform
     const x = worldMatrix.tx
     const y = worldMatrix.ty
     const [tx, ty] = Matrix.fromMatrixOrigin([0, 0], worldMatrix, [
       this.x,
       this.y,
     ])
-    const tempMatrix = worldMatrix.clone()
+    const tempMatrix = new Matrix(
+      worldMatrix.a,
+      worldMatrix.b,
+      worldMatrix.c,
+      worldMatrix.d,
+      worldMatrix.tx,
+      worldMatrix.ty
+    )
     tempMatrix.tx = tx
     tempMatrix.ty = ty
     // tl
@@ -146,7 +168,15 @@ export abstract class DisplayObject<
       y,
       width,
       height,
-      transform: this.transform.getWorldTransform(),
+      transform: this.transform,
     }
+  }
+
+  public setElementData(data: T) {
+    this._elementData = data
+  }
+
+  public translate(element: DisplayObject, point: IPoint) {
+    return DisplayObject._translate(element, point)
   }
 }

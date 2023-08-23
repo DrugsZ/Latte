@@ -2,18 +2,18 @@ import { createDefaultElement, createDefaultFile } from 'Latte/common/schema'
 import { Emitter } from 'Latte/common/event'
 
 interface IUpdatePayload {
-  data: BaseElementSchema
+  data: Partial<BaseElementSchema>[]
 }
 
 interface ISchemaModel {
-  updateModel(payload: IUpdatePayload): void
+  updateChild(payload: IUpdatePayload): void
   addChild(payload: IUpdatePayload): void
   removeChild(target: string): void
 }
 
 interface ChangeEvent {
   type: 'DELETE' | 'CREATE' | 'CHANGE'
-  value: Element
+  value: BaseElementSchema
 }
 
 class ModelData implements ISchemaModel {
@@ -23,18 +23,31 @@ class ModelData implements ISchemaModel {
   private readonly onDataChange = this._onDataChange.event
 
   private readonly _onElementChange = new Emitter<ChangeEvent[]>()
-  private readonly onElementChange = this._onElementChange.event
+  public readonly onElementChange = this._onElementChange.event
 
   constructor(model?: LatteFile) {
     this._initModel(model)
   }
-  updateModel(payload: { data: PAGE }): void {
-    this._model.elements = this._model.elements.map(item =>
-      JSON.stringify(item.guid) === JSON.stringify(payload.data.guid)
-        ? payload.data
-        : item
-    )
-    this._onDataChange.fire(this._model)
+  updateChild(payload: IUpdatePayload): void {
+    const { data } = payload
+    const list = [...data]
+    const changeList: ChangeEvent[] = []
+    this._model.elements.some((item, index) => {
+      const currentItemIndex = list.findIndex(i => i.guid === item.guid)
+      if (~currentItemIndex) {
+        const currentItem = list.splice(currentItemIndex, 1)[0]
+        this._model.elements[index] = {
+          ...item,
+          ...currentItem,
+        }
+        changeList.push({
+          type: 'CHANGE',
+          value: this._model.elements[index],
+        })
+      }
+      return !list.length
+    })
+    this._onElementChange.fire(changeList)
   }
   addChild() {
     this._model?.elements.push(

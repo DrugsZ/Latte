@@ -10,7 +10,7 @@ type ElementType =
   | 'POLYGON'
   | 'STAR'
 
-interface TransformObject {
+interface IMatrixLike {
   a: number
   b: number
   c: number
@@ -74,25 +74,25 @@ interface SolidColorPaint extends BaseFill {
 interface GradientLinearPaint extends BaseFill {
   type: FillType.GRADIENT_LINEAR
   stops: [FillColorStop, FillColorStop]
-  transform: TransformObject
+  transform: IMatrixLike
 }
 
 interface GradientRadialPaint extends BaseFill {
   type: FillType.GRADIENT_RADIAL
   stops: [FillColorStop, FillColorStop]
-  transform: TransformObject
+  transform: IMatrixLike
 }
 
 interface GradientAngularPaint extends BaseFill {
   type: FillType.GRADIENT_ANGULAR
   stops: [FillColorStop, FillColorStop]
-  transform: TransformObject
+  transform: IMatrixLike
 }
 
 interface GradientDiamondPaint extends BaseFill {
   type: FillType.GRADIENT_DIAMOND
   stops: [FillColorStop, FillColorStop]
-  transform: TransformObject
+  transform: IMatrixLike
 }
 
 type Paint =
@@ -121,7 +121,7 @@ interface BaseNodeSchema {
   name: string
   visible: boolean
   opacity: number
-  transform: TransformObject
+  transform: IMatrixLike
 }
 
 interface BaseChildNodeSchema extends BaseNodeSchema {

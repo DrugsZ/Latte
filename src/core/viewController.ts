@@ -20,35 +20,37 @@ export interface IMouseDispatchData {
 }
 
 export class ViewController {
-  constructor(private _viewMode: ViewModel) {}
+  constructor(private _viewModel: ViewModel) {}
   public selectElement() {}
   public hoverElement() {}
   public hoverSelectBox() {}
   public resizeElement() {}
-  public moveElement() {}
+  public moveElement(element: DisplayObject, movePoint: IPoint) {
+    this._viewModel.updateElementData(element.translate(element, movePoint))
+  }
   public rotateElement() {}
   public moveCamera() {}
   public zoomCamera() {}
   public changeViewMouseMove(mode: ViewMouseModeType) {
-    this._viewMode.setMouseMode(mode)
+    this._viewModel.setMouseMode(mode)
   }
   public emitMouseDown(e: FormattedPointerEvent) {
     const { target } = e
-    const activeSelection = this._viewMode.getActiveSelection()
+    const activeSelection = this._viewModel.getActiveSelection()
     if (target instanceof EditorDocument || target instanceof Page) {
-      this._viewMode.clearSelection()
+      this._viewModel.clearSelection()
       return
     }
     if (target instanceof DisplayObject) {
       if (!e.shiftKey) {
-        this._viewMode.clearSelection()
-        this._viewMode.addSelectElement(target)
+        this._viewModel.clearSelection()
+        this._viewModel.addSelectElement(target)
         return
       }
       if (activeSelection.hasSelected(target)) {
-        this._viewMode.removeSelectElement(target)
+        this._viewModel.removeSelectElement(target)
       } else {
-        this._viewMode.addSelectElement(target)
+        this._viewModel.addSelectElement(target)
       }
     }
   }

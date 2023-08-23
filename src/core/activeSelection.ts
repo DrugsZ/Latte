@@ -38,9 +38,11 @@ export class ActiveSelection extends DisplayObject {
     this._bounds.clear()
   }
 
-  _updateOBB() {
+  public updateOBB() {
     const objects = this._objects
-    if (objects.length === 1) {
+    if (!objects.length) {
+      this._bounds.clear()
+    } else if (objects.length === 1) {
       this._OBB = objects[0].getOBB()
     } else {
       this._bounds.clear()
@@ -64,7 +66,7 @@ export class ActiveSelection extends DisplayObject {
 
   public getOBB() {
     if (this._OBBDirty) {
-      this._updateOBB()
+      this.updateOBB()
     }
     return this._OBB
   }
@@ -75,4 +77,13 @@ export class ActiveSelection extends DisplayObject {
 
   public hasSelected = (element: DisplayObject) =>
     this._objects.includes(element)
+
+  public override translate(
+    element: DisplayObject<BaseElementSchema>,
+    point: IPoint
+  ): Partial<BaseElementSchema>[] {
+    return this._objects.reduce((pre: Partial<BaseElementSchema>[], cur) => {
+      return pre.concat(cur.translate(cur, point))
+    }, [])
+  }
 }
