@@ -4,15 +4,7 @@ import type { ViewController } from 'Latte/core/viewController'
 import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
 import Rect from 'Latte/elements/rect'
-
-export enum MouseTarget {
-  BLANK,
-  SELECTION_CONTEXT,
-  SELECT_ROTATE,
-  SELECT_RESIZE,
-  SELECT_RESIZE_LIN,
-  ELEMENT,
-}
+import { PickService } from 'Latte/event/pickService'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -179,7 +171,9 @@ class MouseHandler {
   constructor(
     private readonly _element: EventTarget,
     private readonly _view: View,
-    private readonly _viewController: ViewController
+    private readonly _viewController: ViewController,
+    private readonly element: HTMLCanvasElement,
+    private readonly pickService: PickService
   ) {
     this._bindMouseDownHandler()
     this._bindMouseMoveHandler()
@@ -188,6 +182,16 @@ class MouseHandler {
       this._element,
       this._viewController
     )
+    this._bindMouseEvent('mousedown', console.log)
+  }
+
+  private _bindMouseEvent(type, callback) {
+    this.element.addEventListener(type, e => {
+      const canvas = this._view.client2Viewport(new Point(e.offsetX, e.offsetY))
+      const target = this.pickService.pick(canvas)
+      console.log(canvas, target)
+      callback({ e, canvas, target })
+    })
   }
 
   private _bindMouseDownHandler() {
@@ -201,8 +205,8 @@ class MouseHandler {
   }
 
   private _bindMouseUpHandler() {
-    this._element.addEventListener('mouseup', () => {
-      this._mouseDownOperation.onPointerUp()
+    this._element.addEventListener('mouseup', e => {
+      this._mouseDownOperation.onPointerUp(e)
       this._isMouseDown = false
     })
   }

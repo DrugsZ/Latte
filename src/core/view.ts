@@ -46,7 +46,9 @@ export default class View extends ViewEventHandler {
     this._mouseHandler = new MouseHandler(
       this._viewModel.elementTreeRoot,
       this,
-      this._viewController
+      this._viewController,
+      this._renderDOM,
+      this._viewModel.pickService
     )
     this._eventService = new EventService(this._viewModel.elementTreeRoot)
     this.client2Viewport = this.client2Viewport.bind(this)
