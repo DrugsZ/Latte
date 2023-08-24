@@ -196,6 +196,10 @@ interface Rectangle {
   height: number
 }
 
+type OBB = Rectangle & {
+  transform: IMatrixLike
+}
+
 interface IPoint {
   x: number
   y: number

@@ -18,24 +18,15 @@ export abstract class DisplayObject<
 
   parentNode: Container | null = null
 
-  // _transform: Transform
-
   protected _bounds: Bounds = new Bounds()
 
-  protected _OBB: {
-    x: number
-    y: number
-    width: number
-    height: number
-    transform: IMatrixLike
-  }
+  protected _OBB: OBB
 
   constructor(element: T) {
     super()
     this.type = element.type
     this._id = JSON.stringify(element.guid)
     this._elementData = element
-    // this._transform = new Transform(this._elementData.transform)
   }
 
   private static _translate(
@@ -51,26 +42,6 @@ export abstract class DisplayObject<
       },
     ]
   }
-
-  // getWorldTransform() {
-  //   if (!this._transform.localDirty && !this._transform.worldDirty) {
-  //     return this._transform.getWorldTransform()
-  //   }
-  //   if (this._transform.worldDirty && this.parentNode) {
-  //     const parentTransform = this.parentNode.getWorldTransform()
-  //     this._transform.updateWorldTransform(parentTransform)
-  //     return this._transform.getWorldTransform()
-  //   }
-  //   return this._transform.getWorldTransform()
-  // }
-
-  // getLocalTransform() {
-  //   return this._transform.getLocalTransform()
-  // }
-
-  // getPosition() {
-  //   return this._transform.getPosition()
-  // }
 
   get id(): string {
     return this._id
