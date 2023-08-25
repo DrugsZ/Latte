@@ -4,6 +4,7 @@ import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
 import type { FormattedPointerEvent } from 'Latte/event/eventBind'
+import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -34,7 +35,7 @@ export class ViewController {
   public changeViewMouseMove(mode: ViewMouseModeType) {
     this._viewModel.setMouseMode(mode)
   }
-  public emitMouseDown(e: FormattedPointerEvent) {
+  public emitMouseDown(e: EditorMouseEvent) {
     const { target } = e
     const activeSelection = this._viewModel.getActiveSelection()
     if (target instanceof EditorDocument || target instanceof Page) {

@@ -1,16 +1,50 @@
 import { DisplayObject } from 'Latte/core/displayObject'
-import { Matrix } from 'Latte/math/matrix'
+import Rect from 'Latte/elements/rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 
-const tempMatrix = new Matrix()
+const tempMatrix = {
+  a: 1,
+  b: 0,
+  c: 0,
+  d: 1,
+  tx: 0,
+  ty: 0,
+}
 
-export class ActiveSelection extends DisplayObject {
+export enum MouseControllerTarget {
+  BLANK,
+  SELECTION_CONTEXT,
+  SELECT_ROTATE_LEFT_TOP,
+  SELECT_ROTATE_RIGHT_TOP,
+  SELECT_ROTATE_LEFT_BOTTOM,
+  SELECT_ROTATE_RIGHT_BOTTOM,
+  SELECT_RESIZE_LEFT,
+  SELECT_RESIZE_TOP,
+  SELECT_RESIZE_RIGHT,
+  SELECT_RESIZE_BOTTOM,
+  SELECT_RESIZE_LEFT_TOP,
+  SELECT_RESIZE_RIGHT_TOP,
+  SELECT_RESIZE_LEFT_BOTTOM,
+  SELECT_RESIZE_RIGHT_BOTTOM,
+}
+
+interface IActiveSelectionControl {
+  controllerType: MouseControllerTarget
+}
+
+export class ActiveSelection extends Rect implements IActiveSelectionControl {
   private _objects: DisplayObject[] = []
   private _OBBDirty: boolean = false
+  public readonly controllerType: MouseControllerTarget
 
   constructor() {
     super({
       type: EditorElementTypeKind.RECTANGLE,
+      size: {
+        x: 0,
+        y: 0,
+      },
+      fillPaints: [{ type: 'SOLID' }],
       transform: {
         a: 1,
         b: 0,
@@ -20,6 +54,7 @@ export class ActiveSelection extends DisplayObject {
         ty: 0,
       },
     })
+    this.controllerType = MouseControllerTarget.SELECTION_CONTEXT
   }
 
   public addSelectElement(element: DisplayObject) {
@@ -40,35 +75,36 @@ export class ActiveSelection extends DisplayObject {
 
   public updateOBB() {
     const objects = this._objects
-    if (!objects.length) {
-      this._bounds.clear()
-    } else if (objects.length === 1) {
-      this._OBB = objects[0].getOBB()
-    } else {
-      this._bounds.clear()
-      objects.forEach(element => {
-        if (!element.visible) {
-          return
-        }
-        const elementBBox = element.getBounds()
-        this._bounds.merge(elementBBox)
-      })
-      const rect = this._bounds.getRectangle()
-      tempMatrix.tx = rect.x
-      tempMatrix.ty = rect.y
-      this._OBB = {
-        ...rect,
-        transform: tempMatrix,
+    if (objects.length < 2) {
+      return
+    }
+    this._bounds.clear()
+    objects.forEach(element => {
+      if (!element.visible) {
+        return
       }
+      const elementBBox = element.getBounds()
+      this._bounds.merge(elementBBox)
+    })
+    const rect = this._bounds.getRectangle()
+    tempMatrix.tx = rect.x
+    tempMatrix.ty = rect.y
+    this._elementData.transform = { ...tempMatrix }
+    this._elementData.size = {
+      x: rect.width,
+      y: rect.height,
     }
     this._OBBDirty = false
   }
 
-  public getOBB() {
+  get OBB() {
+    if (this._objects.length == 1) {
+      return this._objects[0].OBB
+    }
     if (this._OBBDirty) {
       this.updateOBB()
     }
-    return this._OBB
+    return super.OBB
   }
 
   public hasActive() {

@@ -59,7 +59,7 @@ export class SelectBox extends ViewPart {
     if (!activeSelection.hasActive()) {
       return
     }
-    const rect = activeSelection.getOBB()!
+    const rect = activeSelection.OBB
     Matrix.multiply(
       this._tempMatrix,
       camera.getViewPortMatrix(),

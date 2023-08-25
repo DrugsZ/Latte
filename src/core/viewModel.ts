@@ -79,7 +79,10 @@ export class ViewModel {
       this.createCamera(page.id, page.getBoundingClientRect())
     })
     this.focusPageId = this._elementTree.document.getChildren()[0].id
-    this.pickService = new PickService(this.getVisibleElementRenderObjects)
+    this.pickService = new PickService(
+      this.getVisibleElementRenderObjects,
+      this._activeSelection
+    )
   }
 
   get focusPageId() {

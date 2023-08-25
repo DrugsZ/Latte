@@ -33,6 +33,7 @@ export default class View extends ViewEventHandler {
   ) {
     super()
     // this._initElement()
+    this.client2Viewport = this.client2Viewport.bind(this)
     this._renderElement = new ElementRender(
       this._viewModel,
       this._viewModel.getVisibleElementRenderObjects
@@ -51,7 +52,6 @@ export default class View extends ViewEventHandler {
       this._viewModel.pickService
     )
     this._eventService = new EventService(this._viewModel.elementTreeRoot)
-    this.client2Viewport = this.client2Viewport.bind(this)
     this._eventBind = new EventBind(
       this._renderDOM,
       this._eventService,

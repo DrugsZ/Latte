@@ -20,8 +20,6 @@ export abstract class DisplayObject<
 
   protected _bounds: Bounds = new Bounds()
 
-  protected _OBB: OBB
-
   constructor(element: T) {
     super()
     this.type = element.type
@@ -78,6 +76,17 @@ export abstract class DisplayObject<
     return this._elementData.transform
   }
 
+  get OBB(): OBB {
+    const { x, y, width, height, transform } = this
+    return {
+      x,
+      y,
+      width,
+      height,
+      transform,
+    }
+  }
+
   // eslint-disable-next-line class-methods-use-this
   getBorder(): number | number[] | null {
     return null
@@ -131,16 +140,6 @@ export abstract class DisplayObject<
   public getBoundingClientRect() {
     const bounds = this.getBounds()
     return bounds.getRectangle()
-  }
-  public getOBB() {
-    const { x, y, width, height } = this
-    return {
-      x,
-      y,
-      width,
-      height,
-      transform: this.transform,
-    }
   }
 
   public setElementData(data: T) {

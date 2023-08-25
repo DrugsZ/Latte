@@ -5,6 +5,10 @@ import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
 import Rect from 'Latte/elements/rect'
 import { PickService } from 'Latte/event/pickService'
+import {
+  EditorMouseEventFactory,
+  EditorMouseEvent,
+} from 'Latte/event/mouseEvent'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -119,7 +123,7 @@ class MouseDownOperation {
     this._element.addEventListener('mousemove', this._onMouseDownThenMove)
   }
 
-  public start(event: FormattedPointerEvent) {
+  public start(event: EditorMouseEvent) {
     this._mouseDownState.setModifiers(event)
     this._mouseDownState.setStartButtons(event)
     this._mouseDownState.trySetCount(
@@ -129,19 +133,19 @@ class MouseDownOperation {
     this._startMonitoring(event)
   }
 
-  private _startMonitoring(event: FormattedPointerEvent) {
+  private _startMonitoring(event: EditorMouseEvent) {
     this._isActive = true
     if (event.target instanceof Rect) {
       this._initialElement = event.target
     }
   }
 
-  private _stopMonitoring(event: FormattedPointerEvent) {
+  private _stopMonitoring(event: EditorMouseEvent) {
     this._isActive = false
     this._initialElement = null
   }
 
-  private _onMouseDownThenMove = (e: FormattedPointerEvent) => {
+  private _onMouseDownThenMove = (e: EditorMouseEvent) => {
     if (!this._isActive) {
       return
     }
@@ -154,7 +158,7 @@ class MouseDownOperation {
     })
   }
 
-  public onPointerUp(event: FormattedPointerEvent) {
+  public onPointerUp(event: EditorMouseEvent) {
     this._stopMonitoring(event)
   }
 
@@ -168,6 +172,7 @@ class MouseDownOperation {
 class MouseHandler {
   private _isMouseDown: boolean
   private _mouseDownOperation: MouseDownOperation
+  private _mouseEvent: EditorMouseEventFactory
   constructor(
     private readonly _element: EventTarget,
     private readonly _view: View,
@@ -175,6 +180,11 @@ class MouseHandler {
     private readonly element: HTMLCanvasElement,
     private readonly pickService: PickService
   ) {
+    this._mouseEvent = new EditorMouseEventFactory(
+      this.element,
+      this._view.client2Viewport,
+      this.pickService
+    )
     this._bindMouseDownHandler()
     this._bindMouseMoveHandler()
     this._bindMouseUpHandler()
@@ -182,16 +192,23 @@ class MouseHandler {
       this._element,
       this._viewController
     )
-    this._bindMouseEvent('mousedown', console.log)
+    this._mouseEvent.onMouseDown(console.log)
   }
 
   private _bindMouseEvent(type, callback) {
     this.element.addEventListener(type, e => {
       const canvas = this._view.client2Viewport(new Point(e.offsetX, e.offsetY))
       const target = this.pickService.pick(canvas)
-      console.log(canvas, target)
       callback({ e, canvas, target })
+      console.log(this.pickService.pickActiveSelection(canvas))
     })
+  }
+
+  private _handleMouseDown(e: EditorMouseEvent) {
+    this._viewController.emitMouseDown(e)
+    if (e.button === 0) {
+      this._mouseDownOperation.start(e)
+    }
   }
 
   private _bindMouseDownHandler() {
