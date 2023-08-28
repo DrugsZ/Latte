@@ -1,8 +1,14 @@
-import { DisplayObject } from 'Latte/core/displayObject'
+import type { DisplayObject } from 'Latte/core/displayObject'
 import Rect from 'Latte/elements/rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { inBox, inLine } from 'Latte/math/inPointerInPath'
 import { Matrix } from 'Latte/math/matrix'
+import {
+  DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
+  DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH,
+  DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT,
+} from 'Latte/constants/editor'
+import { Rectangle } from 'Latte/core/rectangle'
 
 const tempMatrix = {
   a: 1,
@@ -32,6 +38,21 @@ export enum MouseControllerTarget {
 
 interface IActiveSelectionControl {
   controllerType: MouseControllerTarget
+}
+
+class ActiveSelectionCornerRectangle
+  extends Rectangle
+  implements IActiveSelectionControl
+{
+  constructor(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    public readonly controllerType: MouseControllerTarget
+  ) {
+    super(x, y, width, height)
+  }
 }
 
 export class ActiveSelection extends Rect implements IActiveSelectionControl {
@@ -76,7 +97,7 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   public updateOBB() {
-    const objects = this.objects
+    const { objects } = this
     this._bounds.clear()
     objects.forEach(element => {
       if (!element.visible) {
@@ -97,7 +118,7 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   get OBB() {
-    if (this.objects.length == 1) {
+    if (this.objects.length === 1) {
       return this.objects[0].OBB
     }
     if (this._OBBDirty) {
@@ -113,33 +134,125 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   public hasSelected = (element: DisplayObject) =>
     this.objects.includes(element)
 
+  public getCornerRect() {
+    const { width, height } = this.OBB
+    const halfWidth = DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH / 2
+    const halfHeight = DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT / 2
+    const leftTopCorner = new ActiveSelectionCornerRectangle(
+      -halfWidth,
+      -halfHeight,
+      DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH,
+      DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT,
+      MouseControllerTarget.SELECT_RESIZE_LEFT_TOP
+    )
+    const rightTopCorner = new ActiveSelectionCornerRectangle(
+      width - halfWidth,
+      -halfHeight,
+      DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH,
+      DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT,
+      MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
+    )
+    const rightBottomCorner = new ActiveSelectionCornerRectangle(
+      width - halfWidth,
+      height - halfHeight,
+      DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH,
+      DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT,
+      MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
+    )
+    const leftButtonCorner = new ActiveSelectionCornerRectangle(
+      -halfWidth,
+      height - halfHeight,
+      DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH,
+      DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT,
+      MouseControllerTarget.SELECT_ROTATE_LEFT_BOTTOM
+    )
+    return [leftTopCorner, rightTopCorner, rightBottomCorner, leftButtonCorner]
+  }
+
   private _hitContext(point: IPoint) {
     const { width, height } = this.OBB
     if (inBox(0, 0, width, height, point.x, point.y)) {
       return MouseControllerTarget.SELECTION_CONTEXT
     }
+    return null
   }
 
   private _hitBorder(point: IPoint) {
-    const { x, y, width, height } = this.OBB
-    if (inLine(x, y, x + width, y, 6, point.x, point.y)) {
+    const { width, height } = this.OBB
+    if (
+      inLine(
+        0,
+        0,
+        width,
+        0,
+        DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
+        point.x,
+        point.y
+      )
+    ) {
       return MouseControllerTarget.SELECT_RESIZE_TOP
     }
-    if (inLine(x, y, x, y + height, 6, point.x, point.y)) {
+    if (
+      inLine(
+        0,
+        0,
+        0,
+        height,
+        DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
+        point.x,
+        point.y
+      )
+    ) {
       return MouseControllerTarget.SELECT_RESIZE_LEFT
     }
-    if (inLine(x, y + height, x + width, y, 6, point.x, point.y)) {
-      return MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
+    if (
+      inLine(
+        0,
+        height,
+        width,
+        height,
+        DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
+        point.x,
+        point.y
+      )
+    ) {
+      return MouseControllerTarget.SELECT_RESIZE_BOTTOM
     }
-    if (inLine(x + width, y, x + width, y + height, 6, point.x, point.y)) {
+    if (
+      inLine(
+        width,
+        0,
+        width,
+        height,
+        DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
+        point.x,
+        point.y
+      )
+    ) {
       return MouseControllerTarget.SELECT_RESIZE_RIGHT
     }
+    return null
+  }
+
+  private _hitCorner(point: IPoint) {
+    const corners = this.getCornerRect()
+    let result: MouseControllerTarget | null = null
+    corners.some(item => {
+      const { x, y, width, height, controllerType } = item
+      if (inBox(x, y, width, height, point.x, point.y)) {
+        result = controllerType
+        return !!result
+      }
+      return false
+    })
+    return result
   }
 
   public hitTest(point: IPoint) {
     const { transform } = this.OBB
     const localPosition = Matrix.applyMatrixInvertToPoint(transform, point)
-    let target: MouseControllerTarget | undefined
+    let target: MouseControllerTarget | null = null
+    target = target || this._hitCorner(localPosition)
     target = target || this._hitBorder(localPosition)
     target = target || this._hitContext(localPosition)
 
@@ -147,8 +260,10 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   public override translate(point: IPoint): Partial<BaseElementSchema>[] {
-    return this.objects.reduce((pre: Partial<BaseElementSchema>[], cur) => {
-      return pre.concat(cur.translate(point))
-    }, [])
+    return this.objects.reduce(
+      (pre: Partial<BaseElementSchema>[], cur) =>
+        pre.concat(cur.translate(point)),
+      []
+    )
   }
 }

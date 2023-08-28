@@ -1,16 +1,13 @@
 import type View from 'Latte/core/view'
 import type { EventTarget } from 'Latte/core/eventTarget'
 import type { ViewController } from 'Latte/core/viewController'
-import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
 import Rect from 'Latte/elements/rect'
-import { PickService } from 'Latte/event/pickService'
-import {
-  EditorMouseEventFactory,
-  EditorMouseEvent,
-} from 'Latte/event/mouseEvent'
-import { DisplayObject } from 'Latte/core/displayObject'
-import { MouseControllerTarget } from 'Latte/core/activeSelection'
+import type { PickService } from 'Latte/event/pickService'
+import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
+import { EditorMouseEventFactory } from 'Latte/event/mouseEvent'
+import type { DisplayObject } from 'Latte/core/displayObject'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -72,6 +69,7 @@ class MouseDownState {
   }
 
   public setModifiers(source: EditorMouseEvent) {
+    console.log(source)
     this._altKey = source.altKey
     this._ctrlKey = source.ctrlKey
     this._metaKey = source.metaKey

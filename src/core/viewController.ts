@@ -99,9 +99,7 @@ export class ViewController {
           this._createPickArea(data)
         }
       } else {
-        if (
-          data.controllerTargetType === MouseControllerTarget.SELECTION_CONTEXT
-        ) {
+        if (data.controllerTargetType !== MouseControllerTarget.BLANK) {
           return
         }
         if (data.shiftKey) {
