@@ -1,7 +1,7 @@
 import { DisplayObject } from 'Latte/core/displayObject'
 import Rect from 'Latte/elements/rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
-import { inBox } from 'Latte/math/inPointerInPath'
+import { inBox, inLine } from 'Latte/math/inPointerInPath'
 import { Matrix } from 'Latte/math/matrix'
 
 const tempMatrix = {
@@ -113,13 +113,37 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   public hasSelected = (element: DisplayObject) =>
     this.objects.includes(element)
 
-  public hitTest(point: IPoint) {
-    const { width, height, transform } = this.OBB
-    const localPosition = Matrix.applyMatrixInvertToPoint(transform, point)
-    if (inBox(0, 0, width, height, localPosition.x, localPosition.y)) {
-      return this.controllerType
+  private _hitContext(point: IPoint) {
+    const { width, height } = this.OBB
+    if (inBox(0, 0, width, height, point.x, point.y)) {
+      return MouseControllerTarget.SELECTION_CONTEXT
     }
-    return MouseControllerTarget.BLANK
+  }
+
+  private _hitBorder(point: IPoint) {
+    const { x, y, width, height } = this.OBB
+    if (inLine(x, y, x + width, y, 6, point.x, point.y)) {
+      return MouseControllerTarget.SELECT_RESIZE_TOP
+    }
+    if (inLine(x, y, x, y + height, 6, point.x, point.y)) {
+      return MouseControllerTarget.SELECT_RESIZE_LEFT
+    }
+    if (inLine(x, y + height, x + width, y, 6, point.x, point.y)) {
+      return MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
+    }
+    if (inLine(x + width, y, x + width, y + height, 6, point.x, point.y)) {
+      return MouseControllerTarget.SELECT_RESIZE_RIGHT
+    }
+  }
+
+  public hitTest(point: IPoint) {
+    const { transform } = this.OBB
+    const localPosition = Matrix.applyMatrixInvertToPoint(transform, point)
+    let target: MouseControllerTarget | undefined
+    target = target || this._hitBorder(localPosition)
+    target = target || this._hitContext(localPosition)
+
+    return target || MouseControllerTarget.BLANK
   }
 
   public override translate(point: IPoint): Partial<BaseElementSchema>[] {
