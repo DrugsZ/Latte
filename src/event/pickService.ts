@@ -84,13 +84,6 @@ export class PickService implements IPickerService {
   }
 
   pickActiveSelection(point: IPoint) {
-    const localPosition = Matrix.applyMatrixInvertToPoint(
-      this._activeSelection.transform,
-      point
-    )
-    if (this._isPointInRect(localPosition, this._activeSelection)) {
-      console.log(this._activeSelection)
-      return this._activeSelection.controllerType
-    }
+    return this._activeSelection.hitTest(point)
   }
 }

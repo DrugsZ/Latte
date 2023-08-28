@@ -98,6 +98,7 @@ export abstract class DisplayObject<
   }
 
   getBounds() {
+    this._bounds.clear()
     const worldMatrix = this.transform
     const x = worldMatrix.tx
     const y = worldMatrix.ty
@@ -146,7 +147,7 @@ export abstract class DisplayObject<
     this._elementData = data
   }
 
-  public translate(element: DisplayObject, point: IPoint) {
-    return DisplayObject._translate(element, point)
+  public translate(point: IPoint) {
+    return DisplayObject._translate(this, point)
   }
 }

@@ -13,6 +13,10 @@ export class SelectBox extends ViewPart {
     return true
   }
 
+  public override onActiveSelectionChange(): boolean {
+    return true
+  }
+
   private _renderBorder(ctx: CanvasRenderingContext2D, rect: Rectangle) {
     ctx.strokeStyle = '#0B94BF'
     ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)

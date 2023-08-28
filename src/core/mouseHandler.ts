@@ -9,6 +9,8 @@ import {
   EditorMouseEventFactory,
   EditorMouseEvent,
 } from 'Latte/event/mouseEvent'
+import { DisplayObject } from 'Latte/core/displayObject'
+import { MouseControllerTarget } from 'Latte/core/activeSelection'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -44,6 +46,10 @@ class MouseDownState {
   }
 
   private _lastMouseDownPosition: Point | null
+  public get lastMouseDownPosition(): Point | null {
+    return this._lastMouseDownPosition
+  }
+
   private _lastMouseDownPositionEqualCount: number
   private _lastMouseDownCount: number
   private _lastSetMouseDownCountTime: number
@@ -65,16 +71,16 @@ class MouseDownState {
     return this._lastMouseDownCount
   }
 
-  public setModifiers(source: FormattedPointerEvent) {
+  public setModifiers(source: EditorMouseEvent) {
     this._altKey = source.altKey
     this._ctrlKey = source.ctrlKey
     this._metaKey = source.metaKey
     this._shiftKey = source.shiftKey
   }
 
-  public setStartButtons(e: FormattedPointerEvent) {
-    this._leftButton = e.button === 0
-    this._rightButton = e.button === 2
+  public setStartButtons(source: EditorMouseEvent) {
+    this._leftButton = source.leftButton
+    this._rightButton = source.rightButton
   }
 
   public trySetCount(
@@ -115,22 +121,31 @@ class MouseDownOperation {
   private _mouseDownState: MouseDownState = new MouseDownState()
   private _isActive: boolean = false
   private _initialElement: DisplayObject | null = null
+  private _lastMouseEvent: EditorMouseEvent | null
 
   constructor(
-    private readonly _element: EventTarget,
+    private readonly _mouseEvent: EditorMouseEventFactory,
     private readonly _viewController: ViewController
   ) {
-    this._element.addEventListener('mousemove', this._onMouseDownThenMove)
+    this._mouseEvent.onMouseMove(this._onMouseDownThenMove)
+    this._lastMouseEvent = null
   }
 
   public start(event: EditorMouseEvent) {
+    this._lastMouseEvent = event
     this._mouseDownState.setModifiers(event)
     this._mouseDownState.setStartButtons(event)
     this._mouseDownState.trySetCount(
       event.detail,
-      new Point(event.clientX, event.clientY)
+      new Point(event.client.x, event.client.y)
     )
     this._startMonitoring(event)
+    this._dispatchMouse(
+      event.target,
+      false,
+      event.client,
+      event.controllerTargetType
+    )
   }
 
   private _startMonitoring(event: EditorMouseEvent) {
@@ -149,13 +164,11 @@ class MouseDownOperation {
     if (!this._isActive) {
       return
     }
-    if (!e.target) {
+    if (!this._initialElement) {
       return
     }
-    this._viewController.moveElement(this._initialElement, {
-      x: e.movementX,
-      y: e.movementY,
-    })
+    this._dispatchMouse(e.target, true, e.client, e.controllerTargetType)
+    this._lastMouseEvent = e
   }
 
   public onPointerUp(event: EditorMouseEvent) {
@@ -166,7 +179,34 @@ class MouseDownOperation {
     return this._isActive
   }
 
-  private _dispatchMouse() {}
+  private _dispatchMouse(
+    target: DisplayObject,
+    inSelectionMode: boolean,
+    point: IPoint,
+    controllerTargetType: MouseControllerTarget
+  ) {
+    const movement = new Point(0, 0)
+    if (this._lastMouseEvent) {
+      const { _lastMouseEvent } = this
+      movement.x = point.x - _lastMouseEvent.client.x
+      movement.y = point.y - _lastMouseEvent.client.y
+    }
+    this._viewController.dispatchMouse({
+      target,
+      controllerTargetType,
+      position: point,
+      inSelectionMode,
+      altKey: this._mouseDownState.altKey,
+      ctrlKey: this._mouseDownState.ctrlKey,
+      metaKey: this._mouseDownState.metaKey,
+      shiftKey: this._mouseDownState.shiftKey,
+      mouseDownCount: this._mouseDownState.count,
+      movement,
+
+      leftButton: this._mouseDownState.leftButton,
+      rightButton: this._mouseDownState.rightButton,
+    })
+  }
 }
 
 class MouseHandler {
@@ -185,60 +225,36 @@ class MouseHandler {
       this._view.client2Viewport,
       this.pickService
     )
-    this._bindMouseDownHandler()
-    this._bindMouseMoveHandler()
-    this._bindMouseUpHandler()
     this._mouseDownOperation = new MouseDownOperation(
-      this._element,
+      this._mouseEvent,
       this._viewController
     )
-    this._mouseEvent.onMouseDown(console.log)
+    this._mouseEvent.onMouseDown(this._bindMouseDownHandler)
+    this._mouseEvent.onMouseUp(this._bindMouseUpHandler)
+    this._mouseEvent.onMouseMove(this._bindMouseMoveHandler)
   }
 
-  private _bindMouseEvent(type, callback) {
-    this.element.addEventListener(type, e => {
-      const canvas = this._view.client2Viewport(new Point(e.offsetX, e.offsetY))
-      const target = this.pickService.pick(canvas)
-      callback({ e, canvas, target })
-      console.log(this.pickService.pickActiveSelection(canvas))
-    })
-  }
-
-  private _handleMouseDown(e: EditorMouseEvent) {
-    this._viewController.emitMouseDown(e)
+  private _bindMouseDownHandler = (e: EditorMouseEvent) => {
+    // this._isMouseDown = true
     if (e.button === 0) {
       this._mouseDownOperation.start(e)
     }
   }
 
-  private _bindMouseDownHandler() {
-    this._element.addEventListener('mousedown', (e: FormattedPointerEvent) => {
-      // this._isMouseDown = true
-      this._viewController.emitMouseDown(e)
-      if (e.button === 0) {
-        this._mouseDownOperation.start(e)
-      }
-    })
+  private _bindMouseUpHandler = (e: EditorMouseEvent) => {
+    this._mouseDownOperation.onPointerUp(e)
+    this._isMouseDown = false
   }
 
-  private _bindMouseUpHandler() {
-    this._element.addEventListener('mouseup', e => {
-      this._mouseDownOperation.onPointerUp(e)
-      this._isMouseDown = false
-    })
-  }
-
-  private _bindMouseMoveHandler() {
-    this._element.addEventListener('mousemove', e => {
-      if (!this._isMouseDown) {
-        return
-      }
-      const newX = (e as MouseEvent).movementX
-      const newY = (e as MouseEvent).movementY
-      const currentCamera = this._view.getCurrentCamera()
-      const vpMatrix = currentCamera.getViewPortMatrix()
-      currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
-    })
+  private _bindMouseMoveHandler = (e: EditorMouseEvent) => {
+    if (!this._isMouseDown) {
+      return
+    }
+    const newX = e.browserEvent.movementX
+    const newY = e.browserEvent.movementY
+    const currentCamera = this._view.getCurrentCamera()
+    const vpMatrix = currentCamera.getViewPortMatrix()
+    currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
   }
 }
 

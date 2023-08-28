@@ -54,7 +54,7 @@ export class ViewModel {
     this._initElementTree()
 
     this._modelData.onElementChange(e => {
-      console.log(e)
+      const changeElements: DisplayObject[] = []
       e.forEach(item => {
         const { value } = item
         const currentNode = this._elementTree.getElementById(
@@ -62,10 +62,14 @@ export class ViewModel {
         )
         if (currentNode) {
           currentNode.setElementData(value)
+          changeElements.push(currentNode)
         }
       })
       this._eventDispatcher.emitViewEvent(
-        new viewEvents.ViewElementChangeEvent()
+        new viewEvents.ViewElementChangeEvent(
+          changeElements,
+          viewEvents.ViewElementChangeType.ViewElementChanged
+        )
       )
       this._activeSelection.updateOBB()
     })
@@ -154,18 +158,40 @@ export class ViewModel {
   }
 
   public addSelectElement(element: DisplayObject) {
+    if (this._activeSelection.hasSelected(element)) {
+      return
+    }
     this._activeSelection.addSelectElement(element)
-    this._eventDispatcher.emitViewEvent(new viewEvents.ViewElementChangeEvent())
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewActiveSelectionChangeEvent(
+        [element],
+        viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementAdded
+      )
+    )
   }
 
   public removeSelectElement(element: DisplayObject) {
+    if (!this._activeSelection.hasSelected(element)) {
+      return
+    }
     this._activeSelection.removeSelectElement(element)
-    this._eventDispatcher.emitViewEvent(new viewEvents.ViewElementChangeEvent())
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewActiveSelectionChangeEvent(
+        [element],
+        viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementAdded
+      )
+    )
   }
 
   public clearSelection() {
+    const _objects = this._activeSelection.objects
     this._activeSelection.clear()
-    this._eventDispatcher.emitViewEvent(new viewEvents.ViewElementChangeEvent())
+    this._eventDispatcher.emitViewEvent(
+      new viewEvents.ViewActiveSelectionChangeEvent(
+        _objects,
+        viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementRemoved
+      )
+    )
   }
 
   public getActiveSelection() {

@@ -1,6 +1,8 @@
 import { DisplayObject } from 'Latte/core/displayObject'
 import Rect from 'Latte/elements/rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
+import { inBox } from 'Latte/math/inPointerInPath'
+import { Matrix } from 'Latte/math/matrix'
 
 const tempMatrix = {
   a: 1,
@@ -33,7 +35,7 @@ interface IActiveSelectionControl {
 }
 
 export class ActiveSelection extends Rect implements IActiveSelectionControl {
-  private _objects: DisplayObject[] = []
+  objects: DisplayObject[] = []
   private _OBBDirty: boolean = false
   public readonly controllerType: MouseControllerTarget
 
@@ -58,26 +60,23 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   public addSelectElement(element: DisplayObject) {
-    this._objects.push(element)
+    this.objects.push(element)
     this._OBBDirty = true
   }
 
   public removeSelectElement(element: DisplayObject) {
-    this._objects = this._objects.filter(o => o !== element)
+    this.objects = this.objects.filter(o => o !== element)
     this._OBBDirty = true
   }
 
   public clear() {
-    this._objects = []
+    this.objects = []
     this._OBBDirty = false
     this._bounds.clear()
   }
 
   public updateOBB() {
-    const objects = this._objects
-    if (objects.length < 2) {
-      return
-    }
+    const objects = this.objects
     this._bounds.clear()
     objects.forEach(element => {
       if (!element.visible) {
@@ -98,8 +97,8 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   get OBB() {
-    if (this._objects.length == 1) {
-      return this._objects[0].OBB
+    if (this.objects.length == 1) {
+      return this.objects[0].OBB
     }
     if (this._OBBDirty) {
       this.updateOBB()
@@ -108,18 +107,24 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   public hasActive() {
-    return !!this._objects.length
+    return !!this.objects.length
   }
 
   public hasSelected = (element: DisplayObject) =>
-    this._objects.includes(element)
+    this.objects.includes(element)
 
-  public override translate(
-    element: DisplayObject<BaseElementSchema>,
-    point: IPoint
-  ): Partial<BaseElementSchema>[] {
-    return this._objects.reduce((pre: Partial<BaseElementSchema>[], cur) => {
-      return pre.concat(cur.translate(cur, point))
+  public hitTest(point: IPoint) {
+    const { width, height, transform } = this.OBB
+    const localPosition = Matrix.applyMatrixInvertToPoint(transform, point)
+    if (inBox(0, 0, width, height, localPosition.x, localPosition.y)) {
+      return this.controllerType
+    }
+    return MouseControllerTarget.BLANK
+  }
+
+  public override translate(point: IPoint): Partial<BaseElementSchema>[] {
+    return this.objects.reduce((pre: Partial<BaseElementSchema>[], cur) => {
+      return pre.concat(cur.translate(point))
     }, [])
   }
 }

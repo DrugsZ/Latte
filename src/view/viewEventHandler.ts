@@ -40,6 +40,12 @@ export class ViewEventHandler {
     return false
   }
 
+  public onActiveSelectionChange(
+    event: viewEvents.ViewActiveSelectionChangeEvent
+  ): boolean {
+    return false
+  }
+
   public handleEvents(events: viewEvents.ViewEvent[]) {
     let shouldRender = false
 

@@ -1,4 +1,3 @@
-import { Point } from 'Latte/common/Point'
 import { EventTarget } from 'Latte/core/eventTarget'
 import { PickService } from 'Latte/event/pickService'
 import { MouseControllerTarget } from 'Latte/core/activeSelection'
@@ -84,7 +83,7 @@ export class EditorMouseEvent extends StandardMouseEvent {
     e: MouseEvent,
     public readonly client: IPoint,
     public readonly target: EventTarget | null,
-    public readonly controllerTargetType: MouseControllerTarget | undefined
+    public readonly controllerTargetType: MouseControllerTarget
   ) {
     super(e)
   }
