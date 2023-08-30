@@ -22,6 +22,14 @@ export interface IMouseDispatchData {
   rightButton: boolean
 }
 
+export const isLogicTarget = (node?: any): node is DisplayObject => {
+  return (
+    node instanceof DisplayObject &&
+    !(node instanceof Page) &&
+    !(node instanceof EditorDocument)
+  )
+}
+
 export class ViewController {
   constructor(private _viewModel: ViewModel) {}
   public selectElement(target: DisplayObject) {
@@ -65,48 +73,63 @@ export class ViewController {
 
   private _createPickArea(data: IMouseDispatchData) {}
 
-  private _selectOne(data: IMouseDispatchData) {
+  private _selectElement(target: DisplayObject, multipleMode: boolean) {
     const activeSelection = this._viewModel.getActiveSelection()
-    if (activeSelection.hasSelected(data.target)) {
-      this.removeSelectElement(data.target)
+    if (multipleMode) {
+      if (activeSelection.hasSelected(target)) {
+        this.removeSelectElement(target)
+      } else {
+        this.addSelectElement(target)
+      }
     } else {
-      this.selectElement(data.target)
+      this.selectElement(target)
     }
   }
 
-  private _selectMultiple(data: IMouseDispatchData) {
-    const activeSelection = this._viewModel.getActiveSelection()
-    if (activeSelection.hasSelected(data.target)) {
-      this.removeSelectElement(data.target)
-    } else {
-      this.addSelectElement(data.target)
+  public emitMouseUp(event: EditorMouseEvent) {
+    const { target, controllerTargetType, shiftKey } = event
+    if (!shiftKey) {
+      if (isLogicTarget(target)) {
+        this._selectElement(target, shiftKey)
+      }
+    }
+  }
+
+  private _dragOnClient(data: IMouseDispatchData) {
+    const { controllerTargetType } = data
+    switch (controllerTargetType) {
+      case MouseControllerTarget.SELECTION_CONTEXT:
+        this._dragSelectionElement(data)
+        break
+      case MouseControllerTarget.BLANK:
+        this._createPickArea(data)
+        break
+    }
+  }
+
+  private _mouseDownOnClient(data: IMouseDispatchData) {
+    const { target, controllerTargetType, shiftKey } = data
+    if (
+      !isLogicTarget(target) &&
+      controllerTargetType === MouseControllerTarget.BLANK
+    ) {
+      return this._viewModel.clearSelection()
+    }
+    switch (controllerTargetType) {
+      case MouseControllerTarget.BLANK:
+      case MouseControllerTarget.NONE:
+        this._selectElement(target, shiftKey)
     }
   }
 
   public dispatchMouse(data: IMouseDispatchData) {
-    if (!data.target) {
-      return
-    }
     if (data.mouseDownCount === 0) {
     }
     if (data.mouseDownCount === 1) {
       if (data.inSelectionMode) {
-        if (
-          data.controllerTargetType === MouseControllerTarget.SELECTION_CONTEXT
-        ) {
-          this._dragSelectionElement(data)
-        } else {
-          this._createPickArea(data)
-        }
+        this._dragOnClient(data)
       } else {
-        if (data.controllerTargetType !== MouseControllerTarget.BLANK) {
-          return
-        }
-        if (data.shiftKey) {
-          this._selectMultiple(data)
-        } else {
-          this._selectOne(data)
-        }
+        this._mouseDownOnClient(data)
       }
     }
   }

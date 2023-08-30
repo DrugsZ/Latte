@@ -20,7 +20,8 @@ const tempMatrix = {
 }
 
 export enum MouseControllerTarget {
-  BLANK,
+  NONE, // activeSelection is inactive
+  BLANK, // activeSelection is active but not on area
   SELECTION_CONTEXT,
   SELECT_ROTATE_LEFT_TOP,
   SELECT_ROTATE_RIGHT_TOP,
@@ -81,11 +82,13 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   public addSelectElement(element: DisplayObject) {
+    if (!element) return
     this.objects.push(element)
     this._OBBDirty = true
   }
 
   public removeSelectElement(element: DisplayObject) {
+    if (!element) return
     this.objects = this.objects.filter(o => o !== element)
     this._OBBDirty = true
   }
@@ -174,7 +177,7 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
     if (inBox(0, 0, width, height, point.x, point.y)) {
       return MouseControllerTarget.SELECTION_CONTEXT
     }
-    return null
+    return MouseControllerTarget.NONE
   }
 
   private _hitBorder(point: IPoint) {
@@ -252,6 +255,7 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
     const { transform } = this.OBB
     const localPosition = Matrix.applyMatrixInvertToPoint(transform, point)
     let target: MouseControllerTarget | null = null
+    target = target || (!this.hasActive() ? MouseControllerTarget.NONE : null)
     target = target || this._hitCorner(localPosition)
     target = target || this._hitBorder(localPosition)
     target = target || this._hitContext(localPosition)

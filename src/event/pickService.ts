@@ -11,6 +11,7 @@ import {
 } from 'Latte/math/inPointerInPath'
 import { Matrix } from 'Latte/math/matrix'
 import { ActiveSelection } from 'Latte/core/activeSelection'
+import { EditorDocument } from 'Latte/elements/document'
 
 export interface IPickerService {
   pick(point: IPoint): EventTarget | null
@@ -19,7 +20,8 @@ export interface IPickerService {
 export class PickService implements IPickerService {
   constructor(
     private readonly _getVisibleElementRenderObjects: () => DisplayObject[],
-    private readonly _activeSelection: ActiveSelection
+    private readonly _activeSelection: ActiveSelection,
+    private readonly _root: EditorDocument
   ) {
     this.pick = this.pick.bind(this)
   }
@@ -61,8 +63,8 @@ export class PickService implements IPickerService {
     )
   }
 
-  pick(point: IPoint): EventTarget | null {
-    let target: any = null
+  pick(point: IPoint) {
+    let target: DisplayObject = this._root
     const findElements =
       this._getVisibleElementRenderObjects().slice().reverse() || []
     findElements.some(item => {

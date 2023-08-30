@@ -69,7 +69,6 @@ class MouseDownState {
   }
 
   public setModifiers(source: EditorMouseEvent) {
-    console.log(source)
     this._altKey = source.altKey
     this._ctrlKey = source.ctrlKey
     this._metaKey = source.metaKey
@@ -118,7 +117,6 @@ class MouseDownState {
 class MouseDownOperation {
   private _mouseDownState: MouseDownState = new MouseDownState()
   private _isActive: boolean = false
-  private _initialElement: DisplayObject | null = null
   private _lastMouseEvent: EditorMouseEvent | null
 
   constructor(
@@ -148,28 +146,24 @@ class MouseDownOperation {
 
   private _startMonitoring(event: EditorMouseEvent) {
     this._isActive = true
-    if (event.target instanceof Rect) {
-      this._initialElement = event.target
-    }
   }
 
   private _stopMonitoring(event: EditorMouseEvent) {
     this._isActive = false
-    this._initialElement = null
   }
 
   private _onMouseDownThenMove = (e: EditorMouseEvent) => {
     if (!this._isActive) {
       return
     }
-    if (!this._initialElement) {
-      return
-    }
     this._dispatchMouse(e.target, true, e.client, e.controllerTargetType)
     this._lastMouseEvent = e
   }
 
-  public onPointerUp(event: EditorMouseEvent) {
+  public onMouseUp(event: EditorMouseEvent) {
+    if (this._mouseDownState.lastMouseDownPosition?.equals(event.client)) {
+      this._viewController.emitMouseUp(event)
+    }
     this._stopMonitoring(event)
   }
 
@@ -207,19 +201,18 @@ class MouseDownOperation {
   }
 }
 
-class MouseHandler {
+export class MouseHandler {
   private _isMouseDown: boolean
   private _mouseDownOperation: MouseDownOperation
   private _mouseEvent: EditorMouseEventFactory
   constructor(
-    private readonly _element: EventTarget,
     private readonly _view: View,
     private readonly _viewController: ViewController,
-    private readonly element: HTMLCanvasElement,
+    private readonly _element: HTMLCanvasElement,
     private readonly pickService: PickService
   ) {
     this._mouseEvent = new EditorMouseEventFactory(
-      this.element,
+      this._element,
       this._view.client2Viewport,
       this.pickService
     )
@@ -240,7 +233,7 @@ class MouseHandler {
   }
 
   private _bindMouseUpHandler = (e: EditorMouseEvent) => {
-    this._mouseDownOperation.onPointerUp(e)
+    this._mouseDownOperation.onMouseUp(e)
     this._isMouseDown = false
   }
 
@@ -255,5 +248,3 @@ class MouseHandler {
     currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
   }
 }
-
-export default MouseHandler

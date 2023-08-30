@@ -1,6 +1,6 @@
-import { EventTarget } from 'Latte/core/eventTarget'
 import { PickService } from 'Latte/event/pickService'
 import { MouseControllerTarget } from 'Latte/core/activeSelection'
+import DisplayObject from 'Latte/core/container'
 
 export const EventType = {
   // Mouse
@@ -82,7 +82,7 @@ export class EditorMouseEvent extends StandardMouseEvent {
   constructor(
     e: MouseEvent,
     public readonly client: IPoint,
-    public readonly target: EventTarget | null,
+    public readonly target: DisplayObject,
     public readonly controllerTargetType: MouseControllerTarget
   ) {
     super(e)

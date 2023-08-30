@@ -30,13 +30,46 @@ export abstract class DisplayObject<
   private static _translate(
     element: DisplayObject,
     point: IPoint
-  ): Partial<BaseElementSchema>[] {
+  ): Partial<(typeof element)['_elementData']>[] {
     const { x, y, transform } = element
     const { x: movementX, y: movementY } = point
     return [
       {
         guid: element.getGuidKey(),
         transform: { ...transform, tx: x + movementX, ty: y + movementY },
+      },
+    ]
+  }
+
+  private static resize(
+    element: DisplayObject,
+    size: {
+      width?: number
+      height?: number
+    }
+  ): Partial<(typeof element)['_elementData']>[] | null {
+    if (!size) {
+      return null
+    }
+    const { width: newWidth, height: newHight } = size
+    const { width, height } = element
+    let needUpdate = false
+    if (!isNaN(Number(newWidth)) && newWidth !== width) {
+      needUpdate = true
+    }
+    if (!isNaN(Number(newHight)) && newHight !== height) {
+      needUpdate = true
+    }
+    if (!needUpdate) {
+      return null
+    }
+    return [
+      {
+        guid: element.getGuidKey(),
+        size: {
+          x: newWidth || width,
+          y: newHight || height,
+        },
       },
     ]
   }
@@ -149,5 +182,9 @@ export abstract class DisplayObject<
 
   public translate(point: IPoint) {
     return DisplayObject._translate(this, point)
+  }
+
+  public resize(size: { width?: number; height?: number }) {
+    return DisplayObject.resize(this, size)
   }
 }

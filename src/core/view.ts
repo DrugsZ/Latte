@@ -1,7 +1,7 @@
 import type { ViewModel } from 'Latte/core/viewModel'
 import ElementRender from 'Latte/core/elementRender'
 import type RenderService from 'Latte/render/renderService'
-import MouseHandler from 'Latte/core/mouseHandler'
+import { MouseHandler } from 'Latte/core/mouseHandler'
 import { EventBind } from 'Latte/event/eventBind'
 import { EventService } from 'Latte/event/eventService'
 // import type { PickService } from 'Latte/event/pickService'
@@ -45,7 +45,6 @@ export default class View extends ViewEventHandler {
     this._viewParts.push(this._selectBox)
 
     this._mouseHandler = new MouseHandler(
-      this._viewModel.elementTreeRoot,
       this,
       this._viewController,
       this._renderDOM,

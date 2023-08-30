@@ -85,7 +85,8 @@ export class ViewModel {
     this.focusPageId = this._elementTree.document.getChildren()[0].id
     this.pickService = new PickService(
       this.getVisibleElementRenderObjects,
-      this._activeSelection
+      this._activeSelection,
+      this.elementTreeRoot
     )
   }
 
