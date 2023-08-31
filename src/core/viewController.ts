@@ -5,6 +5,7 @@ import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
 import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 import { MouseControllerTarget } from 'Latte/core/activeSelection'
+import { CoreNavigationCommands } from 'Latte/core/coreCommands'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -22,24 +23,13 @@ export interface IMouseDispatchData {
   rightButton: boolean
 }
 
-export const isLogicTarget = (node?: any): node is DisplayObject => {
-  return (
-    node instanceof DisplayObject &&
-    !(node instanceof Page) &&
-    !(node instanceof EditorDocument)
-  )
-}
+export const isLogicTarget = (node?: any): node is DisplayObject =>
+  node instanceof DisplayObject &&
+  !(node instanceof Page) &&
+  !(node instanceof EditorDocument)
 
 export class ViewController {
   constructor(private _viewModel: ViewModel) {}
-  public selectElement(target: DisplayObject) {
-    if (target instanceof EditorDocument || target instanceof Page) {
-      this._viewModel.clearSelection()
-      return
-    }
-    this._viewModel.clearSelection()
-    this._viewModel.addSelectElement(target)
-  }
 
   public addSelectElement(target: DisplayObject) {
     if (target instanceof DisplayObject) {
@@ -64,7 +54,7 @@ export class ViewController {
   public changeViewMouseMove(mode: ViewMouseModeType) {
     this._viewModel.setMouseMode(mode)
   }
-  public emitMouseDown(e: EditorMouseEvent) {}
+  public emitMouseDown() {}
 
   private _dragSelectionElement(data: IMouseDispatchData) {
     const activeElement = this._viewModel.getActiveSelection()
@@ -73,27 +63,17 @@ export class ViewController {
 
   private _createPickArea(data: IMouseDispatchData) {}
 
-  private _selectElement(target: DisplayObject, multipleMode: boolean) {
-    const activeSelection = this._viewModel.getActiveSelection()
-    if (multipleMode) {
-      if (activeSelection.hasSelected(target)) {
-        this.removeSelectElement(target)
-      } else {
-        this.addSelectElement(target)
+  public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
+    CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
+      this._viewModel,
+      {
+        target,
+        multipleMode,
       }
-    } else {
-      this.selectElement(target)
-    }
+    )
   }
 
-  public emitMouseUp(event: EditorMouseEvent) {
-    const { target, controllerTargetType, shiftKey } = event
-    if (!shiftKey) {
-      if (isLogicTarget(target)) {
-        this._selectElement(target, shiftKey)
-      }
-    }
-  }
+  public emitMouseUp() {}
 
   private _dragOnClient(data: IMouseDispatchData) {
     const { controllerTargetType } = data
@@ -104,21 +84,20 @@ export class ViewController {
       case MouseControllerTarget.BLANK:
         this._createPickArea(data)
         break
+      default:
+        console.error('UnExpect type')
     }
   }
 
   private _mouseDownOnClient(data: IMouseDispatchData) {
     const { target, controllerTargetType, shiftKey } = data
-    if (
-      !isLogicTarget(target) &&
-      controllerTargetType === MouseControllerTarget.BLANK
-    ) {
-      return this._viewModel.clearSelection()
-    }
     switch (controllerTargetType) {
       case MouseControllerTarget.BLANK:
       case MouseControllerTarget.NONE:
-        this._selectElement(target, shiftKey)
+        this.setSelectElement(target, shiftKey)
+        break
+      default:
+        console.error('UnExpect type')
     }
   }
 

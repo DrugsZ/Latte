@@ -1,13 +1,11 @@
 import type View from 'Latte/core/view'
-import type { EventTarget } from 'Latte/core/eventTarget'
 import type { ViewController } from 'Latte/core/viewController'
 import { Point } from 'Latte/common/Point'
-import Rect from 'Latte/elements/rect'
 import type { PickService } from 'Latte/event/pickService'
 import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 import { EditorMouseEventFactory } from 'Latte/event/mouseEvent'
 import type { DisplayObject } from 'Latte/core/displayObject'
-import type { MouseControllerTarget } from 'Latte/core/activeSelection'
+import { MouseControllerTarget } from 'Latte/core/activeSelection'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -40,6 +38,11 @@ class MouseDownState {
   private _rightButton: boolean
   public get rightButton(): boolean {
     return this._rightButton
+  }
+
+  private _lastMouseControllerTarget: MouseControllerTarget
+  public get lastMouseControllerTarget(): MouseControllerTarget {
+    return this._lastMouseControllerTarget
   }
 
   private _lastMouseDownPosition: Point | null
@@ -78,6 +81,10 @@ class MouseDownState {
   public setStartButtons(source: EditorMouseEvent) {
     this._leftButton = source.leftButton
     this._rightButton = source.rightButton
+  }
+
+  public setStartControls(source: EditorMouseEvent) {
+    this._lastMouseControllerTarget = source.controllerTargetType
   }
 
   public trySetCount(
@@ -135,6 +142,7 @@ class MouseDownOperation {
       event.detail,
       new Point(event.client.x, event.client.y)
     )
+    this._mouseDownState.setStartControls(event)
     this._startMonitoring(event)
     this._dispatchMouse(
       event.target,
@@ -161,8 +169,12 @@ class MouseDownOperation {
   }
 
   public onMouseUp(event: EditorMouseEvent) {
-    if (this._mouseDownState.lastMouseDownPosition?.equals(event.client)) {
-      this._viewController.emitMouseUp(event)
+    if (
+      this._mouseDownState.lastMouseDownPosition?.equals(event.client) &&
+      this._mouseDownState.lastMouseControllerTarget ===
+        event.controllerTargetType
+    ) {
+      this._viewController.setSelectElement(event.target, event.shiftKey)
     }
     this._stopMonitoring(event)
   }

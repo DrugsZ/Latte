@@ -184,7 +184,7 @@ export class ViewModel {
     )
   }
 
-  public clearSelection() {
+  public discardActiveSelection() {
     const _objects = this._activeSelection.objects
     this._activeSelection.clear()
     this._eventDispatcher.emitViewEvent(
