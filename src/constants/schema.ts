@@ -102,3 +102,65 @@ export const DEFAULT_PAGE_SCHEMA: PAGE = {
     },
   ],
 }
+
+export const DEFAULT_RECTANGLE_SCHEMA: RectangleElement = {
+  guid: {
+    sessionID: 1,
+    localID: 3,
+  },
+  parentIndex: {
+    guid: {
+      sessionID: 0,
+      localID: 1,
+    },
+    position: '!',
+  },
+  type: EditorElementTypeKind.RECTANGLE,
+  name: 'Rectangle 1',
+  visible: true,
+  locked: false,
+  opacity: 1,
+  size: {
+    x: 100,
+    y: 199,
+  },
+  transform: {
+    a: 1,
+    b: 0,
+    tx: 0,
+    c: 0,
+    d: 1,
+    ty: 0,
+  },
+  cornerRadius: 0,
+  strokeWeight: 1,
+  strokeAlign: 'INSIDE',
+  strokeJoin: 'MITER',
+  fillPaints: [
+    {
+      type: FillType.SOLID,
+      color: {
+        r: 0.8509804010391235,
+        g: 0.8509804010391235,
+        b: 0.8509804010391235,
+        a: 1,
+      },
+      opacity: 1,
+      visible: true,
+      blendMode: BlendModeType.NORMAL,
+    },
+  ],
+  strokePaints: [],
+  topLeftRadius: 0,
+  topRightRadius: 0,
+  bottomLeftRadius: 0,
+  bottomRightRadius: 0,
+  strokeTopWeight: 1,
+  strokeBottomWeight: 1,
+  strokeLeftWeight: 1,
+  strokeRightWeight: 1,
+  cornerSmoothing: 1,
+  strokeStyle: 'SOLID',
+  dashCap: 'NONE',
+  miterAngle: 1,
+}
