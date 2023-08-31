@@ -41,6 +41,22 @@
     "@typescript-eslint/consistent-type-imports": [
       "error",
       { "prefer": "type-imports" }
+    ],
+    "@typescript-eslint/naming-convention": [
+      "error",
+
+      {
+        "selector": "default",
+        "modifiers": ["private"],
+        "format": "camelCase",
+        "leadingUnderscore": "require"
+      },
+      {
+        "selector": "default",
+        "modifiers": ["public"],
+        "format": "camelCase",
+        "leadingUnderscore": "forbid"
+      }
     ]
   }
 }
