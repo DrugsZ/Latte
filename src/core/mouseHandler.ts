@@ -212,7 +212,9 @@ class MouseDownOperation {
     })
   }
 }
+let testAdd = true
 
+window.setAdd = status => (testAdd = status)
 export class MouseHandler {
   private _isMouseDown: boolean
   private _mouseDownOperation: MouseDownOperation
@@ -241,6 +243,10 @@ export class MouseHandler {
     // this._isMouseDown = true
     if (e.button === 0) {
       this._mouseDownOperation.start(e)
+      if (testAdd) {
+        this._viewController.tryAdd({ left: e.client.x, top: e.client.y })
+      }
+      setAdd(false)
     }
   }
 

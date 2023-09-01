@@ -81,7 +81,7 @@ export abstract class DisplayObject<
     return this._elementData.fillPaints ?? []
   }
 
-  getZIndex() {
+  get zIndex() {
     return this._elementData.parentIndex.position
   }
 
@@ -187,4 +187,8 @@ export abstract class DisplayObject<
   public resize(size: { width?: number; height?: number }) {
     return DisplayObject.resize(this, size)
   }
+
+  public appendChild(...child: DisplayObject[]) {}
+
+  public removeChild(removeChild: DisplayObject) {}
 }

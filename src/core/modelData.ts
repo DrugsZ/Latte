@@ -5,9 +5,13 @@ interface IUpdatePayload {
   data: Partial<BaseElementSchema>[]
 }
 
+interface IAddChildPayload {
+  data: BaseElementSchema[]
+}
+
 interface ISchemaModel {
   updateChild(payload: IUpdatePayload): void
-  addChild(payload: IUpdatePayload): void
+  addChild(payload: IAddChildPayload): void
   removeChild(target: string): void
 }
 
@@ -49,17 +53,11 @@ class ModelData implements ISchemaModel {
     })
     this._onElementChange.fire(changeList)
   }
-  addChild() {
-    this._model?.elements.push(
-      createDefaultElement({
-        guid: {
-          sessionID: 1,
-          localID: 1,
-        },
-        position: 1,
-      })
+  addChild(payload: IAddChildPayload) {
+    this._model?.elements.push(...payload.data)
+    this._onElementChange.fire(
+      payload.data.map(item => ({ type: 'CREATE', value: item }))
     )
-    this._onDataChange.fire(this._model)
   }
   removeChild(target: string) {
     const newChildren = this._model?.elements.filter(

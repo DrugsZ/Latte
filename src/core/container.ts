@@ -27,8 +27,8 @@ export abstract class Container<
     let isAddEnd = false
     while (index < childLength && !isAddEnd) {
       const compareChild = this._children[index]
-      const compareZIndex = compareChild.getZIndex()
-      const currentZIndex = child.getZIndex()
+      const compareZIndex = compareChild.zIndex
+      const currentZIndex = child.zIndex
       if (compareASCII(compareZIndex, currentZIndex)) {
         isAddEnd = true
       } else {
@@ -36,6 +36,7 @@ export abstract class Container<
       }
     }
     this._children.splice(index, 0, child)
+    console.log(1, this._children)
     child.parentNode?.removeChild(child)
     child.parentNode = this
   }
@@ -71,6 +72,14 @@ export abstract class Container<
       transform: [a, b, c, d, 0, 0],
       fills: this.getFills(),
     }
+  }
+
+  getFirst() {
+    return this._children[0]
+  }
+
+  getLast() {
+    return this._children[this._children.length - 1]
   }
 }
 

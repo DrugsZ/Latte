@@ -112,4 +112,8 @@ export class ViewController {
       }
     }
   }
+
+  public tryAdd({ left, top }) {
+    const rect = this._viewModel.addChild({ left, top })
+  }
 }
