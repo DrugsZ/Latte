@@ -3,7 +3,6 @@ import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
-import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 import { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
 
@@ -76,16 +75,11 @@ export class ViewController {
   public emitMouseUp() {}
 
   private _dragOnClient(data: IMouseDispatchData) {
-    const { controllerTargetType } = data
-    switch (controllerTargetType) {
-      case MouseControllerTarget.SELECTION_CONTEXT:
-        this._dragSelectionElement(data)
-        break
-      case MouseControllerTarget.BLANK:
-        this._createPickArea(data)
-        break
-      default:
-        console.error('UnExpect type')
+    const { target } = data
+    if (isLogicTarget(target)) {
+      this._dragSelectionElement(data)
+    } else {
+      this._createPickArea(data)
     }
   }
 

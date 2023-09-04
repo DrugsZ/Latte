@@ -12,8 +12,6 @@ export abstract class DisplayObject<
 > extends EventTarget {
   type: EditorElementTypeKind
 
-  private _id: string
-
   protected _elementData: T
 
   parentNode: Container | null = null
@@ -23,7 +21,6 @@ export abstract class DisplayObject<
   constructor(element: T) {
     super()
     this.type = element.type
-    this._id = JSON.stringify(element.guid)
     this._elementData = element
   }
 
@@ -75,7 +72,7 @@ export abstract class DisplayObject<
   }
 
   get id(): string {
-    return this._id
+    return JSON.stringify(this._elementData.guid)
   }
   getFills() {
     return this._elementData.fillPaints ?? []
@@ -178,6 +175,10 @@ export abstract class DisplayObject<
 
   public setElementData(data: T) {
     this._elementData = data
+  }
+
+  public getElementById(id: string) {
+    return id === this.id ? this : undefined
   }
 
   public translate(point: IPoint) {

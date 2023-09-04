@@ -15,8 +15,14 @@ interface ISchemaModel {
   removeChild(target: string): void
 }
 
+export enum ChangeEventType {
+  DELETE = 'DELETE',
+  CREATE = 'CREATE',
+  CHANGE = 'CHANGE',
+}
+
 interface ChangeEvent {
-  type: 'DELETE' | 'CREATE' | 'CHANGE'
+  type: ChangeEventType
   value: BaseElementSchema
 }
 
@@ -45,7 +51,7 @@ class ModelData implements ISchemaModel {
           ...currentItem,
         }
         changeList.push({
-          type: 'CHANGE',
+          type: ChangeEventType.CHANGE,
           value: this._model.elements[index],
         })
       }
@@ -56,7 +62,7 @@ class ModelData implements ISchemaModel {
   addChild(payload: IAddChildPayload) {
     this._model?.elements.push(...payload.data)
     this._onElementChange.fire(
-      payload.data.map(item => ({ type: 'CREATE', value: item }))
+      payload.data.map(item => ({ type: ChangeEventType.CREATE, value: item }))
     )
   }
   removeChild(target: string) {

@@ -36,7 +36,6 @@ export const createElement = (element: BaseElementSchema) => {
 }
 
 export class ElementTree {
-  private _elements: Map<string, DisplayObject> = new Map()
   public _document: EditorDocument
 
   constructor(elements: BaseElementSchema[]) {
@@ -47,9 +46,10 @@ export class ElementTree {
     const cachedChildElements: {
       [key: string]: DisplayObject[]
     } = {}
+    const elementMap = new Map()
     elements.forEach(elm => {
       const currentNode = createElement(elm)
-      this._elements.set(currentNode.id, currentNode)
+      elementMap.set(currentNode.id, currentNode)
       if (currentNode instanceof EditorDocument) {
         this._document = currentNode
         return
@@ -63,28 +63,36 @@ export class ElementTree {
       currentChild.push(currentNode)
     })
     Object.entries(cachedChildElements).forEach(([key, value]) => {
-      const parentNode = this._elements.get(key)
+      const parentNode = elementMap.get(key)
       if (!parentNode) {
         return
       }
       ;(parentNode as Container).appendChild(...value)
     })
+    elementMap.clear()
   }
 
   public getElementById(id: string) {
-    return this._elements.get(id)
+    if (id === this._document.id) {
+      return this._document
+    }
+    return this._document.getElementById(id)
   }
 
   get document() {
     return this._document
   }
 
-  public createElementByName(name: string) {
-    if (name === 'RECTANGLE') {
-      const rect = createDefaultRect({ left: 0, top: 0 })
-      const newObject = createElement(rect)
-      this._elements.set(newObject.id, newObject)
-      return newObject
+  public createElementByName(name: EditorElementTypeKind) {
+    let data = name
+    if (data === EditorElementTypeKind.RECTANGLE) {
+      data = createDefaultRect({ left: 0, top: 0 })
     }
+    const newObject = createElement(data)
+    return newObject
+  }
+
+  public createElementByData<T extends BaseElementSchema>(elementData: T) {
+    return createElement(elementData)
   }
 }

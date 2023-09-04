@@ -52,7 +52,8 @@ export const createDefaultRect = (
     }
     newRect.transform.tx = left
     newRect.transform.ty = top
-    ;(newRect.size.x = 100), (newRect.size.y = 100)
+    newRect.size.x = 500
+    newRect.size.y = 500
   }
   return newRect
 }

@@ -21,6 +21,19 @@ export abstract class Container<
     return this._children
   }
 
+  public override getElementById(id: string) {
+    if (id === this.id) {
+      return this
+    }
+    const children = this._children
+    let target
+    children.some(child => {
+      target = child.getElementById(id)
+      return target
+    })
+    return target
+  }
+
   private _appendChild(child: DisplayObject) {
     const childLength = this._children.length
     let index = 0
@@ -36,7 +49,6 @@ export abstract class Container<
       }
     }
     this._children.splice(index, 0, child)
-    console.log(1, this._children)
     child.parentNode?.removeChild(child)
     child.parentNode = this
   }

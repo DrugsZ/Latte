@@ -1,11 +1,12 @@
 import type ModelData from 'Latte/core/modelData'
+import { ChangeEventType } from 'Latte/core/modelData'
 import { Emitter } from 'Latte/common/event'
 import CameraService from 'Latte/core/cameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'
 import { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
 import * as viewEvents from 'Latte/view/viewEvents'
 import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
-import { ElementTree, createElement } from 'Latte/viewModel/elementTree'
+import { ElementTree } from 'Latte/viewModel/elementTree'
 import type { Page } from 'Latte/core/page'
 import { PickService } from 'Latte/event/pickService'
 import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
@@ -59,17 +60,14 @@ export class ViewModel {
     this._modelData.onElementChange(e => {
       const changeElements: DisplayObject[] = []
       e.forEach(item => {
-        if (item.type === 'CREATE') {
-          const type = item.value.type
-          const newObject = this._elementTree.createElementByName(type)
-          newObject?.setElementData(item.value)
+        if (item.type === ChangeEventType.CREATE) {
+          const newObject = this._elementTree.createElementByData(item.value)
           const focusPage = this._elementTree.getElementById(
             this._focusPageId
           ) as Page
           if (!newObject) {
             return
           }
-          console.log('trigger add')
           focusPage?.appendChild(newObject)
           const camera = this.getCurrentCamera()
           focusPage?.setVisibleArea(camera.getViewport())
@@ -233,10 +231,8 @@ export class ViewModel {
     const parentIndex = JSON.parse(this._focusPageId)
     const newRect = createDefaultRect({ left, top }, parentIndex)
     const lastElement = currentTarget.getLast()
-    console.log(currentTarget._children)
     if (lastElement) {
       newRect.parentIndex.position = plusOne(lastElement.zIndex)
-      console.log(newRect.parentIndex.position)
     }
 
     this._modelData.addChild({
