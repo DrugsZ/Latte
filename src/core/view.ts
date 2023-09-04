@@ -2,8 +2,8 @@ import type { ViewModel } from 'Latte/core/viewModel'
 import ElementRender from 'Latte/core/elementRender'
 import type RenderService from 'Latte/render/renderService'
 import { MouseHandler } from 'Latte/core/mouseHandler'
-import { EventBind } from 'Latte/event/eventBind'
-import { EventService } from 'Latte/event/eventService'
+// import { EventBind } from 'Latte/event/eventBind'
+// import { EventService } from 'Latte/event/eventService'
 // import type { PickService } from 'Latte/event/pickService'
 import { SelectBox } from 'Latte/view/selectBox'
 import { ViewEventHandler } from 'Latte/view/viewEventHandler'
@@ -20,8 +20,8 @@ export enum RenderEnum {
 export default class View extends ViewEventHandler {
   private _renderElement: ElementRender
   private _mouseHandler: MouseHandler
-  private _eventBind: EventBind
-  private _eventService: EventService
+  // private _eventBind: EventBind
+  // private _eventService: EventService
   private _selectBox: SelectBox
   private _viewParts: ViewPart[] = []
   private _viewController: ViewController
@@ -50,13 +50,13 @@ export default class View extends ViewEventHandler {
       this._renderDOM,
       this._viewModel.pickService
     )
-    this._eventService = new EventService(this._viewModel.elementTreeRoot)
-    this._eventBind = new EventBind(
-      this._renderDOM,
-      this._eventService,
-      this._viewModel.pickService,
-      this.client2Viewport
-    )
+    // this._eventService = new EventService(this._viewModel.elementTreeRoot)
+    // this._eventBind = new EventBind(
+    //   this._renderDOM,
+    //   this._eventService,
+    //   this._viewModel.pickService,
+    //   this.client2Viewport
+    // )
   }
 
   public render() {

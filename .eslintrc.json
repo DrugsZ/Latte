@@ -48,14 +48,18 @@
       {
         "selector": "default",
         "modifiers": ["private"],
-        "format": "camelCase",
+        "format": null,
         "leadingUnderscore": "require"
       },
       {
         "selector": "default",
         "modifiers": ["public"],
-        "format": "camelCase",
+        "format": null,
         "leadingUnderscore": "forbid"
+      },
+      {
+        "selector": "class",
+        "format": ["PascalCase"]
       }
     ]
   }

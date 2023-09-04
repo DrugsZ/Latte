@@ -14,8 +14,9 @@ import { ViewMouseMode } from 'Latte/core/viewMouseMode'
 import { ActiveSelection } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
 import { createDefaultRect } from 'Latte/common/schema'
-import { Container } from 'Latte/core/container'
+import type { Container } from 'Latte/core/container'
 import { plusOne } from 'Latte/math/zIndex'
+import { OperateModeState } from 'Latte/core/operateModeState'
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -33,6 +34,8 @@ export class ViewModel {
   private _activeSelection: ActiveSelection
 
   private _elementTree: ElementTree
+
+  private _operateModeState = new OperateModeState()
 
   constructor(model: ModelData, _domElement: HTMLCanvasElement) {
     this.getVisibleElementRenderObjects =
