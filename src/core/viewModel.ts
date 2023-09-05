@@ -242,4 +242,8 @@ export class ViewModel {
       data: [newRect],
     })
   }
+
+  public getOperateModeState() {
+    return this._operateModeState
+  }
 }

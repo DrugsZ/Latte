@@ -5,11 +5,13 @@ import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
 import { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
+import { OperateMode } from 'Latte/core/operateModeState'
 
 export interface IMouseDispatchData {
   target: DisplayObject
   controllerTargetType: MouseControllerTarget
   position: IPoint
+  startPosition: IPoint | null
   movement: IPoint
   inSelectionMode: boolean
   altKey: boolean
@@ -55,12 +57,12 @@ export class ViewController {
   }
   public emitMouseDown() {}
 
-  private _dragSelectionElement(data: IMouseDispatchData) {
+  private _dragSelectionElement(movement: IPoint) {
     const activeElement = this._viewModel.getActiveSelection()
-    this._viewModel.updateElementData(activeElement.translate(data.movement))
+    this._viewModel.updateElementData(activeElement.translate(movement))
   }
 
-  private _createPickArea(data: IMouseDispatchData) {}
+  private _createPickArea() {}
 
   public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
     CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
@@ -77,9 +79,9 @@ export class ViewController {
   private _dragOnClient(data: IMouseDispatchData) {
     const { target } = data
     if (isLogicTarget(target)) {
-      this._dragSelectionElement(data)
+      this._dragSelectionElement(data.movement)
     } else {
-      this._createPickArea(data)
+      this._createPickArea()
     }
   }
 
@@ -95,12 +97,16 @@ export class ViewController {
     }
   }
 
+  private _createElement() {}
+
   public dispatchMouse(data: IMouseDispatchData) {
-    if (data.mouseDownCount === 0) {
-    }
+    const operateModeState = this._viewModel.getOperateModeState()
+    const editMode = operateModeState.getMode()
     if (data.mouseDownCount === 1) {
       if (data.inSelectionMode) {
-        this._dragOnClient(data)
+        if (editMode === OperateMode.Edit) {
+          this._dragOnClient(data)
+        }
       } else {
         this._mouseDownOnClient(data)
       }

@@ -63,4 +63,6 @@ export namespace CoreNavigationCommands {
         }
       }
     })()
+
+  export const CreateNewElement = new (class extends CoreEditorCommand {})()
 }

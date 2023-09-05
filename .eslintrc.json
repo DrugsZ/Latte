@@ -26,6 +26,7 @@
       }
     ],
     "consistent-return": "off",
+    "no-console": "off",
     "@typescript-eslint/member-delimiter-style": [
       "error",
       {
@@ -66,7 +67,7 @@
         "selector": "default",
         "modifiers": ["private", "static"],
         "format": null,
-        "leadingUnderscore": "forbid"
+        "leadingUnderscore": "allow"
       }
     ]
   }
