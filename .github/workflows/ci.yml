@@ -54,13 +54,9 @@ jobs:
       - name: build
         run: npm run build
 
-      - name: Get version
-        id: publish-version
-        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/\./-/g')" >> $GITHUB_OUTPUT
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          destination_dir: ./dist
+          force_orphan: true

@@ -1,7 +1,7 @@
 const { merge } = require('webpack-merge');
 const common = require('./webpack.common.js');
 const FriendlyErrorsWebpackPlugin = require('@soda/friendly-errors-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+
 
 module.exports = merge(common, {
   mode: 'development',
@@ -11,7 +11,6 @@ module.exports = merge(common, {
     hot: true
   },
   plugins: [
-    new HtmlWebpackPlugin(),
     new FriendlyErrorsWebpackPlugin({
       compilationSuccessInfo: {
         messages: ['You application is running here http://localhost:8080'],
