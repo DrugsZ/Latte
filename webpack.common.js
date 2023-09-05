@@ -1,5 +1,4 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WebpackBar = require('webpackbar');
 
 
@@ -41,7 +40,7 @@ module.exports = {
   },
   stats: 'errors-only',
   plugins: [
-    new HtmlWebpackPlugin(),
+
     new WebpackBar()
   ],
 }
