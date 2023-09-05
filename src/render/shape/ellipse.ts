@@ -9,7 +9,14 @@ export class EllipseShapeRender
     IEditorShapeRenderContributionDescription<EditorElementTypeKind.ELLIPSE>
 {
   readonly id: EditorElementTypeKind.ELLIPSE
-  private _tempMatrix = new Matrix()
+  private _tempMatrix: IMatrixLike = {
+    a: 1,
+    b: 0,
+    c: 0,
+    d: 1,
+    tx: 0,
+    ty: 0,
+  }
 
   public render = (
     renderObject: Ellipse,
@@ -19,7 +26,7 @@ export class EllipseShapeRender
     const { width, height } = renderObject
     const radiusX = width / 2
     const radiusY = height / 2
-    const transform = renderObject.getWorldTransform()
+    const { transform } = renderObject
     Matrix.multiply(this._tempMatrix, contextMatrix, transform)
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)

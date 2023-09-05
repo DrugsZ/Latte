@@ -23,7 +23,7 @@ export class Point {
     this.y = p.y
   }
 
-  public equals(other: Point): boolean {
+  public equals(other: IPoint): boolean {
     return Point.equals(this, other)
   }
 }

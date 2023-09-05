@@ -1,5 +1,4 @@
 import { EventTarget } from 'Latte/core/eventTarget'
-import { Transform } from 'Latte/core/transform'
 import { Bounds } from 'Latte/core/bounds'
 import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
@@ -13,62 +12,73 @@ export abstract class DisplayObject<
 > extends EventTarget {
   type: EditorElementTypeKind
 
-  private _id: string
-
   protected _elementData: T
 
   parentNode: Container | null = null
 
-  transform: Transform
-
   protected _bounds: Bounds = new Bounds()
-
-  protected _localBounds: Bounds = new Bounds()
-
-  protected _OBB: {
-    x: number
-    y: number
-    width: number
-    height: number
-    transform: Matrix
-  }
 
   constructor(element: T) {
     super()
     this.type = element.type
-    this._id = JSON.stringify(element.guid)
     this._elementData = element
-    this.transform = new Transform(this._elementData.transform)
   }
 
-  getWorldTransform() {
-    if (!this.transform.localDirty && !this.transform.worldDirty) {
-      return this.transform.getWorldTransform()
+  private static translate(
+    element: DisplayObject,
+    point: IPoint
+  ): Partial<(typeof element)['_elementData']>[] {
+    const { x, y, transform } = element
+    const { x: movementX, y: movementY } = point
+    return [
+      {
+        guid: element.getGuidKey(),
+        transform: { ...transform, tx: x + movementX, ty: y + movementY },
+      },
+    ]
+  }
+
+  private static resize(
+    element: DisplayObject,
+    size: {
+      width?: number
+      height?: number
     }
-    if (this.transform.worldDirty && this.parentNode) {
-      const parentTransform = this.parentNode.getWorldTransform()
-      this.transform.updateWorldTransform(parentTransform)
-      return this.transform.getWorldTransform()
+  ): Partial<(typeof element)['_elementData']>[] | null {
+    if (!size) {
+      return null
     }
-    return this.transform.getWorldTransform()
-  }
-
-  getLocalTransform() {
-    return this.transform.getLocalTransform()
-  }
-
-  getPosition() {
-    return this.transform.getPosition()
+    const { width: newWidth, height: newHight } = size
+    const { width, height } = element
+    let needUpdate = false
+    if (!Number.isNaN(Number(newWidth)) && newWidth !== width) {
+      needUpdate = true
+    }
+    if (!Number.isNaN(Number(newHight)) && newHight !== height) {
+      needUpdate = true
+    }
+    if (!needUpdate) {
+      return null
+    }
+    return [
+      {
+        guid: element.getGuidKey(),
+        size: {
+          x: newWidth || width,
+          y: newHight || height,
+        },
+      },
+    ]
   }
 
   get id(): string {
-    return this._id
+    return JSON.stringify(this._elementData.guid)
   }
   getFills() {
     return this._elementData.fillPaints ?? []
   }
 
-  getZIndex() {
+  get zIndex() {
     return this._elementData.parentIndex.position
   }
 
@@ -81,15 +91,30 @@ export abstract class DisplayObject<
   }
 
   get x() {
-    return this.transform.getPosition().x
+    return this.transform.tx
   }
 
   get y() {
-    return this.transform.getPosition().y
+    return this.transform.ty
   }
 
   get visible() {
     return this._elementData.visible
+  }
+
+  get transform() {
+    return this._elementData.transform
+  }
+
+  get OBB(): OBB {
+    const { x, y, width, height, transform } = this
+    return {
+      x,
+      y,
+      width,
+      height,
+      transform,
+    }
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -99,18 +124,26 @@ export abstract class DisplayObject<
 
   getGuidKey() {
     const { guid } = this._elementData
-    return JSON.stringify(guid)
+    return guid
   }
 
   getBounds() {
-    const worldMatrix = this.getWorldTransform()
+    this._bounds.clear()
+    const worldMatrix = this.transform
     const x = worldMatrix.tx
     const y = worldMatrix.ty
     const [tx, ty] = Matrix.fromMatrixOrigin([0, 0], worldMatrix, [
       this.x,
       this.y,
     ])
-    const tempMatrix = worldMatrix.clone()
+    const tempMatrix = new Matrix(
+      worldMatrix.a,
+      worldMatrix.b,
+      worldMatrix.c,
+      worldMatrix.d,
+      worldMatrix.tx,
+      worldMatrix.ty
+    )
     tempMatrix.tx = tx
     tempMatrix.ty = ty
     // tl
@@ -139,14 +172,24 @@ export abstract class DisplayObject<
     const bounds = this.getBounds()
     return bounds.getRectangle()
   }
-  public getOBB() {
-    const { x, y, width, height } = this
-    return {
-      x,
-      y,
-      width,
-      height,
-      transform: this.transform.getWorldTransform(),
-    }
+
+  public setElementData(data: T) {
+    this._elementData = data
   }
+
+  public getElementById(id: string) {
+    return id === this.id ? this : undefined
+  }
+
+  public translate(point: IPoint) {
+    return DisplayObject.translate(this, point)
+  }
+
+  public resize(size: { width?: number; height?: number }) {
+    return DisplayObject.resize(this, size)
+  }
+
+  public appendChild() {}
+
+  public removeChild() {}
 }

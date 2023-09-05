@@ -1,5 +1,3 @@
-import { FederatedEvent } from './FederatedEvent'
-
 export interface IEventTarget {
   // emitter: EventEmitter;
 

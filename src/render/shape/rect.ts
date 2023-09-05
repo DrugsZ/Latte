@@ -9,7 +9,14 @@ export class RectShapeRender
     IEditorShapeRenderContributionDescription<EditorElementTypeKind.RECTANGLE>
 {
   readonly id = EditorElementTypeKind.RECTANGLE
-  private _tempMatrix = new Matrix()
+  private _tempMatrix: IMatrixLike = {
+    a: 1,
+    b: 0,
+    c: 0,
+    d: 1,
+    tx: 0,
+    ty: 0,
+  }
 
   private static hasBorder(renderObject: Rect) {
     return renderObject.getBorder() !== null
@@ -21,7 +28,7 @@ export class RectShapeRender
     contextMatrix: Matrix
   ) => {
     const { width, height } = renderObject
-    const transform = renderObject.getWorldTransform()
+    const { transform } = renderObject
     Matrix.multiply(this._tempMatrix, contextMatrix, transform)
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)

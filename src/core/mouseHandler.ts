@@ -1,17 +1,11 @@
 import type View from 'Latte/core/view'
-import type { EventTarget } from 'Latte/core/eventTarget'
 import type { ViewController } from 'Latte/core/viewController'
-import type { FormattedPointerEvent } from 'Latte/event/eventBind'
 import { Point } from 'Latte/common/Point'
-
-export enum MouseTarget {
-  BLINK,
-  SELECTION_CONTEXT,
-  SELECT_ROTATE,
-  SELECT_RESIZE,
-  SELECT_RESIZE_LIN,
-  ELEMENT,
-}
+import type { PickService } from 'Latte/event/pickService'
+import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
+import { EditorMouseEventFactory } from 'Latte/event/mouseEvent'
+import type { DisplayObject } from 'Latte/core/displayObject'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -46,7 +40,21 @@ class MouseDownState {
     return this._rightButton
   }
 
+  private _startPosition: IPoint | null
+  public get startPosition(): IPoint | null {
+    return this._startPosition
+  }
+
+  private _lastMouseControllerTarget: MouseControllerTarget
+  public get lastMouseControllerTarget(): MouseControllerTarget {
+    return this._lastMouseControllerTarget
+  }
+
   private _lastMouseDownPosition: Point | null
+  public get lastMouseDownPosition(): Point | null {
+    return this._lastMouseDownPosition
+  }
+
   private _lastMouseDownPositionEqualCount: number
   private _lastMouseDownCount: number
   private _lastSetMouseDownCountTime: number
@@ -68,16 +76,21 @@ class MouseDownState {
     return this._lastMouseDownCount
   }
 
-  public setModifiers(source: FormattedPointerEvent) {
+  public setModifiers(source: EditorMouseEvent) {
     this._altKey = source.altKey
     this._ctrlKey = source.ctrlKey
     this._metaKey = source.metaKey
     this._shiftKey = source.shiftKey
   }
 
-  public setStartButtons(e: FormattedPointerEvent) {
-    this._leftButton = e.button === 0
-    this._rightButton = e.button === 2
+  public setStartButtons(source: EditorMouseEvent) {
+    this._leftButton = source.leftButton
+    this._rightButton = source.rightButton
+  }
+
+  public setStartInfo(source: EditorMouseEvent) {
+    this._lastMouseControllerTarget = source.controllerTargetType
+    this._startPosition = source.client
   }
 
   public trySetCount(
@@ -117,91 +130,134 @@ class MouseDownState {
 class MouseDownOperation {
   private _mouseDownState: MouseDownState = new MouseDownState()
   private _isActive: boolean = false
+  private _lastMouseEvent: EditorMouseEvent | null
 
   constructor(
-    private readonly _element: EventTarget,
+    private readonly _mouseEvent: EditorMouseEventFactory,
     private readonly _viewController: ViewController
   ) {
-    this._element.addEventListener('mousemove', this._onMouseDownThenMove)
+    this._mouseEvent.onMouseMove(this._onMouseDownThenMove)
+    this._lastMouseEvent = null
   }
 
-  public start(event: FormattedPointerEvent) {
+  public start(event: EditorMouseEvent) {
+    this._lastMouseEvent = event
     this._mouseDownState.setModifiers(event)
     this._mouseDownState.setStartButtons(event)
     this._mouseDownState.trySetCount(
       event.detail,
-      new Point(event.clientX, event.clientY)
+      new Point(event.client.x, event.client.y)
     )
+    this._mouseDownState.setStartInfo(event)
     this._startMonitoring()
+    this._dispatchMouse(event.target, false, event.client)
   }
 
   private _startMonitoring() {
     this._isActive = true
   }
 
-  private _onMouseDownThenMove = (e: FormattedPointerEvent) => {
+  private _stopMonitoring() {
+    this._isActive = false
+  }
+
+  private _onMouseDownThenMove = (e: EditorMouseEvent) => {
     if (!this._isActive) {
       return
     }
+    this._dispatchMouse(e.target, true, e.client)
+    this._lastMouseEvent = e
   }
 
-  public onPointerUp() {
-    this._isActive = false
+  public onMouseUp(event: EditorMouseEvent) {
+    if (
+      this._mouseDownState.lastMouseDownPosition?.equals(event.client) &&
+      this._mouseDownState.lastMouseControllerTarget ===
+        event.controllerTargetType
+    ) {
+      this._viewController.setSelectElement(event.target, event.shiftKey)
+    }
+    this._stopMonitoring(event)
   }
 
   public isActive() {
     return this._isActive
   }
 
-  private _dispatchMouse() {}
+  private _dispatchMouse(
+    target: DisplayObject,
+    inSelectionMode: boolean,
+    point: IPoint
+  ) {
+    const movement = new Point(0, 0)
+    if (this._lastMouseEvent) {
+      const { _lastMouseEvent } = this
+      movement.x = point.x - _lastMouseEvent.client.x
+      movement.y = point.y - _lastMouseEvent.client.y
+    }
+    this._viewController.dispatchMouse({
+      target,
+      controllerTargetType: this._mouseDownState.lastMouseControllerTarget,
+      position: point,
+      startPosition: this._mouseDownState.startPosition,
+      inSelectionMode,
+      altKey: this._mouseDownState.altKey,
+      ctrlKey: this._mouseDownState.ctrlKey,
+      metaKey: this._mouseDownState.metaKey,
+      shiftKey: this._mouseDownState.shiftKey,
+      mouseDownCount: this._mouseDownState.count,
+      movement,
+
+      leftButton: this._mouseDownState.leftButton,
+      rightButton: this._mouseDownState.rightButton,
+    })
+  }
 }
 
-class MouseHandler {
+export class MouseHandler {
   private _isMouseDown: boolean
   private _mouseDownOperation: MouseDownOperation
+  private _mouseEvent: EditorMouseEventFactory
   constructor(
-    private readonly _element: EventTarget,
     private readonly _view: View,
-    private readonly _viewController: ViewController
+    private readonly _viewController: ViewController,
+    private readonly _element: HTMLCanvasElement,
+    private readonly _pickService: PickService
   ) {
-    this._bindMouseDownHandler()
-    this._bindMouseMoveHandler()
-    this._bindMouseUpHandler()
-    this._mouseDownOperation = new MouseDownOperation(
+    this._mouseEvent = new EditorMouseEventFactory(
       this._element,
+      this._view.client2Viewport,
+      this._pickService
+    )
+    this._mouseDownOperation = new MouseDownOperation(
+      this._mouseEvent,
       this._viewController
     )
+    this._mouseEvent.onMouseDown(this._bindMouseDownHandler)
+    this._mouseEvent.onMouseUp(this._bindMouseUpHandler)
+    this._mouseEvent.onMouseMove(this._bindMouseMoveHandler)
   }
 
-  private _bindMouseDownHandler() {
-    this._element.addEventListener('mousedown', (e: FormattedPointerEvent) => {
-      this._isMouseDown = true
-      this._viewController.emitMouseDown(e)
-      if (e.button === 0) {
-        this._mouseDownOperation.start(e)
-      }
-    })
+  private _bindMouseDownHandler = (e: EditorMouseEvent) => {
+    // this._isMouseDown = true
+    if (e.button === 0) {
+      this._mouseDownOperation.start(e)
+    }
   }
 
-  private _bindMouseUpHandler() {
-    this._element.addEventListener('mouseup', () => {
-      this._mouseDownOperation.onPointerUp()
-      this._isMouseDown = false
-    })
+  private _bindMouseUpHandler = (e: EditorMouseEvent) => {
+    this._mouseDownOperation.onMouseUp(e)
+    this._isMouseDown = false
   }
 
-  private _bindMouseMoveHandler() {
-    this._element.addEventListener('mousemove', e => {
-      if (!this._isMouseDown) {
-        return
-      }
-      const newX = (e as MouseEvent).movementX
-      const newY = (e as MouseEvent).movementY
-      const currentCamera = this._view.getCurrentCamera()
-      const vpMatrix = currentCamera.getViewPortMatrix()
-      currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
-    })
+  private _bindMouseMoveHandler = (e: EditorMouseEvent) => {
+    if (!this._isMouseDown) {
+      return
+    }
+    const newX = e.browserEvent.movementX
+    const newY = e.browserEvent.movementY
+    const currentCamera = this._view.getCurrentCamera()
+    const vpMatrix = currentCamera.getViewPortMatrix()
+    currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
   }
 }
-
-export default MouseHandler

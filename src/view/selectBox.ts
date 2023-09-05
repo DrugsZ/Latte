@@ -1,6 +1,7 @@
 import { ViewPart } from 'Latte/view/viewPart'
 import { Matrix } from 'Latte/math/matrix'
 import type { Camera } from 'Latte/core/cameraService'
+import type { ActiveSelection } from 'Latte/core/activeSelection'
 
 export class SelectBox extends ViewPart {
   private _tempMatrix = new Matrix()
@@ -17,20 +18,42 @@ export class SelectBox extends ViewPart {
     return true
   }
 
+  private _renderBorder(ctx: CanvasRenderingContext2D, rect: Rectangle) {
+    ctx.strokeStyle = '#0B94BF'
+    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+  }
+
+  private _renderControl(
+    ctx: CanvasRenderingContext2D,
+    activeSelection: ActiveSelection
+  ) {
+    const corners = activeSelection.getCornerRect()
+    corners.forEach(item => {
+      ctx.fillStyle = '#fff'
+      ctx.beginPath()
+      ctx.fillRect(item.x, item.y, item.width, item.height)
+      ctx.closePath()
+      this._renderBorder(ctx, item)
+    })
+  }
+
   render(ctx: CanvasRenderingContext2D, camera: Camera) {
     const activeSelection = this._context.getActiveSelection()
     if (!activeSelection.hasActive()) {
       return
     }
-    const rect = activeSelection.getOBB()!
+    const rect = activeSelection.OBB
     Matrix.multiply(
       this._tempMatrix,
       camera.getViewPortMatrix(),
       rect.transform
     )
-    ctx.strokeStyle = 'red'
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)
+    ctx.beginPath()
+    ctx.strokeStyle = '#0B94BF'
     ctx.strokeRect(0, 0, rect.width, rect.height)
+    ctx.closePath()
+    this._renderControl(ctx, activeSelection)
   }
 }

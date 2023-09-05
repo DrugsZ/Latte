@@ -1,14 +1,15 @@
 import type { ViewModel } from 'Latte/core/viewModel'
 import ElementRender from 'Latte/core/elementRender'
 import type RenderService from 'Latte/render/renderService'
-import MouseHandler from 'Latte/core/mouseHandler'
-import { EventBind } from 'Latte/event/eventBind'
-import { EventService } from 'Latte/event/eventService'
+import { MouseHandler } from 'Latte/core/mouseHandler'
+// import { EventBind } from 'Latte/event/eventBind'
+// import { EventService } from 'Latte/event/eventService'
 // import type { PickService } from 'Latte/event/pickService'
 import { SelectBox } from 'Latte/view/selectBox'
 import { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import type { ViewPart } from 'Latte/view/viewPart'
 import { ViewController } from 'Latte/core/viewController'
+import { Matrix } from 'Latte/math/matrix'
 
 export enum RenderEnum {
   ViewportChange,
@@ -19,8 +20,8 @@ export enum RenderEnum {
 export default class View extends ViewEventHandler {
   private _renderElement: ElementRender
   private _mouseHandler: MouseHandler
-  private _eventBind: EventBind
-  private _eventService: EventService
+  // private _eventBind: EventBind
+  // private _eventService: EventService
   private _selectBox: SelectBox
   private _viewParts: ViewPart[] = []
   private _viewController: ViewController
@@ -32,6 +33,7 @@ export default class View extends ViewEventHandler {
   ) {
     super()
     // this._initElement()
+    this.client2Viewport = this.client2Viewport.bind(this)
     this._renderElement = new ElementRender(
       this._viewModel,
       this._viewModel.getVisibleElementRenderObjects
@@ -43,18 +45,18 @@ export default class View extends ViewEventHandler {
     this._viewParts.push(this._selectBox)
 
     this._mouseHandler = new MouseHandler(
-      this._viewModel.elementTreeRoot,
       this,
-      this._viewController
-    )
-    this._eventService = new EventService(this._viewModel.elementTreeRoot)
-    this.client2Viewport = this.client2Viewport.bind(this)
-    this._eventBind = new EventBind(
+      this._viewController,
       this._renderDOM,
-      this._eventService,
-      this._viewModel.pickService,
-      this.client2Viewport
+      this._viewModel.pickService
     )
+    // this._eventService = new EventService(this._viewModel.elementTreeRoot)
+    // this._eventBind = new EventBind(
+    //   this._renderDOM,
+    //   this._eventService,
+    //   this._viewModel.pickService,
+    //   this.client2Viewport
+    // )
   }
 
   public render() {
@@ -102,6 +104,6 @@ export default class View extends ViewEventHandler {
   public client2Viewport(client: IPoint) {
     const currentCamera = this._viewModel.getCurrentCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
-    return vpMatrix.applyInvertToPoint(client)
+    return Matrix.applyMatrixInvertToPoint(vpMatrix, client)
   }
 }

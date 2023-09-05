@@ -21,14 +21,27 @@ export abstract class Container<
     return this._children
   }
 
+  public override getElementById(id: string) {
+    if (id === this.id) {
+      return this
+    }
+    const children = this._children
+    let target
+    children.some(child => {
+      target = child.getElementById(id)
+      return target
+    })
+    return target
+  }
+
   private _appendChild(child: DisplayObject) {
     const childLength = this._children.length
     let index = 0
     let isAddEnd = false
     while (index < childLength && !isAddEnd) {
       const compareChild = this._children[index]
-      const compareZIndex = compareChild.getZIndex()
-      const currentZIndex = child.getZIndex()
+      const compareZIndex = compareChild.zIndex
+      const currentZIndex = child.zIndex
       if (compareASCII(compareZIndex, currentZIndex)) {
         isAddEnd = true
       } else {
@@ -38,7 +51,6 @@ export abstract class Container<
     this._children.splice(index, 0, child)
     child.parentNode?.removeChild(child)
     child.parentNode = this
-    child.transform.worldDirty = true
   }
 
   appendChild(...child: DisplayObject[]) {
@@ -72,6 +84,14 @@ export abstract class Container<
       transform: [a, b, c, d, 0, 0],
       fills: this.getFills(),
     }
+  }
+
+  getFirst() {
+    return this._children[0]
+  }
+
+  getLast() {
+    return this._children[this._children.length - 1]
   }
 }
 

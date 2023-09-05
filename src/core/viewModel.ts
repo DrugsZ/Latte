@@ -1,4 +1,5 @@
 import type ModelData from 'Latte/core/modelData'
+import { ChangeEventType } from 'Latte/core/modelData'
 import { Emitter } from 'Latte/common/event'
 import CameraService from 'Latte/core/cameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'
@@ -12,6 +13,10 @@ import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import { ViewMouseMode } from 'Latte/core/viewMouseMode'
 import { ActiveSelection } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
+import { createDefaultRect } from 'Latte/common/schema'
+import type { Container } from 'Latte/core/container'
+import { plusOne } from 'Latte/math/zIndex'
+import { OperateModeState } from 'Latte/core/operateModeState'
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -29,6 +34,8 @@ export class ViewModel {
   private _activeSelection: ActiveSelection
 
   private _elementTree: ElementTree
+
+  private _operateModeState = new OperateModeState()
 
   constructor(model: ModelData, _domElement: HTMLCanvasElement) {
     this.getVisibleElementRenderObjects =
@@ -52,6 +59,40 @@ export class ViewModel {
     })
 
     this._initElementTree()
+
+    this._modelData.onElementChange(e => {
+      const changeElements: DisplayObject[] = []
+      e.forEach(item => {
+        if (item.type === ChangeEventType.CREATE) {
+          const newObject = this._elementTree.createElementByData(item.value)
+          const focusPage = this._elementTree.getElementById(
+            this._focusPageId
+          ) as Page
+          if (!newObject) {
+            return
+          }
+          focusPage?.appendChild(newObject)
+          const camera = this.getCurrentCamera()
+          focusPage?.setVisibleArea(camera.getViewport())
+          return
+        }
+        const { value } = item
+        const currentNode = this._elementTree.getElementById(
+          JSON.stringify(value.guid)
+        )
+        if (currentNode) {
+          currentNode.setElementData(value)
+          changeElements.push(currentNode)
+        }
+      })
+      this._eventDispatcher.emitViewEvent(
+        new viewEvents.ViewElementChangeEvent(
+          changeElements,
+          viewEvents.ViewElementChangeType.ViewElementChanged
+        )
+      )
+      this._activeSelection.updateOBB()
+    })
   }
 
   private _initElementTree() {
@@ -62,7 +103,11 @@ export class ViewModel {
       this.createCamera(page.id, page.getBoundingClientRect())
     })
     this.focusPageId = this._elementTree.document.getChildren()[0].id
-    this.pickService = new PickService(this.getVisibleElementRenderObjects)
+    this.pickService = new PickService(
+      this.getVisibleElementRenderObjects,
+      this._activeSelection,
+      this.elementTreeRoot
+    )
   }
 
   get focusPageId() {
@@ -134,27 +179,71 @@ export class ViewModel {
   }
 
   public addSelectElement(element: DisplayObject) {
+    if (this._activeSelection.hasSelected(element)) {
+      return
+    }
     this._activeSelection.addSelectElement(element)
     this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewActiveSelectionChangeEvent()
+      new viewEvents.ViewActiveSelectionChangeEvent(
+        [element],
+        viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementAdded
+      )
     )
   }
 
   public removeSelectElement(element: DisplayObject) {
+    if (!this._activeSelection.hasSelected(element)) {
+      return
+    }
     this._activeSelection.removeSelectElement(element)
     this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewActiveSelectionChangeEvent()
+      new viewEvents.ViewActiveSelectionChangeEvent(
+        [element],
+        viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementAdded
+      )
     )
   }
 
-  public clearSelection() {
+  public discardActiveSelection() {
+    const { objects } = this._activeSelection
     this._activeSelection.clear()
     this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewActiveSelectionChangeEvent()
+      new viewEvents.ViewActiveSelectionChangeEvent(
+        objects,
+        viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementRemoved
+      )
     )
   }
 
   public getActiveSelection() {
     return this._activeSelection
+  }
+
+  public updateElementData(element: Partial<BaseElementSchema>[]) {
+    this._modelData.updateChild({
+      data: element,
+    })
+  }
+
+  public addChild({ left, top }, target?: Container) {
+    const currentTarget =
+      target || this._elementTree.getElementById(this._focusPageId)
+    if (!currentTarget) {
+      return
+    }
+    const parentIndex = JSON.parse(this._focusPageId)
+    const newRect = createDefaultRect({ left, top }, parentIndex)
+    const lastElement = currentTarget.getLast()
+    if (lastElement) {
+      newRect.parentIndex.position = plusOne(lastElement.zIndex)
+    }
+
+    this._modelData.addChild({
+      data: [newRect],
+    })
+  }
+
+  public getOperateModeState() {
+    return this._operateModeState
   }
 }

@@ -3,12 +3,17 @@ import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
-import type { FormattedPointerEvent } from 'Latte/event/eventBind'
+import { MouseControllerTarget } from 'Latte/core/activeSelection'
+import { CoreNavigationCommands } from 'Latte/core/coreCommands'
+import { OperateMode } from 'Latte/core/operateModeState'
 
 export interface IMouseDispatchData {
   target: DisplayObject
+  controllerTargetType: MouseControllerTarget
   position: IPoint
-  isDrag: boolean
+  startPosition: IPoint | null
+  movement: IPoint
+  inSelectionMode: boolean
   altKey: boolean
   ctrlKey: boolean
   metaKey: boolean
@@ -19,39 +24,96 @@ export interface IMouseDispatchData {
   rightButton: boolean
 }
 
+export const isLogicTarget = (node?: any): node is DisplayObject =>
+  node instanceof DisplayObject &&
+  !(node instanceof Page) &&
+  !(node instanceof EditorDocument)
+
 export class ViewController {
-  constructor(private _viewMode: ViewModel) {}
-  public selectElement() {}
+  constructor(private _viewModel: ViewModel) {}
+
+  public addSelectElement(target: DisplayObject) {
+    if (target instanceof DisplayObject) {
+      this._viewModel.addSelectElement(target)
+    }
+  }
+
+  public removeSelectElement(target: DisplayObject) {
+    if (target instanceof DisplayObject) {
+      this._viewModel.removeSelectElement(target)
+    }
+  }
   public hoverElement() {}
   public hoverSelectBox() {}
   public resizeElement() {}
-  public moveElement() {}
+  public moveElement(element: DisplayObject, movePoint: IPoint) {
+    this._viewModel.updateElementData(element.translate(movePoint))
+  }
   public rotateElement() {}
   public moveCamera() {}
   public zoomCamera() {}
   public changeViewMouseMove(mode: ViewMouseModeType) {
-    this._viewMode.setMouseMode(mode)
+    this._viewModel.setMouseMode(mode)
   }
-  public emitMouseDown(e: FormattedPointerEvent) {
-    const { target } = e
-    const activeSelection = this._viewMode.getActiveSelection()
-    if (target instanceof EditorDocument || target instanceof Page) {
-      this._viewMode.clearSelection()
-      return
-    }
-    if (target instanceof DisplayObject) {
-      if (!e.shiftKey) {
-        this._viewMode.clearSelection()
-        this._viewMode.addSelectElement(target)
-        return
+  public emitMouseDown() {}
+
+  private _dragSelectionElement(movement: IPoint) {
+    const activeElement = this._viewModel.getActiveSelection()
+    this._viewModel.updateElementData(activeElement.translate(movement))
+  }
+
+  private _createPickArea() {}
+
+  public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
+    CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
+      this._viewModel,
+      {
+        target,
+        multipleMode,
       }
-      if (activeSelection.hasSelected(target)) {
-        this._viewMode.removeSelectElement(target)
+    )
+  }
+
+  public emitMouseUp() {}
+
+  private _dragOnClient(data: IMouseDispatchData) {
+    const { target } = data
+    if (isLogicTarget(target)) {
+      this._dragSelectionElement(data.movement)
+    } else {
+      this._createPickArea()
+    }
+  }
+
+  private _mouseDownOnClient(data: IMouseDispatchData) {
+    const { target, controllerTargetType, shiftKey } = data
+    switch (controllerTargetType) {
+      case MouseControllerTarget.BLANK:
+      case MouseControllerTarget.NONE:
+        this.setSelectElement(target, shiftKey)
+        break
+      default:
+        console.error('UnExpect type')
+    }
+  }
+
+  private _createElement() {}
+
+  public dispatchMouse(data: IMouseDispatchData) {
+    const operateModeState = this._viewModel.getOperateModeState()
+    const editMode = operateModeState.getMode()
+    if (data.mouseDownCount === 1) {
+      if (data.inSelectionMode) {
+        if (editMode === OperateMode.Edit) {
+          this._dragOnClient(data)
+        }
       } else {
-        this._viewMode.addSelectElement(target)
+        this._mouseDownOnClient(data)
       }
     }
   }
 
-  public dispatchMouse(data: IMouseDispatchData) {}
+  public tryAdd({ left, top }) {
+    this._viewModel.addChild({ left, top })
+  }
 }

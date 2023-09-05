@@ -2,6 +2,7 @@ import {
   DEFAULT_PAGE_SCHEMA,
   DEFAULT_LATTE_FILE,
   DEFAULT_DOCUMENT_SCHEMA,
+  DEFAULT_RECTANGLE_SCHEMA,
 } from 'Latte/constants/schema'
 
 let sessionID = 1
@@ -33,6 +34,28 @@ export const createDefaultPageNode = (parentIndex?: {
     }
   }
   return newPage
+}
+
+export const createDefaultRect = (
+  { left, top },
+  parentIndex?: {
+    guid?: DefaultIDType
+    position?: string
+  }
+) => {
+  const newRect = deepCopySchema(DEFAULT_RECTANGLE_SCHEMA)
+  newRect.guid = getUId()
+  if (parentIndex) {
+    newRect.parentIndex = {
+      ...newRect.parentIndex,
+      ...parentIndex,
+    }
+    newRect.transform.tx = left
+    newRect.transform.ty = top
+    newRect.size.x = 500
+    newRect.size.y = 500
+  }
+  return newRect
 }
 
 export const createDefaultDocument = () =>

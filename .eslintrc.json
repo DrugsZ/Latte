@@ -25,6 +25,8 @@
         "patterns": [".*"]
       }
     ],
+    "consistent-return": "off",
+    "no-console": "off",
     "@typescript-eslint/member-delimiter-style": [
       "error",
       {
@@ -41,6 +43,32 @@
     "@typescript-eslint/consistent-type-imports": [
       "error",
       { "prefer": "type-imports" }
+    ],
+    "@typescript-eslint/naming-convention": [
+      "error",
+
+      {
+        "selector": "default",
+        "modifiers": ["private"],
+        "format": null,
+        "leadingUnderscore": "require"
+      },
+      {
+        "selector": "default",
+        "modifiers": ["public"],
+        "format": null,
+        "leadingUnderscore": "forbid"
+      },
+      {
+        "selector": "class",
+        "format": ["PascalCase"]
+      },
+      {
+        "selector": "default",
+        "modifiers": ["private", "static"],
+        "format": null,
+        "leadingUnderscore": "allow"
+      }
     ]
   }
 }

@@ -42,7 +42,7 @@ export function plusOne(a: string) {
   if (a === MAX_ASCII) {
     return `}!`
   }
-  return String.fromCodePoint(a.charCodeAt(0) - 1)
+  return String.fromCodePoint(a.charCodeAt(0) + 1)
 }
 
 // export function getNewASCIIByTowValue(value1: null, value2: string)

@@ -4,6 +4,7 @@ import { Page } from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { EditorDocument } from 'Latte/elements/document'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
+import { createDefaultRect } from 'Latte/common/schema'
 
 import type { DisplayObject } from 'Latte/core/displayObject'
 import type { Container } from 'Latte/core/container'
@@ -35,8 +36,7 @@ export const createElement = (element: BaseElementSchema) => {
 }
 
 export class ElementTree {
-  private _elements: Map<string, DisplayObject> = new Map()
-  public _document: EditorDocument
+  private _document: EditorDocument
 
   constructor(elements: BaseElementSchema[]) {
     this._initElements(elements)
@@ -46,9 +46,10 @@ export class ElementTree {
     const cachedChildElements: {
       [key: string]: DisplayObject[]
     } = {}
+    const elementMap = new Map()
     elements.forEach(elm => {
       const currentNode = createElement(elm)
-      this._elements.set(currentNode.id, currentNode)
+      elementMap.set(currentNode.id, currentNode)
       if (currentNode instanceof EditorDocument) {
         this._document = currentNode
         return
@@ -62,19 +63,36 @@ export class ElementTree {
       currentChild.push(currentNode)
     })
     Object.entries(cachedChildElements).forEach(([key, value]) => {
-      const parentNode = this._elements.get(key)
+      const parentNode = elementMap.get(key)
       if (!parentNode) {
         return
       }
       ;(parentNode as Container).appendChild(...value)
     })
+    elementMap.clear()
   }
 
   public getElementById(id: string) {
-    return this._elements.get(id)
+    if (id === this._document.id) {
+      return this._document
+    }
+    return this._document.getElementById(id)
   }
 
   get document() {
     return this._document
+  }
+
+  public createElementByName(name: EditorElementTypeKind) {
+    let data = name
+    if (data === EditorElementTypeKind.RECTANGLE) {
+      data = createDefaultRect({ left: 0, top: 0 })
+    }
+    const newObject = createElement(data)
+    return newObject
+  }
+
+  public createElementByData<T extends BaseElementSchema>(elementData: T) {
+    return createElement(elementData)
   }
 }

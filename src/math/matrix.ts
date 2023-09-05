@@ -3,7 +3,7 @@ import { Point } from 'Latte/common/Point'
 const degrees = 180 / Math.PI
 
 /* eslint-disable no-param-reassign */
-export class Matrix {
+export class Matrix implements IMatrixLike {
   public a: number
 
   public b: number
@@ -27,7 +27,7 @@ export class Matrix {
     this.ty = ty
   }
 
-  static multiply(out: Matrix, a: Matrix, b: Matrix) {
+  static multiply(out: IMatrixLike, a: IMatrixLike, b: IMatrixLike) {
     const a0 = a.a
     const a1 = a.b
     const a2 = a.c
@@ -49,7 +49,7 @@ export class Matrix {
     return out
   }
 
-  static getScale(mat: Matrix) {
+  static getScale(mat: IMatrixLike) {
     const { a: a1, b: b1, c: c1, d: d1 } = mat
     return new Point(Math.sqrt(a1 * a1 + c1 * c1), Math.sqrt(b1 * b1 + d1 * d1))
   }
@@ -60,7 +60,7 @@ export class Matrix {
 
   static fromMatrixOrigin = (
     out: [number, number],
-    matrix: Matrix,
+    matrix: IMatrixLike,
     origin?: [number, number]
   ) => {
     if (origin) {
@@ -95,21 +95,21 @@ export class Matrix {
     return Math.atan2(mat.b, mat.a) * degrees
   }
 
-  applyInvertToPoint<P extends IPoint = Point>(pos: IPoint, newPos?: P): P {
+  static applyMatrixInvertToPoint<P extends IPoint = Point>(
+    mat: IMatrixLike,
+    pos: IPoint,
+    newPos?: P
+  ) {
     newPos = (newPos || new Point()) as P
 
-    const id = 1 / (this.a * this.d + this.c * -this.b)
+    const id = 1 / (mat.a * mat.d + mat.c * -mat.b)
 
     const { x, y } = pos
 
     newPos.x =
-      this.d * id * x +
-      -this.c * id * y +
-      (this.ty * this.c - this.tx * this.d) * id
+      mat.d * id * x + -mat.c * id * y + (mat.ty * mat.c - mat.tx * mat.d) * id
     newPos.y =
-      this.a * id * y +
-      -this.b * id * x +
-      (-this.ty * this.a + this.tx * this.b) * id
+      mat.a * id * y + -mat.b * id * x + (-mat.ty * mat.a + mat.tx * mat.b) * id
 
     return newPos
   }
