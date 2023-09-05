@@ -1,4 +1,4 @@
-import { createDefaultElement, createDefaultFile } from 'Latte/common/schema'
+import { createDefaultFile } from 'Latte/common/schema'
 import { Emitter } from 'Latte/common/event'
 
 interface IUpdatePayload {
@@ -30,7 +30,7 @@ class ModelData implements ISchemaModel {
   private _model: LatteFile = createDefaultFile()
 
   private readonly _onDataChange = new Emitter<LatteFile>()
-  private readonly onDataChange = this._onDataChange.event
+  public readonly onDataChange = this._onDataChange.event
 
   private readonly _onElementChange = new Emitter<ChangeEvent[]>()
   public readonly onElementChange = this._onElementChange.event
@@ -44,7 +44,7 @@ class ModelData implements ISchemaModel {
     const changeList: ChangeEvent[] = []
     this._model.elements.some((item, index) => {
       const currentItemIndex = list.findIndex(i => i.guid === item.guid)
-      if (~currentItemIndex) {
+      if (currentItemIndex > -1) {
         const currentItem = list.splice(currentItemIndex, 1)[0]
         this._model.elements[index] = {
           ...item,

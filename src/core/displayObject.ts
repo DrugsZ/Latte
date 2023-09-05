@@ -24,7 +24,7 @@ export abstract class DisplayObject<
     this._elementData = element
   }
 
-  private static _translate(
+  private static translate(
     element: DisplayObject,
     point: IPoint
   ): Partial<(typeof element)['_elementData']>[] {
@@ -51,10 +51,10 @@ export abstract class DisplayObject<
     const { width: newWidth, height: newHight } = size
     const { width, height } = element
     let needUpdate = false
-    if (!isNaN(Number(newWidth)) && newWidth !== width) {
+    if (!Number.isNaN(Number(newWidth)) && newWidth !== width) {
       needUpdate = true
     }
-    if (!isNaN(Number(newHight)) && newHight !== height) {
+    if (!Number.isNaN(Number(newHight)) && newHight !== height) {
       needUpdate = true
     }
     if (!needUpdate) {
@@ -182,14 +182,14 @@ export abstract class DisplayObject<
   }
 
   public translate(point: IPoint) {
-    return DisplayObject._translate(this, point)
+    return DisplayObject.translate(this, point)
   }
 
   public resize(size: { width?: number; height?: number }) {
     return DisplayObject.resize(this, size)
   }
 
-  public appendChild(...child: DisplayObject[]) {}
+  public appendChild() {}
 
-  public removeChild(removeChild: DisplayObject) {}
+  public removeChild() {}
 }

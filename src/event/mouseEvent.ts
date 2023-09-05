@@ -1,6 +1,6 @@
-import { PickService } from 'Latte/event/pickService'
-import { MouseControllerTarget } from 'Latte/core/activeSelection'
-import DisplayObject from 'Latte/core/container'
+import type { PickService } from 'Latte/event/pickService'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
+import type DisplayObject from 'Latte/core/container'
 
 export const EventType = {
   // Mouse
@@ -92,14 +92,14 @@ export class EditorMouseEvent extends StandardMouseEvent {
 export class EditorMouseEventFactory {
   constructor(
     private readonly _viewDom: HTMLElement,
-    private readonly client2Viewport: (point: IPoint) => IPoint,
-    private readonly pickService: PickService
+    private readonly _client2Viewport: (point: IPoint) => IPoint,
+    private readonly _pickService: PickService
   ) {}
 
   private _create(e: MouseEvent): EditorMouseEvent {
-    const client = this.client2Viewport({ x: e.offsetX, y: e.offsetY })
-    const elementTarget = this.pickService.pick(client)
-    const controller = this.pickService.pickActiveSelection(client)
+    const client = this._client2Viewport({ x: e.offsetX, y: e.offsetY })
+    const elementTarget = this._pickService.pick(client)
+    const controller = this._pickService.pickActiveSelection(client)
     return new EditorMouseEvent(e, client, elementTarget, controller)
   }
 

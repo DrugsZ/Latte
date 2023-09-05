@@ -36,7 +36,7 @@ export const createElement = (element: BaseElementSchema) => {
 }
 
 export class ElementTree {
-  public _document: EditorDocument
+  private _document: EditorDocument
 
   constructor(elements: BaseElementSchema[]) {
     this._initElements(elements)

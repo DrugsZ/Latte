@@ -28,7 +28,7 @@ export class RectShapeRender
     contextMatrix: Matrix
   ) => {
     const { width, height } = renderObject
-    const transform = renderObject.transform
+    const { transform } = renderObject
     Matrix.multiply(this._tempMatrix, contextMatrix, transform)
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)

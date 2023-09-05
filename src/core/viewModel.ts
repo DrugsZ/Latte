@@ -205,11 +205,11 @@ export class ViewModel {
   }
 
   public discardActiveSelection() {
-    const _objects = this._activeSelection.objects
+    const { objects } = this._activeSelection
     this._activeSelection.clear()
     this._eventDispatcher.emitViewEvent(
       new viewEvents.ViewActiveSelectionChangeEvent(
-        _objects,
+        objects,
         viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementRemoved
       )
     )

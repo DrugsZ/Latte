@@ -5,7 +5,7 @@ import type { PickService } from 'Latte/event/pickService'
 import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 import { EditorMouseEventFactory } from 'Latte/event/mouseEvent'
 import type { DisplayObject } from 'Latte/core/displayObject'
-import { MouseControllerTarget } from 'Latte/core/activeSelection'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -143,15 +143,15 @@ class MouseDownOperation {
       new Point(event.client.x, event.client.y)
     )
     this._mouseDownState.setStartControls(event)
-    this._startMonitoring(event)
+    this._startMonitoring()
     this._dispatchMouse(event.target, false, event.client)
   }
 
-  private _startMonitoring(event: EditorMouseEvent) {
+  private _startMonitoring() {
     this._isActive = true
   }
 
-  private _stopMonitoring(event: EditorMouseEvent) {
+  private _stopMonitoring() {
     this._isActive = false
   }
 
@@ -206,7 +206,6 @@ class MouseDownOperation {
     })
   }
 }
-let testAdd = true
 
 export class MouseHandler {
   private _isMouseDown: boolean
@@ -216,12 +215,12 @@ export class MouseHandler {
     private readonly _view: View,
     private readonly _viewController: ViewController,
     private readonly _element: HTMLCanvasElement,
-    private readonly pickService: PickService
+    private readonly _pickService: PickService
   ) {
     this._mouseEvent = new EditorMouseEventFactory(
       this._element,
       this._view.client2Viewport,
-      this.pickService
+      this._pickService
     )
     this._mouseDownOperation = new MouseDownOperation(
       this._mouseEvent,

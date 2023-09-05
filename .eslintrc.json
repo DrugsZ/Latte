@@ -25,6 +25,7 @@
         "patterns": [".*"]
       }
     ],
+    "consistent-return": "off",
     "@typescript-eslint/member-delimiter-style": [
       "error",
       {
@@ -60,6 +61,12 @@
       {
         "selector": "class",
         "format": ["PascalCase"]
+      },
+      {
+        "selector": "default",
+        "modifiers": ["private", "static"],
+        "format": null,
+        "leadingUnderscore": "forbid"
       }
     ]
   }

@@ -26,7 +26,7 @@ export class EllipseShapeRender
     const { width, height } = renderObject
     const radiusX = width / 2
     const radiusY = height / 2
-    const transform = renderObject.transform
+    const { transform } = renderObject
     Matrix.multiply(this._tempMatrix, contextMatrix, transform)
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)

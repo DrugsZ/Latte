@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import { EventTarget } from 'Latte/core/eventTarget'
+import type { EventTarget } from 'Latte/core/eventTarget'
 import type DisplayObject from 'Latte/core/container'
 import { isRect, isEllipse } from 'Latte/utils/assert'
 import type Ellipse from 'Latte/elements/ellipse'
@@ -10,8 +10,8 @@ import {
   ellipseDistance,
 } from 'Latte/math/inPointerInPath'
 import { Matrix } from 'Latte/math/matrix'
-import { ActiveSelection } from 'Latte/core/activeSelection'
-import { EditorDocument } from 'Latte/elements/document'
+import type { ActiveSelection } from 'Latte/core/activeSelection'
+import type { EditorDocument } from 'Latte/elements/document'
 
 export interface IPickerService {
   pick(point: IPoint): EventTarget | null

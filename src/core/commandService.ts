@@ -3,7 +3,8 @@ import type {
   ICommandEvent,
 } from 'Latte/core/commandsRegistry'
 import { CommandsRegistry } from 'Latte/core/commandsRegistry'
-import { Emitter, Event } from 'Latte/common/event'
+import type { Event } from 'Latte/common/event'
+import { Emitter } from 'Latte/common/event'
 
 export class CommandService implements ICommandService {
   private readonly _onWillExecuteCommand: Emitter<ICommandEvent> =
