@@ -40,11 +40,6 @@ class MouseDownState {
     return this._rightButton
   }
 
-  private _startPosition: IPoint | null
-  public get startPosition(): IPoint | null {
-    return this._startPosition
-  }
-
   private _lastMouseControllerTarget: MouseControllerTarget
   public get lastMouseControllerTarget(): MouseControllerTarget {
     return this._lastMouseControllerTarget
@@ -88,9 +83,8 @@ class MouseDownState {
     this._rightButton = source.rightButton
   }
 
-  public setStartInfo(source: EditorMouseEvent) {
+  public setStartControls(source: EditorMouseEvent) {
     this._lastMouseControllerTarget = source.controllerTargetType
-    this._startPosition = source.client
   }
 
   public trySetCount(
@@ -148,7 +142,7 @@ class MouseDownOperation {
       event.detail,
       new Point(event.client.x, event.client.y)
     )
-    this._mouseDownState.setStartInfo(event)
+    this._mouseDownState.setStartControls(event)
     this._startMonitoring()
     this._dispatchMouse(event.target, false, event.client)
   }
@@ -199,7 +193,7 @@ class MouseDownOperation {
       target,
       controllerTargetType: this._mouseDownState.lastMouseControllerTarget,
       position: point,
-      startPosition: this._mouseDownState.startPosition,
+      startPosition: this._mouseDownState.lastMouseDownPosition,
       inSelectionMode,
       altKey: this._mouseDownState.altKey,
       ctrlKey: this._mouseDownState.ctrlKey,
