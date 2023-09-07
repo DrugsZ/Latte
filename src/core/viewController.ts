@@ -46,9 +46,6 @@ export class ViewController {
   public hoverElement() {}
   public hoverSelectBox() {}
   public resizeElement() {}
-  public moveElement(element: DisplayObject, movePoint: IPoint) {
-    this._viewModel.updateElementData(element.translate(movePoint))
-  }
   public rotateElement() {}
   public moveCamera() {}
   public zoomCamera() {}
@@ -59,7 +56,10 @@ export class ViewController {
 
   private _dragSelectionElement(movement: IPoint) {
     const activeElement = this._viewModel.getActiveSelection()
-    this._viewModel.updateElementData(activeElement.translate(movement))
+    CoreNavigationCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
+      objects: activeElement.getObjects(),
+      movement,
+    })
   }
 
   private _createPickArea() {}

@@ -205,11 +205,10 @@ export class ViewModel {
   }
 
   public discardActiveSelection() {
-    const { objects } = this._activeSelection
     this._activeSelection.clear()
     this._eventDispatcher.emitViewEvent(
       new viewEvents.ViewActiveSelectionChangeEvent(
-        objects,
+        this._activeSelection.getObjects(),
         viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementRemoved
       )
     )
@@ -219,9 +218,9 @@ export class ViewModel {
     return this._activeSelection
   }
 
-  public updateElementData(element: Partial<BaseElementSchema>[]) {
+  public updateElementData(objects: Partial<BaseElementSchema>[]) {
     this._modelData.updateChild({
-      data: element,
+      data: objects,
     })
   }
 

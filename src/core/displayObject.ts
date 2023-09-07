@@ -24,20 +24,6 @@ export abstract class DisplayObject<
     this._elementData = element
   }
 
-  private static translate(
-    element: DisplayObject,
-    point: IPoint
-  ): Partial<(typeof element)['_elementData']>[] {
-    const { x, y, transform } = element
-    const { x: movementX, y: movementY } = point
-    return [
-      {
-        guid: element.getGuidKey(),
-        transform: { ...transform, tx: x + movementX, ty: y + movementY },
-      },
-    ]
-  }
-
   private static resize(
     element: DisplayObject,
     size: {
@@ -179,10 +165,6 @@ export abstract class DisplayObject<
 
   public getElementById(id: string) {
     return id === this.id ? this : undefined
-  }
-
-  public translate(point: IPoint) {
-    return DisplayObject.translate(this, point)
   }
 
   public resize(size: { width?: number; height?: number }) {

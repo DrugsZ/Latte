@@ -57,7 +57,7 @@ class ActiveSelectionCornerRectangle
 }
 
 export class ActiveSelection extends Rect implements IActiveSelectionControl {
-  objects: DisplayObject[] = []
+  private _objects: DisplayObject[] = []
   private _OBBDirty: boolean = false
   public readonly controllerType: MouseControllerTarget
 
@@ -83,24 +83,24 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
 
   public addSelectElement(element: DisplayObject) {
     if (!element) return
-    this.objects.push(element)
+    this._objects.push(element)
     this._OBBDirty = true
   }
 
   public removeSelectElement(element: DisplayObject) {
     if (!element) return
-    this.objects = this.objects.filter(o => o !== element)
+    this._objects = this._objects.filter(o => o !== element)
     this._OBBDirty = true
   }
 
   public clear() {
-    this.objects = []
+    this._objects = []
     this._OBBDirty = false
     this._bounds.clear()
   }
 
   public updateOBB() {
-    const { objects } = this
+    const { _objects: objects } = this
     this._bounds.clear()
     objects.forEach(element => {
       if (!element.visible) {
@@ -121,8 +121,8 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   get OBB() {
-    if (this.objects.length === 1) {
-      return this.objects[0].OBB
+    if (this._objects.length === 1) {
+      return this._objects[0].OBB
     }
     if (this._OBBDirty) {
       this.updateOBB()
@@ -131,11 +131,11 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
   }
 
   public hasActive() {
-    return !!this.objects.length
+    return !!this._objects.length
   }
 
   public hasSelected = (element: DisplayObject) =>
-    this.objects.includes(element)
+    this._objects.includes(element)
 
   public getCornerRect() {
     const { width, height } = this.OBB
@@ -263,11 +263,7 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
     return target || MouseControllerTarget.BLANK
   }
 
-  public override translate(point: IPoint): Partial<BaseElementSchema>[] {
-    return this.objects.reduce(
-      (pre: Partial<BaseElementSchema>[], cur) =>
-        pre.concat(cur.translate(point)),
-      []
-    )
+  public getObjects() {
+    return this._objects
   }
 }

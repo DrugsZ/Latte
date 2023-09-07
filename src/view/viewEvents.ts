@@ -34,7 +34,7 @@ export class ViewCameraUpdateEvent {
 export class ViewElementChangeEvent {
   public readonly type = ViewEventType.ViewElementChange
   constructor(
-    public readonly elements: DisplayObject[],
+    public readonly objects: DisplayObject[],
     public readonly changeType: ViewElementChangeType
   ) {}
 }
@@ -42,7 +42,7 @@ export class ViewElementChangeEvent {
 export class ViewActiveSelectionChangeEvent {
   public readonly type = ViewEventType.ViewActiveSelectionChange
   constructor(
-    public readonly elements: DisplayObject[],
+    public readonly objects: DisplayObject[],
     public readonly changeType: ViewActiveSelectionChangeType
   ) {}
 }
