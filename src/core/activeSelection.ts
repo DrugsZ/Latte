@@ -167,7 +167,7 @@ export class ActiveSelection extends Rect implements IActiveSelectionControl {
       height - halfHeight,
       DEFAULT_ACTIVE_SELECTION_CORNER_WIDTH,
       DEFAULT_ACTIVE_SELECTION_CORNER_HEIGHT,
-      MouseControllerTarget.SELECT_ROTATE_LEFT_BOTTOM
+      MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
     )
     return [leftTopCorner, rightTopCorner, rightBottomCorner, leftButtonCorner]
   }

@@ -6,6 +6,7 @@ import { MouseHandler } from 'Latte/core/mouseHandler'
 // import { EventService } from 'Latte/event/eventService'
 // import type { PickService } from 'Latte/event/pickService'
 import { SelectBox } from 'Latte/view/selectBox'
+import { ViewCursor } from 'Latte/view/viewCursor'
 import { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import type { ViewPart } from 'Latte/view/viewPart'
 import { ViewController } from 'Latte/core/viewController'
@@ -23,6 +24,7 @@ export default class View extends ViewEventHandler {
   // private _eventBind: EventBind
   // private _eventService: EventService
   private _selectBox: SelectBox
+  private _viewCursor: ViewCursor
   private _viewParts: ViewPart[] = []
   private _viewController: ViewController
 
@@ -43,6 +45,8 @@ export default class View extends ViewEventHandler {
 
     this._selectBox = new SelectBox(this._viewModel)
     this._viewParts.push(this._selectBox)
+
+    this._viewCursor = new ViewCursor(this._viewModel, this._renderDOM)
 
     this._mouseHandler = new MouseHandler(
       this,
