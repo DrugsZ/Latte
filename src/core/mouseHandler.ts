@@ -245,6 +245,24 @@ export class MouseHandler {
   }
 
   private _bindMouseMoveHandler = (e: EditorMouseEvent) => {
+    if (this._mouseDownOperation.isActive()) {
+      return
+    }
+    this._viewController.dispatchMouse({
+      target: e.target,
+      controllerTargetType: e.controllerTargetType,
+      startPosition: null,
+      position: e.client,
+      movement: null,
+      altKey: e.altKey,
+      ctrlKey: e.ctrlKey,
+      shiftKey: e.shiftKey,
+      metaKey: e.metaKey,
+      inSelectionMode: false,
+      mouseDownCount: 0,
+      leftButton: e.leftButton,
+      rightButton: e.rightButton,
+    })
     if (!this._isMouseDown) {
       return
     }

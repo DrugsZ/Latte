@@ -47,6 +47,7 @@ export default class View extends ViewEventHandler {
     this._viewParts.push(this._selectBox)
 
     this._viewCursor = new ViewCursor(this._viewModel, this._renderDOM)
+    this._viewParts.push(this._viewCursor)
 
     this._mouseHandler = new MouseHandler(
       this,
@@ -54,13 +55,6 @@ export default class View extends ViewEventHandler {
       this._renderDOM,
       this._viewModel.pickService
     )
-    // this._eventService = new EventService(this._viewModel.elementTreeRoot)
-    // this._eventBind = new EventBind(
-    //   this._renderDOM,
-    //   this._eventService,
-    //   this._viewModel.pickService,
-    //   this.client2Viewport
-    // )
   }
 
   public render() {

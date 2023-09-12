@@ -34,14 +34,26 @@ export class ViewEventHandler {
     return false
   }
 
-  public onMouseModeChange(
-    event: viewEvents.ViewMouseModeChangeEvent
+  public onActiveSelectionChange(
+    event: viewEvents.ViewActiveSelectionChangeEvent
   ): boolean {
     return false
   }
 
-  public onActiveSelectionChange(
-    event: viewEvents.ViewActiveSelectionChangeEvent
+  public onHoverObjectChange(
+    event: viewEvents.ViewHoverObjectChangeEvent
+  ): boolean {
+    return false
+  }
+
+  public onHoverControllerKeyChange(
+    event: viewEvents.ViewHoverControllerKeyChangeEvent
+  ): boolean {
+    return false
+  }
+
+  public onOperateModeChange(
+    event: viewEvents.ViewCursorOperateModeChange
   ): boolean {
     return false
   }
@@ -74,8 +86,18 @@ export class ViewEventHandler {
             shouldRender = true
           }
           break
-        case viewEvents.ViewEventType.ViewMouseModelChange:
-          if (this.onMouseModeChange(event)) {
+        case viewEvents.ViewEventType.ViewHoverObjectChange:
+          if (this.onHoverObjectChange(event)) {
+            shouldRender = true
+          }
+          break
+        case viewEvents.ViewEventType.ViewHoverControllerKeyChange:
+          if (this.onHoverControllerKeyChange(event)) {
+            shouldRender = true
+          }
+          break
+        case viewEvents.ViewEventType.ViewCursorOperateModeChange:
+          if (this.onOperateModeChange(event)) {
             shouldRender = true
           }
           break
