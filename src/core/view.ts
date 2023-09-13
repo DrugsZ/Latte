@@ -33,18 +33,20 @@ export default class View extends ViewEventHandler {
     super()
     // this._initElement()
     this.client2Viewport = this.client2Viewport.bind(this)
+
+    this._viewController = new ViewController(this._viewModel)
+
     this._renderElement = new ElementRender(
       this._viewModel,
       this._viewModel.getVisibleElementRenderObjects
     )
-    this._viewController = new ViewController(this._viewModel)
     this._viewParts.push(this._renderElement)
-
-    this._selectBox = new SelectBox(this._viewModel)
-    this._viewParts.push(this._selectBox)
 
     this._viewCursor = new ViewCursor(this._viewModel, this._renderDOM)
     this._viewParts.push(this._viewCursor)
+
+    this._selectBox = new SelectBox(this._viewModel)
+    this._viewParts.push(this._selectBox)
 
     this._mouseHandler = new MouseHandler(
       this,

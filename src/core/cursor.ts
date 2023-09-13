@@ -13,11 +13,11 @@ export enum OperateMode {
 
 export class Cursor {
   private _hoverControllerKey: MouseControllerTarget
-  private _hoverObject: DisplayObject
+  private _hoverObject: DisplayObject | null
   private _mode: OperateMode = OperateMode.Edit
 
   setHoverObject(
-    hoverObject: DisplayObject,
+    hoverObject: DisplayObject | null,
     eventDispatcher: ViewModelEventDispatcher
   ) {
     if (Object.is(this._hoverObject, hoverObject)) {
@@ -29,7 +29,7 @@ export class Cursor {
     )
   }
 
-  getHoverObject(): DisplayObject {
+  getHoverObject() {
     return this._hoverObject
   }
 

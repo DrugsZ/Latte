@@ -233,7 +233,10 @@ export class ViewModel {
     return this._cursor.getHoverObject()
   }
 
-  setCursorHoverObject(object: DisplayObject) {
+  setCursorHoverObject(object: DisplayObject | null) {
+    if (object && this._activeSelection.hasSelected(object)) {
+      return
+    }
     this._cursor.setHoverObject(object, this._eventDispatcher)
   }
 

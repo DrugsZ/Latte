@@ -107,9 +107,9 @@ export class ViewController {
       }
     } else {
       const { target, controllerTargetType } = data
-      if (isLogicTarget(target)) {
-        this._viewModel.setCursorHoverObject(target)
-      }
+      this._viewModel.setCursorHoverObject(
+        isLogicTarget(target) ? target : null
+      )
       this._viewModel.setCursorHoverControllerKey(controllerTargetType)
     }
   }

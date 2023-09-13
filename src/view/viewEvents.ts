@@ -52,7 +52,7 @@ export class ViewActiveSelectionChangeEvent {
 
 export class ViewHoverObjectChangeEvent {
   public readonly type = ViewEventType.ViewHoverObjectChange
-  constructor(public readonly object: DisplayObject) {}
+  constructor(public readonly object: DisplayObject | null) {}
 }
 
 export class ViewHoverControllerKeyChangeEvent {
