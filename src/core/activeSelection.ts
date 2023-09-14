@@ -71,7 +71,7 @@ export type RESIZE_KEY_TYPE =
 
 export const isResizeKey = (
   key: MouseControllerTarget
-): key is RESIZE_KEY_TYPE => !!(ROTATE_KEY & key)
+): key is RESIZE_KEY_TYPE => !!(RESIZE_KEY & key)
 
 class ActiveSelectionCorner {
   private static _RESIZE_WIDTH = 6
