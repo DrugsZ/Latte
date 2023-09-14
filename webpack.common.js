@@ -1,6 +1,6 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WebpackBar = require('webpackbar');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 
 module.exports = {
@@ -12,7 +12,7 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     filename: 'cditor.bundle.js',
     clean: true,
-    publicPath: '/',
+    publicPath: './',
   },
   resolve: {
     extensions: [".ts", ".tsx", ".js"],
