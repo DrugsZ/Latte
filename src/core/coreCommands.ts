@@ -3,6 +3,7 @@ import { DisplayObject } from 'Latte/core/displayObject'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { CommandsRegistry } from 'Latte/core/commandsRegistry'
+import { Matrix } from 'Latte/math/matrix'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -41,6 +42,12 @@ export namespace CoreNavigationCommands {
     position: IPoint
     movement: IPoint
     objects: DisplayObject[]
+  }
+
+  interface SetTransformCommandOptions extends BaseCommandOptions {
+    objects: DisplayObject[]
+    transformOrigin?: IPoint
+    rad: number
   }
 
   export const SetActiveSelection =
@@ -93,6 +100,55 @@ export namespace CoreNavigationCommands {
           results.push({
             guid: object.getGuidKey(),
             transform: { ...transform, tx: x + movementX, ty: y + movementY },
+          })
+        })
+
+        viewModel.updateElementData(results)
+      }
+    })()
+
+  export const SetElementTransform =
+    new (class extends CoreEditorCommand<SetTransformCommandOptions> {
+      constructor() {
+        super('moveElement')
+      }
+
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<SetTransformCommandOptions>
+      ): void {
+        const { objects, rad, transformOrigin } = args
+        if (!objects || !objects.length || !rad) {
+          return
+        }
+        const results: Partial<BaseElementSchema>[] = []
+
+        objects.forEach(object => {
+          const center = transformOrigin || object.getCenter()
+          const { OBB } = object
+          const diffMatrix = {
+            a: Math.cos(rad),
+            b: Math.sin(rad),
+            c: -Math.sin(rad),
+            d: Math.cos(rad),
+            tx: 0,
+            ty: 0,
+          }
+          const [x, y] = Matrix.fromMatrixOrigin([0, 0], diffMatrix, [
+            center.x,
+            center.y,
+          ])
+          diffMatrix.tx = x
+          diffMatrix.ty = y
+          const newP1 = Matrix.apply(OBB, diffMatrix)
+          const { transform } = object
+          Matrix.multiply(diffMatrix, transform, diffMatrix)
+          diffMatrix.tx = newP1.x
+          diffMatrix.ty = newP1.y
+          console.log(diffMatrix)
+          results.push({
+            guid: object.getGuidKey(),
+            transform: { ...diffMatrix },
           })
         })
 
