@@ -2,7 +2,7 @@ import type { ViewModel } from 'Latte/core/viewModel'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
-import { MouseControllerTarget } from 'Latte/core/activeSelection'
+import { MouseControllerTarget, isRotateKey } from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
 import { OperateMode } from 'Latte/core/cursor'
 
@@ -10,8 +10,8 @@ export interface IMouseDispatchData {
   target: DisplayObject
   controllerTargetType: MouseControllerTarget
   position: IPoint
+  prePosition: IPoint | null
   startPosition: IPoint | null
-  movement: IPoint | null
   inSelectionMode: boolean
   altKey: boolean
   ctrlKey: boolean
@@ -50,12 +50,48 @@ export class ViewController {
   public zoomCamera() {}
   public emitMouseDown() {}
 
-  private _dragSelectionElement(movement: IPoint) {
+  private _moveSelectionElement(position: IPoint, prePosition?: IPoint | null) {
+    if (!prePosition) {
+      return
+    }
+    const movement = {
+      x: position.x - prePosition.x,
+      y: position.y - prePosition.y,
+    }
     const activeElement = this._viewModel.getActiveSelection()
     CoreNavigationCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       movement,
     })
+  }
+
+  private _rotateSelectionElement(
+    position: IPoint,
+    prePosition?: IPoint | null
+  ) {
+    if (!prePosition) {
+      return
+    }
+    const activeElement = this._viewModel.getActiveSelection()
+    const center = activeElement.getCenter()
+    const prePoint = {
+      x: prePosition.x - center.x,
+      y: prePosition.y - center.y,
+    }
+    const newPoint = {
+      x: position.x - center.x,
+      y: position.y - center.y,
+    }
+    const rad =
+      Math.atan2(newPoint.y, newPoint.x) - Math.atan2(prePoint.y, prePoint.x)
+    CoreNavigationCommands.SetElementTransform.runCoreEditorCommand(
+      this._viewModel,
+      {
+        objects: activeElement.getObjects(),
+        rad,
+        transformOrigin: center,
+      }
+    )
   }
 
   private _createPickArea() {}
@@ -73,11 +109,11 @@ export class ViewController {
   public emitMouseUp() {}
 
   private _dragOnClient(data: IMouseDispatchData) {
-    const { target } = data
-    if (isLogicTarget(target)) {
-      this._dragSelectionElement(data.movement)
-    } else {
-      this._createPickArea()
+    const { controllerTargetType } = data
+    if (controllerTargetType === MouseControllerTarget.SELECTION_CONTEXT) {
+      this._moveSelectionElement(data.position, data.prePosition)
+    } else if (isRotateKey(controllerTargetType)) {
+      this._rotateSelectionElement(data.position, data.prePosition)
     }
   }
 

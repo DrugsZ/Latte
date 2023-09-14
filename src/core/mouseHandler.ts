@@ -152,6 +152,7 @@ class MouseDownOperation {
       new Point(event.client.x, event.client.y)
     )
     this._mouseDownState.setStartControls(event)
+    this._mouseDownState.setStartTarget(event)
     this._startMonitoring()
     this._dispatchMouse(false, event.client)
   }
@@ -194,6 +195,7 @@ class MouseDownOperation {
       movement.x = point.x - _lastMouseEvent.client.x
       movement.y = point.y - _lastMouseEvent.client.y
     }
+
     this._viewController.dispatchMouse({
       target: this._mouseDownState.targetObject,
       controllerTargetType: this._mouseDownState.lastMouseControllerTarget,
@@ -205,7 +207,7 @@ class MouseDownOperation {
       metaKey: this._mouseDownState.metaKey,
       shiftKey: this._mouseDownState.shiftKey,
       mouseDownCount: this._mouseDownState.count,
-      movement,
+      prePosition: this._lastMouseEvent ? this._lastMouseEvent.client : null,
 
       leftButton: this._mouseDownState.leftButton,
       rightButton: this._mouseDownState.rightButton,
@@ -258,7 +260,8 @@ export class MouseHandler {
       controllerTargetType: e.controllerTargetType,
       startPosition: null,
       position: e.client,
-      movement: null,
+      prePosition: null,
+
       altKey: e.altKey,
       ctrlKey: e.ctrlKey,
       shiftKey: e.shiftKey,
