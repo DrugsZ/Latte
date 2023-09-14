@@ -40,6 +40,11 @@ class MouseDownState {
     return this._rightButton
   }
 
+  private _targetObject: DisplayObject
+  public get targetObject(): DisplayObject {
+    return this._targetObject
+  }
+
   private _lastMouseControllerTarget: MouseControllerTarget
   public get lastMouseControllerTarget(): MouseControllerTarget {
     return this._lastMouseControllerTarget
@@ -85,6 +90,10 @@ class MouseDownState {
 
   public setStartControls(source: EditorMouseEvent) {
     this._lastMouseControllerTarget = source.controllerTargetType
+  }
+
+  public setStartTarget(source: EditorMouseEvent) {
+    this._targetObject = source.target
   }
 
   public trySetCount(
@@ -144,7 +153,7 @@ class MouseDownOperation {
     )
     this._mouseDownState.setStartControls(event)
     this._startMonitoring()
-    this._dispatchMouse(event.target, false, event.client)
+    this._dispatchMouse(false, event.client)
   }
 
   private _startMonitoring() {
@@ -159,7 +168,7 @@ class MouseDownOperation {
     if (!this._isActive) {
       return
     }
-    this._dispatchMouse(e.target, true, e.client)
+    this._dispatchMouse(true, e.client)
     this._lastMouseEvent = e
   }
 
@@ -171,18 +180,14 @@ class MouseDownOperation {
     ) {
       this._viewController.setSelectElement(event.target, event.shiftKey)
     }
-    this._stopMonitoring(event)
+    this._stopMonitoring()
   }
 
   public isActive() {
     return this._isActive
   }
 
-  private _dispatchMouse(
-    target: DisplayObject,
-    inSelectionMode: boolean,
-    point: IPoint
-  ) {
+  private _dispatchMouse(inSelectionMode: boolean, point: IPoint) {
     const movement = new Point(0, 0)
     if (this._lastMouseEvent) {
       const { _lastMouseEvent } = this
@@ -190,7 +195,7 @@ class MouseDownOperation {
       movement.y = point.y - _lastMouseEvent.client.y
     }
     this._viewController.dispatchMouse({
-      target,
+      target: this._mouseDownState.targetObject,
       controllerTargetType: this._mouseDownState.lastMouseControllerTarget,
       position: point,
       startPosition: this._mouseDownState.lastMouseDownPosition,

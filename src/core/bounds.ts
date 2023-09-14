@@ -55,4 +55,14 @@ export class Bounds {
     this.addPoint({ x: minX, y: minY })
     this.addPoint({ x: maxX, y: maxY })
   }
+
+  getCenter() {
+    if (this.isEmpty()) {
+      return { x: 0, y: 0 }
+    }
+    return {
+      x: (this.maxX - this.minX) / 2 + this.minX,
+      y: (this.maxY - this.minY) / 2 + this.minY,
+    }
+  }
 }

@@ -75,7 +75,7 @@ export class Matrix implements IMatrixLike {
 
   static apply<P extends IPoint = Point>(
     pos: IPoint,
-    a: Matrix,
+    a: IMatrixLike,
     newPos?: P
   ): P {
     newPos = (newPos || new Point()) as P
@@ -91,7 +91,7 @@ export class Matrix implements IMatrixLike {
    * @param mat the matrix to getRotation
    * @returns number of rotation
    */
-  static getRotation(mat: Matrix) {
+  static getRotation(mat: IMatrixLike) {
     return Math.atan2(mat.b, mat.a) * degrees
   }
 

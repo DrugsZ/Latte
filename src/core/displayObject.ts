@@ -17,6 +17,7 @@ export abstract class DisplayObject<
   parentNode: Container | null = null
 
   protected _bounds: Bounds = new Bounds()
+  private _boundDirty: boolean = true
 
   constructor(element: T) {
     super()
@@ -113,7 +114,7 @@ export abstract class DisplayObject<
     return guid
   }
 
-  getBounds() {
+  private _updateBounds() {
     this._bounds.clear()
     const worldMatrix = this.transform
     const x = worldMatrix.tx
@@ -150,7 +151,13 @@ export abstract class DisplayObject<
     beforeTransformPoint.y = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
     this._bounds.addPoint(afterTransformPoint)
+    this._boundDirty = false
+  }
 
+  getBounds() {
+    if (this._boundDirty) {
+      this._updateBounds()
+    }
     return this._bounds
   }
 
@@ -160,7 +167,11 @@ export abstract class DisplayObject<
   }
 
   public setElementData(data: T) {
+    if (!Object.is(this._elementData.transform, data.transform)) {
+      this._boundDirty = true
+    }
     this._elementData = data
+    this.getBounds()
   }
 
   public getElementById(id: string) {
@@ -169,6 +180,10 @@ export abstract class DisplayObject<
 
   public resize(size: { width?: number; height?: number }) {
     return DisplayObject.resize(this, size)
+  }
+
+  public getCenter() {
+    return this._bounds.getCenter()
   }
 
   public appendChild() {}
