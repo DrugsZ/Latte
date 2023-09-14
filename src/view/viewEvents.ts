@@ -1,13 +1,16 @@
 import type { Camera } from 'Latte/core/cameraService'
-import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import type { DisplayObject } from 'Latte/core/displayObject'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
+import type { OperateMode } from 'Latte/core/cursor'
 
 export enum ViewEventType {
   ViewFocusPageChange,
   ViewCameraChange,
   ViewElementChange,
   ViewActiveSelectionChange,
-  ViewMouseModelChange,
+  ViewHoverObjectChange,
+  ViewHoverControllerKeyChange,
+  ViewCursorOperateModeChange,
 }
 
 export enum ViewElementChangeType {
@@ -34,7 +37,7 @@ export class ViewCameraUpdateEvent {
 export class ViewElementChangeEvent {
   public readonly type = ViewEventType.ViewElementChange
   constructor(
-    public readonly elements: DisplayObject[],
+    public readonly objects: DisplayObject[],
     public readonly changeType: ViewElementChangeType
   ) {}
 }
@@ -42,19 +45,31 @@ export class ViewElementChangeEvent {
 export class ViewActiveSelectionChangeEvent {
   public readonly type = ViewEventType.ViewActiveSelectionChange
   constructor(
-    public readonly elements: DisplayObject[],
+    public readonly objects: DisplayObject[],
     public readonly changeType: ViewActiveSelectionChangeType
   ) {}
 }
 
-export class ViewMouseModeChangeEvent {
-  public readonly type = ViewEventType.ViewMouseModelChange
-  constructor(public readonly viewMouseMode: ViewMouseModeType) {}
+export class ViewHoverObjectChangeEvent {
+  public readonly type = ViewEventType.ViewHoverObjectChange
+  constructor(public readonly object: DisplayObject | null) {}
+}
+
+export class ViewHoverControllerKeyChangeEvent {
+  public readonly type = ViewEventType.ViewHoverControllerKeyChange
+  constructor(public readonly controllerKey: MouseControllerTarget) {}
+}
+
+export class ViewCursorOperateModeChange {
+  public readonly type = ViewEventType.ViewCursorOperateModeChange
+  constructor(public readonly mode: OperateMode) {}
 }
 
 export type ViewEvent =
   | ViewFocusPageChangeEvent
   | ViewCameraUpdateEvent
   | ViewElementChangeEvent
-  | ViewMouseModeChangeEvent
+  | ViewHoverObjectChangeEvent
+  | ViewHoverControllerKeyChangeEvent
+  | ViewCursorOperateModeChange
   | ViewActiveSelectionChangeEvent

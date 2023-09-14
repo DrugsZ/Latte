@@ -36,7 +36,11 @@ module.exports = {
             }
           }
         ]
-      }
+      },
+      {
+        test: /\.css$/i,
+        use: ["style-loader", "css-loader"],
+      },
     ]
   },
   stats: 'errors-only',

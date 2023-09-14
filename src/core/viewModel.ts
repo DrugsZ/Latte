@@ -9,21 +9,20 @@ import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import { ElementTree } from 'Latte/viewModel/elementTree'
 import type { Page } from 'Latte/core/page'
 import { PickService } from 'Latte/event/pickService'
-import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
-import { ViewMouseMode } from 'Latte/core/viewMouseMode'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { ActiveSelection } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
 import { createDefaultRect } from 'Latte/common/schema'
 import type { Container } from 'Latte/core/container'
 import { plusOne } from 'Latte/math/zIndex'
-import { OperateModeState } from 'Latte/core/operateModeState'
+import type { OperateMode } from 'Latte/core/cursor'
+import { Cursor } from 'Latte/core/cursor'
 
 export class ViewModel {
   private _focusPageId: string = ''
   private _modelData: ModelData
   private _cameraService: CameraService<string>
   private _canvasObserver: DomElementObserver
-  private _viewMouseMode: ViewMouseMode = new ViewMouseMode()
   pickService: PickService
 
   private readonly _eventDispatcher: ViewModelEventDispatcher
@@ -35,7 +34,7 @@ export class ViewModel {
 
   private _elementTree: ElementTree
 
-  private _operateModeState = new OperateModeState()
+  private _cursor: Cursor = new Cursor()
 
   constructor(model: ModelData, _domElement: HTMLCanvasElement) {
     this.getVisibleElementRenderObjects =
@@ -57,7 +56,6 @@ export class ViewModel {
         focusPage.setVisibleArea(event.getViewport())
       }
     })
-
     this._initElementTree()
 
     this._modelData.onElementChange(e => {
@@ -167,17 +165,6 @@ export class ViewModel {
     return this._cameraService.getCamera(this.focusPageId)
   }
 
-  public setMouseMode(mode: ViewMouseModeType) {
-    this._viewMouseMode.setMode(mode)
-    this._eventDispatcher.emitViewEvent(
-      new viewEvents.ViewMouseModeChangeEvent(mode)
-    )
-  }
-
-  public getMouseMode() {
-    return this._viewMouseMode.getMode()
-  }
-
   public addSelectElement(element: DisplayObject) {
     if (this._activeSelection.hasSelected(element)) {
       return
@@ -205,11 +192,10 @@ export class ViewModel {
   }
 
   public discardActiveSelection() {
-    const { objects } = this._activeSelection
     this._activeSelection.clear()
     this._eventDispatcher.emitViewEvent(
       new viewEvents.ViewActiveSelectionChangeEvent(
-        objects,
+        this._activeSelection.getObjects(),
         viewEvents.ViewActiveSelectionChangeType.ViewActiveSelectionElementRemoved
       )
     )
@@ -219,9 +205,9 @@ export class ViewModel {
     return this._activeSelection
   }
 
-  public updateElementData(element: Partial<BaseElementSchema>[]) {
+  public updateElementData(objects: Partial<BaseElementSchema>[]) {
     this._modelData.updateChild({
-      data: element,
+      data: objects,
     })
   }
 
@@ -243,7 +229,30 @@ export class ViewModel {
     })
   }
 
-  public getOperateModeState() {
-    return this._operateModeState
+  getCursorHoverObject() {
+    return this._cursor.getHoverObject()
+  }
+
+  setCursorHoverObject(object: DisplayObject | null) {
+    if (object && this._activeSelection.hasSelected(object)) {
+      return
+    }
+    this._cursor.setHoverObject(object, this._eventDispatcher)
+  }
+
+  getCursorHoverControllerKey() {
+    return this._cursor.getControllerKey()
+  }
+
+  setCursorHoverControllerKey(key: MouseControllerTarget) {
+    this._cursor.setControllerTarget(key, this._eventDispatcher)
+  }
+
+  getCursorOperateMode() {
+    return this._cursor.getOperateMode()
+  }
+
+  setCursorOperateMode(mode: OperateMode) {
+    this._cursor.setOperateMode(mode, this._eventDispatcher)
   }
 }

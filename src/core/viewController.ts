@@ -1,18 +1,17 @@
 import type { ViewModel } from 'Latte/core/viewModel'
-import type { ViewMouseModeType } from 'Latte/core/viewMouseMode'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
 import { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
-import { OperateMode } from 'Latte/core/operateModeState'
+import { OperateMode } from 'Latte/core/cursor'
 
 export interface IMouseDispatchData {
   target: DisplayObject
   controllerTargetType: MouseControllerTarget
   position: IPoint
   startPosition: IPoint | null
-  movement: IPoint
+  movement: IPoint | null
   inSelectionMode: boolean
   altKey: boolean
   ctrlKey: boolean
@@ -46,20 +45,17 @@ export class ViewController {
   public hoverElement() {}
   public hoverSelectBox() {}
   public resizeElement() {}
-  public moveElement(element: DisplayObject, movePoint: IPoint) {
-    this._viewModel.updateElementData(element.translate(movePoint))
-  }
   public rotateElement() {}
   public moveCamera() {}
   public zoomCamera() {}
-  public changeViewMouseMove(mode: ViewMouseModeType) {
-    this._viewModel.setMouseMode(mode)
-  }
   public emitMouseDown() {}
 
   private _dragSelectionElement(movement: IPoint) {
     const activeElement = this._viewModel.getActiveSelection()
-    this._viewModel.updateElementData(activeElement.translate(movement))
+    CoreNavigationCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
+      objects: activeElement.getObjects(),
+      movement,
+    })
   }
 
   private _createPickArea() {}
@@ -100,8 +96,7 @@ export class ViewController {
   private _createElement() {}
 
   public dispatchMouse(data: IMouseDispatchData) {
-    const operateModeState = this._viewModel.getOperateModeState()
-    const editMode = operateModeState.getMode()
+    const editMode = this._viewModel.getCursorOperateMode()
     if (data.mouseDownCount === 1) {
       if (data.inSelectionMode) {
         if (editMode === OperateMode.Edit) {
@@ -110,6 +105,12 @@ export class ViewController {
       } else {
         this._mouseDownOnClient(data)
       }
+    } else {
+      const { target, controllerTargetType } = data
+      this._viewModel.setCursorHoverObject(
+        isLogicTarget(target) ? target : null
+      )
+      this._viewModel.setCursorHoverControllerKey(controllerTargetType)
     }
   }
 

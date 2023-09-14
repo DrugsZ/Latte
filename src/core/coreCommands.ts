@@ -36,6 +36,13 @@ export namespace CoreNavigationCommands {
     multipleMode?: boolean
   }
 
+  interface BaseMoveCommandOptions extends BaseCommandOptions {
+    startPosition: IPoint
+    position: IPoint
+    movement: IPoint
+    objects: DisplayObject[]
+  }
+
   export const SetActiveSelection =
     new (class extends CoreEditorCommand<SetActiveSelection> {
       constructor() {
@@ -65,4 +72,31 @@ export namespace CoreNavigationCommands {
     })()
 
   export const CreateNewElement = new (class extends CoreEditorCommand {})()
+
+  export const MoveElement =
+    new (class extends CoreEditorCommand<BaseMoveCommandOptions> {
+      constructor() {
+        super('moveElement')
+      }
+
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<BaseMoveCommandOptions>
+      ): void {
+        const { movement, objects } = args
+        if (!objects || !movement) return
+        const { x: movementX, y: movementY } = movement
+        const results: Partial<BaseElementSchema>[] = []
+
+        objects.forEach(object => {
+          const { x, y, transform } = object
+          results.push({
+            guid: object.getGuidKey(),
+            transform: { ...transform, tx: x + movementX, ty: y + movementY },
+          })
+        })
+
+        viewModel.updateElementData(results)
+      }
+    })()
 }

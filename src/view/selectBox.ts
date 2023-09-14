@@ -27,7 +27,8 @@ export class SelectBox extends ViewPart {
     ctx: CanvasRenderingContext2D,
     activeSelection: ActiveSelection
   ) {
-    const corners = activeSelection.getCornerRect()
+    const corners = activeSelection.getCorners()
+    ctx.lineWidth = 1
     corners.forEach(item => {
       ctx.fillStyle = '#fff'
       ctx.beginPath()
@@ -50,6 +51,7 @@ export class SelectBox extends ViewPart {
     )
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.strokeStyle = '#0B94BF'
     ctx.strokeRect(0, 0, rect.width, rect.height)

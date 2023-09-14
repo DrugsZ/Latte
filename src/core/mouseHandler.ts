@@ -40,9 +40,9 @@ class MouseDownState {
     return this._rightButton
   }
 
-  private _startPosition: IPoint | null
-  public get startPosition(): IPoint | null {
-    return this._startPosition
+  private _targetObject: DisplayObject
+  public get targetObject(): DisplayObject {
+    return this._targetObject
   }
 
   private _lastMouseControllerTarget: MouseControllerTarget
@@ -88,9 +88,12 @@ class MouseDownState {
     this._rightButton = source.rightButton
   }
 
-  public setStartInfo(source: EditorMouseEvent) {
+  public setStartControls(source: EditorMouseEvent) {
     this._lastMouseControllerTarget = source.controllerTargetType
-    this._startPosition = source.client
+  }
+
+  public setStartTarget(source: EditorMouseEvent) {
+    this._targetObject = source.target
   }
 
   public trySetCount(
@@ -148,9 +151,9 @@ class MouseDownOperation {
       event.detail,
       new Point(event.client.x, event.client.y)
     )
-    this._mouseDownState.setStartInfo(event)
+    this._mouseDownState.setStartControls(event)
     this._startMonitoring()
-    this._dispatchMouse(event.target, false, event.client)
+    this._dispatchMouse(false, event.client)
   }
 
   private _startMonitoring() {
@@ -165,7 +168,7 @@ class MouseDownOperation {
     if (!this._isActive) {
       return
     }
-    this._dispatchMouse(e.target, true, e.client)
+    this._dispatchMouse(true, e.client)
     this._lastMouseEvent = e
   }
 
@@ -177,18 +180,14 @@ class MouseDownOperation {
     ) {
       this._viewController.setSelectElement(event.target, event.shiftKey)
     }
-    this._stopMonitoring(event)
+    this._stopMonitoring()
   }
 
   public isActive() {
     return this._isActive
   }
 
-  private _dispatchMouse(
-    target: DisplayObject,
-    inSelectionMode: boolean,
-    point: IPoint
-  ) {
+  private _dispatchMouse(inSelectionMode: boolean, point: IPoint) {
     const movement = new Point(0, 0)
     if (this._lastMouseEvent) {
       const { _lastMouseEvent } = this
@@ -196,10 +195,10 @@ class MouseDownOperation {
       movement.y = point.y - _lastMouseEvent.client.y
     }
     this._viewController.dispatchMouse({
-      target,
+      target: this._mouseDownState.targetObject,
       controllerTargetType: this._mouseDownState.lastMouseControllerTarget,
       position: point,
-      startPosition: this._mouseDownState.startPosition,
+      startPosition: this._mouseDownState.lastMouseDownPosition,
       inSelectionMode,
       altKey: this._mouseDownState.altKey,
       ctrlKey: this._mouseDownState.ctrlKey,
@@ -251,6 +250,24 @@ export class MouseHandler {
   }
 
   private _bindMouseMoveHandler = (e: EditorMouseEvent) => {
+    if (this._mouseDownOperation.isActive()) {
+      return
+    }
+    this._viewController.dispatchMouse({
+      target: e.target,
+      controllerTargetType: e.controllerTargetType,
+      startPosition: null,
+      position: e.client,
+      movement: null,
+      altKey: e.altKey,
+      ctrlKey: e.ctrlKey,
+      shiftKey: e.shiftKey,
+      metaKey: e.metaKey,
+      inSelectionMode: false,
+      mouseDownCount: 0,
+      leftButton: e.leftButton,
+      rightButton: e.rightButton,
+    })
     if (!this._isMouseDown) {
       return
     }
