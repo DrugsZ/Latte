@@ -65,4 +65,11 @@ export class Bounds {
       y: (this.maxY - this.minY) / 2 + this.minY,
     }
   }
+
+  getHalfExtents() {
+    return {
+      x: (this.maxX - this.minX) / 2,
+      y: (this.maxY - this.minY) / 2,
+    }
+  }
 }

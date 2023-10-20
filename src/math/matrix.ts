@@ -114,13 +114,13 @@ export class Matrix implements IMatrixLike {
     return newPos
   }
 
-  invert() {
-    const aa = this.a
-    const ab = this.b
-    const ac = this.c
-    const ad = this.d
-    const atx = this.tx
-    const aty = this.ty
+  static invert(a: IMatrixLike) {
+    const aa = a.a
+    const ab = a.b
+    const ac = a.c
+    const ad = a.d
+    const atx = a.tx
+    const aty = a.ty
 
     let det = aa * ad - ab * ac
     if (!det) {

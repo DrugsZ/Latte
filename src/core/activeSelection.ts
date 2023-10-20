@@ -326,6 +326,14 @@ export class ActiveSelection extends Rect {
     return super.OBB
   }
 
+  override getBounds() {
+    if (this._objects.length === 1) {
+      return this._objects[0].getBounds()
+    }
+    this.getBounds()
+    return this._bounds
+  }
+
   public hasActive() {
     return !!this._objects.length
   }
