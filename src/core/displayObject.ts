@@ -186,6 +186,10 @@ export abstract class DisplayObject<
     return this._bounds.getCenter()
   }
 
+  public getHalfExtents() {
+    return this._bounds.getHalfExtents()
+  }
+
   public appendChild() {}
 
   public removeChild() {}

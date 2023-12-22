@@ -1,5 +1,5 @@
 const { merge } = require('webpack-merge');
-const common = require('./webpack.common.js');
+const common = require('./rspack.common.js');
 const FriendlyErrorsWebpackPlugin = require('@soda/friendly-errors-webpack-plugin');
 
 

@@ -1,6 +1,6 @@
 const path = require('path');
 const WebpackBar = require('webpackbar');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+const rspack = require("@rspack/core");
 
 
 module.exports = {
@@ -23,29 +23,39 @@ module.exports = {
     },
     alias: {
       'Latte': path.resolve(__dirname, "src")
-    }
+    },
+    tsConfigPath: path.resolve(__dirname, "tsconfig.json")
   },
   module: {
     rules: [
       {
-        test: /\.([cm]?ts|tsx)$/, use: [
-          {
-            loader: 'ts-loader',
-            options: {
-              transpileOnly: true
+        test: /\.ts$/,
+        use: {
+          loader: "builtin:swc-loader",
+          options: {
+            sourceMap: true,
+            jsc: {
+              parser: {
+                syntax: "typescript"
+              },
+              externalHelpers: true,
+              preserveAllComments: false
             }
           }
-        ]
+        },
+        type: 'javascript/auto',
       },
       {
         test: /\.css$/i,
-        use: ["style-loader", "css-loader"],
+        type: "css",
       },
     ]
   },
   stats: 'errors-only',
   plugins: [
-    new HtmlWebpackPlugin(),
+    new rspack.HtmlRspackPlugin({
+      template: "./index.html"
+    }),
     new WebpackBar()
   ],
 }
