@@ -11,8 +11,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: 'cditor.bundle.js',
-    clean: true,
-    publicPath: './',
+    clean: true
   },
   resolve: {
     extensions: [".ts", ".tsx", ".js"],
