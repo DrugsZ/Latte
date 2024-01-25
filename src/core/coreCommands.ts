@@ -4,11 +4,19 @@ import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { CommandsRegistry } from 'Latte/core/commandsRegistry'
 import { Matrix } from 'Latte/math/matrix'
+import { Point } from 'Latte/common/Point'
+import type { MouseControllerTarget } from 'Latte/core/activeSelection'
+import { isResizeXAxisKey, isResizeYAxisKey } from 'Latte/core/activeSelection'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
+
+const subtract = (a: IPoint, b: IPoint) => new Point(a.x - b.x, a.y - b.y)
+const dotProduct = (a: IPoint, b: IPoint) => new Point(a.x * b.x, a.y * b.y)
+const add = (a: IPoint, b: IPoint) => new Point(a.x + b.x, a.y + b.y)
+const divide = (a: IPoint, b: IPoint) => new Point(a.x / b.x, a.y / b.y)
 
 export abstract class Command {
   constructor(public id: string) {}
@@ -22,7 +30,7 @@ export abstract class Command {
 export abstract class CoreEditorCommand<T> {
   constructor(public id: string) {}
   public abstract runCoreEditorCommand(
-    viewModel: ViewModel,
+    viewModelPartial: ViewModel,
     args: Partial<T>
   ): void
 }
@@ -44,7 +52,7 @@ export namespace CoreNavigationCommands {
     objects: DisplayObject[]
   }
 
-  interface SetTransformCommandOptions extends BaseCommandOptions {
+  interface RotateElementCommandOptions extends BaseCommandOptions {
     objects: DisplayObject[]
     transformOrigin?: IPoint
     rad: number
@@ -107,15 +115,15 @@ export namespace CoreNavigationCommands {
       }
     })()
 
-  export const SetElementTransform =
-    new (class extends CoreEditorCommand<SetTransformCommandOptions> {
+  export const RotateElementTransform =
+    new (class extends CoreEditorCommand<RotateElementCommandOptions> {
       constructor() {
-        super('moveElement')
+        super('rotateElement')
       }
 
       public runCoreEditorCommand(
         viewModel: ViewModel,
-        args: Partial<SetTransformCommandOptions>
+        args: Partial<RotateElementCommandOptions>
       ): void {
         const { objects, rad, transformOrigin } = args
         if (!objects || !objects.length || !rad) {
@@ -155,4 +163,190 @@ export namespace CoreNavigationCommands {
         viewModel.updateElementData(results)
       }
     })()
+
+  interface ResizeElementCommandOptions extends BaseCommandOptions {
+    key: MouseControllerTarget
+    position: IPoint
+    prePosition: IPoint
+  }
+
+  class ResizeElementCommand extends CoreEditorCommand<ResizeElementCommandOptions> {
+    static tempMatrix = new Matrix()
+    constructor() {
+      super('resizeElement')
+    }
+
+    private _getInvertPoint() {}
+
+    private _getInvertSelectBoxTransform(selectBoxTransform: IMatrixLike) {
+      return Matrix.invert({
+        ...selectBoxTransform,
+        tx: 0,
+        ty: 0,
+      })
+    }
+
+    private _getPointOnSelectBoxAxis(selectBoxOBB: OBB, point: IPoint) {
+      const {
+        x: selectBoxTLX,
+        y: selectBoxTLY,
+        transform: selectBoxTransform,
+      } = selectBoxOBB
+
+      const invertTransform = this._getInvertSelectBoxTransform(
+        selectBoxTransform
+      ) as Matrix
+
+      return Matrix.apply(
+        {
+          x: point.x - selectBoxTLX,
+          y: point.y - selectBoxTLY,
+        },
+        invertTransform
+      )
+    }
+
+    public runCoreEditorCommand(
+      viewModel: ViewModel,
+      args: Partial<ResizeElementCommandOptions>
+    ): void {
+      const { position, prePosition, key } = args
+      if (!position || !prePosition || !key) {
+        return
+      }
+      const activeElement = viewModel.getActiveSelection()
+
+      const {
+        x: selectBoxTLX,
+        y: selectBoxTLY,
+        transform: selectBoxTransform,
+        width: selectBoxWidth,
+        height: selectBoxHeight,
+      } = activeElement.OBB
+
+      const invertTransform = this._getInvertSelectBoxTransform(
+        selectBoxTransform
+      ) as Matrix
+
+      // getSymbol
+      const invertTranPos = this._getPointOnSelectBoxAxis(
+        activeElement.OBB,
+        position
+      )
+
+      const invertTranPrePos = this._getPointOnSelectBoxAxis(
+        activeElement.OBB,
+        prePosition
+      )
+
+      const centerPos = new Point(selectBoxWidth / 2, selectBoxHeight / 2)
+
+      const symbol = new Point(
+        invertTranPos.x > centerPos.x ? 1 : -1,
+        invertTranPos.y > centerPos.y ? 1 : -1
+      )
+
+      const distance = dotProduct(
+        subtract(invertTranPrePos, invertTranPos),
+        symbol
+      )
+      if (isResizeXAxisKey(key)) {
+        distance.y = 0
+      }
+      if (isResizeYAxisKey(key)) {
+        distance.x = 0
+      }
+
+      const moveDistance = Matrix.apply(distance, {
+        ...selectBoxTransform,
+        tx: 0,
+        ty: 0,
+      })
+      const newSelectBoxRect = new Point(
+        selectBoxWidth - distance.x,
+        selectBoxHeight - distance.y
+      )
+      const scale = new Point(
+        1 - distance.x / selectBoxWidth,
+        1 - distance.y / selectBoxHeight
+      )
+      const newSelectBoxTL = new Point(
+        symbol.x === 1 ? selectBoxTLX : selectBoxTLX - moveDistance.x,
+        symbol.y === 1 ? selectBoxTLY : selectBoxTLY - moveDistance.y
+      )
+
+      const objects = activeElement.getObjects()
+      const result: Partial<BaseElementSchema>[] = []
+
+      objects.forEach(object => {
+        const { x, y, width, height } = object.OBB
+
+        const pureTransform = {
+          ...object.transform,
+          tx: 0,
+          ty: 0,
+        }
+
+        const localTransform = Matrix.multiply(
+          pureTransform,
+          pureTransform,
+          invertTransform
+        )
+
+        const vXOScale = new Point(
+          (x - selectBoxTLX) / selectBoxWidth,
+          (y - selectBoxTLY) / selectBoxHeight
+        )
+        const vXO = add(newSelectBoxTL, dotProduct(newSelectBoxRect, vXOScale))
+
+        const vW = new Point(width, 0)
+        const vWT = dotProduct(Matrix.apply(vW, localTransform), scale)
+
+        const vWRad = Math.atan2(vWT.y, vWT.x)
+        const vWTM = {
+          a: Math.cos(vWRad),
+          b: Math.sin(vWRad),
+          c: -Math.sin(vWRad),
+          d: Math.cos(vWRad),
+          tx: 0,
+          ty: 0,
+        }
+
+        const vH = new Point(0, height)
+        const vHT = dotProduct(Matrix.apply(vH, localTransform), scale)
+
+        const newInvert = Matrix.invert(vWTM)
+        const vHTS1 = Matrix.apply(vHT, newInvert!)
+        const vHSkew = Math.PI / 2 - Math.atan2(vHTS1.y, vHTS1.x)
+        const vHTM = {
+          a: 1,
+          b: 0,
+          c: Math.tan(vHSkew),
+          d: 1,
+          tx: 0,
+          ty: 0,
+        }
+        Matrix.multiply(ResizeElementCommand.tempMatrix, vWTM, vHTM)
+        Matrix.multiply(
+          ResizeElementCommand.tempMatrix,
+          ResizeElementCommand.tempMatrix,
+          selectBoxTransform
+        )
+        result.push({
+          guid: object.getGuidKey(),
+          size: {
+            x: Math.sqrt(vWT.x * vWT.x + vWT.y * vWT.y), // object.OBB.width,
+            y: vHTS1.y, // Math.sqrt(vHTS.x * vHTS.x + vHTS.y * vHTS.y), // object.OBB.height,
+          },
+          transform: {
+            ...ResizeElementCommand.tempMatrix,
+            tx: vXO.x,
+            ty: vXO.y,
+          },
+        })
+      })
+      viewModel.updateElementData(result)
+    }
+  }
+  export const ResizeElement = new ResizeElementCommand()
 }
