@@ -150,10 +150,38 @@ export namespace CoreNavigationCommands {
           diffMatrix.ty = y
           const newP1 = Matrix.apply(OBB, diffMatrix)
           const { transform } = object
-          Matrix.multiply(diffMatrix, transform, diffMatrix)
+          // how get skewX in transform: first get pureTransform without skewX, eg: removeSkewXTransform
+          // second: get skewY transform same as skewX, eg: skewToY
+          // third: get removeSkewXTransform invert and use invert transform multiply to skewToY, then
+          // skewToY will get skewX skewY matrix, and we just need skewX, so  we set another key to default value without skewX
+          const removeSkewXTransform = {
+            a: transform.a,
+            b: transform.b,
+            c: -transform.b,
+            d: transform.a,
+            tx: transform.tx,
+            ty: transform.ty,
+          }
+          // const skewToY = {
+          //   a:transform.d,
+          //   b:-transform.c,
+          //   c:transform.c,
+          //   d:transform.d,
+          //   tx:transform.tx,
+          //   ty:transform.ty
+          // }
+          const skewXTransform = {
+            a: 1,
+            b: 0,
+            c: transform.a * transform.c + transform.b * transform.d,
+            d: 1,
+            tx: 0,
+            ty: 0,
+          }
+          Matrix.multiply(diffMatrix, removeSkewXTransform, diffMatrix)
+          Matrix.multiply(diffMatrix, diffMatrix, skewXTransform)
           diffMatrix.tx = newP1.x
           diffMatrix.ty = newP1.y
-          console.log(diffMatrix)
           results.push({
             guid: object.getGuidKey(),
             transform: { ...diffMatrix },

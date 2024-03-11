@@ -133,7 +133,6 @@ export class ViewController {
   public emitMouseUp() {}
 
   private _dragOnClient(data: IMouseDispatchData) {
-    console.log(1112)
     const { controllerTargetType } = data
     if (controllerTargetType === MouseControllerTarget.SELECTION_CONTEXT) {
       this._moveSelectionElement(data.position, data.prePosition)
