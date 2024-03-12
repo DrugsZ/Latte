@@ -6,7 +6,12 @@ import { CommandsRegistry } from 'Latte/core/commandsRegistry'
 import { Matrix } from 'Latte/math/matrix'
 import { Point } from 'Latte/common/Point'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
-import { isResizeXAxisKey, isResizeYAxisKey } from 'Latte/core/activeSelection'
+import {
+  isResizeXAxisKey,
+  isResizeYAxisKey,
+  isResetYAxis,
+  isResetXAxis,
+} from 'Latte/core/activeSelection'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -204,8 +209,6 @@ export namespace CoreNavigationCommands {
       super('resizeElement')
     }
 
-    private _getInvertPoint() {}
-
     private _getInvertSelectBoxTransform(selectBoxTransform: IMatrixLike) {
       return Matrix.invert({
         ...selectBoxTransform,
@@ -224,7 +227,6 @@ export namespace CoreNavigationCommands {
       const invertTransform = this._getInvertSelectBoxTransform(
         selectBoxTransform
       ) as Matrix
-
       return Matrix.apply(
         {
           x: point.x - selectBoxTLX,
@@ -232,6 +234,165 @@ export namespace CoreNavigationCommands {
         },
         invertTransform
       )
+    }
+
+    private _getNewPointOnSelectBoxChange(
+      selectBox: IPoint,
+      selectTL: IPoint,
+      newSelectBox: IPoint,
+      newSelectBoxTL: IPoint,
+      point: IPoint
+    ) {
+      const pointInSelectBox = subtract(point, selectTL)
+      const pointInSelectBoxScale = divide(pointInSelectBox, selectBox)
+      const pointSizeOnNewSelectBox = dotProduct(
+        newSelectBox,
+        pointInSelectBoxScale
+      )
+      return add(newSelectBoxTL, pointSizeOnNewSelectBox)
+    }
+
+    private _getChangeSymbol(position: IPoint, selectOBB: OBB) {
+      const { width: selectBoxWidth, height: selectBoxHeight } = selectOBB
+      const centerPos = new Point(selectBoxWidth / 2, selectBoxHeight / 2)
+      const invertTranPos = this._getPointOnSelectBoxAxis(selectOBB, position)
+      return new Point(
+        invertTranPos.x > centerPos.x ? 1 : -1,
+        invertTranPos.y > centerPos.y ? 1 : -1
+      )
+    }
+
+    private _getRectInfoBeforeAndAfter(
+      selectOBB: OBB,
+      position: IPoint,
+      prePosition: IPoint,
+      symbol: IPoint,
+      key: MouseControllerTarget
+    ) {
+      const {
+        x: selectBoxTLX,
+        y: selectBoxTLY,
+        transform: selectBoxTransform,
+        width: selectBoxWidth,
+        height: selectBoxHeight,
+      } = selectOBB
+      const oldSelectBoxTL = new Point(selectBoxTLX, selectBoxTLY)
+      const oldSelectBoxRect = new Point(selectBoxWidth, selectBoxHeight)
+
+      const distance = subtract(
+        this._getPointOnSelectBoxAxis(selectOBB, position),
+        this._getPointOnSelectBoxAxis(selectOBB, prePosition)
+      )
+      const invertTransform = this._getInvertSelectBoxTransform(
+        selectBoxTransform
+      ) as Matrix
+      const moveDistance = distance
+      if (isResizeXAxisKey(key)) {
+        moveDistance.y = 0
+      }
+      if (isResizeYAxisKey(key)) {
+        moveDistance.x = 0
+      }
+      const distanceWithSymbol = dotProduct(moveDistance, symbol)
+      const newSelectBoxRect = new Point(
+        selectBoxWidth + distanceWithSymbol.x,
+        selectBoxHeight + distanceWithSymbol.y
+      )
+      const reSetPosPoint = new Point(0, 0)
+      if (isResetXAxis(key)) {
+        reSetPosPoint.x = moveDistance.x
+      }
+      if (isResetYAxis(key)) {
+        reSetPosPoint.y = moveDistance.y
+      }
+      const positionChangeOnDefaultAxis = Matrix.apply(reSetPosPoint, {
+        ...selectBoxTransform,
+        tx: 0,
+        ty: 0,
+      })
+      const newSelectBoxTL = add(
+        new Point(selectBoxTLX, selectBoxTLY),
+        positionChangeOnDefaultAxis
+      )
+
+      return {
+        oldSelectBoxTL,
+        oldSelectBoxRect,
+        newSelectBoxTL,
+        newSelectBoxRect,
+      }
+    }
+
+    private _getNewTransform = (
+      objectOBB: OBB,
+      getNewPoint: (point: IPoint) => IPoint,
+      selectBoxTransform: IMatrixLike
+    ) => {
+      const { x, y, width, height, transform } = objectOBB
+      const pureTransform = {
+        ...transform,
+        tx: 0,
+        ty: 0,
+      }
+      const invertTransform = this._getInvertSelectBoxTransform(
+        selectBoxTransform
+      ) as Matrix
+      const localTransform = Matrix.multiply(
+        pureTransform,
+        pureTransform,
+        invertTransform
+      )
+      const objectTL = new Point(x, y)
+      const objectVWidth = add(
+        objectTL,
+        Matrix.apply(new Point(width, 0), localTransform)
+      )
+      const objectVHeight = add(
+        objectTL,
+        Matrix.apply(new Point(0, height), localTransform)
+      )
+      const newTl = getNewPoint(objectTL)
+      const newObjectVWidth = getNewPoint(objectVWidth)
+      const newObjectVHeight = getNewPoint(objectVHeight)
+      const vcWidth = subtract(newObjectVWidth, newTl)
+      const vcWRad = Math.atan2(vcWidth.y, vcWidth.x)
+      const vcWTM = {
+        a: Math.cos(vcWRad),
+        b: Math.sin(vcWRad),
+        c: -Math.sin(vcWRad),
+        d: Math.cos(vcWRad),
+        tx: 0,
+        ty: 0,
+      }
+      const vcHeight = subtract(newObjectVHeight, newTl)
+      const newVcInvert = Matrix.invert(vcWTM)
+      const vcHTS1 = Matrix.apply(vcHeight, newVcInvert!)
+      const vcHSkew = Math.PI / 2 - Math.atan2(vcHTS1.y, vcHTS1.x)
+      const vcHTM = {
+        a: 1,
+        b: 0,
+        c: Math.tan(vcHSkew),
+        d: 1,
+        tx: 0,
+        ty: 0,
+      }
+      Matrix.multiply(ResizeElementCommand.tempMatrix, vcWTM, vcHTM)
+      Matrix.multiply(
+        ResizeElementCommand.tempMatrix,
+        ResizeElementCommand.tempMatrix,
+        selectBoxTransform
+      )
+      return {
+        size: {
+          x: Math.sqrt(vcWidth.x * vcWidth.x + vcWidth.y * vcWidth.y),
+          y: vcHTS1.y,
+        },
+        transform: {
+          ...ResizeElementCommand.tempMatrix,
+          tx: newTl.x,
+          ty: newTl.y,
+        },
+      }
     }
 
     public runCoreEditorCommand(
@@ -244,135 +405,43 @@ export namespace CoreNavigationCommands {
       }
       const activeElement = viewModel.getActiveSelection()
 
+      const { transform: selectBoxTransform } = activeElement.OBB
+
+      // get change symbol
+      const symbol = this._getChangeSymbol(position, activeElement.OBB)
+
       const {
-        x: selectBoxTLX,
-        y: selectBoxTLY,
-        transform: selectBoxTransform,
-        width: selectBoxWidth,
-        height: selectBoxHeight,
-      } = activeElement.OBB
-
-      const invertTransform = this._getInvertSelectBoxTransform(
-        selectBoxTransform
-      ) as Matrix
-
-      // getSymbol
-      const invertTranPos = this._getPointOnSelectBoxAxis(
+        oldSelectBoxTL,
+        oldSelectBoxRect,
+        newSelectBoxTL,
+        newSelectBoxRect,
+      } = this._getRectInfoBeforeAndAfter(
         activeElement.OBB,
-        position
+        position,
+        prePosition,
+        symbol,
+        key
       )
 
-      const invertTranPrePos = this._getPointOnSelectBoxAxis(
-        activeElement.OBB,
-        prePosition
-      )
-
-      const centerPos = new Point(selectBoxWidth / 2, selectBoxHeight / 2)
-
-      const symbol = new Point(
-        invertTranPos.x > centerPos.x ? 1 : -1,
-        invertTranPos.y > centerPos.y ? 1 : -1
-      )
-
-      const distance = dotProduct(
-        subtract(invertTranPrePos, invertTranPos),
-        symbol
-      )
-      if (isResizeXAxisKey(key)) {
-        distance.y = 0
-      }
-      if (isResizeYAxisKey(key)) {
-        distance.x = 0
-      }
-
-      const moveDistance = Matrix.apply(distance, {
-        ...selectBoxTransform,
-        tx: 0,
-        ty: 0,
-      })
-      const newSelectBoxRect = new Point(
-        selectBoxWidth - distance.x,
-        selectBoxHeight - distance.y
-      )
-      const scale = new Point(
-        1 - distance.x / selectBoxWidth,
-        1 - distance.y / selectBoxHeight
-      )
-      const newSelectBoxTL = new Point(
-        symbol.x === 1 ? selectBoxTLX : selectBoxTLX - moveDistance.x,
-        symbol.y === 1 ? selectBoxTLY : selectBoxTLY - moveDistance.y
-      )
+      const getNewPoint = (point: IPoint) =>
+        this._getNewPointOnSelectBoxChange.call(
+          this,
+          oldSelectBoxRect,
+          oldSelectBoxTL,
+          newSelectBoxRect,
+          newSelectBoxTL,
+          point
+        )
 
       const objects = activeElement.getObjects()
       const result: Partial<BaseElementSchema>[] = []
 
-      objects.forEach(object => {
-        const { x, y, width, height } = object.OBB
-
-        const pureTransform = {
-          ...object.transform,
-          tx: 0,
-          ty: 0,
-        }
-
-        const localTransform = Matrix.multiply(
-          pureTransform,
-          pureTransform,
-          invertTransform
-        )
-
-        const vXOScale = new Point(
-          (x - selectBoxTLX) / selectBoxWidth,
-          (y - selectBoxTLY) / selectBoxHeight
-        )
-        const vXO = add(newSelectBoxTL, dotProduct(newSelectBoxRect, vXOScale))
-
-        const vW = new Point(width, 0)
-        const vWT = dotProduct(Matrix.apply(vW, localTransform), scale)
-
-        const vWRad = Math.atan2(vWT.y, vWT.x)
-        const vWTM = {
-          a: Math.cos(vWRad),
-          b: Math.sin(vWRad),
-          c: -Math.sin(vWRad),
-          d: Math.cos(vWRad),
-          tx: 0,
-          ty: 0,
-        }
-
-        const vH = new Point(0, height)
-        const vHT = dotProduct(Matrix.apply(vH, localTransform), scale)
-
-        const newInvert = Matrix.invert(vWTM)
-        const vHTS1 = Matrix.apply(vHT, newInvert!)
-        const vHSkew = Math.PI / 2 - Math.atan2(vHTS1.y, vHTS1.x)
-        const vHTM = {
-          a: 1,
-          b: 0,
-          c: Math.tan(vHSkew),
-          d: 1,
-          tx: 0,
-          ty: 0,
-        }
-        Matrix.multiply(ResizeElementCommand.tempMatrix, vWTM, vHTM)
-        Matrix.multiply(
-          ResizeElementCommand.tempMatrix,
-          ResizeElementCommand.tempMatrix,
-          selectBoxTransform
-        )
+      objects.forEach(object =>
         result.push({
           guid: object.getGuidKey(),
-          size: {
-            x: Math.sqrt(vWT.x * vWT.x + vWT.y * vWT.y), // object.OBB.width,
-            y: vHTS1.y, // Math.sqrt(vHTS.x * vHTS.x + vHTS.y * vHTS.y), // object.OBB.height,
-          },
-          transform: {
-            ...ResizeElementCommand.tempMatrix,
-            tx: vXO.x,
-            ty: vXO.y,
-          },
+          ...this._getNewTransform(object.OBB, getNewPoint, selectBoxTransform),
         })
-      })
+      )
       viewModel.updateElementData(result)
     }
   }

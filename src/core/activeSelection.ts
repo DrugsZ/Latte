@@ -73,6 +73,34 @@ export const isResizeYAxisKey = (
   key: MouseControllerTarget
 ): key is RESIZE_Y_AXIS_KEY_TYPE => !!(RESIZE_Y_AXIS_KEY & key)
 
+export const RESET_POSITION_X_AXIS_KEY =
+  MouseControllerTarget.SELECT_RESIZE_LEFT |
+  MouseControllerTarget.SELECT_RESIZE_LEFT_TOP |
+  MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
+
+export type RESET_POSITION_X_AXIS_KEY_TYPE =
+  | MouseControllerTarget.SELECT_RESIZE_LEFT
+  | MouseControllerTarget.SELECT_RESIZE_LEFT_TOP
+  | MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
+
+export const RESET_POSITION_Y_AXIS_KEY =
+  MouseControllerTarget.SELECT_RESIZE_TOP |
+  MouseControllerTarget.SELECT_RESIZE_LEFT_TOP |
+  MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
+
+export type RESET_POSITION_Y_AXIS_KEY_TYPE =
+  | MouseControllerTarget.SELECT_RESIZE_TOP
+  | MouseControllerTarget.SELECT_RESIZE_LEFT_TOP
+  | MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
+
+export const isResetYAxis = (
+  key: MouseControllerTarget
+): key is RESET_POSITION_Y_AXIS_KEY_TYPE => !!(RESET_POSITION_Y_AXIS_KEY & key)
+
+export const isResetXAxis = (
+  key: MouseControllerTarget
+): key is RESET_POSITION_X_AXIS_KEY_TYPE => !!(RESET_POSITION_X_AXIS_KEY & key)
+
 export const RESIZE_CORNER_KEY =
   MouseControllerTarget.SELECT_RESIZE_LEFT_TOP |
   MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP |
