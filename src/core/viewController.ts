@@ -2,9 +2,18 @@ import type { ViewModel } from 'Latte/core/viewModel'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { DisplayObject } from 'Latte/core/displayObject'
-import { MouseControllerTarget, isRotateKey } from 'Latte/core/activeSelection'
+import {
+  MouseControllerTarget,
+  isRotateKey,
+  isResizeKey,
+  isResizeXAxisKey,
+  isResizeYAxisKey,
+} from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
 import { OperateMode } from 'Latte/core/cursor'
+
+import { Point } from 'Latte/common/Point'
+import { Matrix } from 'Latte/math/matrix'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -84,7 +93,7 @@ export class ViewController {
     }
     const rad =
       Math.atan2(newPoint.y, newPoint.x) - Math.atan2(prePoint.y, prePoint.x)
-    CoreNavigationCommands.SetElementTransform.runCoreEditorCommand(
+    CoreNavigationCommands.RotateElementTransform.runCoreEditorCommand(
       this._viewModel,
       {
         objects: activeElement.getObjects(),
@@ -92,6 +101,21 @@ export class ViewController {
         transformOrigin: center,
       }
     )
+  }
+
+  private __resizeElement(
+    key: MouseControllerTarget,
+    position: IPoint,
+    prePosition?: IPoint | null
+  ) {
+    if (!prePosition) {
+      return
+    }
+    CoreNavigationCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
+      key,
+      position,
+      prePosition,
+    })
   }
 
   private _createPickArea() {}
@@ -114,6 +138,12 @@ export class ViewController {
       this._moveSelectionElement(data.position, data.prePosition)
     } else if (isRotateKey(controllerTargetType)) {
       this._rotateSelectionElement(data.position, data.prePosition)
+    } else if (isResizeKey(controllerTargetType)) {
+      this.__resizeElement(
+        controllerTargetType,
+        data.position,
+        data.prePosition
+      )
     }
   }
 
