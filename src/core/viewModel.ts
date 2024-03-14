@@ -12,7 +12,6 @@ import { PickService } from 'Latte/event/pickService'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { ActiveSelection } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
-import { createDefaultRect } from 'Latte/common/schema'
 import type { Container } from 'Latte/core/container'
 import { plusOne } from 'Latte/math/zIndex'
 import type { OperateMode } from 'Latte/core/cursor'
@@ -72,6 +71,7 @@ export class ViewModel {
           focusPage?.appendChild(newObject)
           const camera = this.getCurrentCamera()
           focusPage?.setVisibleArea(camera.getViewport())
+          this.addSelectElement(newObject)
           return
         }
         const { value } = item
@@ -211,21 +211,21 @@ export class ViewModel {
     })
   }
 
-  public addChild({ left, top }, target?: Container) {
+  public addChild(shape: BaseElementSchema, target?: Container) {
     const currentTarget =
       target || this._elementTree.getElementById(this._focusPageId)
     if (!currentTarget) {
       return
     }
     const parentIndex = JSON.parse(this._focusPageId)
-    const newRect = createDefaultRect({ left, top }, parentIndex)
+    shape.parentIndex = parentIndex
     const lastElement = currentTarget.getLast()
     if (lastElement) {
-      newRect.parentIndex.position = plusOne(lastElement.zIndex)
+      shape.parentIndex.position = plusOne(lastElement.zIndex)
     }
 
     this._modelData.addChild({
-      data: [newRect],
+      data: [shape],
     })
   }
 
@@ -254,5 +254,9 @@ export class ViewModel {
 
   setCursorOperateMode(mode: OperateMode) {
     this._cursor.setOperateMode(mode, this._eventDispatcher)
+  }
+
+  getCursorCreateElementType() {
+    return this._cursor.getCreateNormalElementType()
   }
 }

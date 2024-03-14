@@ -497,4 +497,8 @@ export class ActiveSelection extends Rect {
   public getObjects() {
     return this._objects
   }
+
+  public isActive() {
+    return this._objects.length > 0
+  }
 }

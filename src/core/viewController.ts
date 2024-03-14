@@ -6,14 +6,11 @@ import {
   MouseControllerTarget,
   isRotateKey,
   isResizeKey,
-  isResizeXAxisKey,
-  isResizeYAxisKey,
 } from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
+import type { CursorCreateType } from 'Latte/core/cursor'
 import { OperateMode } from 'Latte/core/cursor'
-
-import { Point } from 'Latte/common/Point'
-import { Matrix } from 'Latte/math/matrix'
+import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -130,9 +127,11 @@ export class ViewController {
     )
   }
 
-  public emitMouseUp() {}
+  public emitMouseUp(e: EditorMouseEvent) {
+    this._viewModel.setCursorOperateMode(OperateMode.Edit)
+  }
 
-  private _dragOnClient(data: IMouseDispatchData) {
+  private _dragOnClientToEdit(data: IMouseDispatchData) {
     const { controllerTargetType } = data
     if (controllerTargetType === MouseControllerTarget.SELECTION_CONTEXT) {
       this._moveSelectionElement(data.position, data.prePosition)
@@ -144,6 +143,18 @@ export class ViewController {
         data.position,
         data.prePosition
       )
+    }
+  }
+
+  private _dragOnClient(data: IMouseDispatchData) {
+    const editMode = this._viewModel.getCursorOperateMode()
+    if (editMode === OperateMode.ReadOnly) {
+      return
+    }
+    if (editMode === OperateMode.Edit) {
+      this._dragOnClientToEdit(data)
+    } else if (editMode === OperateMode.CreateNormalShape) {
+      this._createElement(data)
     }
   }
 
@@ -159,15 +170,34 @@ export class ViewController {
     }
   }
 
-  private _createElement() {}
+  private _createElement(data: IMouseDispatchData) {
+    const activeElement = this._viewModel.getActiveSelection()
+    if (activeElement.isActive()) {
+      return this.__resizeElement(
+        MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM,
+        data.position,
+        data.prePosition
+      )
+    }
+    const type = this._viewModel.getCursorCreateElementType()
+    const { position, startPosition } = data
+    if (!startPosition) {
+      return
+    }
+    CoreNavigationCommands.CreateNewElement.runCoreEditorCommand(
+      this._viewModel,
+      {
+        startPosition,
+        position,
+        type,
+      }
+    )
+  }
 
   public dispatchMouse(data: IMouseDispatchData) {
-    const editMode = this._viewModel.getCursorOperateMode()
     if (data.mouseDownCount === 1) {
       if (data.inSelectionMode) {
-        if (editMode === OperateMode.Edit) {
-          this._dragOnClient(data)
-        }
+        this._dragOnClient(data)
       } else {
         this._mouseDownOnClient(data)
       }
@@ -178,9 +208,5 @@ export class ViewController {
       )
       this._viewModel.setCursorHoverControllerKey(controllerTargetType)
     }
-  }
-
-  public tryAdd({ left, top }) {
-    this._viewModel.addChild({ left, top })
   }
 }

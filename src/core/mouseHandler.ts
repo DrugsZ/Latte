@@ -249,6 +249,7 @@ export class MouseHandler {
   private _bindMouseUpHandler = (e: EditorMouseEvent) => {
     this._mouseDownOperation.onMouseUp(e)
     this._isMouseDown = false
+    this._viewController.emitMouseUp(e)
   }
 
   private _bindMouseMoveHandler = (e: EditorMouseEvent) => {

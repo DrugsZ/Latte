@@ -12,6 +12,8 @@ import {
   isResetYAxis,
   isResetXAxis,
 } from 'Latte/core/activeSelection'
+import { createDefaultElementSchema } from 'Latte/common/schema'
+import { EditorElementTypeKind } from 'Latte/constants/schema'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -35,7 +37,7 @@ export abstract class Command {
 export abstract class CoreEditorCommand<T> {
   constructor(public id: string) {}
   public abstract runCoreEditorCommand(
-    viewModelPartial: ViewModel,
+    viewModel: ViewModel,
     args: Partial<T>
   ): void
 }
@@ -61,6 +63,12 @@ export namespace CoreNavigationCommands {
     objects: DisplayObject[]
     transformOrigin?: IPoint
     rad: number
+  }
+
+  interface CreateElementCommandOptions extends BaseCommandOptions {
+    type: EditorElementTypeKind
+    startPosition: IPoint
+    position: IPoint
   }
 
   export const SetActiveSelection =
@@ -91,7 +99,35 @@ export namespace CoreNavigationCommands {
       }
     })()
 
-  export const CreateNewElement = new (class extends CoreEditorCommand {})()
+  export const CreateNewElement =
+    new (class extends CoreEditorCommand<CreateElementCommandOptions> {
+      constructor() {
+        super('createElement')
+      }
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<CreateElementCommandOptions>
+      ): void {
+        const { position, type, startPosition } = args
+        if (!position || !type || !startPosition) {
+          return
+        }
+        const { x: left, y: top } = startPosition
+        const { x, y } = startPosition
+        const width = x - left
+        const height = y - top
+        let newShapeSchema
+        if (type === EditorElementTypeKind.RECTANGLE) {
+          newShapeSchema = createDefaultElementSchema({
+            left,
+            top,
+            width,
+            height,
+          })
+        }
+        viewModel.addChild(newShapeSchema)
+      }
+    })()
 
   export const MoveElement =
     new (class extends CoreEditorCommand<BaseMoveCommandOptions> {
@@ -283,9 +319,6 @@ export namespace CoreNavigationCommands {
         this._getPointOnSelectBoxAxis(selectOBB, position),
         this._getPointOnSelectBoxAxis(selectOBB, prePosition)
       )
-      const invertTransform = this._getInvertSelectBoxTransform(
-        selectBoxTransform
-      ) as Matrix
       const moveDistance = distance
       if (isResizeXAxisKey(key)) {
         moveDistance.y = 0
@@ -323,11 +356,11 @@ export namespace CoreNavigationCommands {
       }
     }
 
-    private _getNewTransform = (
+    private _getNewOBB = (
       objectOBB: OBB,
       getNewPoint: (point: IPoint) => IPoint,
       selectBoxTransform: IMatrixLike
-    ) => {
+    ): Pick<BaseElementSchema, 'size' | 'transform'> => {
       const { x, y, width, height, transform } = objectOBB
       const pureTransform = {
         ...transform,
@@ -382,13 +415,17 @@ export namespace CoreNavigationCommands {
         ResizeElementCommand.tempMatrix,
         selectBoxTransform
       )
+      const { a, b, c, d } = ResizeElementCommand.tempMatrix
       return {
         size: {
           x: Math.sqrt(vcWidth.x * vcWidth.x + vcWidth.y * vcWidth.y),
           y: vcHTS1.y,
         },
         transform: {
-          ...ResizeElementCommand.tempMatrix,
+          a,
+          b,
+          c,
+          d,
           tx: newTl.x,
           ty: newTl.y,
         },
@@ -439,7 +476,7 @@ export namespace CoreNavigationCommands {
       objects.forEach(object =>
         result.push({
           guid: object.getGuidKey(),
-          ...this._getNewTransform(object.OBB, getNewPoint, selectBoxTransform),
+          ...this._getNewOBB(object.OBB, getNewPoint, selectBoxTransform),
         })
       )
       viewModel.updateElementData(result)
