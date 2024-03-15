@@ -36,8 +36,8 @@ export const createDefaultPageNode = (parentIndex?: {
   return newPage
 }
 
-export const createDefaultRect = (
-  { left, top },
+export const createDefaultElementSchema = (
+  { left, top, width = 100, height = 100 },
   parentIndex?: {
     guid?: DefaultIDType
     position?: string
@@ -50,11 +50,11 @@ export const createDefaultRect = (
       ...newRect.parentIndex,
       ...parentIndex,
     }
-    newRect.transform.tx = left
-    newRect.transform.ty = top
-    newRect.size.x = 500
-    newRect.size.y = 500
   }
+  newRect.transform.tx = left
+  newRect.transform.ty = top
+  newRect.size.x = width
+  newRect.size.y = height
   return newRect
 }
 

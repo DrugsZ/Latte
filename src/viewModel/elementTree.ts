@@ -4,7 +4,7 @@ import { Page } from 'Latte/core/page'
 import Frame from 'Latte/core/frame'
 import { EditorDocument } from 'Latte/elements/document'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
-import { createDefaultRect } from 'Latte/common/schema'
+import { createDefaultElementSchema } from 'Latte/common/schema'
 
 import type { DisplayObject } from 'Latte/core/displayObject'
 import type { Container } from 'Latte/core/container'
@@ -83,10 +83,10 @@ export class ElementTree {
     return this._document
   }
 
-  public createElementByName(name: EditorElementTypeKind) {
-    let data = name
-    if (data === EditorElementTypeKind.RECTANGLE) {
-      data = createDefaultRect({ left: 0, top: 0 })
+  public createElementByName(type: EditorElementTypeKind) {
+    let data
+    if (type === EditorElementTypeKind.RECTANGLE) {
+      data = createDefaultElementSchema({ left: 0, top: 0 })
     }
     const newObject = createElement(data)
     return newObject

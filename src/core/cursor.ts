@@ -4,17 +4,26 @@ import type { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispat
 import * as viewEvents from 'Latte/view/viewEvents'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 
+export enum CursorEditMode {
+  Edit,
+  Scale,
+}
+
+export type CursorCreateType =
+  | EditorElementTypeKind.RECTANGLE
+  | EditorElementTypeKind.ELLIPSE
+
 export enum OperateMode {
   ReadOnly,
   Edit,
-  CreateRectangle = EditorElementTypeKind.RECTANGLE,
-  CreateEllipse = EditorElementTypeKind.ELLIPSE,
+  CreateNormalShape,
 }
 
 export class Cursor {
   private _hoverControllerKey: MouseControllerTarget
   private _hoverObject: DisplayObject | null
   private _mode: OperateMode = OperateMode.Edit
+  private _createType: CursorCreateType = EditorElementTypeKind.RECTANGLE
 
   setHoverObject(
     hoverObject: DisplayObject | null,
@@ -55,6 +64,9 @@ export class Cursor {
   }
 
   setOperateMode(mode: OperateMode, eventDispatcher: ViewModelEventDispatcher) {
+    if (!Object.values(OperateMode).includes(mode)) {
+      return console.error(`'${mode}' is does not exist on type 'OperateMode' `)
+    }
     if (this._mode === mode) {
       return
     }
@@ -62,5 +74,9 @@ export class Cursor {
     eventDispatcher.emitViewEvent(
       new viewEvents.ViewCursorOperateModeChange(mode)
     )
+  }
+
+  getCreateNormalElementType() {
+    return this._createType
   }
 }
