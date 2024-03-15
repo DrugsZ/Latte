@@ -8,7 +8,6 @@ import {
   isResizeKey,
 } from 'Latte/core/activeSelection'
 import { CoreNavigationCommands } from 'Latte/core/coreCommands'
-import type { CursorCreateType } from 'Latte/core/cursor'
 import { OperateMode } from 'Latte/core/cursor'
 import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 
@@ -17,7 +16,7 @@ export interface IMouseDispatchData {
   controllerTargetType: MouseControllerTarget
   position: IPoint
   prePosition: IPoint | null
-  startPosition: IPoint | null
+  startPosition?: IPoint
   inSelectionMode: boolean
   altKey: boolean
   ctrlKey: boolean
@@ -100,18 +99,10 @@ export class ViewController {
     )
   }
 
-  private __resizeElement(
-    key: MouseControllerTarget,
-    position: IPoint,
-    prePosition?: IPoint | null
-  ) {
-    if (!prePosition) {
-      return
-    }
+  private _resizeElement(key: MouseControllerTarget, position: IPoint) {
     CoreNavigationCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
       position,
-      prePosition,
     })
   }
 
@@ -128,6 +119,12 @@ export class ViewController {
   }
 
   public emitMouseUp(e: EditorMouseEvent) {
+    const editMode = this._viewModel.getCursorOperateMode()
+    if (editMode === OperateMode.CreateNormalShape) {
+      if (!this._viewModel.getActiveSelection().isActive()) {
+        this._createElement(e.client)
+      }
+    }
     this._viewModel.setCursorOperateMode(OperateMode.Edit)
   }
 
@@ -138,11 +135,7 @@ export class ViewController {
     } else if (isRotateKey(controllerTargetType)) {
       this._rotateSelectionElement(data.position, data.prePosition)
     } else if (isResizeKey(controllerTargetType)) {
-      this.__resizeElement(
-        controllerTargetType,
-        data.position,
-        data.prePosition
-      )
+      this._resizeElement(controllerTargetType, data.position)
     }
   }
 
@@ -154,7 +147,7 @@ export class ViewController {
     if (editMode === OperateMode.Edit) {
       this._dragOnClientToEdit(data)
     } else if (editMode === OperateMode.CreateNormalShape) {
-      this._createElement(data)
+      this._createElement(data.startPosition, data.position)
     }
   }
 
@@ -170,26 +163,12 @@ export class ViewController {
     }
   }
 
-  private _createElement(data: IMouseDispatchData) {
-    const activeElement = this._viewModel.getActiveSelection()
-    if (activeElement.isActive()) {
-      return this.__resizeElement(
-        MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM,
-        data.position,
-        data.prePosition
-      )
-    }
-    const type = this._viewModel.getCursorCreateElementType()
-    const { position, startPosition } = data
-    if (!startPosition) {
-      return
-    }
+  private _createElement(startPosition?: IPoint, position?: IPoint): void {
     CoreNavigationCommands.CreateNewElement.runCoreEditorCommand(
       this._viewModel,
       {
-        startPosition,
         position,
-        type,
+        startPosition,
       }
     )
   }

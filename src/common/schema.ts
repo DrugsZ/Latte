@@ -37,7 +37,7 @@ export const createDefaultPageNode = (parentIndex?: {
 }
 
 export const createDefaultElementSchema = (
-  { left, top, width = 300, height = 300 },
+  { left, top, width = 100, height = 100 },
   parentIndex?: {
     guid?: DefaultIDType
     position?: string

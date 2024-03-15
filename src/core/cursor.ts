@@ -22,7 +22,7 @@ export enum OperateMode {
 export class Cursor {
   private _hoverControllerKey: MouseControllerTarget
   private _hoverObject: DisplayObject | null
-  private _mode: OperateMode = OperateMode.CreateNormalShape
+  private _mode: OperateMode = OperateMode.Edit
   private _createType: CursorCreateType = EditorElementTypeKind.RECTANGLE
 
   setHoverObject(
@@ -64,6 +64,9 @@ export class Cursor {
   }
 
   setOperateMode(mode: OperateMode, eventDispatcher: ViewModelEventDispatcher) {
+    if (!Object.values(OperateMode).includes(mode)) {
+      return console.error(`'${mode}' is does not exist on type 'OperateMode' `)
+    }
     if (this._mode === mode) {
       return
     }

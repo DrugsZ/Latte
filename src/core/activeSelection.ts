@@ -49,57 +49,62 @@ export const isRotateKey = (
   key: MouseControllerTarget
 ): key is ROTATE_KEY_TYPE => !!(ROTATE_KEY & key)
 
-export const RESIZE_X_AXIS_KEY =
-  MouseControllerTarget.SELECT_RESIZE_LEFT |
-  MouseControllerTarget.SELECT_RESIZE_RIGHT
-
-export type RESIZE_X_AXIS_KEY_TYPE =
-  | MouseControllerTarget.SELECT_RESIZE_LEFT
-  | MouseControllerTarget.SELECT_RESIZE_RIGHT
-
-export const isResizeXAxisKey = (
-  key: MouseControllerTarget
-): key is RESIZE_X_AXIS_KEY_TYPE => !!(RESIZE_X_AXIS_KEY & key)
-
-export const RESIZE_Y_AXIS_KEY =
-  MouseControllerTarget.SELECT_RESIZE_TOP |
-  MouseControllerTarget.SELECT_RESIZE_BOTTOM
-
-export type RESIZE_Y_AXIS_KEY_TYPE =
-  | MouseControllerTarget.SELECT_RESIZE_TOP
-  | MouseControllerTarget.SELECT_RESIZE_BOTTOM
-
-export const isResizeYAxisKey = (
-  key: MouseControllerTarget
-): key is RESIZE_Y_AXIS_KEY_TYPE => !!(RESIZE_Y_AXIS_KEY & key)
-
-export const RESET_POSITION_X_AXIS_KEY =
+export const RESET_START_POSITION_X_AXIS_KEY =
   MouseControllerTarget.SELECT_RESIZE_LEFT |
   MouseControllerTarget.SELECT_RESIZE_LEFT_TOP |
   MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
 
-export type RESET_POSITION_X_AXIS_KEY_TYPE =
+export type RESET_START_POSITION_X_AXIS_KEY_TYPE =
   | MouseControllerTarget.SELECT_RESIZE_LEFT
   | MouseControllerTarget.SELECT_RESIZE_LEFT_TOP
   | MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
 
-export const RESET_POSITION_Y_AXIS_KEY =
+export const RESET_START_POSITION_Y_AXIS_KEY =
   MouseControllerTarget.SELECT_RESIZE_TOP |
   MouseControllerTarget.SELECT_RESIZE_LEFT_TOP |
   MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
 
-export type RESET_POSITION_Y_AXIS_KEY_TYPE =
+export type RESET_START_POSITION_Y_AXIS_KEY_TYPE =
   | MouseControllerTarget.SELECT_RESIZE_TOP
   | MouseControllerTarget.SELECT_RESIZE_LEFT_TOP
   | MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
 
-export const isResetYAxis = (
-  key: MouseControllerTarget
-): key is RESET_POSITION_Y_AXIS_KEY_TYPE => !!(RESET_POSITION_Y_AXIS_KEY & key)
+export const RESET_END_POSITION_X_AXIS_KEY =
+  MouseControllerTarget.SELECT_RESIZE_RIGHT |
+  MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP |
+  MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
 
-export const isResetXAxis = (
+export type RESET_END_POSITION_X_AXIS_KEY_TYPE =
+  | MouseControllerTarget.SELECT_RESIZE_RIGHT
+  | MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
+  | MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
+
+export const RESET_END_POSITION_Y_AXIS_KEY =
+  MouseControllerTarget.SELECT_RESIZE_BOTTOM |
+  MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM |
+  MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
+
+export type RESET_END_POSITION_Y_AXIS_KEY_TYPE =
+  | MouseControllerTarget.SELECT_RESIZE_BOTTOM
+  | MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
+  | MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
+
+export const isResetStartXAxis = (
   key: MouseControllerTarget
-): key is RESET_POSITION_X_AXIS_KEY_TYPE => !!(RESET_POSITION_X_AXIS_KEY & key)
+): key is RESET_START_POSITION_X_AXIS_KEY_TYPE =>
+  !!(RESET_START_POSITION_X_AXIS_KEY & key)
+export const isResetStartYAxis = (
+  key: MouseControllerTarget
+): key is RESET_START_POSITION_Y_AXIS_KEY_TYPE =>
+  !!(RESET_START_POSITION_Y_AXIS_KEY & key)
+export const isResetEndXAxis = (
+  key: MouseControllerTarget
+): key is RESET_END_POSITION_X_AXIS_KEY_TYPE =>
+  !!(RESET_END_POSITION_X_AXIS_KEY & key)
+export const isResetEndYAxis = (
+  key: MouseControllerTarget
+): key is RESET_END_POSITION_Y_AXIS_KEY_TYPE =>
+  !!(RESET_END_POSITION_Y_AXIS_KEY & key)
 
 export const RESIZE_CORNER_KEY =
   MouseControllerTarget.SELECT_RESIZE_LEFT_TOP |

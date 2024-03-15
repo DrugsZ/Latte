@@ -50,8 +50,8 @@ class MouseDownState {
     return this._lastMouseControllerTarget
   }
 
-  private _lastMouseDownPosition: Point | null
-  public get lastMouseDownPosition(): Point | null {
+  private _lastMouseDownPosition?: Point
+  public get lastMouseDownPosition(): Point | undefined {
     return this._lastMouseDownPosition
   }
 
@@ -66,7 +66,7 @@ class MouseDownState {
     this._shiftKey = false
     this._leftButton = false
     this._rightButton = false
-    this._lastMouseDownPosition = null
+    this._lastMouseDownPosition = undefined
     this._lastMouseDownPositionEqualCount = 0
     this._lastMouseDownCount = 0
     this._lastSetMouseDownCountTime = 0
@@ -259,7 +259,6 @@ export class MouseHandler {
     this._viewController.dispatchMouse({
       target: e.target,
       controllerTargetType: e.controllerTargetType,
-      startPosition: null,
       position: e.client,
       prePosition: null,
 

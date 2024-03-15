@@ -18,7 +18,7 @@ export class Point {
     return new Point(this.x, this.y)
   }
 
-  public copyFrom(p: Point) {
+  public copyFrom(p: IPoint) {
     this.x = p.x
     this.y = p.y
   }
@@ -27,3 +27,10 @@ export class Point {
     return Point.equals(this, other)
   }
 }
+
+export const subtract = (a: IPoint, b: IPoint) =>
+  new Point(a.x - b.x, a.y - b.y)
+export const dotProduct = (a: IPoint, b: IPoint) =>
+  new Point(a.x * b.x, a.y * b.y)
+export const add = (a: IPoint, b: IPoint) => new Point(a.x + b.x, a.y + b.y)
+export const divide = (a: IPoint, b: IPoint) => new Point(a.x / b.x, a.y / b.y)

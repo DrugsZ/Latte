@@ -44,7 +44,8 @@ export class ViewCursor extends ViewPart {
         CURSORS.default(0, 0, 0)
       )
     }
-    if (mode === OperateMode.ReadOnly) {
+    if (mode === OperateMode.CreateNormalShape) {
+      console.log('set')
       this._renderDOM.style.setProperty('--main-cursor', CURSORS.add(0, 0, 0))
     }
     return false

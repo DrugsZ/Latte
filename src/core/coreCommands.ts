@@ -4,13 +4,13 @@ import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { CommandsRegistry } from 'Latte/core/commandsRegistry'
 import { Matrix } from 'Latte/math/matrix'
-import { Point } from 'Latte/common/Point'
-import type { MouseControllerTarget } from 'Latte/core/activeSelection'
+import { Point, subtract, dotProduct, add, divide } from 'Latte/common/Point'
 import {
-  isResizeXAxisKey,
-  isResizeYAxisKey,
-  isResetYAxis,
-  isResetXAxis,
+  MouseControllerTarget,
+  isResetStartXAxis,
+  isResetStartYAxis,
+  isResetEndXAxis,
+  isResetEndYAxis,
 } from 'Latte/core/activeSelection'
 import { createDefaultElementSchema } from 'Latte/common/schema'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
@@ -19,11 +19,6 @@ export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
-
-const subtract = (a: IPoint, b: IPoint) => new Point(a.x - b.x, a.y - b.y)
-const dotProduct = (a: IPoint, b: IPoint) => new Point(a.x * b.x, a.y * b.y)
-const add = (a: IPoint, b: IPoint) => new Point(a.x + b.x, a.y + b.y)
-const divide = (a: IPoint, b: IPoint) => new Point(a.x / b.x, a.y / b.y)
 
 export abstract class Command {
   constructor(public id: string) {}
@@ -66,9 +61,8 @@ export namespace CoreNavigationCommands {
   }
 
   interface CreateElementCommandOptions extends BaseCommandOptions {
-    type: EditorElementTypeKind
-    startPosition: IPoint
     position: IPoint
+    startPosition: IPoint
   }
 
   export const SetActiveSelection =
@@ -104,28 +98,75 @@ export namespace CoreNavigationCommands {
       constructor() {
         super('createElement')
       }
-      public runCoreEditorCommand(
-        viewModel: ViewModel,
-        args: Partial<CreateElementCommandOptions>
-      ): void {
-        const { position, type, startPosition } = args
-        if (!position || !type || !startPosition) {
-          return
-        }
-        const { x: left, y: top } = startPosition
+
+      private _getCreateResizeKey(position: IPoint, startPosition: IPoint) {
         const { x, y } = startPosition
-        const width = x - left
-        const height = y - top
+        const { x: newX, y: newY } = position
+        let key = MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
+        if (newY < y) {
+          if (newX < x) {
+            key = MouseControllerTarget.SELECT_RESIZE_LEFT_TOP
+          } else {
+            key = MouseControllerTarget.SELECT_RESIZE_RIGHT_TOP
+          }
+        } else if (newX < x) {
+          key = MouseControllerTarget.SELECT_RESIZE_LEFT_BOTTOM
+        }
+        return key
+      }
+
+      private _resizeActiveCreate(
+        viewModel: ViewModel,
+        position: IPoint,
+        startPosition: IPoint
+      ) {
+        CoreNavigationCommands.ResizeElement.runCoreEditorCommand(viewModel, {
+          key: this._getCreateResizeKey(position, startPosition),
+          position,
+        })
+      }
+
+      private _createElement(
+        viewModel: ViewModel,
+        startPosition: IPoint,
+        position?: IPoint
+      ) {
+        const type = viewModel.getCursorCreateElementType()
+        let { x: left, y: top } = startPosition
+        let size = {}
+        if (position) {
+          size = { width: 1, height: 1 }
+        } else {
+          left -= 50
+          top -= 50
+        }
         let newShapeSchema
         if (type === EditorElementTypeKind.RECTANGLE) {
           newShapeSchema = createDefaultElementSchema({
             left,
             top,
-            width,
-            height,
+            ...size,
           })
         }
-        viewModel.addChild(newShapeSchema)
+        return newShapeSchema
+      }
+
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<CreateElementCommandOptions>
+      ): void {
+        const { position, startPosition } = args
+        if (!startPosition) {
+          return
+        }
+        const activeSelection = viewModel.getActiveSelection()
+        if (activeSelection.isActive() && position) {
+          this._resizeActiveCreate(viewModel, position, startPosition)
+        } else {
+          viewModel.addChild(
+            this._createElement(viewModel, startPosition, position)
+          )
+        }
       }
     })()
 
@@ -236,7 +277,6 @@ export namespace CoreNavigationCommands {
   interface ResizeElementCommandOptions extends BaseCommandOptions {
     key: MouseControllerTarget
     position: IPoint
-    prePosition: IPoint
   }
 
   class ResizeElementCommand extends CoreEditorCommand<ResizeElementCommandOptions> {
@@ -288,21 +328,9 @@ export namespace CoreNavigationCommands {
       return add(newSelectBoxTL, pointSizeOnNewSelectBox)
     }
 
-    private _getChangeSymbol(position: IPoint, selectOBB: OBB) {
-      const { width: selectBoxWidth, height: selectBoxHeight } = selectOBB
-      const centerPos = new Point(selectBoxWidth / 2, selectBoxHeight / 2)
-      const invertTranPos = this._getPointOnSelectBoxAxis(selectOBB, position)
-      return new Point(
-        invertTranPos.x > centerPos.x ? 1 : -1,
-        invertTranPos.y > centerPos.y ? 1 : -1
-      )
-    }
-
     private _getRectInfoBeforeAndAfter(
       selectOBB: OBB,
       position: IPoint,
-      prePosition: IPoint,
-      symbol: IPoint,
       key: MouseControllerTarget
     ) {
       const {
@@ -314,40 +342,39 @@ export namespace CoreNavigationCommands {
       } = selectOBB
       const oldSelectBoxTL = new Point(selectBoxTLX, selectBoxTLY)
       const oldSelectBoxRect = new Point(selectBoxWidth, selectBoxHeight)
+      const positionOnSelectBox = this._getPointOnSelectBoxAxis(
+        selectOBB,
+        position
+      )
+      const startPoint = new Point(0, 0)
+      const rbPoint = new Point(selectOBB.width, selectOBB.height)
+      const newStartPoint = startPoint.clone()
+      const newEndPoint = rbPoint.clone()
+      if (isResetStartXAxis(key)) {
+        newStartPoint.x = positionOnSelectBox.x
+      }
 
-      const distance = subtract(
-        this._getPointOnSelectBoxAxis(selectOBB, position),
-        this._getPointOnSelectBoxAxis(selectOBB, prePosition)
-      )
-      const moveDistance = distance
-      if (isResizeXAxisKey(key)) {
-        moveDistance.y = 0
+      if (isResetStartYAxis(key)) {
+        newStartPoint.y = positionOnSelectBox.y
       }
-      if (isResizeYAxisKey(key)) {
-        moveDistance.x = 0
+
+      if (isResetEndXAxis(key)) {
+        newEndPoint.x = positionOnSelectBox.x
       }
-      const distanceWithSymbol = dotProduct(moveDistance, symbol)
-      const newSelectBoxRect = new Point(
-        selectBoxWidth + distanceWithSymbol.x,
-        selectBoxHeight + distanceWithSymbol.y
-      )
-      const reSetPosPoint = new Point(0, 0)
-      if (isResetXAxis(key)) {
-        reSetPosPoint.x = moveDistance.x
+
+      if (isResetEndYAxis(key)) {
+        newEndPoint.y = positionOnSelectBox.y
       }
-      if (isResetYAxis(key)) {
-        reSetPosPoint.y = moveDistance.y
-      }
-      const positionChangeOnDefaultAxis = Matrix.apply(reSetPosPoint, {
-        ...selectBoxTransform,
-        tx: 0,
-        ty: 0,
-      })
+
       const newSelectBoxTL = add(
-        new Point(selectBoxTLX, selectBoxTLY),
-        positionChangeOnDefaultAxis
+        oldSelectBoxTL,
+        Matrix.apply(newStartPoint, {
+          ...selectBoxTransform,
+          tx: 0,
+          ty: 0,
+        })
       )
-
+      const newSelectBoxRect = subtract(newEndPoint, newStartPoint)
       return {
         oldSelectBoxTL,
         oldSelectBoxRect,
@@ -436,29 +463,27 @@ export namespace CoreNavigationCommands {
       viewModel: ViewModel,
       args: Partial<ResizeElementCommandOptions>
     ): void {
-      const { position, prePosition, key } = args
-      if (!position || !prePosition || !key) {
+      const { position, key } = args
+      if (!position || !key) {
         return
       }
       const activeElement = viewModel.getActiveSelection()
 
       const { transform: selectBoxTransform } = activeElement.OBB
 
-      // get change symbol
-      const symbol = this._getChangeSymbol(position, activeElement.OBB)
-
       const {
         oldSelectBoxTL,
         oldSelectBoxRect,
         newSelectBoxTL,
         newSelectBoxRect,
-      } = this._getRectInfoBeforeAndAfter(
-        activeElement.OBB,
-        position,
-        prePosition,
-        symbol,
-        key
-      )
+      } = this._getRectInfoBeforeAndAfter(activeElement.OBB, position, key)
+
+      if (
+        Math.abs(newSelectBoxRect.x) < 1 ||
+        Math.abs(newSelectBoxRect.y) < 1
+      ) {
+        return
+      }
 
       const getNewPoint = (point: IPoint) =>
         this._getNewPointOnSelectBoxChange.call(
