@@ -14,6 +14,7 @@ import {
 } from 'Latte/core/activeSelection'
 import { createDefaultElementSchema } from 'Latte/common/schema'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
+import { rTreeRoot } from 'Latte/core/rTree'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -508,4 +509,35 @@ export namespace CoreNavigationCommands {
     }
   }
   export const ResizeElement = new ResizeElementCommand()
+
+  interface MouseBoxSelectCommandOptions extends BaseCommandOptions {
+    startPosition?: IPoint
+    position?: IPoint
+  }
+
+  export const MouseBoxSelect =
+    new (class extends CoreEditorCommand<MouseBoxSelectCommandOptions> {
+      constructor() {
+        super('mouseBoxSelect')
+      }
+
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<MouseBoxSelectCommandOptions>
+      ): void {
+        const { startPosition, position } = args
+        if (!startPosition || !position) {
+          return viewModel.setBoxSelectBounds()
+        }
+        viewModel.setBoxSelectBounds([startPosition, position])
+        const selectBoxBounds = viewModel.getBoxSelectBounds()
+        const { minX, minY, maxX, maxY } = selectBoxBounds
+        const selectNode = rTreeRoot.search({ minX, minY, maxX, maxY })
+        const displayObjects = selectNode.map(item => item.displayObject)
+        viewModel.discardActiveSelection()
+        if (displayObjects.length) {
+          displayObjects.forEach(viewModel.addSelectElement)
+        }
+      }
+    })()
 }

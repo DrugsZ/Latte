@@ -106,7 +106,15 @@ export class ViewController {
     })
   }
 
-  private _createPickArea() {}
+  private _createPickArea(data: IMouseDispatchData) {
+    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
+      this._viewModel,
+      {
+        startPosition: data.startPosition,
+        position: data.position,
+      }
+    )
+  }
 
   public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
     CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
@@ -126,6 +134,10 @@ export class ViewController {
       }
     }
     this._viewModel.setCursorOperateMode(OperateMode.Edit)
+    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
+      this._viewModel,
+      {}
+    )
   }
 
   private _dragOnClientToEdit(data: IMouseDispatchData) {
@@ -136,6 +148,8 @@ export class ViewController {
       this._rotateSelectionElement(data.position, data.prePosition)
     } else if (isResizeKey(controllerTargetType)) {
       this._resizeElement(controllerTargetType, data.position)
+    } else if (controllerTargetType === MouseControllerTarget.NONE) {
+      this._createPickArea(data)
     }
   }
 

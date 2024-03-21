@@ -49,6 +49,7 @@
     "webpackbar": "^5.0.2"
   },
   "dependencies": {
-    "eventemitter3": "^5.0.1"
+    "eventemitter3": "^5.0.1",
+    "rbush": "^3.0.1"
   }
 }

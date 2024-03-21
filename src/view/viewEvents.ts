@@ -11,6 +11,7 @@ export enum ViewEventType {
   ViewHoverObjectChange,
   ViewHoverControllerKeyChange,
   ViewCursorOperateModeChange,
+  ViewCursorMove,
 }
 
 export enum ViewElementChangeType {
@@ -65,6 +66,11 @@ export class ViewCursorOperateModeChange {
   constructor(public readonly mode: OperateMode) {}
 }
 
+export class ViewCursorMoveEvent {
+  public readonly type = ViewEventType.ViewCursorMove
+  constructor(public readonly selectMode: boolean) {}
+}
+
 export type ViewEvent =
   | ViewFocusPageChangeEvent
   | ViewCameraUpdateEvent
@@ -73,3 +79,4 @@ export type ViewEvent =
   | ViewHoverControllerKeyChangeEvent
   | ViewCursorOperateModeChange
   | ViewActiveSelectionChangeEvent
+  | ViewCursorMoveEvent
