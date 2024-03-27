@@ -323,6 +323,7 @@ class ActiveSelectionCornerCollection {
 }
 
 export class ActiveSelection extends Rect {
+  static INACTIVE: boolean = true
   private _objects: DisplayObject[] = []
   private _OBBDirty: boolean = false
   private _cornerCollection: ActiveSelectionCornerCollection
@@ -350,7 +351,7 @@ export class ActiveSelection extends Rect {
     this._cornerCollection = new ActiveSelectionCornerCollection(this)
   }
 
-  public addSelectElement(element: DisplayObject) {
+  public addSelectElement = (element: DisplayObject) => {
     if (!element) return
     this._objects.push(element)
     this._OBBDirty = true
@@ -403,7 +404,7 @@ export class ActiveSelection extends Rect {
     if (this._objects.length === 1) {
       return this._objects[0].getBounds()
     }
-    this.getBounds()
+    super.getBounds()
     return this._bounds
   }
 
@@ -505,5 +506,9 @@ export class ActiveSelection extends Rect {
 
   public isActive() {
     return this._objects.length > 0
+  }
+
+  public override inactive(): boolean {
+    return true
   }
 }

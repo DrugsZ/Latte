@@ -165,7 +165,7 @@ export class ViewModel {
     return this._cameraService.getCamera(this.focusPageId)
   }
 
-  public addSelectElement(element: DisplayObject) {
+  public addSelectElement = (element: DisplayObject) => {
     if (this._activeSelection.hasSelected(element)) {
       return
     }
@@ -258,5 +258,13 @@ export class ViewModel {
 
   getCursorCreateElementType() {
     return this._cursor.getCreateNormalElementType()
+  }
+
+  setBoxSelectBounds(points?: IPoint[]) {
+    this._cursor.setBoxSelectBounds(this._eventDispatcher, points)
+  }
+
+  getBoxSelectBounds() {
+    return this._cursor.getBoxSelectBounds()
   }
 }
