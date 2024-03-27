@@ -8,6 +8,7 @@ import { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import type { ViewPart } from 'Latte/view/viewPart'
 import { ViewController } from 'Latte/core/viewController'
 import { Matrix } from 'Latte/math/matrix'
+import { PickArea } from 'Latte/view/pickArea'
 
 export enum RenderEnum {
   ViewportChange,
@@ -24,6 +25,7 @@ export default class View extends ViewEventHandler {
   private _viewCursor: ViewCursor
   private _viewParts: ViewPart[] = []
   private _viewController: ViewController
+  private _pickArea: PickArea
 
   constructor(
     private _viewModel: ViewModel,
@@ -54,6 +56,10 @@ export default class View extends ViewEventHandler {
       this._renderDOM,
       this._viewModel.pickService
     )
+
+    this._pickArea = new PickArea(this._viewModel)
+    this._viewParts.push(this._pickArea)
+    window.pickArea = this._pickArea
   }
 
   public render() {

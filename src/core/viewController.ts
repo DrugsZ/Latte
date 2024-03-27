@@ -7,7 +7,10 @@ import {
   isRotateKey,
   isResizeKey,
 } from 'Latte/core/activeSelection'
-import { CoreNavigationCommands } from 'Latte/core/coreCommands'
+import {
+  CoreNavigationCommands,
+  CoreEditingCommands,
+} from 'Latte/core/coreCommands'
 import { OperateMode } from 'Latte/core/cursor'
 import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
 
@@ -64,7 +67,7 @@ export class ViewController {
       y: position.y - prePosition.y,
     }
     const activeElement = this._viewModel.getActiveSelection()
-    CoreNavigationCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
+    CoreEditingCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       movement,
     })
@@ -89,7 +92,7 @@ export class ViewController {
     }
     const rad =
       Math.atan2(newPoint.y, newPoint.x) - Math.atan2(prePoint.y, prePoint.x)
-    CoreNavigationCommands.RotateElementTransform.runCoreEditorCommand(
+    CoreEditingCommands.RotateElementTransform.runCoreEditorCommand(
       this._viewModel,
       {
         objects: activeElement.getObjects(),
@@ -100,13 +103,21 @@ export class ViewController {
   }
 
   private _resizeElement(key: MouseControllerTarget, position: IPoint) {
-    CoreNavigationCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
+    CoreEditingCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
       position,
     })
   }
 
-  private _createPickArea() {}
+  private _createPickArea(data: IMouseDispatchData) {
+    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
+      this._viewModel,
+      {
+        startPosition: data.startPosition,
+        position: data.position,
+      }
+    )
+  }
 
   public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
     CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
@@ -126,6 +137,10 @@ export class ViewController {
       }
     }
     this._viewModel.setCursorOperateMode(OperateMode.Edit)
+    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
+      this._viewModel,
+      {}
+    )
   }
 
   private _dragOnClientToEdit(data: IMouseDispatchData) {
@@ -136,6 +151,8 @@ export class ViewController {
       this._rotateSelectionElement(data.position, data.prePosition)
     } else if (isResizeKey(controllerTargetType)) {
       this._resizeElement(controllerTargetType, data.position)
+    } else if (controllerTargetType === MouseControllerTarget.NONE) {
+      this._createPickArea(data)
     }
   }
 
@@ -164,13 +181,10 @@ export class ViewController {
   }
 
   private _createElement(startPosition?: IPoint, position?: IPoint): void {
-    CoreNavigationCommands.CreateNewElement.runCoreEditorCommand(
-      this._viewModel,
-      {
-        position,
-        startPosition,
-      }
-    )
+    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
+      position,
+      startPosition,
+    })
   }
 
   public dispatchMouse(data: IMouseDispatchData) {

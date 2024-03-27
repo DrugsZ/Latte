@@ -4,12 +4,15 @@ import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/math/matrix'
 import { Point } from 'Latte/common/Point'
+import { rTreeRoot } from 'Latte/core/rTree'
 
 const beforeTransformPoint = new Point(0, 0)
 const afterTransformPoint = new Point(0, 0)
 export abstract class DisplayObject<
   T extends BaseElementSchema = BaseElementSchema
 > extends EventTarget {
+  static INACTIVE: boolean = false
+
   type: EditorElementTypeKind
 
   protected _elementData: T
@@ -18,6 +21,7 @@ export abstract class DisplayObject<
 
   protected _bounds: Bounds = new Bounds()
   private _boundDirty: boolean = true
+  private _inactive: boolean = false
 
   constructor(element: T) {
     super()
@@ -114,6 +118,10 @@ export abstract class DisplayObject<
     return guid
   }
 
+  inactive() {
+    return this._inactive
+  }
+
   private _updateBounds() {
     this._bounds.clear()
     const worldMatrix = this.transform
@@ -152,6 +160,18 @@ export abstract class DisplayObject<
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
     this._bounds.addPoint(afterTransformPoint)
     this._boundDirty = false
+    if (!this.inactive()) {
+      const { minX, minY, maxX, maxY } = this._bounds
+      rTreeRoot.load([
+        {
+          displayObject: this,
+          minX,
+          minY,
+          maxX,
+          maxY,
+        },
+      ])
+    }
   }
 
   getBounds() {

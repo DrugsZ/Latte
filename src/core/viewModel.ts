@@ -1,5 +1,5 @@
 import type ModelData from 'Latte/core/modelData'
-import { ChangeEventType } from 'Latte/core/modelData'
+import { ChangeEventType } from 'Latte/core/modelChange'
 import { Emitter } from 'Latte/common/event'
 import CameraService from 'Latte/core/cameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'
@@ -12,8 +12,6 @@ import { PickService } from 'Latte/event/pickService'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { ActiveSelection } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
-import type { Container } from 'Latte/core/container'
-import { plusOne } from 'Latte/math/zIndex'
 import type { OperateMode } from 'Latte/core/cursor'
 import { Cursor } from 'Latte/core/cursor'
 
@@ -61,7 +59,7 @@ export class ViewModel {
       const changeElements: DisplayObject[] = []
       e.forEach(item => {
         if (item.type === ChangeEventType.CREATE) {
-          const newObject = this._elementTree.createElementByData(item.value)
+          const newObject = this._elementTree.createElementByData(item.target!)
           const focusPage = this._elementTree.getElementById(
             this._focusPageId
           ) as Page
@@ -74,12 +72,11 @@ export class ViewModel {
           this.addSelectElement(newObject)
           return
         }
-        const { value } = item
         const currentNode = this._elementTree.getElementById(
-          JSON.stringify(value.guid)
+          JSON.stringify(item.target?.guid)
         )
         if (currentNode) {
-          currentNode.setElementData(value)
+          currentNode.setElementData(item.target)
           changeElements.push(currentNode)
         }
       })
@@ -165,7 +162,7 @@ export class ViewModel {
     return this._cameraService.getCamera(this.focusPageId)
   }
 
-  public addSelectElement(element: DisplayObject) {
+  public addSelectElement = (element: DisplayObject) => {
     if (this._activeSelection.hasSelected(element)) {
       return
     }
@@ -205,30 +202,6 @@ export class ViewModel {
     return this._activeSelection
   }
 
-  public updateElementData(objects: Partial<BaseElementSchema>[]) {
-    this._modelData.updateChild({
-      data: objects,
-    })
-  }
-
-  public addChild(shape: BaseElementSchema, target?: Container) {
-    const currentTarget =
-      target || this._elementTree.getElementById(this._focusPageId)
-    if (!currentTarget) {
-      return
-    }
-    const parentIndex = JSON.parse(this._focusPageId)
-    shape.parentIndex = parentIndex
-    const lastElement = currentTarget.getLast()
-    if (lastElement) {
-      shape.parentIndex.position = plusOne(lastElement.zIndex)
-    }
-
-    this._modelData.addChild({
-      data: [shape],
-    })
-  }
-
   getCursorHoverObject() {
     return this._cursor.getHoverObject()
   }
@@ -258,5 +231,17 @@ export class ViewModel {
 
   getCursorCreateElementType() {
     return this._cursor.getCreateNormalElementType()
+  }
+
+  setBoxSelectBounds(points?: IPoint[]) {
+    this._cursor.setBoxSelectBounds(this._eventDispatcher, points)
+  }
+
+  getBoxSelectBounds() {
+    return this._cursor.getBoxSelectBounds()
+  }
+
+  getModel() {
+    return this._modelData
   }
 }

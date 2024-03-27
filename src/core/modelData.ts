@@ -1,79 +1,47 @@
 import { createDefaultFile } from 'Latte/common/schema'
 import { Emitter } from 'Latte/common/event'
-
-interface IUpdatePayload {
-  data: Partial<BaseElementSchema>[]
-}
-
-interface IAddChildPayload {
-  data: BaseElementSchema[]
-}
+import type {
+  ISingleEditOperation,
+  ChangeEventType,
+} from 'Latte/core/modelChange'
+import { ModelChange } from 'Latte/core/modelChange'
+import { UndoRedoService } from 'Latte/core/undoRedoService'
 
 interface ISchemaModel {
-  updateChild(payload: IUpdatePayload): void
-  addChild(payload: IAddChildPayload): void
-  removeChild(target: string): void
+  pushEditOperations(operations: ISingleEditOperation[]): void
 }
-
-export enum ChangeEventType {
-  DELETE = 'DELETE',
-  CREATE = 'CREATE',
-  CHANGE = 'CHANGE',
+window.testObj = {
+  type: 2,
+  id: {
+    sessionID: 25,
+    localID: 2,
+  },
+  value: {
+    transform: {
+      a: 0.7071067690849304,
+      b: 0.7071067690849304,
+      tx: -495.41872232764075,
+      c: -0.7071067690849304,
+      d: 0.7071067690849304,
+      ty: -1108.7735610373184,
+    },
+  },
 }
-
-interface ChangeEvent {
+interface IElementCHange {
+  target: BaseElementSchema | null
   type: ChangeEventType
-  value: BaseElementSchema
 }
 
 class ModelData implements ISchemaModel {
   private _model: LatteFile = createDefaultFile()
+  private _undoRedoService = new UndoRedoService(this)
 
-  private readonly _onDataChange = new Emitter<LatteFile>()
-  public readonly onDataChange = this._onDataChange.event
-
-  private readonly _onElementChange = new Emitter<ChangeEvent[]>()
+  private readonly _onElementChange = new Emitter<IElementCHange[]>()
   public readonly onElementChange = this._onElementChange.event
 
   constructor(model?: LatteFile) {
     this._initModel(model)
-  }
-  updateChild(payload: IUpdatePayload): void {
-    const { data } = payload
-    const list = [...data]
-    const changeList: ChangeEvent[] = []
-    this._model.elements.some((item, index) => {
-      const currentItemIndex = list.findIndex(i => i.guid === item.guid)
-      if (currentItemIndex > -1) {
-        const currentItem = list.splice(currentItemIndex, 1)[0]
-        this._model.elements[index] = {
-          ...item,
-          ...currentItem,
-        }
-        changeList.push({
-          type: ChangeEventType.CHANGE,
-          value: this._model.elements[index],
-        })
-      }
-      return !list.length
-    })
-    this._onElementChange.fire(changeList)
-  }
-  addChild(payload: IAddChildPayload) {
-    this._model?.elements.push(...payload.data)
-    this._onElementChange.fire(
-      payload.data.map(item => ({ type: ChangeEventType.CREATE, value: item }))
-    )
-  }
-  removeChild(target: string) {
-    const newChildren = this._model?.elements.filter(
-      item => JSON.stringify(item.guid) === JSON.stringify(target)
-    )
-    this._model = {
-      ...this._model,
-      elements: newChildren || [],
-    }
-    this._onDataChange.fire(this._model)
+    window._undoRedoService = this._undoRedoService
   }
 
   getCurrentState() {
@@ -83,6 +51,116 @@ class ModelData implements ISchemaModel {
     if (model) {
       this._model = model
     }
+  }
+
+  public pushEditOperations(operations: ISingleEditOperation[]) {
+    this._undoRedoService.pushEditOperation(operations)
+  }
+
+  applyEdits(operations: ISingleEditOperation[]) {
+    return this._doApplyEdits(operations)
+  }
+
+  private _computeSingleEditOperation(
+    operation: ISingleEditOperation,
+    item?: BaseElementSchema
+  ) {
+    const { value, type } = operation
+    if (!value) {
+      return {
+        element: null,
+        change: new ModelChange(type, item!.guid, item, value),
+      }
+    }
+    if (!item) {
+      return {
+        element: value as BaseElementSchema,
+        change: new ModelChange(type, value.guid!, null, value),
+      }
+    }
+    const keys = Reflect.ownKeys(value)
+    const oldObject = {}
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      oldObject[key] = item[key]
+    }
+
+    return {
+      element: { ...item, ...value } as BaseElementSchema,
+      change: new ModelChange(type, item.guid, oldObject, value),
+    }
+  }
+
+  private _acceptEditsToModel(operations: ISingleEditOperation[]) {
+    const result: {
+      afterElement: BaseElementSchema | null
+      change: ModelChange
+    }[] = []
+    const newElements: BaseElementSchema[] = []
+    this._model?.elements.forEach(item => {
+      const operationIndex = operations.findIndex(
+        op => JSON.stringify(op.id) === JSON.stringify(item.guid)
+      )
+      if (operationIndex > -1) {
+        const operation = operations.splice(operationIndex, 1)[0]
+        const { element, change } = this._computeSingleEditOperation(
+          operation,
+          item
+        )
+        if (element) {
+          newElements.push(element)
+        }
+        result.push({
+          afterElement: element,
+          change,
+        })
+      } else {
+        newElements.push(item)
+      }
+    })
+    if (operations.length) {
+      for (let i = 0; i < operations.length; i++) {
+        const { element, change } = this._computeSingleEditOperation(
+          operations[i]
+        )
+        newElements.push(element!)
+        result.push({
+          afterElement: element,
+          change,
+        })
+      }
+    }
+    this._model.elements = newElements
+    return result
+  }
+
+  private _doApplyEdits(operations: ISingleEditOperation[]) {
+    const result = this._acceptEditsToModel(operations)
+    const e = result.map(({ afterElement, change }) => ({
+      type: change.type,
+      target: afterElement,
+    }))
+    this._onElementChange.fire(e)
+
+    return result.map(item => item.change)
+  }
+
+  public applyUndo(changes: ModelChange[]) {
+    const edits = changes.map(change => ({
+      id: change.target,
+      type: change.type,
+      value: change.oldValue,
+    }))
+    this.applyEdits(edits)
+  }
+
+  public applyRedo(changes: ModelChange[]) {
+    const edits = changes.map(change => ({
+      id: change.target,
+      type: change.type,
+      value: change.newValue,
+    }))
+    this.applyEdits(edits)
   }
 }
 

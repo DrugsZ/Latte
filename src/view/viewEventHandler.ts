@@ -58,6 +58,10 @@ export class ViewEventHandler {
     return false
   }
 
+  public onCursorMove(event: viewEvents.ViewCursorMoveEvent): boolean {
+    return false
+  }
+
   public handleEvents(events: viewEvents.ViewEvent[]) {
     let shouldRender = false
 
@@ -98,6 +102,11 @@ export class ViewEventHandler {
           break
         case viewEvents.ViewEventType.ViewCursorOperateModeChange:
           if (this.onOperateModeChange(event)) {
+            shouldRender = true
+          }
+          break
+        case viewEvents.ViewEventType.ViewCursorMove:
+          if (this.onCursorMove(event)) {
             shouldRender = true
           }
           break
