@@ -4,6 +4,7 @@ import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/math/matrix'
 import { Point } from 'Latte/common/Point'
+import type { RBushNodeAABB } from 'Latte/core/rTree'
 import { rTreeRoot } from 'Latte/core/rTree'
 
 const beforeTransformPoint = new Point(0, 0)
@@ -22,6 +23,9 @@ export abstract class DisplayObject<
   protected _bounds: Bounds = new Bounds()
   private _boundDirty: boolean = true
   private _inactive: boolean = false
+  private _rBushNode: RBushNodeAABB = {
+    displayObject: this,
+  }
 
   constructor(element: T) {
     super()
@@ -160,24 +164,25 @@ export abstract class DisplayObject<
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
     this._bounds.addPoint(afterTransformPoint)
     this._boundDirty = false
-    if (!this.inactive()) {
-      const { minX, minY, maxX, maxY } = this._bounds
-      console.log(this.id, minX, minY, maxX, maxY)
-      rTreeRoot.load([
-        {
-          displayObject: this,
-          minX,
-          minY,
-          maxX,
-          maxY,
-        },
-      ])
+  }
+
+  private _updateRBush() {
+    if (Object.getPrototypeOf(this).constructor.INACTIVE || this.inactive()) {
+      return
     }
+    rTreeRoot.remove(this._rBushNode)
+    const { minX, minY, maxX, maxY } = this._bounds
+    this._rBushNode.minX = minX
+    this._rBushNode.minY = minY
+    this._rBushNode.maxX = maxX
+    this._rBushNode.maxY = maxY
+    rTreeRoot.load([this._rBushNode])
   }
 
   getBounds() {
     if (this._boundDirty) {
       this._updateBounds()
+      this._updateRBush()
     }
     return this._bounds
   }
