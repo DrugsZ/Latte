@@ -59,7 +59,6 @@ export default class View extends ViewEventHandler {
 
     this._pickArea = new PickArea(this._viewModel)
     this._viewParts.push(this._pickArea)
-    window.pickArea = this._pickArea
   }
 
   public render() {
@@ -108,5 +107,11 @@ export default class View extends ViewEventHandler {
     const currentCamera = this._viewModel.getCurrentCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
     return Matrix.applyMatrixInvertToPoint(vpMatrix, client)
+  }
+
+  public viewport2Client(viewPort: IPoint) {
+    const currentCamera = this._viewModel.getCurrentCamera()
+    const vpMatrix = currentCamera.getViewPortMatrix()
+    return Matrix.apply(viewPort, vpMatrix)
   }
 }

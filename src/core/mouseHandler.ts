@@ -154,7 +154,8 @@ class MouseDownOperation {
     this._mouseDownState.setStartControls(event)
     this._mouseDownState.setStartTarget(event)
     this._startMonitoring()
-    this._dispatchMouse(false, event.client)
+    this._dispatchMouse(false, event)
+    this._lastMouseEvent = event
   }
 
   private _startMonitoring() {
@@ -169,7 +170,7 @@ class MouseDownOperation {
     if (!this._isActive) {
       return
     }
-    this._dispatchMouse(true, e.client)
+    this._dispatchMouse(true, e)
     this._lastMouseEvent = e
   }
 
@@ -188,18 +189,11 @@ class MouseDownOperation {
     return this._isActive
   }
 
-  private _dispatchMouse(inSelectionMode: boolean, point: IPoint) {
-    const movement = new Point(0, 0)
-    if (this._lastMouseEvent) {
-      const { _lastMouseEvent } = this
-      movement.x = point.x - _lastMouseEvent.client.x
-      movement.y = point.y - _lastMouseEvent.client.y
-    }
-
+  private _dispatchMouse(inSelectionMode: boolean, event: EditorMouseEvent) {
     this._viewController.dispatchMouse({
       target: this._mouseDownState.targetObject,
       controllerTargetType: this._mouseDownState.lastMouseControllerTarget,
-      position: point,
+      position: event.client,
       startPosition: this._mouseDownState.lastMouseDownPosition,
       inSelectionMode,
       altKey: this._mouseDownState.altKey,
@@ -211,6 +205,7 @@ class MouseDownOperation {
 
       leftButton: this._mouseDownState.leftButton,
       rightButton: this._mouseDownState.rightButton,
+      browserEvent: event.browserEvent,
     })
   }
 }
@@ -270,14 +265,7 @@ export class MouseHandler {
       mouseDownCount: 0,
       leftButton: e.leftButton,
       rightButton: e.rightButton,
+      browserEvent: e.browserEvent,
     })
-    if (!this._isMouseDown) {
-      return
-    }
-    const newX = e.browserEvent.movementX
-    const newY = e.browserEvent.movementY
-    const currentCamera = this._view.getCurrentCamera()
-    const vpMatrix = currentCamera.getViewPortMatrix()
-    currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
   }
 }

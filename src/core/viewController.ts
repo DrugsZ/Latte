@@ -26,6 +26,7 @@ export interface IMouseDispatchData {
 
   leftButton: boolean
   rightButton: boolean
+  browserEvent: MouseEvent
 }
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
@@ -47,13 +48,6 @@ export class ViewController {
       this._viewModel.removeSelectElement(target)
     }
   }
-  public hoverElement() {}
-  public hoverSelectBox() {}
-  public resizeElement() {}
-  public rotateElement() {}
-  public moveCamera() {}
-  public zoomCamera() {}
-  public emitMouseDown() {}
 
   private _moveSelectionElement(position: IPoint, prePosition?: IPoint | null) {
     if (!prePosition) {
@@ -156,9 +150,13 @@ export class ViewController {
   private _dragOnClient(data: IMouseDispatchData) {
     const editMode = this._viewModel.getCursorOperateMode()
     if (editMode === OperateMode.ReadOnly) {
-      return
-    }
-    if (editMode === OperateMode.Edit) {
+      const { browserEvent: e } = data
+      const newX = e.movementX
+      const newY = e.movementY
+      const currentCamera = this._viewModel.getCurrentCamera()
+      const vpMatrix = currentCamera.getViewPortMatrix()
+      currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
+    } else if (editMode === OperateMode.Edit) {
       this._dragOnClientToEdit(data)
     } else if (editMode === OperateMode.CreateNormalShape) {
       this._createElement(data.startPosition, data.position)

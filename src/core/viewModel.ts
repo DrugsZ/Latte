@@ -40,7 +40,10 @@ export class ViewModel {
       this.getVisibleElementRenderObjects.bind(this)
     this._modelData = model
     this._canvasObserver = new DomElementObserver(_domElement)
-    this._cameraService = new CameraService(this._canvasObserver.canvasSize)
+    this._cameraService = new CameraService(
+      this._canvasObserver.canvasSize,
+      this
+    )
     this._eventDispatcher = new ViewModelEventDispatcher()
     this._activeSelection = new ActiveSelection()
 
