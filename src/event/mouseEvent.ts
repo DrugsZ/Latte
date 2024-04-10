@@ -163,3 +163,41 @@ export class EditorMouseEventFactory {
     })
   }
 }
+
+export interface IMouseWheelEvent extends MouseEvent {
+  readonly deltaX: number
+  readonly deltaY: number
+  readonly deltaZ: number
+  readonly deltaMode: number
+}
+
+export class StandardWheelEvent {
+  public readonly browserEvent: IMouseWheelEvent | null
+  public readonly deltaY: number
+  public readonly deltaX: number
+  public readonly target: Node
+  public readonly ctrlKey: boolean
+  public readonly shiftKey: boolean
+  public readonly altKey: boolean
+  public readonly metaKey: boolean
+
+  constructor(e: IMouseWheelEvent, public readonly client: IPoint) {
+    this.browserEvent = e || null
+    this.target = e ? e.target || (<any>e).targetNode || e.srcElement : null
+
+    this.deltaY = e.deltaY
+    this.deltaX = e.deltaX
+    this.ctrlKey = e.ctrlKey
+    this.shiftKey = e.shiftKey
+    this.altKey = e.altKey
+    this.metaKey = e.metaKey
+  }
+
+  public preventDefault(): void {
+    this.browserEvent?.preventDefault()
+  }
+
+  public stopPropagation(): void {
+    this.browserEvent?.stopPropagation()
+  }
+}

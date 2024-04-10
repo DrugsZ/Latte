@@ -1,8 +1,7 @@
 import type ModelData from 'Latte/core/modelData'
 import { ChangeEventType } from 'Latte/core/modelData'
 import { Emitter } from 'Latte/common/event'
-import CameraService from 'Latte/core/cameraService'
-import DomElementObserver from 'Latte/core/domElementObserver'
+import type CameraService from 'Latte/core/cameraService'
 import { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
 import * as viewEvents from 'Latte/view/viewEvents'
 import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
@@ -20,8 +19,6 @@ import { Cursor } from 'Latte/core/cursor'
 export class ViewModel {
   private _focusPageId: string = ''
   private _modelData: ModelData
-  private _cameraService: CameraService<string>
-  private _canvasObserver: DomElementObserver
   pickService: PickService
 
   private readonly _eventDispatcher: ViewModelEventDispatcher
@@ -35,15 +32,34 @@ export class ViewModel {
 
   private _cursor: Cursor = new Cursor()
 
-  constructor(model: ModelData, _domElement: HTMLCanvasElement) {
+  constructor(model: ModelData, private _cameraService: CameraService) {
     this.getVisibleElementRenderObjects =
       this.getVisibleElementRenderObjects.bind(this)
     this._modelData = model
-    this._canvasObserver = new DomElementObserver(_domElement)
-    this._cameraService = new CameraService(this._canvasObserver.canvasSize)
     this._eventDispatcher = new ViewModelEventDispatcher()
     this._activeSelection = new ActiveSelection()
 
+    this._bindCameraEvent()
+    this._initElementTree()
+    this._bindModelEvent()
+  }
+
+  private _initElementTree() {
+    this._elementTree = new ElementTree(
+      this._modelData.getCurrentState().elements
+    )
+    this._elementTree.document.getChildren().forEach(page => {
+      this._createCamera(page.id, page.getBoundingClientRect())
+    })
+    this.focusPageId = this._elementTree.document.getChildren()[0].id
+    this.pickService = new PickService(
+      this.getVisibleElementRenderObjects,
+      this._activeSelection,
+      this.elementTreeRoot
+    )
+  }
+
+  private _bindCameraEvent() {
     this._cameraService.onCameraViewChange(event => {
       this._eventDispatcher.emitViewEvent(
         new viewEvents.ViewCameraUpdateEvent(event)
@@ -55,8 +71,9 @@ export class ViewModel {
         focusPage.setVisibleArea(event.getViewport())
       }
     })
-    this._initElementTree()
+  }
 
+  private _bindModelEvent() {
     this._modelData.onElementChange(e => {
       const changeElements: DisplayObject[] = []
       e.forEach(item => {
@@ -69,7 +86,7 @@ export class ViewModel {
             return
           }
           focusPage?.appendChild(newObject)
-          const camera = this.getCurrentCamera()
+          const camera = this.getCamera()
           focusPage?.setVisibleArea(camera.getViewport())
           this.addSelectElement(newObject)
           return
@@ -93,21 +110,6 @@ export class ViewModel {
     })
   }
 
-  private _initElementTree() {
-    this._elementTree = new ElementTree(
-      this._modelData.getCurrentState().elements
-    )
-    this._elementTree.document.getChildren().forEach(page => {
-      this.createCamera(page.id, page.getBoundingClientRect())
-    })
-    this.focusPageId = this._elementTree.document.getChildren()[0].id
-    this.pickService = new PickService(
-      this.getVisibleElementRenderObjects,
-      this._activeSelection,
-      this.elementTreeRoot
-    )
-  }
-
   get focusPageId() {
     return this._focusPageId
   }
@@ -124,15 +126,7 @@ export class ViewModel {
     return this._elementTree.document
   }
 
-  public getViewport(id: string) {
-    return this._cameraService.getViewport(id)
-  }
-
-  getCamera(id: string) {
-    return this._cameraService.getCamera(id)
-  }
-
-  public createCamera(id: string, size: Rectangle) {
+  private _createCamera(id: string, size: Rectangle) {
     return this._cameraService.createCamera(id, {
       size,
       padding: 0.1,
@@ -161,7 +155,7 @@ export class ViewModel {
     return focusPage.getVisibleElementRenderObjects()
   }
 
-  public getCurrentCamera() {
+  public getCamera() {
     return this._cameraService.getCamera(this.focusPageId)
   }
 
