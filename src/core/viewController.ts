@@ -12,7 +12,10 @@ import {
   CoreEditingCommands,
 } from 'Latte/core/coreCommands'
 import { OperateMode } from 'Latte/core/cursor'
-import type { EditorMouseEvent } from 'Latte/event/mouseEvent'
+import type {
+  EditorMouseEvent,
+  StandardWheelEvent,
+} from 'Latte/event/mouseEvent'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -29,6 +32,7 @@ export interface IMouseDispatchData {
 
   leftButton: boolean
   rightButton: boolean
+  browserEvent: MouseEvent
 }
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
@@ -50,13 +54,6 @@ export class ViewController {
       this._viewModel.removeSelectElement(target)
     }
   }
-  public hoverElement() {}
-  public hoverSelectBox() {}
-  public resizeElement() {}
-  public rotateElement() {}
-  public moveCamera() {}
-  public zoomCamera() {}
-  public emitMouseDown() {}
 
   private _moveSelectionElement(position: IPoint, prePosition?: IPoint | null) {
     if (!prePosition) {
@@ -160,9 +157,13 @@ export class ViewController {
   private _dragOnClient(data: IMouseDispatchData) {
     const editMode = this._viewModel.getCursorOperateMode()
     if (editMode === OperateMode.ReadOnly) {
-      return
-    }
-    if (editMode === OperateMode.Edit) {
+      const { browserEvent: e } = data
+      const newX = e.movementX
+      const newY = e.movementY
+      const currentCamera = this._viewModel.getCamera()
+      const vpMatrix = currentCamera.getViewPortMatrix()
+      currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
+    } else if (editMode === OperateMode.Edit) {
       this._dragOnClientToEdit(data)
     } else if (editMode === OperateMode.CreateNormalShape) {
       this._createElement(data.startPosition, data.position)
@@ -202,5 +203,19 @@ export class ViewController {
       )
       this._viewModel.setCursorHoverControllerKey(controllerTargetType)
     }
+  }
+
+  public dispatchWheel(event: StandardWheelEvent) {
+    const currentCamera = this._viewModel.getCamera()
+    const { deltaY, deltaX, client } = event
+    if (!event.ctrlKey && !event.metaKey) {
+      currentCamera.move(deltaX, deltaY)
+      return
+    }
+    const symbol = deltaY > 0 ? 1 : -1
+    const delta = Math.min(Math.max(Math.abs(deltaY) / 4, 1), 16)
+    const zoom = currentCamera.getViewPortMatrix().a
+    const step = zoom * 0.02
+    currentCamera.setZoom(zoom + step * delta * symbol, client)
   }
 }

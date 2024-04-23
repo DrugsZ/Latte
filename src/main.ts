@@ -10,6 +10,8 @@ const initCanvas = ({ width = 800, height = 800 }) => {
 }
 document.body.style.height = '100vh'
 document.body.style.width = '100vw'
+document.body.style.margin = '0px'
+document.body.style.overflow = 'hidden'
 const bodyRect = document.body.getBoundingClientRect()
 const canvas = initCanvas(bodyRect)
 document.body.appendChild(canvas)

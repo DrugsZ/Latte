@@ -9,6 +9,7 @@ import type { ViewPart } from 'Latte/view/viewPart'
 import { ViewController } from 'Latte/core/viewController'
 import { Matrix } from 'Latte/math/matrix'
 import { PickArea } from 'Latte/view/pickArea'
+import type CameraService from 'Latte/core/cameraService'
 
 export enum RenderEnum {
   ViewportChange,
@@ -59,15 +60,14 @@ export default class View extends ViewEventHandler {
 
     this._pickArea = new PickArea(this._viewModel)
     this._viewParts.push(this._pickArea)
-    window.pickArea = this._pickArea
   }
 
   public render() {
     this._scheduleRender()
   }
 
-  public getCurrentCamera() {
-    return this._viewModel.getCurrentCamera()
+  public getCamera() {
+    return this._viewModel.getCamera()
   }
 
   private _getViewPartsToRender(): ViewPart[] {
@@ -95,7 +95,7 @@ export default class View extends ViewEventHandler {
       // Nothing to render
       return
     }
-    const camera = this._viewModel.getCurrentCamera()
+    const camera = this.getCamera()
     this._renderService.prepareRender(camera)
     const ctx = this._renderService.getCanvasRenderingContext()
     this._viewParts.forEach(viewPart => {
@@ -105,8 +105,14 @@ export default class View extends ViewEventHandler {
   }
 
   public client2Viewport(client: IPoint) {
-    const currentCamera = this._viewModel.getCurrentCamera()
+    const currentCamera = this.getCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
     return Matrix.applyMatrixInvertToPoint(vpMatrix, client)
+  }
+
+  public viewport2Client(viewPort: IPoint) {
+    const currentCamera = this.getCamera()
+    const vpMatrix = currentCamera.getViewPortMatrix()
+    return Matrix.apply(viewPort, vpMatrix)
   }
 }

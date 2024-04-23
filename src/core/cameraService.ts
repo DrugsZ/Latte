@@ -1,6 +1,7 @@
 import { Point } from 'Latte/common/Point'
 import { Emitter } from 'Latte/common/event'
 import { Matrix } from 'Latte/math/matrix'
+import type { ViewModel } from 'Latte/core/viewModel'
 
 export class Camera {
   private _zoom: number = 1
@@ -28,9 +29,25 @@ export class Camera {
   private readonly _onCameraViewChange = new Emitter<Camera>()
   public readonly onCameraViewChange = this._onCameraViewChange.event
 
-  setZoom(value: number) {
+  setZoom(value: number, viewPortPoint?: IPoint) {
+    const oldMatrix = this._matrix.clone()
     this._zoom = value
     this._updateMatrix()
+    if (viewPortPoint) {
+      this._adjustPosition(oldMatrix, viewPortPoint)
+    }
+  }
+
+  private _adjustPosition(preMatrix: IMatrixLike, viewPortPoint: IPoint) {
+    const newViewPort = Matrix.applyMatrixInvertToPoint(
+      this._matrix,
+      Matrix.apply(viewPortPoint, preMatrix)
+    )
+    const newMove = {
+      x: newViewPort.x - viewPortPoint.x,
+      y: newViewPort.y - viewPortPoint.y,
+    }
+    this.move(-newMove.x, -newMove.y)
   }
 
   private _updateMatrix() {
@@ -77,7 +94,6 @@ export class Camera {
 
 class CameraService<T = any> {
   private _cameraMaps: Map<T, Camera> = new Map()
-  private _activeCamera: Camera
 
   private readonly _onCameraViewChange = new Emitter<Camera>()
   public readonly onCameraViewChange = this._onCameraViewChange.event
@@ -110,7 +126,6 @@ class CameraService<T = any> {
     this._cameraMaps.set(id, newCamera)
     newCamera.onCameraViewChange(event => {
       this._onCameraViewChange.fire(event)
-      this._activeCamera = event
     })
     return newCamera
   }
@@ -127,10 +142,6 @@ class CameraService<T = any> {
       throw Error(`can not found camera by id: ${id}`)
     }
     return this._cameraMaps.get(id) as Camera
-  }
-
-  public getActiveCamera() {
-    return this._activeCamera
   }
 }
 
