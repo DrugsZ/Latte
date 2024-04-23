@@ -7,7 +7,10 @@ import {
   isRotateKey,
   isResizeKey,
 } from 'Latte/core/activeSelection'
-import { CoreNavigationCommands } from 'Latte/core/coreCommands'
+import {
+  CoreNavigationCommands,
+  CoreEditingCommands,
+} from 'Latte/core/coreCommands'
 import { OperateMode } from 'Latte/core/cursor'
 import type {
   EditorMouseEvent,
@@ -61,7 +64,7 @@ export class ViewController {
       y: position.y - prePosition.y,
     }
     const activeElement = this._viewModel.getActiveSelection()
-    CoreNavigationCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
+    CoreEditingCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       movement,
     })
@@ -86,7 +89,7 @@ export class ViewController {
     }
     const rad =
       Math.atan2(newPoint.y, newPoint.x) - Math.atan2(prePoint.y, prePoint.x)
-    CoreNavigationCommands.RotateElementTransform.runCoreEditorCommand(
+    CoreEditingCommands.RotateElementTransform.runCoreEditorCommand(
       this._viewModel,
       {
         objects: activeElement.getObjects(),
@@ -97,7 +100,7 @@ export class ViewController {
   }
 
   private _resizeElement(key: MouseControllerTarget, position: IPoint) {
-    CoreNavigationCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
+    CoreEditingCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
       position,
     })
@@ -124,6 +127,7 @@ export class ViewController {
   }
 
   public emitMouseUp(e: EditorMouseEvent) {
+    this._viewModel.getModel().pushStackElement()
     const editMode = this._viewModel.getCursorOperateMode()
     if (editMode === OperateMode.CreateNormalShape) {
       if (!this._viewModel.getActiveSelection().isActive()) {
@@ -179,13 +183,10 @@ export class ViewController {
   }
 
   private _createElement(startPosition?: IPoint, position?: IPoint): void {
-    CoreNavigationCommands.CreateNewElement.runCoreEditorCommand(
-      this._viewModel,
-      {
-        position,
-        startPosition,
-      }
-    )
+    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
+      position,
+      startPosition,
+    })
   }
 
   public dispatchMouse(data: IMouseDispatchData) {

@@ -1,5 +1,5 @@
 import type ModelData from 'Latte/core/modelData'
-import { ChangeEventType } from 'Latte/core/modelData'
+import { ChangeEventType } from 'Latte/core/modelChange'
 import { Emitter } from 'Latte/common/event'
 import type CameraService from 'Latte/core/cameraService'
 import { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
@@ -11,8 +11,6 @@ import { PickService } from 'Latte/event/pickService'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import { ActiveSelection } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
-import type { Container } from 'Latte/core/container'
-import { plusOne } from 'Latte/math/zIndex'
 import type { OperateMode } from 'Latte/core/cursor'
 import { Cursor } from 'Latte/core/cursor'
 
@@ -78,7 +76,7 @@ export class ViewModel {
       const changeElements: DisplayObject[] = []
       e.forEach(item => {
         if (item.type === ChangeEventType.CREATE) {
-          const newObject = this._elementTree.createElementByData(item.value)
+          const newObject = this._elementTree.createElementByData(item.target!)
           const focusPage = this._elementTree.getElementById(
             this._focusPageId
           ) as Page
@@ -91,12 +89,11 @@ export class ViewModel {
           this.addSelectElement(newObject)
           return
         }
-        const { value } = item
         const currentNode = this._elementTree.getElementById(
-          JSON.stringify(value.guid)
+          JSON.stringify(item.target?.guid)
         )
         if (currentNode) {
-          currentNode.setElementData(value)
+          currentNode.setElementData(item.target)
           changeElements.push(currentNode)
         }
       })
@@ -199,30 +196,6 @@ export class ViewModel {
     return this._activeSelection
   }
 
-  public updateElementData(objects: Partial<BaseElementSchema>[]) {
-    this._modelData.updateChild({
-      data: objects,
-    })
-  }
-
-  public addChild(shape: BaseElementSchema, target?: Container) {
-    const currentTarget =
-      target || this._elementTree.getElementById(this._focusPageId)
-    if (!currentTarget) {
-      return
-    }
-    const parentIndex = JSON.parse(this._focusPageId)
-    shape.parentIndex = parentIndex
-    const lastElement = currentTarget.getLast()
-    if (lastElement) {
-      shape.parentIndex.position = plusOne(lastElement.zIndex)
-    }
-
-    this._modelData.addChild({
-      data: [shape],
-    })
-  }
-
   getCursorHoverObject() {
     return this._cursor.getHoverObject()
   }
@@ -260,5 +233,9 @@ export class ViewModel {
 
   getBoxSelectBounds() {
     return this._cursor.getBoxSelectBounds()
+  }
+
+  getModel() {
+    return this._modelData
   }
 }

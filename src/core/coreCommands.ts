@@ -15,6 +15,8 @@ import {
 import { createDefaultElementSchema } from 'Latte/common/schema'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { rTreeRoot } from 'Latte/core/rTree'
+import type { ISingleEditOperation } from 'Latte/core/modelChange'
+import { EditOperation } from 'Latte/core/modelChange'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -38,32 +40,13 @@ export abstract class CoreEditorCommand<T> {
   ): void
 }
 
+interface BaseCommandOptions {
+  source: 'mouse' | 'keyboard'
+}
 export namespace CoreNavigationCommands {
-  interface BaseCommandOptions {
-    source: 'mouse' | 'keyboard'
-  }
-
   interface SetActiveSelection extends BaseCommandOptions {
     target: DisplayObject
     multipleMode?: boolean
-  }
-
-  interface BaseMoveCommandOptions extends BaseCommandOptions {
-    startPosition: IPoint
-    position: IPoint
-    movement: IPoint
-    objects: DisplayObject[]
-  }
-
-  interface RotateElementCommandOptions extends BaseCommandOptions {
-    objects: DisplayObject[]
-    transformOrigin?: IPoint
-    rad: number
-  }
-
-  interface CreateElementCommandOptions extends BaseCommandOptions {
-    position: IPoint
-    startPosition: IPoint
   }
 
   export const SetActiveSelection =
@@ -94,6 +77,44 @@ export namespace CoreNavigationCommands {
       }
     })()
 
+  interface MouseBoxSelectCommandOptions extends BaseCommandOptions {
+    startPosition?: IPoint
+    position?: IPoint
+  }
+
+  export const MouseBoxSelect =
+    new (class extends CoreEditorCommand<MouseBoxSelectCommandOptions> {
+      constructor() {
+        super('mouseBoxSelect')
+      }
+
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<MouseBoxSelectCommandOptions>
+      ): void {
+        const { startPosition, position } = args
+        if (!startPosition || !position) {
+          return viewModel.setBoxSelectBounds()
+        }
+        viewModel.setBoxSelectBounds([startPosition, position])
+        const selectBoxBounds = viewModel.getBoxSelectBounds()
+        const { minX, minY, maxX, maxY } = selectBoxBounds
+        const selectNode = rTreeRoot.search({ minX, minY, maxX, maxY })
+        const displayObjects = selectNode.map(item => item.displayObject)
+        viewModel.discardActiveSelection()
+        if (displayObjects.length) {
+          displayObjects.forEach(viewModel.addSelectElement)
+        }
+      }
+    })()
+}
+
+export namespace CoreEditingCommands {
+  interface CreateElementCommandOptions extends BaseCommandOptions {
+    position: IPoint
+    startPosition: IPoint
+  }
+
   export const CreateNewElement =
     new (class extends CoreEditorCommand<CreateElementCommandOptions> {
       constructor() {
@@ -121,7 +142,7 @@ export namespace CoreNavigationCommands {
         position: IPoint,
         startPosition: IPoint
       ) {
-        CoreNavigationCommands.ResizeElement.runCoreEditorCommand(viewModel, {
+        CoreEditingCommands.ResizeElement.runCoreEditorCommand(viewModel, {
           key: this._getCreateResizeKey(position, startPosition),
           position,
         })
@@ -164,13 +185,24 @@ export namespace CoreNavigationCommands {
         if (activeSelection.isActive() && position) {
           this._resizeActiveCreate(viewModel, position, startPosition)
         } else {
-          viewModel.addChild(
-            this._createElement(viewModel, startPosition, position)
+          const result: ISingleEditOperation[] = []
+          const newShape = this._createElement(
+            viewModel,
+            startPosition,
+            position
           )
+          result.push(EditOperation.create(newShape.guid, newShape))
+          viewModel.getModel().pushEditOperations(result)
         }
       }
     })()
 
+  interface BaseMoveCommandOptions extends BaseCommandOptions {
+    startPosition: IPoint
+    position: IPoint
+    movement: IPoint
+    objects: DisplayObject[]
+  }
   export const MoveElement =
     new (class extends CoreEditorCommand<BaseMoveCommandOptions> {
       constructor() {
@@ -184,20 +216,26 @@ export namespace CoreNavigationCommands {
         const { movement, objects } = args
         if (!objects || !movement) return
         const { x: movementX, y: movementY } = movement
-        const results: Partial<BaseElementSchema>[] = []
+        const result: ISingleEditOperation[] = []
 
         objects.forEach(object => {
           const { x, y, transform } = object
-          results.push({
-            guid: object.getGuidKey(),
-            transform: { ...transform, tx: x + movementX, ty: y + movementY },
-          })
+          result.push(
+            EditOperation.update(object.getGuidKey(), {
+              transform: { ...transform, tx: x + movementX, ty: y + movementY },
+            })
+          )
         })
-
-        viewModel.updateElementData(results)
+        viewModel.getModel().pushEditOperations(result)
+        // viewModel.updateElementData(results)
       }
     })()
 
+  interface RotateElementCommandOptions extends BaseCommandOptions {
+    objects: DisplayObject[]
+    transformOrigin?: IPoint
+    rad: number
+  }
   export const RotateElementTransform =
     new (class extends CoreEditorCommand<RotateElementCommandOptions> {
       constructor() {
@@ -212,7 +250,7 @@ export namespace CoreNavigationCommands {
         if (!objects || !objects.length || !rad) {
           return
         }
-        const results: Partial<BaseElementSchema>[] = []
+        const result: ISingleEditOperation[] = []
 
         objects.forEach(object => {
           const center = transformOrigin || object.getCenter()
@@ -245,14 +283,6 @@ export namespace CoreNavigationCommands {
             tx: transform.tx,
             ty: transform.ty,
           }
-          // const skewToY = {
-          //   a:transform.d,
-          //   b:-transform.c,
-          //   c:transform.c,
-          //   d:transform.d,
-          //   tx:transform.tx,
-          //   ty:transform.ty
-          // }
           const skewXTransform = {
             a: 1,
             b: 0,
@@ -265,13 +295,14 @@ export namespace CoreNavigationCommands {
           Matrix.multiply(diffMatrix, diffMatrix, skewXTransform)
           diffMatrix.tx = newP1.x
           diffMatrix.ty = newP1.y
-          results.push({
-            guid: object.getGuidKey(),
-            transform: { ...diffMatrix },
-          })
+          result.push(
+            EditOperation.update(object.getGuidKey(), {
+              transform: { ...diffMatrix },
+            })
+          )
         })
-
-        viewModel.updateElementData(results)
+        viewModel.getModel().pushEditOperations(result)
+        // viewModel.updateElementData(results)
       }
     })()
 
@@ -497,47 +528,19 @@ export namespace CoreNavigationCommands {
         )
 
       const objects = activeElement.getObjects()
-      const result: Partial<BaseElementSchema>[] = []
+      const result: ISingleEditOperation[] = []
 
-      objects.forEach(object =>
-        result.push({
-          guid: object.getGuidKey(),
-          ...this._getNewOBB(object.OBB, getNewPoint, selectBoxTransform),
-        })
-      )
-      viewModel.updateElementData(result)
+      objects.forEach(object => {
+        result.push(
+          EditOperation.update(
+            object.getGuidKey(),
+            this._getNewOBB(object.OBB, getNewPoint, selectBoxTransform)
+          )
+        )
+      })
+      viewModel.getModel().pushEditOperations(result)
+      // viewModel.updateElementData(result)
     }
   }
   export const ResizeElement = new ResizeElementCommand()
-
-  interface MouseBoxSelectCommandOptions extends BaseCommandOptions {
-    startPosition?: IPoint
-    position?: IPoint
-  }
-
-  export const MouseBoxSelect =
-    new (class extends CoreEditorCommand<MouseBoxSelectCommandOptions> {
-      constructor() {
-        super('mouseBoxSelect')
-      }
-
-      public runCoreEditorCommand(
-        viewModel: ViewModel,
-        args: Partial<MouseBoxSelectCommandOptions>
-      ): void {
-        const { startPosition, position } = args
-        if (!startPosition || !position) {
-          return viewModel.setBoxSelectBounds()
-        }
-        viewModel.setBoxSelectBounds([startPosition, position])
-        const selectBoxBounds = viewModel.getBoxSelectBounds()
-        const { minX, minY, maxX, maxY } = selectBoxBounds
-        const selectNode = rTreeRoot.search({ minX, minY, maxX, maxY })
-        const displayObjects = selectNode.map(item => item.displayObject)
-        viewModel.discardActiveSelection()
-        if (displayObjects.length) {
-          displayObjects.forEach(viewModel.addSelectElement)
-        }
-      }
-    })()
 }
