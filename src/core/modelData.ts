@@ -99,7 +99,7 @@ class ModelData implements ISchemaModel {
     const newElements: BaseElementSchema[] = []
     this._model?.elements.forEach(item => {
       const operationIndex = operations.findIndex(
-        op => JSON.stringify(op.id) === JSON.stringify(item.guid)
+        op => op.id === JSON.stringify(item.guid)
       )
       if (operationIndex > -1) {
         const operation = operations.splice(operationIndex, 1)[0]
@@ -165,6 +165,14 @@ class ModelData implements ISchemaModel {
 
   public pushStackElement() {
     this._undoRedoService.pushStackElement()
+  }
+
+  public undo() {
+    this._undoRedoService.undo()
+  }
+
+  public redo() {
+    this._undoRedoService.redo()
   }
 }
 

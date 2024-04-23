@@ -256,10 +256,10 @@ export class UndoRedoService {
     }
     const editStack = this._editStacks.get(this._model)!
     const element = editStack.getClosestFutureElement()!
-    editStack.moveForward(element)
     if (!element) {
       return
     }
+    editStack.moveForward(element)
     element.redo()
   }
 
@@ -269,10 +269,10 @@ export class UndoRedoService {
     }
     const editStack = this._editStacks.get(this._model)!
     const element = editStack.getClosestPastElement()!
-    editStack.moveBackward(element)
     if (!element) {
       return
     }
+    editStack.moveBackward(element)
     element.undo()
   }
 

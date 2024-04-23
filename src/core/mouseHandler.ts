@@ -6,10 +6,10 @@ import type { EditorMouseEvent, IMouseWheelEvent } from 'Latte/event/mouseEvent'
 import {
   EditorMouseEventFactory,
   StandardWheelEvent,
-  EventType,
 } from 'Latte/event/mouseEvent'
 import type { DisplayObject } from 'Latte/core/displayObject'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
+import * as dom from 'Latte/event/dom'
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
@@ -284,7 +284,7 @@ export class MouseHandler {
         new StandardWheelEvent(browserEvent, client)
       )
     }
-    this._element.addEventListener(EventType.MOUSE_WHEEL, onMouseWheel, {
+    this._element.addEventListener(dom.EventType.MOUSE_WHEEL, onMouseWheel, {
       capture: true,
       passive: false,
     })

@@ -1,27 +1,7 @@
 import type { PickService } from 'Latte/event/pickService'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import type DisplayObject from 'Latte/core/container'
-
-export const EventType = {
-  // Mouse
-  CLICK: 'click',
-  AUXCLICK: 'auxclick',
-  DBLCLICK: 'dblclick',
-  MOUSE_UP: 'mouseup',
-  MOUSE_DOWN: 'mousedown',
-  MOUSE_OVER: 'mouseover',
-  MOUSE_MOVE: 'mousemove',
-  MOUSE_OUT: 'mouseout',
-  MOUSE_ENTER: 'mouseenter',
-  MOUSE_LEAVE: 'mouseleave',
-  MOUSE_WHEEL: 'wheel',
-  POINTER_UP: 'pointerup',
-  POINTER_DOWN: 'pointerdown',
-  POINTER_MOVE: 'pointermove',
-  POINTER_LEAVE: 'pointerleave',
-  CONTEXT_MENU: 'contextmenu',
-  WHEEL: 'wheel',
-} as const
+import * as dom from 'Latte/event/dom'
 
 export interface IMouseEvent {
   readonly browserEvent: MouseEvent
@@ -104,28 +84,34 @@ export class EditorMouseEventFactory {
   }
 
   public onContextMenu(callback: (e: EditorMouseEvent) => void) {
-    this._viewDom.addEventListener(EventType.CONTEXT_MENU, (e: MouseEvent) => {
-      callback(this._create(e))
-    })
+    this._viewDom.addEventListener(
+      dom.EventType.CONTEXT_MENU,
+      (e: MouseEvent) => {
+        callback(this._create(e))
+      }
+    )
   }
 
   public onMouseUp(callback: (e: EditorMouseEvent) => void) {
-    this._viewDom.addEventListener(EventType.MOUSE_UP, (e: MouseEvent) => {
+    this._viewDom.addEventListener(dom.EventType.MOUSE_UP, (e: MouseEvent) => {
       callback(this._create(e))
     })
   }
 
   public onMouseDown(callback: (e: EditorMouseEvent) => void) {
-    this._viewDom.addEventListener(EventType.MOUSE_DOWN, (e: MouseEvent) => {
-      callback(this._create(e))
-    })
+    this._viewDom.addEventListener(
+      dom.EventType.MOUSE_DOWN,
+      (e: MouseEvent) => {
+        callback(this._create(e))
+      }
+    )
   }
 
   public onPointerDown(
     callback: (e: EditorMouseEvent, pointerId: number) => void
   ) {
     this._viewDom.addEventListener(
-      EventType.POINTER_DOWN,
+      dom.EventType.POINTER_DOWN,
       (e: PointerEvent) => {
         callback(this._create(e), e.pointerId)
       }
@@ -136,7 +122,7 @@ export class EditorMouseEventFactory {
     callback: (e: EditorMouseEvent, pointerId: number) => void
   ) {
     this._viewDom.addEventListener(
-      EventType.POINTER_MOVE,
+      dom.EventType.POINTER_MOVE,
       (e: PointerEvent) => {
         callback(this._create(e), e.pointerId)
       }
@@ -146,21 +132,30 @@ export class EditorMouseEventFactory {
   public onPointerUp(
     callback: (e: EditorMouseEvent, pointerId: number) => void
   ) {
-    this._viewDom.addEventListener(EventType.POINTER_UP, (e: PointerEvent) => {
-      callback(this._create(e), e.pointerId)
-    })
+    this._viewDom.addEventListener(
+      dom.EventType.POINTER_UP,
+      (e: PointerEvent) => {
+        callback(this._create(e), e.pointerId)
+      }
+    )
   }
 
   public onMouseLeave(callback: (e: EditorMouseEvent) => void) {
-    this._viewDom.addEventListener(EventType.MOUSE_LEAVE, (e: MouseEvent) => {
-      callback(this._create(e))
-    })
+    this._viewDom.addEventListener(
+      dom.EventType.MOUSE_LEAVE,
+      (e: MouseEvent) => {
+        callback(this._create(e))
+      }
+    )
   }
 
   public onMouseMove(callback: (e: EditorMouseEvent) => void) {
-    this._viewDom.addEventListener(EventType.MOUSE_MOVE, (e: MouseEvent) => {
-      callback(this._create(e))
-    })
+    this._viewDom.addEventListener(
+      dom.EventType.MOUSE_MOVE,
+      (e: MouseEvent) => {
+        callback(this._create(e))
+      }
+    )
   }
 }
 

@@ -17,23 +17,84 @@ import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { rTreeRoot } from 'Latte/core/rTree'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
 import { EditOperation } from 'Latte/core/modelChange'
+import type { IKeybindings } from 'Latte/services/keybinding/keybindingsRegistry'
+import { KeybindingsRegistry } from 'Latte/services/keybinding/keybindingsRegistry'
+import { KeyCode, KeyMod } from 'Latte/common/keyCodes'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
 
+export interface ICommandKeybindingsOptions extends IKeybindings {
+  weight: number
+  /**
+   * the default keybinding arguments
+   */
+  args?: any
+}
+export interface ICommandOptions {
+  id: string
+  kbOpts?: ICommandKeybindingsOptions | ICommandKeybindingsOptions[]
+}
+
 export abstract class Command {
-  constructor(public id: string) {}
+  public id: string
+  private readonly _kbOpts:
+    | ICommandKeybindingsOptions
+    | ICommandKeybindingsOptions[]
+    | undefined
+  constructor(opts: ICommandOptions) {
+    this.id = opts.id
+    this._kbOpts = opts.kbOpts
+  }
   public register(): void {
+    if (this._kbOpts) {
+      const kbOptsArr = Array.isArray(this._kbOpts)
+        ? this._kbOpts
+        : [this._kbOpts]
+      kbOptsArr.forEach(kbOpts => {
+        const desc = {
+          id: this.id,
+          weight: kbOpts.weight,
+          args: kbOpts.args,
+          primary: kbOpts.primary,
+          secondary: kbOpts.secondary,
+        }
+
+        KeybindingsRegistry.registerKeybindingRule(desc)
+      })
+    }
     CommandsRegistry.registerCommand(this.id, args => this.runCommand(args))
   }
 
   public abstract runCommand(args: any): void | Promise<void>
 }
 
-export abstract class CoreEditorCommand<T> {
-  constructor(public id: string) {}
+function registerCommand<T extends Command>(command: T): T {
+  command.register()
+  return command
+}
+
+// export abstract class Command {
+//   constructor(public id: string) {
+
+//   }
+//   public register(): void {
+//     CommandsRegistry.registerCommand(this.id, args => this.runCommand(args))
+//   }
+
+//   public abstract runCommand(args: any): void | Promise<void>
+// }
+
+export abstract class CoreEditorCommand<T> extends Command {
+  public runCommand(args: any) {
+    const viewModel = globalThis.getEditor()._getViewModel()
+    if (!viewModel) {
+      return
+    }
+    this.runCoreEditorCommand(viewModel, args || {})
+  }
   public abstract runCoreEditorCommand(
     viewModel: ViewModel,
     args: Partial<T>
@@ -52,7 +113,9 @@ export namespace CoreNavigationCommands {
   export const SetActiveSelection =
     new (class extends CoreEditorCommand<SetActiveSelection> {
       constructor() {
-        super('setActiveSelection')
+        super({
+          id: 'setActiveSelection',
+        })
       }
 
       public runCoreEditorCommand(
@@ -85,7 +148,9 @@ export namespace CoreNavigationCommands {
   export const MouseBoxSelect =
     new (class extends CoreEditorCommand<MouseBoxSelectCommandOptions> {
       constructor() {
-        super('mouseBoxSelect')
+        super({
+          id: 'mouseBoxSelect',
+        })
       }
 
       public runCoreEditorCommand(
@@ -118,7 +183,9 @@ export namespace CoreEditingCommands {
   export const CreateNewElement =
     new (class extends CoreEditorCommand<CreateElementCommandOptions> {
       constructor() {
-        super('createElement')
+        super({
+          id: 'createElement',
+        })
       }
 
       private _getCreateResizeKey(position: IPoint, startPosition: IPoint) {
@@ -206,7 +273,9 @@ export namespace CoreEditingCommands {
   export const MoveElement =
     new (class extends CoreEditorCommand<BaseMoveCommandOptions> {
       constructor() {
-        super('moveElement')
+        super({
+          id: 'moveElement',
+        })
       }
 
       public runCoreEditorCommand(
@@ -239,7 +308,9 @@ export namespace CoreEditingCommands {
   export const RotateElementTransform =
     new (class extends CoreEditorCommand<RotateElementCommandOptions> {
       constructor() {
-        super('rotateElement')
+        super({
+          id: 'rotateElement',
+        })
       }
 
       public runCoreEditorCommand(
@@ -314,7 +385,9 @@ export namespace CoreEditingCommands {
   class ResizeElementCommand extends CoreEditorCommand<ResizeElementCommandOptions> {
     static tempMatrix = new Matrix()
     constructor() {
-      super('resizeElement')
+      super({
+        id: 'resizeElement',
+      })
     }
 
     private _getInvertSelectBoxTransform(selectBoxTransform: IMatrixLike) {
@@ -543,4 +616,40 @@ export namespace CoreEditingCommands {
     }
   }
   export const ResizeElement = new ResizeElementCommand()
+
+  export const Undo = registerCommand(
+    new (class extends CoreEditorCommand<null> {
+      constructor() {
+        super({
+          id: 'undo',
+          kbOpts: {
+            primary: KeyMod.CtrlCmd | KeyCode.KeyZ,
+            weight: 1,
+          },
+        })
+      }
+
+      runCoreEditorCommand(viewModel: ViewModel) {
+        viewModel.getModel().undo()
+      }
+    })()
+  )
+
+  export const Redo = registerCommand(
+    new (class extends CoreEditorCommand<null> {
+      constructor() {
+        super({
+          id: 'redo',
+          kbOpts: {
+            primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyZ,
+            weight: 1,
+          },
+        })
+      }
+
+      runCoreEditorCommand(viewModel: ViewModel) {
+        viewModel.getModel().redo()
+      }
+    })()
+  )
 }
