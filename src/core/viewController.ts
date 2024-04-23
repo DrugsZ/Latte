@@ -130,6 +130,7 @@ export class ViewController {
   }
 
   public emitMouseUp(e: EditorMouseEvent) {
+    this._viewModel.getModel().pushStackElement()
     const editMode = this._viewModel.getCursorOperateMode()
     if (editMode === OperateMode.CreateNormalShape) {
       if (!this._viewModel.getActiveSelection().isActive()) {

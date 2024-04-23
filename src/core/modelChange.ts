@@ -5,16 +5,19 @@ export enum ChangeEventType {
 }
 
 export class ModelChange {
+  public target: string
   constructor(
     public type: ChangeEventType,
-    public target: DefaultIDType,
+    target: any,
     public oldValue: any,
     public newValue: any
-  ) {}
+  ) {
+    this.target = typeof target === 'string' ? target : JSON.stringify(target)
+  }
 }
 
 export interface ISingleEditOperation {
-  readonly id: DefaultIDType
+  readonly id: string
 
   readonly value: Partial<BaseElementSchema> | null
 

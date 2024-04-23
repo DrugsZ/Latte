@@ -83,7 +83,7 @@ class ModelChangeCompressor {
         continue
       }
 
-      if (JSON.stringify(prevEdit.target) === JSON.stringify(currEdit.target)) {
+      if (prevEdit.target === currEdit.target) {
         this._mergeEdit(prevEdit, currEdit)
         currEdit = this._getCurr(++currIndex)
         prevEdit = this._getPrev(++prevIndex)
@@ -104,24 +104,54 @@ class SingleModelEditStackData {
       this.changes = compressConsecutiveChanges(this.changes, changes)
     }
   }
+
+  public serialize() {
+    return JSON.stringify(this.changes)
+  }
+
+  public static deserialize(data: string) {
+    const curr = new SingleModelEditStackData()
+    curr.changes = JSON.parse(data)
+    return curr
+  }
 }
 
 class ResourceStackElement implements IResourceUndoRedoElement {
-  private _data: SingleModelEditStackData
+  private _data: SingleModelEditStackData | string
   constructor(private readonly _model: ModelData) {
     this._data = new SingleModelEditStackData()
   }
 
+  close() {
+    if (this._data instanceof SingleModelEditStackData) {
+      this._data = this._data.serialize()
+    }
+  }
+
   append(model: ModelData, changes: ModelChange[]) {
-    this._data.append(model, changes)
+    if (this._data instanceof SingleModelEditStackData) {
+      this._data.append(model, changes)
+    }
+  }
+
+  public canAppend() {
+    return this._data instanceof SingleModelEditStackData
   }
 
   undo(): void | Promise<void> {
-    this._model.applyUndo(this._data.changes)
+    if (this._data instanceof SingleModelEditStackData) {
+      this._data = this._data.serialize()
+    }
+    const data = SingleModelEditStackData.deserialize(this._data)
+    this._model.applyUndo(data.changes)
   }
 
   redo(): void | Promise<void> {
-    this._model.applyRedo(this._data.changes)
+    if (this._data instanceof SingleModelEditStackData) {
+      this._data = this._data.serialize()
+    }
+    const data = SingleModelEditStackData.deserialize(this._data)
+    this._model.applyRedo(data.changes)
   }
 }
 
@@ -189,7 +219,7 @@ export class UndoRedoService {
   getOrCreateEditStackElement(id: any) {
     const editStack = this.getLastElement(id)
 
-    if (editStack) {
+    if (editStack && editStack.canAppend()) {
       return editStack
     }
 
@@ -244,5 +274,12 @@ export class UndoRedoService {
       return
     }
     element.undo()
+  }
+
+  pushStackElement() {
+    const lastElement = this.getLastElement(this._model)
+    if (lastElement?.canAppend()) {
+      lastElement.close()
+    }
   }
 }

@@ -193,9 +193,6 @@ export namespace CoreEditingCommands {
           )
           result.push(EditOperation.create(newShape.guid, newShape))
           viewModel.getModel().pushEditOperations(result)
-          viewModel.addChild(
-            this._createElement(viewModel, startPosition, position)
-          )
         }
       }
     })()

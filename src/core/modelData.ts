@@ -162,6 +162,10 @@ class ModelData implements ISchemaModel {
     }))
     this.applyEdits(edits)
   }
+
+  public pushStackElement() {
+    this._undoRedoService.pushStackElement()
+  }
 }
 
 export default ModelData
