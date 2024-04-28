@@ -15,5 +15,4 @@ document.body.style.overflow = 'hidden'
 const bodyRect = document.body.getBoundingClientRect()
 const canvas = initCanvas(bodyRect)
 document.body.appendChild(canvas)
-const test = new Editor(canvas)
-window.test = test
+const editor = new Editor(canvas)

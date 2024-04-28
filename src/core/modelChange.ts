@@ -31,7 +31,7 @@ export class EditOperation {
   ): ISingleEditOperation {
     return {
       type: ChangeEventType.UPDATE,
-      id,
+      id: JSON.stringify(id),
       value,
     }
   }
@@ -42,7 +42,7 @@ export class EditOperation {
   ): ISingleEditOperation {
     return {
       type: ChangeEventType.DELETE,
-      id,
+      id: JSON.stringify(id),
       value: null,
     }
   }
@@ -53,7 +53,7 @@ export class EditOperation {
   ): ISingleEditOperation {
     return {
       type: ChangeEventType.CREATE,
-      id,
+      id: JSON.stringify(id),
       value,
     }
   }
