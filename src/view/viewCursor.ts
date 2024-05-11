@@ -26,10 +26,7 @@ export const getDegFromTransform = (transform: Matrix) => {
 export class ViewCursor extends ViewPart {
   private _tempMatrix = new Matrix()
 
-  constructor(
-    viewModel: ViewModel,
-    private readonly _renderDOM: HTMLCanvasElement
-  ) {
+  constructor(viewModel: ViewModel, private readonly _renderDOM: HTMLElement) {
     super(viewModel)
     this._renderDOM.className = 'latte-cursor'
   }
@@ -40,12 +37,12 @@ export class ViewCursor extends ViewPart {
     const { mode } = event
     if (mode === OperateMode.Edit) {
       this._renderDOM.style.setProperty(
-        '--main-cursor',
-        CURSORS.default(0, 0, 0)
+        '--editor-cursor',
+        CURSORS.default(this._renderDOM, 0, 0, 0)
       )
     }
     if (mode === OperateMode.CreateNormalShape) {
-      this._renderDOM.style.setProperty('--main-cursor', CURSORS.add(0, 0, 0))
+      this._renderDOM.style.setProperty('--editor-cursor', CURSORS.add(0, 0, 0))
     }
     return false
   }
@@ -73,7 +70,7 @@ export class ViewCursor extends ViewPart {
         break
     }
     this._renderDOM.style.setProperty(
-      '--main-cursor',
+      '--editor-cursor',
       CURSORS.rotate(deg, 0, 0)
     )
   }
@@ -107,7 +104,7 @@ export class ViewCursor extends ViewPart {
         break
     }
     this._renderDOM.style.setProperty(
-      '--main-cursor',
+      '--editor-cursor',
       CURSORS.resize(deg, 0, 0)
     )
   }
@@ -122,8 +119,8 @@ export class ViewCursor extends ViewPart {
       this._setResizeCursor(controllerKey)
     } else {
       this._renderDOM.style.setProperty(
-        '--main-cursor',
-        CURSORS.default(0, 0, 0)
+        '--editor-cursor',
+        CURSORS.default(this._renderDOM, 0, 0, 0)
       )
     }
     return false

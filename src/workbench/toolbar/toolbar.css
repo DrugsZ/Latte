@@ -1,0 +1,38 @@
+.toolbar-container {
+  background: var(--bg-toolbar);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.toolbar_view {
+  width: 48px;
+  height: var(--toolbar-height);
+  background: var(--bg-toolbar);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.toolbar_view__svg-container {
+  fill: var(--color-icon-toolbar-active);
+  width: var(--size-icon-toolbar-width);
+  height: var(--size-icon-toolbar-height);
+}
+
+.toolbar_view__svg-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+.toolbar_view__svg-container svg path:not([fill="none"]) {
+  fill: inherit
+}
+
+.toolbar_view:not(.toolbar_view--active):hover {
+  background: var(--bg-toolbar-hover);
+}
+
+.toolbar_view--active {
+  background: var(--bg-toolbar-active);
+}

@@ -1,0 +1,38 @@
+body {
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+:root {
+  /* cursor start */
+  --default-cursor: url("static/editor-cursor.svg")4 4,
+    auto !important;
+  --editor-cursor: url("static/editor-cursor.svg")4 4,
+    auto !important;
+  /* cursor end */
+
+  --toolbar-height: 48px;
+
+  /* background start */
+  --bg-toolbar: #2c2c2c;
+  --bg-toolbar-hover: #111111;
+  --bg-toolbar-active: #0d99ff;
+  /* background end */
+
+
+  /* icon color start */
+  --color-icon-toolbar-default: #000000;
+  --color-icon-toolbar-active: #ffffff;
+  /* icon color end */
+
+  /* icon size start*/
+  --size-icon-toolbar-width: 18px;
+  --size-icon-toolbar-height: 18px;
+  /* icon size end*/
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+}
