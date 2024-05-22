@@ -21,7 +21,8 @@
     "noImplicitAny": false,
     "paths": {
       "Latte/*": ["./src/*"]
-    }
+    },
+    "jsx": "react-jsx"
   },
   "include": ["src", "./typings"],
   "exclude": ["rspack.*.js"]

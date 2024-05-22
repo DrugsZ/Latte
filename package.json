@@ -30,6 +30,8 @@
     "@commitlint/config-conventional": "^17.4.0",
     "@rspack/cli": "^0.3.12",
     "@soda/friendly-errors-webpack-plugin": "^1.8.1",
+    "@svgr/webpack": "^8.1.0",
+    "@types/react": "^18.3.2",
     "@types/jest": "^29.5.12",
     "@typescript-eslint/eslint-plugin": "^5.13.0",
     "@typescript-eslint/parser": "^5.0.0",
@@ -51,8 +53,12 @@
     "webpackbar": "^5.0.2"
   },
   "dependencies": {
+    "antd": "^5.17.2",
+    "classnames": "^2.5.1",
     "eventemitter3": "^5.0.1",
     "rbush": "^3.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "ts-jest": "^29.1.2"
   }
 }

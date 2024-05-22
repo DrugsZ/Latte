@@ -1,0 +1,32 @@
+body {
+  margin: 0px;
+}
+
+.toolbar {
+  position: absolute;
+  height: var(--toolbar-height);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.panel {
+  width: 240px;
+  inset: var(--toolbar-height) 0 0 0;
+  position: absolute;
+  box-sizing: border-box;
+  border-right: 1px solid #d9d9d9;
+}
+
+.editor {
+  inset: var(--toolbar-height) 240px 0 240px;
+  position: absolute;
+}
+
+.workspace {
+  right: 0px;
+  bottom: 0px;
+  top: 48px;
+  width: 240px;
+  position: absolute;
+  border-left: 1px solid #d9d9d9;
+}

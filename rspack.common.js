@@ -4,7 +4,7 @@ const rspack = require("@rspack/core");
 
 
 module.exports = {
-  entry: './src/main.ts',
+  entry: './src/main.tsx',
   infrastructureLogging: {
     level: 'error',
   },
@@ -14,11 +14,12 @@ module.exports = {
     clean: true
   },
   resolve: {
-    extensions: [".ts", ".tsx", ".js"],
+    extensions: [".ts", ".tsx", ".js", "css"],
     extensionAlias: {
       ".js": [".js", ".ts"],
       ".cjs": [".cjs", ".cts"],
-      ".mjs": [".mjs", ".mts"]
+      ".mjs": [".mjs", ".mts"],
+      ".css": [".css"],
     },
     alias: {
       'Latte': path.resolve(__dirname, "src")
@@ -47,6 +48,11 @@ module.exports = {
       {
         test: /\.css$/i,
         type: "css",
+      },
+      {
+        test: /\.svg$/i,
+        issuer: /\.[jt]sx?$/,
+        use: ['@svgr/webpack'],
       },
     ]
   },
