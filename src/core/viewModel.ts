@@ -40,6 +40,8 @@ export class ViewModel {
     this._bindCameraEvent()
     this._initElementTree()
     this._bindModelEvent()
+
+    latte.editor.setOperateMode = this.setCursorOperateMode.bind(this)
   }
 
   private _initElementTree() {

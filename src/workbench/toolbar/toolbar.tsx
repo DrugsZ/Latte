@@ -57,6 +57,7 @@ export const ToolBarPart=(props)=>
 
     const handleSwitchType = useCallback((type: OperateMode) => {
       setActiveType(type)
+      latte.editor.setOperateMode(type)
     }, [])
 
     return <div className="toolbar toolbar-container">
