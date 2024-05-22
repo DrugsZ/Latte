@@ -5,7 +5,7 @@ import { OperateMode } from 'Latte/core/cursor'
 import { unknownColor } from 'Latte/common/error'
 import DefaultCursor from 'Latte/assets/static/editor-cursor.svg'
 import Shape from 'Latte/assets/static/shape.svg'
-import Pointer from 'Latte/assets/static/Pointer.svg'
+import Pointer from 'Latte/assets/static/pointer.svg'
 import 'Latte/workbench/toolbar/toolbar.css'
 
 
