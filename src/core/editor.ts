@@ -8,6 +8,9 @@ import DomElementObserver from 'Latte/core/domElementObserver'
 import { CommandService } from 'Latte/core/commandService'
 import { KeybindingService } from 'Latte/services/keybinding/keybindingService'
 
+window.latte = {
+  editor: {},
+}
 class Editor {
   private _modelData: ModelData | null
   private _viewModel: ViewModel
