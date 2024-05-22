@@ -32,8 +32,14 @@ function getCursorCss(
 }
 
 export const CURSORS = {
-  default: (dom, r, f, c) =>
-    getComputedStyle(dom).getPropertyValue('--default-cursor'),
+  default: () =>
+    getComputedStyle(document.documentElement).getPropertyValue(
+      '--cursor-default'
+    ),
+  readonly: () =>
+    getComputedStyle(document.documentElement).getPropertyValue(
+      '--cursor-readonly'
+    ),
   add: (r, f, c) => getCursorCss(ADD_OBJECT_CURSOR, r, 0, f, c),
   resize: (r, f, c) => getCursorCss(RESIZE_CURSOR, r, 0, f, c, 15, 15),
   rotate: (r, f, c) => getCursorCss(ROTATE_CORNER_CURSOR, r, 0, f, c),

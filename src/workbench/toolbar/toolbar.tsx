@@ -2,7 +2,7 @@ import classnames from 'classnames'
 import type { PropsWithChildren, ReactElement } from 'react';
 import { useCallback, useState } from 'react'
 import { OperateMode } from 'Latte/core/cursor'
-import { unknownColor } from 'Latte/common/error'
+import { unknownType } from 'Latte/common/error'
 import DefaultCursor from 'Latte/assets/static/editor-cursor.svg'
 import Shape from 'Latte/assets/static/shape.svg'
 import Pointer from 'Latte/assets/static/pointer.svg'
@@ -27,7 +27,7 @@ const getSVGComponentByType = (type:OperateMode) => {
       svg = <Pointer/>
       break;
     default:
-      unknownColor(type)
+      unknownType(type)
       break;
   }
   return svg
