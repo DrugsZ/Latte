@@ -16,6 +16,7 @@ import {
   isResizeKey,
   isRotateKey,
 } from 'Latte/core/activeSelection'
+import { unknownType } from 'Latte/common/error'
 
 export const getDegFromTransform = (transform: Matrix) => {
   const { a: matrixA, b: matrixB } = transform
@@ -35,14 +36,32 @@ export class ViewCursor extends ViewPart {
     event: viewEvents.ViewCursorOperateModeChange
   ) {
     const { mode } = event
-    if (mode === OperateMode.Edit) {
-      this._renderDOM.style.setProperty(
-        '--editor-cursor',
-        CURSORS.default(this._renderDOM, 0, 0, 0)
-      )
-    }
-    if (mode === OperateMode.CreateNormalShape) {
-      this._renderDOM.style.setProperty('--editor-cursor', CURSORS.add(0, 0, 0))
+    console.log(mode)
+    // if (mode === OperateMode.Edit) {
+    //   this._renderDOM.style.setProperty(
+    //     '--cursor-editor',
+    //     CURSORS.default()
+    //   )
+    // }
+    // if (mode === OperateMode.CreateNormalShape) {
+    //   this._renderDOM.style.setProperty('--cursor-editor', CURSORS.add(0, 0, 0))
+    // }
+
+    switch (mode) {
+      case OperateMode.Edit:
+        this._renderDOM.style.setProperty('--cursor-editor', CURSORS.default())
+        break
+      case OperateMode.CreateNormalShape:
+        this._renderDOM.style.setProperty(
+          '--cursor-editor',
+          CURSORS.add(0, 0, 0)
+        )
+        break
+      case OperateMode.ReadOnly:
+        this._renderDOM.style.setProperty('--cursor-editor', CURSORS.readonly())
+        break
+      default:
+        unknownType(mode)
     }
     return false
   }
@@ -70,7 +89,7 @@ export class ViewCursor extends ViewPart {
         break
     }
     this._renderDOM.style.setProperty(
-      '--editor-cursor',
+      '--cursor-editor',
       CURSORS.rotate(deg, 0, 0)
     )
   }
@@ -104,7 +123,7 @@ export class ViewCursor extends ViewPart {
         break
     }
     this._renderDOM.style.setProperty(
-      '--editor-cursor',
+      '--cursor-editor',
       CURSORS.resize(deg, 0, 0)
     )
   }
@@ -118,10 +137,10 @@ export class ViewCursor extends ViewPart {
     } else if (isResizeKey(controllerKey)) {
       this._setResizeCursor(controllerKey)
     } else {
-      this._renderDOM.style.setProperty(
-        '--editor-cursor',
-        CURSORS.default(this._renderDOM, 0, 0, 0)
-      )
+      // this._renderDOM.style.setProperty(
+      //   '--cursor-editor',
+      //   CURSORS.default()
+      // )
     }
     return false
   }
