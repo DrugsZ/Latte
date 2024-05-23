@@ -2,7 +2,11 @@ import type View from 'Latte/core/view'
 import type { ViewController } from 'Latte/core/viewController'
 import { Point } from 'Latte/common/Point'
 import type { PickService } from 'Latte/event/pickService'
-import type { EditorMouseEvent, IMouseWheelEvent } from 'Latte/event/mouseEvent'
+import type {
+  EditorMouseEvent,
+  IMouseWheelEvent,
+  PickProxy,
+} from 'Latte/event/mouseEvent'
 import {
   EditorMouseEventFactory,
   StandardWheelEvent,
@@ -222,12 +226,12 @@ export class MouseHandler {
     private readonly _view: View,
     private readonly _viewController: ViewController,
     private readonly _element: HTMLCanvasElement,
-    private readonly _pickService: PickService
+    private readonly _pickProxy: PickProxy
   ) {
     this._mouseEvent = new EditorMouseEventFactory(
       this._element,
       this._view.client2Viewport,
-      this._pickService
+      this._pickProxy
     )
     this._mouseDownOperation = new MouseDownOperation(
       this._mouseEvent,

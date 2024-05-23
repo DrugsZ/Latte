@@ -36,20 +36,12 @@ export class ViewCursor extends ViewPart {
     event: viewEvents.ViewCursorOperateModeChange
   ) {
     const { mode } = event
-    console.log(mode)
-    // if (mode === OperateMode.Edit) {
-    //   this._renderDOM.style.setProperty(
-    //     '--cursor-editor',
-    //     CURSORS.default()
-    //   )
-    // }
-    // if (mode === OperateMode.CreateNormalShape) {
-    //   this._renderDOM.style.setProperty('--cursor-editor', CURSORS.add(0, 0, 0))
-    // }
-
     switch (mode) {
       case OperateMode.Edit:
-        this._renderDOM.style.setProperty('--cursor-editor', CURSORS.default())
+        this._renderDOM.style.setProperty(
+          '--cursor-editor',
+          CURSORS.default(0, 0, 0)
+        )
         break
       case OperateMode.CreateNormalShape:
         this._renderDOM.style.setProperty(
@@ -137,10 +129,10 @@ export class ViewCursor extends ViewPart {
     } else if (isResizeKey(controllerKey)) {
       this._setResizeCursor(controllerKey)
     } else {
-      // this._renderDOM.style.setProperty(
-      //   '--cursor-editor',
-      //   CURSORS.default()
-      // )
+      this._renderDOM.style.setProperty(
+        '--cursor-editor',
+        CURSORS.default(0, 0, 0)
+      )
     }
     return false
   }

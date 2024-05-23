@@ -4,6 +4,9 @@ import type { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispat
 import * as viewEvents from 'Latte/view/viewEvents'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Bounds } from 'Latte/core/bounds'
+import { Emitter } from 'Latte/common/event'
+
+import { registerAPI } from 'Latte/api'
 
 export enum CursorEditMode {
   Edit,
@@ -27,6 +30,12 @@ export class Cursor {
   private _createType: CursorCreateType = EditorElementTypeKind.RECTANGLE
   private _selectBounds: Bounds = new Bounds()
 
+  private readonly _onDidCursorOperateModeChange = new Emitter<OperateMode>()
+  public readonly onDidCursorOperateModeChange =
+    this._onDidCursorOperateModeChange.event
+  constructor() {
+    registerAPI('onDidOperateModeChange', this.onDidCursorOperateModeChange)
+  }
   setHoverObject(
     hoverObject: DisplayObject | null,
     eventDispatcher: ViewModelEventDispatcher
@@ -76,6 +85,7 @@ export class Cursor {
     eventDispatcher.emitViewEvent(
       new viewEvents.ViewCursorOperateModeChange(mode)
     )
+    this._onDidCursorOperateModeChange.fire(mode)
   }
 
   getCreateNormalElementType() {

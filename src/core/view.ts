@@ -55,7 +55,7 @@ export default class View extends ViewEventHandler {
       this,
       this._viewController,
       this._renderDOM,
-      this._viewModel.pickService
+      this._viewModel.pickProxy
     )
 
     this._pickArea = new PickArea(this._viewModel)

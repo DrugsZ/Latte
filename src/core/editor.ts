@@ -7,10 +7,9 @@ import CameraService from 'Latte/core/cameraService'
 import DomElementObserver from 'Latte/core/domElementObserver'
 import { CommandService } from 'Latte/core/commandService'
 import { KeybindingService } from 'Latte/services/keybinding/keybindingService'
+import { ProxyLatte } from 'Latte/api'
 
-window.latte = {
-  editor: {},
-}
+window.latte = ProxyLatte
 class Editor {
   private _modelData: ModelData | null
   private _viewModel: ViewModel
