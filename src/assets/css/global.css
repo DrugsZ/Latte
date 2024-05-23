@@ -5,11 +5,9 @@ body {
 
 :root {
   /* cursor start */
-  --cursor-default: url("static/editor-cursor.svg")4 4,
-    auto !important;
   --cursor-editor: url("static/editor-cursor.svg")4 4,
     auto !important;
-  --cursor-readonly: url("static/pointer.svg")4 4,
+  --cursor-readonly: url("static/editor-pointer-cursor.svg")4 4,
     auto !important;
   /* cursor end */
 
@@ -30,8 +28,8 @@ body {
   /* icon color end */
 
   /* icon size start*/
-  --size-icon-toolbar-width: 18px;
-  --size-icon-toolbar-height: 18px;
+  --size-icon-toolbar-width: 20px;
+  --size-icon-toolbar-height: 20px;
   /* icon size end*/
 }
 

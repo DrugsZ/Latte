@@ -69,17 +69,22 @@ export class EditorMouseEvent extends StandardMouseEvent {
   }
 }
 
+export interface PickProxy {
+  pick: PickService['pick']
+  pickActiveSelection: PickService['pickActiveSelection']
+}
+
 export class EditorMouseEventFactory {
   constructor(
     private readonly _viewDom: HTMLElement,
     private readonly _client2Viewport: (point: IPoint) => IPoint,
-    private readonly _pickService: PickService
+    private readonly _pickProxy: PickProxy
   ) {}
 
   private _create(e: MouseEvent): EditorMouseEvent {
     const client = this._client2Viewport({ x: e.offsetX, y: e.offsetY })
-    const elementTarget = this._pickService.pick(client)
-    const controller = this._pickService.pickActiveSelection(client)
+    const elementTarget = this._pickProxy.pick(client)
+    const controller = this._pickProxy.pickActiveSelection(client)
     return new EditorMouseEvent(e, client, elementTarget, controller)
   }
 

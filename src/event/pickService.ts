@@ -88,4 +88,6 @@ export class PickService implements IPickerService {
   pickActiveSelection(point: IPoint) {
     return this._activeSelection.hitTest(point)
   }
+
+  disabled() {}
 }
