@@ -8,11 +8,15 @@ import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
 import { ElementTree } from 'Latte/viewModel/elementTree'
 import type { Page } from 'Latte/core/page'
 import { PickService } from 'Latte/event/pickService'
-import type { MouseControllerTarget } from 'Latte/core/activeSelection'
-import { ActiveSelection } from 'Latte/core/activeSelection'
+import {
+  MouseControllerTarget,
+  ActiveSelection,
+} from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
-import type { OperateMode } from 'Latte/core/cursor'
-import { Cursor } from 'Latte/core/cursor'
+import { OperateMode, Cursor } from 'Latte/core/cursor'
+import type { PickProxy } from 'Latte/event/mouseEvent'
+
+import { registerAPI } from 'Latte/api'
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -30,6 +34,10 @@ export class ViewModel {
 
   private _cursor: Cursor = new Cursor()
 
+  private _pickActive: boolean = true
+
+  private _cachePickProxy: PickProxy
+
   constructor(model: ModelData, private _cameraService: CameraService) {
     this.getVisibleElementRenderObjects =
       this.getVisibleElementRenderObjects.bind(this)
@@ -41,7 +49,15 @@ export class ViewModel {
     this._initElementTree()
     this._bindModelEvent()
 
-    latte.editor.setOperateMode = this.setCursorOperateMode.bind(this)
+    this._cursor.onDidCursorOperateModeChange(e => {
+      if (e !== OperateMode.Edit) {
+        this._pickActive = false
+      } else {
+        this._pickActive = true
+      }
+    })
+
+    registerAPI('setOperateMode', this.setCursorOperateMode.bind(this))
   }
 
   private _initElementTree() {
@@ -57,6 +73,34 @@ export class ViewModel {
       this._activeSelection,
       this.elementTreeRoot
     )
+  }
+
+  private _createPickProxyCache() {
+    const pick = (point: IPoint) => {
+      if (!this._pickActive) {
+        return this.elementTreeRoot
+      }
+      return this.pickService.pick.call(this.pickService, point)
+    }
+
+    const pickActiveSelection = (point: IPoint) => {
+      if (!this._pickActive) {
+        return MouseControllerTarget.NONE
+      }
+      return this.pickService.pickActiveSelection.call(this.pickService, point)
+    }
+
+    this._cachePickProxy = {
+      pick,
+      pickActiveSelection,
+    }
+  }
+
+  get pickProxy() {
+    if (!this._cachePickProxy) {
+      this._createPickProxyCache()
+    }
+    return this._cachePickProxy
   }
 
   private _bindCameraEvent() {

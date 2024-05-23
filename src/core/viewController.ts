@@ -133,8 +133,8 @@ export class ViewController {
       if (!this._viewModel.getActiveSelection().isActive()) {
         this._createElement(e.client)
       }
+      this._viewModel.setCursorOperateMode(OperateMode.Edit)
     }
-    this._viewModel.setCursorOperateMode(OperateMode.Edit)
     CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
       this._viewModel,
       {}

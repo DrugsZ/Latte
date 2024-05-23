@@ -5,6 +5,6 @@ export function illegalArgument(name?: string): Error {
   return new Error('Illegal argument')
 }
 
-export function unknownColor(x: never): never {
+export function unknownType(type: never): never {
   throw new Error('is unknown')
 }

@@ -1,13 +1,12 @@
 import classnames from 'classnames'
 import type { PropsWithChildren, ReactElement } from 'react';
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { OperateMode } from 'Latte/core/cursor'
-import { unknownColor } from 'Latte/common/error'
+import { unknownType } from 'Latte/common/error'
 import DefaultCursor from 'Latte/assets/static/editor-cursor.svg'
 import Shape from 'Latte/assets/static/shape.svg'
 import Pointer from 'Latte/assets/static/pointer.svg'
 import 'Latte/workbench/toolbar/toolbar.css'
-
 
 interface IToolbarViewProps {
   active: boolean
@@ -21,13 +20,13 @@ const getSVGComponentByType = (type:OperateMode) => {
       svg = <Shape/>
       break;
     case OperateMode.Edit:
-      svg = <DefaultCursor/>
+      svg = <DefaultCursor  fillRule="nonzero"/>
       break;
     case OperateMode.ReadOnly:
-      svg = <Pointer/>
+      svg = <Pointer fillRule="evenodd"/>
       break;
     default:
-      unknownColor(type)
+      unknownType(type)
       break;
   }
   return svg
@@ -54,6 +53,16 @@ const views = [
 export const ToolBarPart=(props)=>
   {
     const [activeType, setActiveType] = useState(OperateMode.Edit)
+
+
+    useEffect(() => {
+      const handleModeChange = (mode:OperateMode) => {
+        setActiveType(mode)
+      }
+      setTimeout(() => {
+        latte.editor.onDidOperateModeChange(handleModeChange)
+      },0)
+    },[])
 
     const handleSwitchType = useCallback((type: OperateMode) => {
       setActiveType(type)

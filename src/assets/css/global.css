@@ -5,13 +5,15 @@ body {
 
 :root {
   /* cursor start */
-  --default-cursor: url("static/editor-cursor.svg")4 4,
+  --cursor-editor: url("static/editor-cursor.svg")4 4,
     auto !important;
-  --editor-cursor: url("static/editor-cursor.svg")4 4,
+  --cursor-readonly: url("static/editor-pointer-cursor.svg")4 4,
     auto !important;
   /* cursor end */
 
+  /* region size start */
   --toolbar-height: 48px;
+  /* region size end */
 
   /* background start */
   --bg-toolbar: #2c2c2c;
@@ -26,8 +28,8 @@ body {
   /* icon color end */
 
   /* icon size start*/
-  --size-icon-toolbar-width: 18px;
-  --size-icon-toolbar-height: 18px;
+  --size-icon-toolbar-width: 20px;
+  --size-icon-toolbar-height: 20px;
   /* icon size end*/
 }
 
