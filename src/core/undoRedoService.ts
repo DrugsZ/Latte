@@ -87,6 +87,9 @@ class ModelChangeCompressor {
         this._mergeEdit(prevEdit, currEdit)
         currEdit = this._getCurr(++currIndex)
         prevEdit = this._getPrev(++prevIndex)
+      } else {
+        this._acceptEdit(prevEdit!)
+        prevEdit = this._getPrev(++prevIndex)
       }
     }
 
@@ -239,7 +242,7 @@ export class UndoRedoService {
   }
 
   pushEditOperation(operations: ISingleEditOperation[]) {
-    const changes = this._model.applyEdits(operations)
+    const changes = this._model.applyEdits(operations, true)
     const editStack = this.getOrCreateEditStackElement(this._model)
 
     editStack.append(

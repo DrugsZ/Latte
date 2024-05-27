@@ -1,4 +1,5 @@
 import type ModelData from 'Latte/core/modelData'
+import type { IElementChange } from 'Latte/core/modelData'
 import { ChangeEventType } from 'Latte/core/modelChange'
 import { Emitter } from 'Latte/common/event'
 import type CameraService from 'Latte/core/cameraService'
@@ -17,6 +18,7 @@ import { OperateMode, Cursor } from 'Latte/core/cursor'
 import type { PickProxy } from 'Latte/event/mouseEvent'
 
 import { registerAPI } from 'Latte/api'
+import { unknownType } from 'Latte/common/error'
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -117,32 +119,74 @@ export class ViewModel {
     })
   }
 
+  private _onCreateElementHandler(event: IElementChange) {
+    if (event.type !== ChangeEventType.CREATE) {
+      return
+    }
+    const newNode = this._elementTree.createElementByData(
+      this._modelData.getElementSchemaById(event.target)!
+    )
+    const focusPage = this._elementTree.getElementById(
+      this._focusPageId
+    ) as Page
+    if (!newNode) {
+      return
+    }
+    focusPage?.appendChild(newNode)
+    const camera = this.getCamera()
+    focusPage?.setVisibleArea(camera.getViewport())
+    this.addSelectElement(newNode)
+    return newNode
+  }
+
+  private _onUpdateElementHandler(event: IElementChange) {
+    const currentNode = this._elementTree.getElementById(event.target)
+    const newData = this._modelData.getElementSchemaById(event.target)
+    if (currentNode && newData) {
+      currentNode.setElementData(newData)
+    }
+    return currentNode
+  }
+
+  private _onDeleteElementHandler(event: IElementChange) {
+    const currentNode = this._elementTree.getElementById(event.target)
+    if (currentNode) {
+      currentNode.parentNode?.removeChild(currentNode)
+      const focusPage = this._elementTree.getElementById(
+        this._focusPageId
+      ) as Page
+      const camera = this.getCamera()
+      focusPage?.setVisibleArea(camera.getViewport())
+      if (this._activeSelection.hasSelected(currentNode)) {
+        this._activeSelection.removeSelectElement(currentNode)
+      }
+      return currentNode
+    }
+  }
+
+  private _onElementHandler(event: IElementChange) {
+    let result: undefined | DisplayObject
+    switch (event.type) {
+      case ChangeEventType.CREATE:
+        result = this._onCreateElementHandler(event)
+        break
+      case ChangeEventType.DELETE:
+        result = this._onDeleteElementHandler(event)
+        break
+      case ChangeEventType.UPDATE:
+        result = this._onUpdateElementHandler(event)
+        break
+      default:
+        unknownType(event.type)
+    }
+    return result
+  }
+
   private _bindModelEvent() {
-    this._modelData.onElementChange(e => {
-      const changeElements: DisplayObject[] = []
-      e.forEach(item => {
-        if (item.type === ChangeEventType.CREATE) {
-          const newObject = this._elementTree.createElementByData(item.target!)
-          const focusPage = this._elementTree.getElementById(
-            this._focusPageId
-          ) as Page
-          if (!newObject) {
-            return
-          }
-          focusPage?.appendChild(newObject)
-          const camera = this.getCamera()
-          focusPage?.setVisibleArea(camera.getViewport())
-          this.addSelectElement(newObject)
-          return
-        }
-        const currentNode = this._elementTree.getElementById(
-          JSON.stringify(item.target?.guid)
-        )
-        if (currentNode) {
-          currentNode.setElementData(item.target)
-          changeElements.push(currentNode)
-        }
-      })
+    this._modelData.onSchemaContentChange(e => {
+      const changeElements: DisplayObject[] = e
+        .map(this._onElementHandler, this)
+        .filter(item => !!item) as DisplayObject[]
       this._eventDispatcher.emitViewEvent(
         new viewEvents.ViewElementChangeEvent(
           changeElements,

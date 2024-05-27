@@ -1,34 +1,15 @@
 import { createDefaultFile } from 'Latte/common/schema'
 import { Emitter } from 'Latte/common/event'
-import type {
-  ISingleEditOperation,
-  ChangeEventType,
-} from 'Latte/core/modelChange'
-import { ModelChange } from 'Latte/core/modelChange'
+import type { ISingleEditOperation } from 'Latte/core/modelChange'
+import { ChangeEventType, ModelChange } from 'Latte/core/modelChange'
 import { UndoRedoService } from 'Latte/core/undoRedoService'
 
 interface ISchemaModel {
   pushEditOperations(operations: ISingleEditOperation[]): void
 }
-window.testObj = {
-  type: 2,
-  id: {
-    sessionID: 25,
-    localID: 2,
-  },
-  value: {
-    transform: {
-      a: 0.7071067690849304,
-      b: 0.7071067690849304,
-      tx: -495.41872232764075,
-      c: -0.7071067690849304,
-      d: 0.7071067690849304,
-      ty: -1108.7735610373184,
-    },
-  },
-}
-interface IElementCHange {
-  target: BaseElementSchema | null
+
+export interface IElementChange {
+  target: any
   type: ChangeEventType
 }
 
@@ -36,8 +17,8 @@ class ModelData implements ISchemaModel {
   private _model: LatteFile = createDefaultFile()
   private _undoRedoService = new UndoRedoService(this)
 
-  private readonly _onElementChange = new Emitter<IElementCHange[]>()
-  public readonly onElementChange = this._onElementChange.event
+  private readonly _onSchemaContentChange = new Emitter<IElementChange[]>()
+  public readonly onSchemaContentChange = this._onSchemaContentChange.event
 
   constructor(model?: LatteFile) {
     this._initModel(model)
@@ -57,8 +38,8 @@ class ModelData implements ISchemaModel {
     this._undoRedoService.pushEditOperation(operations)
   }
 
-  applyEdits(operations: ISingleEditOperation[]) {
-    return this._doApplyEdits(operations)
+  applyEdits(operations: ISingleEditOperation[], computeUndoEdits: boolean) {
+    return this._doApplyEdits(operations, computeUndoEdits)
   }
 
   private _computeSingleEditOperation(
@@ -91,18 +72,19 @@ class ModelData implements ISchemaModel {
     }
   }
 
-  private _acceptEditsToModel(operations: ISingleEditOperation[]) {
-    const result: {
-      afterElement: BaseElementSchema | null
-      change: ModelChange
-    }[] = []
+  private _acceptEditsToModel(
+    operations: ISingleEditOperation[],
+    computeUndoEdits: boolean
+  ) {
+    const result: ModelChange[] = []
     const newElements: BaseElementSchema[] = []
+    const workOperations = [...operations]
     this._model?.elements.forEach(item => {
-      const operationIndex = operations.findIndex(
+      const operationIndex = workOperations.findIndex(
         op => op.id === JSON.stringify(item.guid)
       )
       if (operationIndex > -1) {
-        const operation = operations.splice(operationIndex, 1)[0]
+        const operation = workOperations.splice(operationIndex, 1)[0]
         const { element, change } = this._computeSingleEditOperation(
           operation,
           item
@@ -110,48 +92,54 @@ class ModelData implements ISchemaModel {
         if (element) {
           newElements.push(element)
         }
-        result.push({
-          afterElement: element,
-          change,
-        })
+        result.push(change)
       } else {
         newElements.push(item)
       }
     })
-    if (operations.length) {
+    if (workOperations.length) {
       for (let i = 0; i < operations.length; i++) {
         const { element, change } = this._computeSingleEditOperation(
           operations[i]
         )
         newElements.push(element!)
-        result.push({
-          afterElement: element,
-          change,
-        })
+        result.push(change)
       }
     }
     this._model.elements = newElements
     return result
   }
 
-  private _doApplyEdits(operations: ISingleEditOperation[]) {
-    const result = this._acceptEditsToModel(operations)
-    const e = result.map(({ afterElement, change }) => ({
+  private _doApplyEdits(
+    operations: ISingleEditOperation[],
+    computeUndoEdits: boolean
+  ) {
+    const result = this._acceptEditsToModel(operations, computeUndoEdits)
+    const e = result.map(change => ({
       type: change.type,
-      target: afterElement,
+      target: change.target,
     }))
-    this._onElementChange.fire(e)
+    this._onSchemaContentChange.fire(e)
+    return result
+  }
 
-    return result.map(item => item.change)
+  private _useUndoType(type: ChangeEventType) {
+    if (type === ChangeEventType.CREATE) {
+      return ChangeEventType.DELETE
+    }
+    if (type === ChangeEventType.DELETE) {
+      return ChangeEventType.CREATE
+    }
+    return type
   }
 
   public applyUndo(changes: ModelChange[]) {
     const edits = changes.map(change => ({
       id: change.target,
-      type: change.type,
+      type: this._useUndoType(change.type),
       value: change.oldValue,
     }))
-    this.applyEdits(edits)
+    this.applyEdits(edits, false)
   }
 
   public applyRedo(changes: ModelChange[]) {
@@ -160,7 +148,7 @@ class ModelData implements ISchemaModel {
       type: change.type,
       value: change.newValue,
     }))
-    this.applyEdits(edits)
+    this.applyEdits(edits, false)
   }
 
   public pushStackElement() {
@@ -173,6 +161,10 @@ class ModelData implements ISchemaModel {
 
   public redo() {
     this._undoRedoService.redo()
+  }
+
+  public getElementSchemaById(id: string) {
+    return this._model.elements.find(item => JSON.stringify(item.guid) === id)
   }
 }
 

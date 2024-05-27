@@ -8,6 +8,7 @@ import { EditorElementTypeKind, FillType } from 'Latte/constants/schema'
 import { RectShapeRender } from 'Latte/render/shape/rect'
 import { EllipseShapeRender } from 'Latte/render/shape/ellipse'
 import { SolidColorFillRender } from 'Latte/render/fill/solid'
+import { ImageFillRender } from 'Latte/render/fill/image'
 import type { DisplayObject } from 'Latte/core/displayObject'
 
 import { EditorDocument } from 'Latte/elements/document'
@@ -18,10 +19,13 @@ import Frame from 'Latte/core/frame'
 import { ViewPart } from 'Latte/view/viewPart'
 import type { Camera } from 'Latte/core/cameraService'
 import type { ViewModel } from 'Latte/core/viewModel'
+import { Matrix } from 'Latte/math/matrix'
 
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
 registerEditorFillRender(FillType.SOLID, SolidColorFillRender)
+
+registerEditorFillRender(FillType.IMAGE, ImageFillRender)
 
 export const createElement = (element: BaseElementSchema) => {
   const { type } = element
@@ -49,20 +53,82 @@ export const createElement = (element: BaseElementSchema) => {
   return new Ctr(element)
 }
 
-class ElementRender extends ViewPart {
-  private _elements: Map<string, DisplayObject> = new Map()
-  private _root: EditorDocument
-  private _focusPage?: Page
+enum RenderType {
+  fastRender,
+  renderWithTexture,
+}
 
+class ElementRender extends ViewPart {
+  private _textureCanvas: OffscreenCanvas
+  private _tempMatrix: IMatrixLike = {
+    a: 1,
+    b: 0,
+    c: 0,
+    d: 1,
+    tx: 0,
+    ty: 0,
+  }
   constructor(
     viewModel: ViewModel,
     private readonly _getVisibleElementRenderObjects: () => DisplayObject[]
   ) {
     super(viewModel)
+    this._initCanvas()
+  }
+
+  public override onElementChange(): boolean {
+    return true
+  }
+
+  private _initCanvas() {
+    this._textureCanvas = new OffscreenCanvas(0, 0)
+  }
+
+  private _createClipArea(
+    ctx: CanvasRenderingContext2D,
+    displayObject: DisplayObject
+  ) {
+    const shapeRender = getEditorShapeRender(displayObject.type)
+    ctx.beginPath()
+    shapeRender?.(displayObject, ctx)
+    ctx.closePath()
+    ctx.clip()
+  }
+
+  private _renderDisplayObject(
+    ctx: CanvasRenderingContext2D,
+    vpMatrix: IMatrixLike,
+    displayObject: DisplayObject
+  ) {
+    ctx.save()
+    this._applyTransform(ctx, vpMatrix, displayObject)
+    this._createClipArea(ctx, displayObject)
+    const fills = displayObject.getFills()
+    fills.forEach(item => {
+      const fillRender = getEditorFillRender(item.type)
+      fillRender(item, ctx, {
+        contextSize: {
+          width: displayObject.width,
+          height: displayObject.height,
+        },
+      })
+    })
+    ctx.restore()
   }
 
   public override onFocusPageChange(): boolean {
     return true
+  }
+
+  private _applyTransform(
+    ctx: CanvasRenderingContext2D,
+    contextMatrix: IMatrixLike,
+    displayObject: DisplayObject
+  ) {
+    const { transform } = displayObject
+    Matrix.multiply(this._tempMatrix, contextMatrix, transform)
+    const { a, b, c, d, tx, ty } = this._tempMatrix
+    ctx.setTransform(a, b, c, d, tx, ty)
   }
 
   public render(ctx: CanvasRenderingContext2D, camera: Camera) {
@@ -72,18 +138,7 @@ class ElementRender extends ViewPart {
     }
     const vpMatrix = camera.getViewPortMatrix()
     renderObjects.forEach(item => {
-      ctx.save()
-      const fills = item.getFills()
-      fills.forEach(i => {
-        const fillRender = getEditorFillRender(i.type)
-        fillRender(i, ctx)
-      })
-      ctx.beginPath()
-      const shapeRender = getEditorShapeRender(item.type)
-      shapeRender?.(item, ctx, vpMatrix)
-      ctx.fill()
-      ctx.closePath()
-      ctx.restore()
+      this._renderDisplayObject(ctx, vpMatrix, item)
     })
   }
 }

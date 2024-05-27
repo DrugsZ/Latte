@@ -12,7 +12,11 @@ import {
   isResetEndXAxis,
   isResetEndYAxis,
 } from 'Latte/core/activeSelection'
-import { createDefaultElementSchema } from 'Latte/common/schema'
+import {
+  createDefaultElementSchema,
+  deepCopySchema,
+  getUId,
+} from 'Latte/common/schema'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { rTreeRoot } from 'Latte/core/rTree'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
@@ -175,9 +179,13 @@ export namespace CoreNavigationCommands {
 }
 
 export namespace CoreEditingCommands {
-  interface CreateElementCommandOptions extends BaseCommandOptions {
+  interface CreateElementCommandOptions<
+    T extends BaseElementSchema = RectangleElement
+  > extends BaseCommandOptions {
     position: IPoint
     startPosition: IPoint
+    paint: Paint | Paint[]
+    sourceElement: T
   }
 
   export const CreateNewElement =
@@ -240,6 +248,103 @@ export namespace CoreEditingCommands {
         return newShapeSchema
       }
 
+      private _calcPaintElementPosition(paints: Paint[]) {
+        let row = 1
+        let column = paints.length
+        if (paints.length > 2) {
+          row = Math.ceil(Math.sqrt(paints.length))
+          column = (paints.length / row) >> 0
+        }
+        const result: {
+          position: IPoint
+          paint: Paint
+        }[] = []
+        const box = new Point(0, 0)
+        const pre = new Point(0, 0)
+        paints.forEach((paint, index) => {
+          result.push({
+            position: {
+              x: pre.x,
+              y: box.y,
+            },
+            paint,
+          })
+          pre.x += (paint as ImagePaint).originalImageWidth
+          pre.y = Math.max(pre.y, (paint as ImagePaint).originalImageHeight)
+          if (!((index + 1) % column)) {
+            box.x = Math.max(pre.x, box.x)
+            box.y += pre.y
+            pre.y = 0
+            pre.x = 0
+          }
+        })
+        return {
+          paintElementsPosition: result,
+          paintElementsBox: box,
+        }
+      }
+
+      private _createByPaint(
+        defaultSchema: BaseElementSchema,
+        position: IPoint,
+        paint: Paint
+      ) {
+        if (paint) {
+          defaultSchema.fillPaints = [paint]
+        }
+        defaultSchema.transform.tx = position.x
+        defaultSchema.transform.ty = position.y
+        defaultSchema.size.x = (paint as ImagePaint).originalImageWidth
+        defaultSchema.size.y = (paint as ImagePaint).originalImageHeight
+        return defaultSchema
+      }
+
+      private _createByPaints(
+        defaultSchema: BaseElementSchema,
+        position: IPoint,
+        paints: Paint[]
+      ) {
+        const { paintElementsPosition, paintElementsBox } =
+          this._calcPaintElementPosition(paints)
+        const startPoint = subtract(
+          position,
+          divide(paintElementsBox, { x: 2, y: 2 })
+        )
+        return paintElementsPosition.map(p => {
+          const { position, paint } = p
+          const currentSchema = deepCopySchema(defaultSchema)
+          currentSchema.guid = getUId()
+          return this._createByPaint(
+            currentSchema,
+            add(position, startPoint),
+            paint
+          )
+        })
+      }
+
+      private _runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<CreateElementCommandOptions>
+      ) {
+        const { position, startPosition, paint, sourceElement } = args
+        if (!startPosition) {
+          return
+        }
+        if (sourceElement) {
+          const defaultSchema = deepCopySchema(sourceElement)
+          defaultSchema.guid = getUId()
+          return [defaultSchema]
+        }
+        if (paint) {
+          const currentPaint = Array.isArray(paint) ? paint : [paint]
+          return this._createByPaints(
+            this._createElement(viewModel, startPosition, position),
+            startPosition,
+            currentPaint
+          )
+        }
+      }
+
       public runCoreEditorCommand(
         viewModel: ViewModel,
         args: Partial<CreateElementCommandOptions>
@@ -253,12 +358,15 @@ export namespace CoreEditingCommands {
           this._resizeActiveCreate(viewModel, position, startPosition)
         } else {
           const result: ISingleEditOperation[] = []
-          const newShape = this._createElement(
-            viewModel,
-            startPosition,
-            position
-          )
-          result.push(EditOperation.create(newShape.guid, newShape))
+          const newShapes = this._runCoreEditorCommand(viewModel, args)
+          if (newShapes) {
+            result.push(
+              ...newShapes.map(newShape =>
+                EditOperation.create(newShape.guid, newShape)
+              )
+            )
+          }
+
           viewModel.getModel().pushEditOperations(result)
         }
       }

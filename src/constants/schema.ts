@@ -15,6 +15,13 @@ export enum FillType {
   IMAGE = 'IMAGE',
 }
 
+enum ImageFillScaleMode {
+  FILL = 'FILL',
+  FIT = 'FIT',
+  CROP = 'CROP',
+  TILE = 'TILE',
+}
+
 export enum BlendModeType {
   NORMAL = 'NORMAL',
   DARKEN = 'DARKEN',
@@ -163,4 +170,26 @@ export const DEFAULT_RECTANGLE_SCHEMA: RectangleElement = {
   strokeStyle: 'SOLID',
   dashCap: 'NONE',
   miterAngle: 1,
+}
+
+export const DEFAULT_IMAGE_PAINT: ImagePaint = {
+  type: FillType.IMAGE,
+  opacity: 1,
+  visible: true,
+  blendMode: BlendModeType.NORMAL,
+  transform: {
+    a: 1,
+    b: 0,
+    tx: 0,
+    c: 0,
+    d: 1,
+    ty: 0,
+  },
+  image: {
+    hash: 'default',
+    name: 'default',
+  },
+  imageScaleMode: ImageFillScaleMode.FILL,
+  originalImageWidth: 100,
+  originalImageHeight: 100,
 }

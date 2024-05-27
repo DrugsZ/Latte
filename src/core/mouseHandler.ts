@@ -1,7 +1,6 @@
 import type View from 'Latte/core/view'
 import type { ViewController } from 'Latte/core/viewController'
 import { Point } from 'Latte/common/Point'
-import type { PickService } from 'Latte/event/pickService'
 import type {
   EditorMouseEvent,
   IMouseWheelEvent,

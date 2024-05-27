@@ -16,6 +16,8 @@ import type {
   EditorMouseEvent,
   StandardWheelEvent,
 } from 'Latte/event/mouseEvent'
+import type { ITextureLoadResult } from 'Latte/core/texture'
+import { createDefaultImagePaint } from 'Latte/common/schema'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -139,6 +141,15 @@ export class ViewController {
       this._viewModel,
       {}
     )
+  }
+
+  public emitDrop(files: ITextureLoadResult[], position: IPoint) {
+    this._viewModel.getModel().pushStackElement()
+    const fi = files.map(item => createDefaultImagePaint(item))
+    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
+      startPosition: position,
+      paint: fi,
+    })
   }
 
   private _dragOnClientToEdit(data: IMouseDispatchData) {

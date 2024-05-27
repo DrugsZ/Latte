@@ -22,11 +22,12 @@ export abstract class Container<
   }
 
   public override getElementById(id: string) {
-    if (id === this.id) {
-      return this
+    const superResult = super.getElementById(id)
+    if (superResult) {
+      return superResult
     }
     const children = this._children
-    let target
+    let target: DisplayObject | undefined
     children.some(child => {
       target = child.getElementById(id)
       return target
@@ -60,14 +61,17 @@ export abstract class Container<
   }
 
   removeChild(removeChild: DisplayObject) {
+    let hasFindRemove: undefined | DisplayObject
     this._children = this._children?.filter(child => {
       const willReserve = !Object.is(child, removeChild)
       if (!willReserve) {
         child.parentNode = null
+        hasFindRemove = child
         return false
       }
       return willReserve
     })
+    return hasFindRemove
   }
 
   render() {

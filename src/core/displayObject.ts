@@ -165,7 +165,7 @@ export abstract class DisplayObject<
     this._bounds.addPoint(afterTransformPoint)
     this._boundDirty = false
   }
-
+  // TODO: use EventService to implements
   private _updateRBush() {
     if (Object.getPrototypeOf(this).constructor.INACTIVE || this.inactive()) {
       return
@@ -200,7 +200,7 @@ export abstract class DisplayObject<
     this.getBounds()
   }
 
-  public getElementById(id: string) {
+  public getElementById(id: string): DisplayObject | undefined {
     return id === this.id ? this : undefined
   }
 
@@ -218,5 +218,5 @@ export abstract class DisplayObject<
 
   public appendChild() {}
 
-  public removeChild() {}
+  public removeChild(removeChild: DisplayObject) {}
 }

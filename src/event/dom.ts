@@ -22,4 +22,13 @@ export const EventType = {
   KEY_DOWN: 'keydown',
   KEY_PRESS: 'keypress',
   KEY_UP: 'keyup',
+
+  // Drag
+  DRAG_START: 'dragstart',
+  DRAG: 'drag',
+  DRAG_ENTER: 'dragenter',
+  DRAG_LEAVE: 'dragleave',
+  DRAG_OVER: 'dragover',
+  DROP: 'drop',
+  DRAG_END: 'dragend',
 } as const

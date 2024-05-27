@@ -26,7 +26,7 @@ export enum OperateMode {
 export class Cursor {
   private _hoverControllerKey: MouseControllerTarget
   private _hoverObject: DisplayObject | null
-  private _mode: OperateMode = OperateMode.ReadOnly
+  private _mode: OperateMode = OperateMode.Edit
   private _createType: CursorCreateType = EditorElementTypeKind.RECTANGLE
   private _selectBounds: Bounds = new Bounds()
 
