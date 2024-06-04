@@ -343,6 +343,7 @@ export namespace CoreEditingCommands {
             currentPaint
           )
         }
+        return [this._createElement(viewModel, startPosition, position)]
       }
 
       public runCoreEditorCommand(
