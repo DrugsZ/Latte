@@ -31,8 +31,8 @@
     "@rspack/cli": "^0.3.12",
     "@soda/friendly-errors-webpack-plugin": "^1.8.1",
     "@svgr/webpack": "^8.1.0",
-    "@types/react": "^18.3.2",
     "@types/jest": "^29.5.12",
+    "@types/react": "^18.3.2",
     "@typescript-eslint/eslint-plugin": "^5.13.0",
     "@typescript-eslint/parser": "^5.0.0",
     "css-loader": "^6.8.1",
@@ -56,9 +56,11 @@
     "antd": "^5.17.2",
     "classnames": "^2.5.1",
     "eventemitter3": "^5.0.1",
+    "md5": "^2.3.0",
     "rbush": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "spark-md5": "^3.0.2",
     "ts-jest": "^29.1.2"
   }
 }

@@ -58,6 +58,15 @@ export class StandardMouseEvent implements IMouseEvent {
   }
 }
 
+export class DropMouseEvent extends StandardMouseEvent {
+  public readonly dataTransfer: DataTransfer
+
+  constructor(e: MouseEvent) {
+    super(e)
+    this.dataTransfer = (<any>e).dataTransfer
+  }
+}
+
 export class EditorMouseEvent extends StandardMouseEvent {
   constructor(
     e: MouseEvent,

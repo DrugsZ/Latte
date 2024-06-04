@@ -44,12 +44,20 @@ export class EditorRenderTypeContributionRegistry<
     return (this._editorTypeRenderInstanceCache[id] || {}).render
   }
 }
+export interface FillRenderOptions {
+  contextSize: {
+    width: number
+    height: number
+  }
+}
 
-export interface IEditorFillRenderContributionDescription {
-  readonly id: FillType
+export interface IEditorFillRenderContributionDescription<
+  T extends Paint = any
+> {
   readonly render: (
-    fill: SolidColorPaint,
-    ctx: CanvasRenderingContext2D
+    fill: T,
+    ctx: CanvasRenderingContext2D,
+    options?: FillRenderOptions
   ) => void
 }
 
@@ -85,8 +93,7 @@ export interface IEditorShapeRenderContributionDescription<
   readonly id: EditorElementTypeKind
   readonly render: (
     renderObject: ShapeRenderTypeMaps[T],
-    ctx: CanvasRenderingContext2D,
-    contextMatrix: Matrix
+    ctx: CanvasRenderingContext2D
   ) => void
 }
 

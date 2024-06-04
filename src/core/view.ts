@@ -1,5 +1,5 @@
 import type { ViewModel } from 'Latte/core/viewModel'
-import ElementRender from 'Latte/core/elementRender'
+import ElementRender from 'Latte/render/elementRender'
 import type RenderService from 'Latte/render/renderService'
 import { MouseHandler } from 'Latte/core/mouseHandler'
 import { SelectBox } from 'Latte/view/selectBox'
@@ -9,7 +9,7 @@ import type { ViewPart } from 'Latte/view/viewPart'
 import { ViewController } from 'Latte/core/viewController'
 import { Matrix } from 'Latte/math/matrix'
 import { PickArea } from 'Latte/view/pickArea'
-import type CameraService from 'Latte/core/cameraService'
+import { DragHandler } from 'Latte/core/dragHandler'
 
 export enum RenderEnum {
   ViewportChange,
@@ -20,6 +20,7 @@ export enum RenderEnum {
 export default class View extends ViewEventHandler {
   private _renderElement: ElementRender
   private _mouseHandler: MouseHandler
+  private _dragHandler: DragHandler
   // private _eventBind: EventBind
   // private _eventService: EventService
   private _selectBox: SelectBox
@@ -60,6 +61,11 @@ export default class View extends ViewEventHandler {
 
     this._pickArea = new PickArea(this._viewModel)
     this._viewParts.push(this._pickArea)
+    this._dragHandler = new DragHandler(
+      this._renderDOM,
+      this.client2Viewport,
+      this._viewController
+    )
   }
 
   public render() {

@@ -3,6 +3,7 @@ import {
   DEFAULT_LATTE_FILE,
   DEFAULT_DOCUMENT_SCHEMA,
   DEFAULT_RECTANGLE_SCHEMA,
+  DEFAULT_IMAGE_PAINT,
 } from 'Latte/constants/schema'
 
 let sessionID = 1
@@ -11,7 +12,7 @@ export function setSessionId(newSessionId: number) {
 }
 
 // only use to copy schema
-function deepCopySchema<T>(schema: T): T {
+export function deepCopySchema<T>(schema: T): T {
   return JSON.parse(JSON.stringify(schema))
 }
 
@@ -20,6 +21,24 @@ export const getUId = () => ({
   sessionID,
   localID: ++uuid,
 })
+
+export const createDefaultImagePaint = (options: {
+  hash: string
+  name: string
+  size: {
+    x: number
+    y: number
+  }
+}) => {
+  const newImagePaint = deepCopySchema(DEFAULT_IMAGE_PAINT)
+  newImagePaint.image = {
+    hash: options.hash,
+    name: options.name,
+  }
+  newImagePaint.originalImageWidth = options.size.x
+  newImagePaint.originalImageHeight = options.size.y
+  return newImagePaint
+}
 
 export const createDefaultPageNode = (parentIndex?: {
   guid?: DefaultIDType

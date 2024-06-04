@@ -361,6 +361,9 @@ export class ActiveSelection extends Rect {
     if (!element) return
     this._objects = this._objects.filter(o => o !== element)
     this._OBBDirty = true
+    if (!this._objects.length) {
+      this.clear()
+    }
   }
 
   public clear() {

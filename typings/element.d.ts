@@ -94,6 +94,36 @@ interface GradientDiamondPaint extends BaseFill {
   stops: [FillColorStop, FillColorStop]
   transform: IMatrixLike
 }
+enum ImageFillScaleMode {
+  FILL = 'FILL',
+  FIT = 'FIT',
+  CROP = 'CROP',
+  TILE = 'TILE',
+}
+// type ImageFillScaleMode = 'FILL' | 'FIT' | 'CROP' | 'TILE'
+
+interface PaintFilter {
+  tint: number
+  shadows: number
+  highlights: number
+  exposure: number
+  temperature: number
+  vibrance: number
+  contrast: number
+}
+
+interface ImagePaint extends BaseFill {
+  type: FillType.IMAGE
+  transform: IMatrixLike
+  image: {
+    hash: string
+    name: string
+  }
+  imageScaleMode: ImageFillScaleMode
+  paintFilter?: PaintFilter
+  originalImageWidth: number
+  originalImageHeight: number
+}
 
 type Paint =
   | SolidColorPaint
@@ -101,6 +131,7 @@ type Paint =
   | GradientRadialPaint
   | GradientAngularPaint
   | GradientDiamondPaint
+  | ImagePaint
 
 interface DefaultIDType {
   sessionID: number
