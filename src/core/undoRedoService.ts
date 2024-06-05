@@ -29,10 +29,7 @@ class ModelChangeCompressor {
   }
 
   private _mergeValue = (preValue: any, newValue: any): void => {
-    if (!preValue) {
-      return newValue
-    }
-    if (!newValue) {
+    if (!preValue || !newValue) {
       return preValue
     }
 
@@ -43,7 +40,7 @@ class ModelChangeCompressor {
     this._result[this._resultLen++] = new ModelChange(
       currEdit.type,
       currEdit.target,
-      this._mergeValue(currEdit.oldValue, prevEdit.oldValue),
+      this._mergeValue(prevEdit.oldValue, currEdit.oldValue),
       this._mergeValue(prevEdit.newValue, currEdit.newValue)
     )
   }

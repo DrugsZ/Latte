@@ -10,7 +10,6 @@ interface ISchemaModel {
 
 export interface IElementChange {
   target: any
-  type: ChangeEventType
 }
 
 class ModelData implements ISchemaModel {
@@ -42,34 +41,52 @@ class ModelData implements ISchemaModel {
     return this._doApplyEdits(operations, computeUndoEdits)
   }
 
+  private _acceptSingleEditToModel(
+    operation: ISingleEditOperation,
+    index: number
+  ) {
+    const { value } = operation
+    const item = this._model?.elements[index]
+    let newElement: BaseElementSchema | null = item
+    if (!value) {
+      newElement = null
+    } else if (!item) {
+      newElement = value as BaseElementSchema
+    } else {
+      newElement = { ...item, ...value } as BaseElementSchema
+    }
+    if (~index) {
+      if (newElement) {
+        this._model.elements[index] = newElement
+      } else {
+        this._model.elements.splice(index, 1)
+      }
+    } else if (newElement) {
+      this._model.elements.push(newElement)
+    }
+    return newElement
+  }
+
   private _computeSingleEditOperation(
     operation: ISingleEditOperation,
-    item?: BaseElementSchema
+    oldElement: BaseElementSchema | null,
+    newElement: BaseElementSchema | null
   ) {
     const { value, type } = operation
-    if (!value) {
-      return {
-        element: null,
-        change: new ModelChange(type, item!.guid, item, value),
-      }
+    if (!newElement) {
+      return new ModelChange(type, oldElement!.guid, oldElement, newElement)
     }
-    if (!item) {
-      return {
-        element: value as BaseElementSchema,
-        change: new ModelChange(type, value.guid!, null, value),
-      }
+    if (!oldElement) {
+      return new ModelChange(type, newElement.guid!, null, newElement)
     }
-    const keys = Reflect.ownKeys(value)
+    const keys = Reflect.ownKeys(value as Partial<BaseElementSchema>)
     const oldObject = {}
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
-      oldObject[key] = item[key]
+      oldObject[key] = oldElement[key]
     }
 
-    return {
-      element: { ...item, ...value } as BaseElementSchema,
-      change: new ModelChange(type, item.guid, oldObject, value),
-    }
+    return new ModelChange(type, oldElement.guid, oldObject, value)
   }
 
   private _acceptEditsToModel(
@@ -77,36 +94,24 @@ class ModelData implements ISchemaModel {
     computeUndoEdits: boolean
   ) {
     const result: ModelChange[] = []
-    const newElements: BaseElementSchema[] = []
-    const workOperations = [...operations]
-    this._model?.elements.forEach(item => {
-      const operationIndex = workOperations.findIndex(
-        op => op.id === JSON.stringify(item.guid)
+    const newApplyElements: (BaseElementSchema | null)[] = []
+
+    for (let i = 0; i < operations.length; i++) {
+      const op = operations[i]
+      const index = this._model?.elements.findIndex(
+        item => op.id === JSON.stringify(item.guid)
       )
-      if (operationIndex > -1) {
-        const operation = workOperations.splice(operationIndex, 1)[0]
-        const { element, change } = this._computeSingleEditOperation(
-          operation,
-          item
+      const cacheElement = this._model?.elements[index]
+      newApplyElements[i] = this._acceptSingleEditToModel(op, index)
+      if (computeUndoEdits) {
+        result[i] = this._computeSingleEditOperation(
+          op,
+          cacheElement,
+          newApplyElements[i]
         )
-        if (element) {
-          newElements.push(element)
-        }
-        result.push(change)
-      } else {
-        newElements.push(item)
-      }
-    })
-    if (workOperations.length) {
-      for (let i = 0; i < operations.length; i++) {
-        const { element, change } = this._computeSingleEditOperation(
-          operations[i]
-        )
-        newElements.push(element!)
-        result.push(change)
       }
     }
-    this._model.elements = newElements
+
     return result
   }
 
@@ -115,9 +120,8 @@ class ModelData implements ISchemaModel {
     computeUndoEdits: boolean
   ) {
     const result = this._acceptEditsToModel(operations, computeUndoEdits)
-    const e = result.map(change => ({
-      type: change.type,
-      target: change.target,
+    const e = operations.map(op => ({
+      target: op.id,
     }))
     this._onSchemaContentChange.fire(e)
     return result

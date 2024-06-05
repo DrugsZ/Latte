@@ -1,6 +1,5 @@
 import type ModelData from 'Latte/core/modelData'
 import type { IElementChange } from 'Latte/core/modelData'
-import { ChangeEventType } from 'Latte/core/modelChange'
 import { Emitter } from 'Latte/common/event'
 import type CameraService from 'Latte/core/cameraService'
 import { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
@@ -18,7 +17,6 @@ import { OperateMode, Cursor } from 'Latte/core/cursor'
 import type { PickProxy } from 'Latte/event/mouseEvent'
 
 import { registerAPI } from 'Latte/api'
-import { unknownType } from 'Latte/common/error'
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -120,9 +118,6 @@ export class ViewModel {
   }
 
   private _onCreateElementHandler(event: IElementChange) {
-    if (event.type !== ChangeEventType.CREATE) {
-      return
-    }
     const newNode = this._elementTree.createElementByData(
       this._modelData.getElementSchemaById(event.target)!
     )
@@ -166,18 +161,14 @@ export class ViewModel {
 
   private _onElementHandler(event: IElementChange) {
     let result: undefined | DisplayObject
-    switch (event.type) {
-      case ChangeEventType.CREATE:
-        result = this._onCreateElementHandler(event)
-        break
-      case ChangeEventType.DELETE:
-        result = this._onDeleteElementHandler(event)
-        break
-      case ChangeEventType.UPDATE:
-        result = this._onUpdateElementHandler(event)
-        break
-      default:
-        unknownType(event.type)
+    const changeElement = this._modelData.getElementSchemaById(event.target)
+    const currentNode = this._elementTree.getElementById(event.target)
+    if (changeElement && currentNode) {
+      result = this._onUpdateElementHandler(event)
+    } else if (!changeElement) {
+      result = this._onDeleteElementHandler(event)
+    } else {
+      result = this._onCreateElementHandler(event)
     }
     return result
   }
