@@ -24,6 +24,7 @@ import { EditOperation } from 'Latte/core/modelChange'
 import type { IKeybindings } from 'Latte/services/keybinding/keybindingsRegistry'
 import { KeybindingsRegistry } from 'Latte/services/keybinding/keybindingsRegistry'
 import { KeyCode, KeyMod } from 'Latte/common/keyCodes'
+import { getNewASCIIInSpace, asciiPlus, calcPosition } from 'Latte/math/zIndex'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -185,7 +186,10 @@ export namespace CoreEditingCommands {
     position: IPoint
     startPosition: IPoint
     paint: Paint | Paint[]
+    parent: BaseElementSchema['guid']
     sourceElement: T
+    insertAfter: BaseElementSchema['parentIndex']['position']
+    insertBefore: BaseElementSchema['parentIndex']['position']
   }
 
   export const CreateNewElement =
@@ -296,6 +300,7 @@ export namespace CoreEditingCommands {
         defaultSchema.transform.ty = position.y
         defaultSchema.size.x = (paint as ImagePaint).originalImageWidth
         defaultSchema.size.y = (paint as ImagePaint).originalImageHeight
+        defaultSchema.name = (paint as ImagePaint).image.name
         return defaultSchema
       }
 
@@ -322,6 +327,46 @@ export namespace CoreEditingCommands {
         })
       }
 
+      private _resetPosition(
+        shapes: BaseElementSchema[],
+        parent: BaseElementSchema['guid'],
+        insertAfter?: BaseElementSchema['parentIndex']['position'],
+        insertBefore?: BaseElementSchema['parentIndex']['position']
+      ) {
+        let curStart = insertAfter
+        shapes.forEach(item => {
+          item.parentIndex.guid = JSON.parse(JSON.stringify(parent))
+          curStart = calcPosition(curStart, insertBefore)
+          if (!curStart) {
+            curStart = item.parentIndex.position
+          }
+          item.parentIndex.position = curStart
+        })
+      }
+
+      private _resetName(
+        shapes: BaseElementSchema[],
+        viewModel: ViewModel
+      ): BaseElementSchema[] {
+        const { elementTreeRoot } = viewModel
+        const cacheNum = {}
+        shapes.forEach(item => {
+          const { type } = item
+          if (!cacheNum[type]) {
+            const last = elementTreeRoot.getElementByTagName(type)
+            if (last.length) {
+              cacheNum[type] =
+                last[last.length - 1].name.match(/\d+$/)?.[0] || 0
+            } else {
+              cacheNum[type] = 0
+            }
+          }
+          console.log(cacheNum[type])
+          item.name = `${type} ${++cacheNum[type]}`
+        })
+        return shapes
+      }
+
       private _runCoreEditorCommand(
         viewModel: ViewModel,
         args: Partial<CreateElementCommandOptions>
@@ -330,28 +375,33 @@ export namespace CoreEditingCommands {
         if (!startPosition) {
           return
         }
+        const result: BaseElementSchema[] = []
         if (sourceElement) {
           const defaultSchema = deepCopySchema(sourceElement)
           defaultSchema.guid = getUId()
-          return [defaultSchema]
+          result.push(defaultSchema)
         }
         if (paint) {
           const currentPaint = Array.isArray(paint) ? paint : [paint]
-          return this._createByPaints(
-            this._createElement(viewModel, startPosition, position),
-            startPosition,
-            currentPaint
+          result.push(
+            ...this._createByPaints(
+              this._createElement(viewModel, startPosition, position),
+              startPosition,
+              currentPaint
+            )
           )
         }
-        return [this._createElement(viewModel, startPosition, position)]
+        result.push(this._createElement(viewModel, startPosition, position))
+        return result
       }
 
       public runCoreEditorCommand(
         viewModel: ViewModel,
         args: Partial<CreateElementCommandOptions>
       ): void {
-        const { position, startPosition } = args
-        if (!startPosition) {
+        const { position, startPosition, insertAfter, insertBefore, parent } =
+          args
+        if (!startPosition || !parent) {
           return
         }
         const activeSelection = viewModel.getActiveSelection()
@@ -361,13 +411,14 @@ export namespace CoreEditingCommands {
           const result: ISingleEditOperation[] = []
           const newShapes = this._runCoreEditorCommand(viewModel, args)
           if (newShapes) {
+            this._resetPosition(newShapes, parent, insertAfter, insertBefore)
+            this._resetName(newShapes, viewModel)
             result.push(
               ...newShapes.map(newShape =>
                 EditOperation.create(newShape.guid, newShape)
               )
             )
           }
-
           viewModel.getModel().pushEditOperations(result)
         }
       }

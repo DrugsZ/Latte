@@ -35,6 +35,19 @@ export abstract class Container<
     return target
   }
 
+  public getElementByTagName(tagName: string) {
+    const result: DisplayObject[] = []
+    this._children.forEach(child => {
+      if (child.type === tagName) {
+        result.push(child)
+      }
+      if (child instanceof Container) {
+        result.push(...child.getElementByTagName(tagName))
+      }
+    })
+    return result
+  }
+
   private _appendChild(child: DisplayObject) {
     const childLength = this._children.length
     let index = 0
