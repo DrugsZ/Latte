@@ -112,6 +112,10 @@ export abstract class DisplayObject<
     }
   }
 
+  get name() {
+    return this._elementData.name
+  }
+
   // eslint-disable-next-line class-methods-use-this
   getBorder(): number | number[] | null {
     return null

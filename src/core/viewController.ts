@@ -18,6 +18,7 @@ import type {
 } from 'Latte/event/mouseEvent'
 import type { ITextureLoadResult } from 'Latte/core/texture'
 import { createDefaultImagePaint } from 'Latte/common/schema'
+import { Container } from 'Latte/core/container'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -133,7 +134,10 @@ export class ViewController {
     const editMode = this._viewModel.getCursorOperateMode()
     if (editMode === OperateMode.CreateNormalShape) {
       if (!this._viewModel.getActiveSelection().isActive()) {
-        this._createElement(e.client)
+        this._createElement({
+          startPosition: e.client,
+          target: e.target,
+        })
       }
       this._viewModel.setCursorOperateMode(OperateMode.Edit)
     }
@@ -177,7 +181,11 @@ export class ViewController {
     } else if (editMode === OperateMode.Edit) {
       this._dragOnClientToEdit(data)
     } else if (editMode === OperateMode.CreateNormalShape) {
-      this._createElement(data.startPosition, data.position)
+      this._createElement({
+        startPosition: data.startPosition,
+        target: data.target,
+        position: data.position,
+      })
     }
   }
 
@@ -193,10 +201,25 @@ export class ViewController {
     }
   }
 
-  private _createElement(startPosition?: IPoint, position?: IPoint): void {
+  private _createElement(options: {
+    startPosition?: IPoint
+    position?: IPoint
+    target: DisplayObject
+  }): void {
+    const { startPosition, position, target } = options
+    let curTarget: DisplayObject | null = target
+    while (!(curTarget instanceof Container)) {
+      curTarget = target.parentNode
+    }
+    if (!curTarget || curTarget instanceof EditorDocument) {
+      curTarget = this._viewModel.focusPage
+    }
+    const lastDisplay = (curTarget as Container).getLast()
     CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
       position,
       startPosition,
+      parent: JSON.parse(curTarget.id),
+      insertAfter: lastDisplay.zIndex,
     })
   }
 
@@ -208,6 +231,10 @@ export class ViewController {
         this._mouseDownOnClient(data)
       }
     } else {
+      const editMode = this._viewModel.getCursorOperateMode()
+      if (editMode !== OperateMode.Edit) {
+        return
+      }
       const { target, controllerTargetType } = data
       this._viewModel.setCursorHoverObject(
         isLogicTarget(target) ? target : null

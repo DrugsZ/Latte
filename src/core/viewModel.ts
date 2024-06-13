@@ -50,7 +50,7 @@ export class ViewModel {
     this._bindModelEvent()
 
     this._cursor.onDidCursorOperateModeChange(e => {
-      if (e !== OperateMode.Edit) {
+      if (e === OperateMode.ReadOnly) {
         this._pickActive = false
       } else {
         this._pickActive = true
@@ -199,6 +199,10 @@ export class ViewModel {
     this._eventDispatcher.emitViewEvent(
       new viewEvents.ViewFocusPageChangeEvent(JSON.stringify(value))
     )
+  }
+
+  get focusPage() {
+    return this.elementTreeRoot.getElementById(this._focusPageId) as Page
   }
 
   get elementTreeRoot() {

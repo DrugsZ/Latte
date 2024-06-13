@@ -202,6 +202,8 @@ interface FrameElement extends BaseElementSchema {
   type: EditorElementTypeKind.FRAME
 }
 
+type ContainerElement = Page | FrameElement
+
 interface BaseNodeCornerSchema extends BaseElementSchema {
   cornerRadius: number
   cornerSmoothing: number
