@@ -24,7 +24,7 @@ import { EditOperation } from 'Latte/core/modelChange'
 import type { IKeybindings } from 'Latte/services/keybinding/keybindingsRegistry'
 import { KeybindingsRegistry } from 'Latte/services/keybinding/keybindingsRegistry'
 import { KeyCode, KeyMod } from 'Latte/common/keyCodes'
-import { getNewASCIIInSpace, asciiPlus, calcPosition } from 'Latte/math/zIndex'
+import { calcPosition } from 'Latte/math/zIndex'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
