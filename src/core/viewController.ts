@@ -225,7 +225,7 @@ export class ViewController {
     }
     const symbol = deltaY > 0 ? 1 : -1
     const delta = Math.min(Math.max(Math.abs(deltaY) / 4, 1), 16)
-    const zoom = currentCamera.getViewPortMatrix().a
+    const zoom = currentCamera.getZoom()
     const step = zoom * 0.02
     currentCamera.setZoom(zoom + step * delta * symbol, client)
   }

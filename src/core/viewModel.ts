@@ -11,11 +11,11 @@ import { PickService } from 'Latte/event/pickService'
 import {
   MouseControllerTarget,
   ActiveSelection,
+  ActiveSelectionCorner,
 } from 'Latte/core/activeSelection'
 import type { DisplayObject } from 'Latte/core/displayObject'
 import { OperateMode, Cursor } from 'Latte/core/cursor'
 import type { PickProxy } from 'Latte/event/mouseEvent'
-
 import { registerAPI } from 'Latte/api'
 
 export class ViewModel {
@@ -108,6 +108,7 @@ export class ViewModel {
       this._eventDispatcher.emitViewEvent(
         new viewEvents.ViewCameraUpdateEvent(event)
       )
+      ActiveSelectionCorner.setScale(event.getZoom())
       const focusPage = this._elementTree.getElementById(
         this._focusPageId
       ) as Page
