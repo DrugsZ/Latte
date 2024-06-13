@@ -146,11 +146,31 @@ export const isResizeKey = (
   key: MouseControllerTarget
 ): key is RESIZE_KEY_TYPE => !!(RESIZE_KEY & key)
 
-class ActiveSelectionCorner {
-  private static _RESIZE_WIDTH = 6
-  private static _RESIZE_HEIGHT = 6
-  private static _ROTATE_WIDTH = 30
-  private static _ROTATE_HEIGHT = 30
+export class ActiveSelectionCorner {
+  private static _DEFAULT_RESIZE_WIDTH = 6
+  private static _DEFAULT_RESIZE_HEIGHT = 6
+  private static _DEFAULT_ROTATE_WIDTH = 30
+  private static _DEFAULT_ROTATE_HEIGHT = 30
+  private static _RESIZE_WIDTH = ActiveSelectionCorner._DEFAULT_RESIZE_WIDTH
+  private static _RESIZE_HEIGHT = ActiveSelectionCorner._DEFAULT_RESIZE_HEIGHT
+  private static _ROTATE_WIDTH = ActiveSelectionCorner._DEFAULT_ROTATE_WIDTH
+  private static _ROTATE_HEIGHT = ActiveSelectionCorner._DEFAULT_ROTATE_HEIGHT
+
+  private static _SCALE = 1
+
+  static setScale(scale: number): void {
+    ActiveSelectionCorner._SCALE = scale
+    ActiveSelectionCorner._RESIZE_WIDTH =
+      ActiveSelectionCorner._DEFAULT_RESIZE_WIDTH * ActiveSelectionCorner._SCALE
+    ActiveSelectionCorner._RESIZE_HEIGHT =
+      ActiveSelectionCorner._DEFAULT_RESIZE_HEIGHT *
+      ActiveSelectionCorner._SCALE
+    ActiveSelectionCorner._ROTATE_WIDTH =
+      ActiveSelectionCorner._DEFAULT_ROTATE_WIDTH * ActiveSelectionCorner._SCALE
+    ActiveSelectionCorner._ROTATE_HEIGHT =
+      ActiveSelectionCorner._DEFAULT_ROTATE_HEIGHT *
+      ActiveSelectionCorner._SCALE
+  }
 
   constructor(
     private readonly _resizeControllerType: MouseControllerTarget,

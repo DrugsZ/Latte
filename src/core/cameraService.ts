@@ -1,7 +1,6 @@
 import { Point } from 'Latte/common/Point'
 import { Emitter } from 'Latte/common/event'
 import { Matrix } from 'Latte/math/matrix'
-import type { ViewModel } from 'Latte/core/viewModel'
 
 export class Camera {
   private _zoom: number = 1
@@ -51,12 +50,12 @@ export class Camera {
   }
 
   private _updateMatrix() {
-    const tx = this._viewport.width / 2 - this._position.x * this._zoom
-    const ty = this._viewport.height / 2 - this._position.y * this._zoom
-    this._matrix.a = this._zoom
+    const tx = this._viewport.width / 2 - this._position.x / this._zoom
+    const ty = this._viewport.height / 2 - this._position.y / this._zoom
+    this._matrix.a = 1 / this._zoom
     this._matrix.b = 0
     this._matrix.c = 0
-    this._matrix.d = this._zoom
+    this._matrix.d = 1 / this._zoom
     this._matrix.tx = tx
     this._matrix.ty = ty
     this._onCameraViewChange.fire(this)
@@ -81,14 +80,18 @@ export class Camera {
   getViewport(): Rectangle {
     const renderCenterX = this._position.x
     const renderCenterY = this._position.y
-    const renderWidth = this._viewport.width / this._zoom
-    const renderHeight = this._viewport.height / this._zoom
+    const renderWidth = this._viewport.width * this._zoom
+    const renderHeight = this._viewport.height * this._zoom
     return {
       x: renderCenterX - renderWidth / 2,
       y: renderCenterY - renderHeight / 2,
       width: renderWidth,
       height: renderHeight,
     }
+  }
+
+  getZoom() {
+    return this._zoom
   }
 }
 
@@ -121,7 +124,7 @@ class CameraService<T = any> {
     const viewportCenterX = size.x + width / 2
     const viewportCenterY = size.y + height / 2
 
-    const newCamera = new Camera(fullSize, minRatio)
+    const newCamera = new Camera(fullSize, 1 / minRatio)
     newCamera.setPosition(viewportCenterX, viewportCenterY)
     this._cameraMaps.set(id, newCamera)
     newCamera.onCameraViewChange(event => {
