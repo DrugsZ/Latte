@@ -1,0 +1,12 @@
+.workspace-panel {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border #e5e5e5);
+}
+
+.row_components--singleRow {
+  grid-template-rows: 32px;
+}
+
+.row_components--row {
+  grid-template-columns: repeat(28, 1fr);
+}

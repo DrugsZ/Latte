@@ -22,13 +22,15 @@ body {
   /* background end */
 
 
-  /* icon color start */
+  /* color start */
   --color-icon-toolbar-default: #000000;
   --color-icon-toolbar-active: #ffffff;
-  /* icon color end */
 
-  /* icon size start*/
-  --size-icon-toolbar-width: 20px;
+  --color-border: #e6e6e6
+    /* color end */
+
+    /* icon size start*/
+    --size-icon-toolbar-width: 20px;
   --size-icon-toolbar-height: 20px;
   /* icon size end*/
 }
