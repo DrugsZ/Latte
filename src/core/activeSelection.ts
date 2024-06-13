@@ -5,6 +5,8 @@ import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { inBox, inLine } from 'Latte/math/inPointerInPath'
 import { Matrix } from 'Latte/math/matrix'
 import { DEFAULT_ACTIVE_SELECTION_LINT_WIDTH } from 'Latte/constants/editor'
+import { Emitter } from 'Latte/common/event'
+import { registerAPI } from 'Latte/api'
 
 const tempMatrix = {
   a: 1,
@@ -343,8 +345,10 @@ class ActiveSelectionCornerCollection {
 }
 
 export class ActiveSelection extends Rect {
+  private readonly _onActiveSelectionChange = new Emitter<ActiveSelection>()
+  public readonly onActiveSelectionChange = this._onActiveSelectionChange.event
   static INACTIVE: boolean = true
-  private _objects: DisplayObject[] = []
+  private __objects: DisplayObject[] = []
   private _OBBDirty: boolean = false
   private _cornerCollection: ActiveSelectionCornerCollection
 
@@ -369,6 +373,16 @@ export class ActiveSelection extends Rect {
     })
     this.controllerType = MouseControllerTarget.SELECTION_CONTEXT
     this._cornerCollection = new ActiveSelectionCornerCollection(this)
+    registerAPI('onDidSelectionChange', this.onActiveSelectionChange)
+  }
+
+  private get _objects() {
+    return this.__objects
+  }
+
+  private set _objects(values: DisplayObject[]) {
+    this._onActiveSelectionChange.fire(this)
+    this.__objects = values
   }
 
   public addSelectElement = (element: DisplayObject) => {
@@ -533,5 +547,13 @@ export class ActiveSelection extends Rect {
 
   public override inactive(): boolean {
     return true
+  }
+
+  public override getFills() {
+    const fills: Paint[] = []
+    this._objects.forEach(item => {
+      fills.push(...item.getFills())
+    })
+    return fills
   }
 }

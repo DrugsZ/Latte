@@ -22,10 +22,16 @@ body {
   /* background end */
 
 
-  /* icon color start */
+  /* color start */
   --color-icon-toolbar-default: #000000;
   --color-icon-toolbar-active: #ffffff;
-  /* icon color end */
+
+  --color-border: #e6e6e6;
+  --color-border-focused: #0d99ff;
+
+
+  --color-text-secondary: #b3b3b3;
+  /* color end */
 
   /* icon size start*/
   --size-icon-toolbar-width: 20px;
@@ -37,4 +43,8 @@ body {
   width: 100vw;
   height: 100vh;
   margin: 0;
+}
+
+.displayContents {
+  display: contents;
 }

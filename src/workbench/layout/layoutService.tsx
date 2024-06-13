@@ -1,8 +1,9 @@
-import type { Part } from 'Latte/workbench/layout/part'
-import 'Latte/workbench/layout/layout.css'
-import { EditorPart } from 'Latte/workbench/layout/editorPart'
-import { Panel } from 'Latte/workbench/panel/panel'
-import { ToolBarPart } from 'Latte/workbench/toolbar/toolbar'
+import type { Part } from 'workbench/layout/part'
+import 'workbench/layout/layout.css'
+import { EditorPart } from 'workbench/layout/editorPart'
+import { Panel } from 'workbench/panel/panel'
+import { ToolBarPart } from 'workbench/toolbar/toolbar'
+import { WorkspacePart } from 'workbench/workspace/workspace'
 
 import { useEffect, useRef } from 'react'
 
@@ -68,19 +69,20 @@ export function registerPart(part: Part) {
 // registerPart(new PanelPart(Parts.PANEL_PART))
 // registerPart(new WorkspacePart(Parts.WORKSPACE_PART))
 
-
 export const App = () => {
   const editorDOMRef = useRef<HTMLElement>()
   useEffect(() => {
-    if(!editorDOMRef.current){
+    if (!editorDOMRef.current) {
       return
     }
     new EditorPart(Parts.EDITOR_PART).create(editorDOMRef.current)
-  },[])
-  return <>
-    <ToolBarPart/>
-    <Panel/>
-    <div ref={editorDOMRef} className="editor"></div>
-    <div className="workspace"></div>
-  </>
+  }, [])
+  return (
+    <>
+      <ToolBarPart />
+      <Panel />
+      <div ref={editorDOMRef} className="editor"></div>
+      <WorkspacePart />
+    </>
+  )
 }

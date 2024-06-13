@@ -18,6 +18,9 @@ import { OperateMode, Cursor } from 'Latte/core/cursor'
 import type { PickProxy } from 'Latte/event/mouseEvent'
 import { registerAPI } from 'Latte/api'
 
+import { ActiveSelectionWidget } from 'Latte/core/activeSelectionWidget'
+import type { ISingleEditOperation } from 'Latte/core/modelChange'
+
 export class ViewModel {
   private _focusPageId: string = ''
   private _modelData: ModelData
@@ -38,6 +41,8 @@ export class ViewModel {
 
   private _cachePickProxy: PickProxy
 
+  private _activeSelectionWidget: ActiveSelectionWidget
+
   constructor(model: ModelData, private _cameraService: CameraService) {
     this.getVisibleElementRenderObjects =
       this.getVisibleElementRenderObjects.bind(this)
@@ -57,6 +62,12 @@ export class ViewModel {
       }
     })
 
+    this._activeSelectionWidget = new ActiveSelectionWidget(
+      this,
+      this._activeSelection
+    )
+
+    registerAPI('getSelectionProxy', () => this._activeSelectionWidget)
     registerAPI('setOperateMode', this.setCursorOperateMode.bind(this))
   }
 
@@ -324,4 +335,6 @@ export class ViewModel {
   getModel() {
     return this._modelData
   }
+
+  public updateNodeWithAABB(payload: ISingleEditOperation[]) {}
 }

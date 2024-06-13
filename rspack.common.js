@@ -22,7 +22,9 @@ module.exports = {
       ".css": [".css"],
     },
     alias: {
-      'Latte': path.resolve(__dirname, "src")
+      'Latte': path.resolve(__dirname, "src"),
+      'components': path.resolve(__dirname, "src/workbench/components"),
+      'workbench': path.resolve(__dirname, "src/workbench"),
     },
     tsConfigPath: path.resolve(__dirname, "tsconfig.json")
   },
@@ -42,6 +44,31 @@ module.exports = {
               preserveAllComments: false
             }
           }
+        },
+        type: 'javascript/auto',
+      },
+      {
+        test: /\.tsx$/,
+        use: {
+          loader: 'builtin:swc-loader',
+          options: {
+            sourceMap: true,
+            jsc: {
+              parser: {
+                syntax: 'typescript',
+                jsx: true,
+              },
+              externalHelpers: true,
+              preserveAllComments: false,
+              transform: {
+                react: {
+                  runtime: 'automatic',
+                  throwIfNamespace: true,
+                  useBuiltins: false,
+                },
+              },
+            },
+          },
         },
         type: 'javascript/auto',
       },

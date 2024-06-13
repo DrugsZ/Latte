@@ -8,6 +8,7 @@ import DomElementObserver from 'Latte/core/domElementObserver'
 import { CommandService } from 'Latte/core/commandService'
 import { KeybindingService } from 'Latte/services/keybinding/keybindingService'
 import { ProxyLatte } from 'Latte/api'
+import { ActiveSelectionWidget } from 'Latte/core/activeSelectionWidget'
 
 window.latte = ProxyLatte
 class Editor {
@@ -37,6 +38,7 @@ class Editor {
 
     this._commandService = new CommandService()
     this._keybindingService = new KeybindingService(this._commandService)
+
     window.getEditor = () => this
   }
 
