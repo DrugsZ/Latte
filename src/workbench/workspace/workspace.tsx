@@ -1,1 +1,16 @@
-export const WorkspacePart = props => <div className="workspace"></div>
+import { TransformPanel } from 'workbench/workspace/transformPanel'
+import { FillPanel } from 'workbench/workspace/fillPanel'
+import type { KeyboardEventHandler } from 'react'
+
+const stopPropagationAndDefault: KeyboardEventHandler<
+  HTMLDivElement
+> = event => {
+  event.stopPropagation()
+}
+
+export const WorkspacePart = props => (
+  <div className="workspace" onKeyDown={stopPropagationAndDefault}>
+    <TransformPanel />
+    <FillPanel />
+  </div>
+)

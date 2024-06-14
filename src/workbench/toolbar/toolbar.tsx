@@ -6,7 +6,7 @@ import { unknownType } from 'Latte/common/error'
 import DefaultCursor from 'Latte/assets/static/editor-cursor.svg'
 import Shape from 'Latte/assets/static/shape.svg'
 import Pointer from 'Latte/assets/static/pointer.svg'
-import 'Latte/workbench/toolbar/toolbar.css'
+import 'workbench/toolbar/toolbar.css'
 
 interface IToolbarViewProps {
   active: boolean

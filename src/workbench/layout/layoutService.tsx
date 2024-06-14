@@ -1,9 +1,9 @@
-import type { Part } from 'Latte/workbench/layout/part'
-import 'Latte/workbench/layout/layout.css'
-import { EditorPart } from 'Latte/workbench/layout/editorPart'
-import { Panel } from 'Latte/workbench/panel/panel'
-import { ToolBarPart } from 'Latte/workbench/toolbar/toolbar'
-import { WorkspacePart } from 'Latte/workbench/workspace/workspace'
+import type { Part } from 'workbench/layout/part'
+import 'workbench/layout/layout.css'
+import { EditorPart } from 'workbench/layout/editorPart'
+import { Panel } from 'workbench/panel/panel'
+import { ToolBarPart } from 'workbench/toolbar/toolbar'
+import { WorkspacePart } from 'workbench/workspace/workspace'
 
 import { useEffect, useRef } from 'react'
 

@@ -20,7 +20,9 @@
     "strictPropertyInitialization": false,
     "noImplicitAny": false,
     "paths": {
-      "Latte/*": ["./src/*"]
+      "Latte/*": ["./src/*"],
+      "components/*": ["./src/workbench/components/*"],
+      "workbench/*": ["./src/workbench/*"]
     },
     "jsx": "react-jsx"
   },

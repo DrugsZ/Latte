@@ -1,4 +1,4 @@
-import { Part } from 'Latte/workbench/layout/part'
+import { Part } from 'workbench/layout/part'
 
 export class PanelPart extends Part {
   override createContentArea(

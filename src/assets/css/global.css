@@ -26,11 +26,15 @@ body {
   --color-icon-toolbar-default: #000000;
   --color-icon-toolbar-active: #ffffff;
 
-  --color-border: #e6e6e6
-    /* color end */
+  --color-border: #e6e6e6;
+  --color-border-focused: #0d99ff;
 
-    /* icon size start*/
-    --size-icon-toolbar-width: 20px;
+
+  --color-text-secondary: #b3b3b3;
+  /* color end */
+
+  /* icon size start*/
+  --size-icon-toolbar-width: 20px;
   --size-icon-toolbar-height: 20px;
   /* icon size end*/
 }
@@ -39,4 +43,8 @@ body {
   width: 100vw;
   height: 100vh;
   margin: 0;
+}
+
+.displayContents {
+  display: contents;
 }

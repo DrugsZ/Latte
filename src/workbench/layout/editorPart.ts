@@ -1,4 +1,4 @@
-import { Part } from 'Latte/workbench/layout/part'
+import { Part } from 'workbench/layout/part'
 import Editor from 'Latte/core/editor'
 
 export class EditorPart extends Part {

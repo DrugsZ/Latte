@@ -22,7 +22,9 @@ module.exports = {
       ".css": [".css"],
     },
     alias: {
-      'Latte': path.resolve(__dirname, "src")
+      'Latte': path.resolve(__dirname, "src"),
+      'components': path.resolve(__dirname, "src/workbench/components"),
+      'workbench': path.resolve(__dirname, "src/workbench"),
     },
     tsConfigPath: path.resolve(__dirname, "tsconfig.json")
   },

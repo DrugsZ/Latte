@@ -1,0 +1,12 @@
+:root {
+  --common-height: 32px;
+  --common-width: 32px;
+
+  --color-icon: #333333;
+
+  --color-bg-hover: #f5f5f5;
+
+  --color-bg-overlay-active: #0d99ff;
+
+  --color-icon-onBrand: #ffffff;
+}

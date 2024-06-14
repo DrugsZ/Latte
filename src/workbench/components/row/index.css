@@ -1,0 +1,17 @@
+.latte-workspace__raw-components-row {
+  display: grid;
+  grid-template-columns: repeat(28, 1fr);
+  padding: 0px 8px;
+  align-items: center;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.latte-workspace__raw-components--single-row {
+  grid-template-rows: 32px;
+  grid-template-columns: repeat(28, 1fr);
+}
+
+.latte-workspace__raw-components--single-row-height {
+  height: 32px;
+}
