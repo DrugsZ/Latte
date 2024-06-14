@@ -812,4 +812,30 @@ export namespace CoreEditingCommands {
       }
     })()
   )
+
+  export const DeleteElement = registerCommand(
+    new (class extends CoreEditorCommand<null> {
+      constructor() {
+        super({
+          id: 'delete',
+          kbOpts: {
+            primary: KeyCode.Backspace,
+            weight: 1,
+          },
+        })
+      }
+
+      runCoreEditorCommand(viewModel: ViewModel) {
+        const activeSelection = viewModel.getActiveSelection()
+        const objects = activeSelection.getObjects()
+        if (objects.length < 1) {
+          return
+        }
+        const result = objects.map(object =>
+          EditOperation.delete(object.getGuidKey())
+        )
+        viewModel.getModel().pushEditOperations(result)
+      }
+    })()
+  )
 }
