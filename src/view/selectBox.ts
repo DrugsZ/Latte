@@ -50,7 +50,7 @@ export class SelectBox extends ViewPart {
     )
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)
-    ctx.lineWidth = 2 / a
+    ctx.lineWidth = 2 * camera.getZoom()
     ctx.beginPath()
     ctx.strokeStyle = '#0B94BF'
     ctx.strokeRect(0, 0, rect.width, rect.height)
