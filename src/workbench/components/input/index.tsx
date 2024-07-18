@@ -60,6 +60,7 @@ export const Input = (props: InputProps) => {
     style,
     onPressEnter,
     onKeyDown,
+    ...rest
   } = props
 
   const [currentValue, setCurrentValue] = useMergeState(defaultValue, value)
@@ -86,6 +87,7 @@ export const Input = (props: InputProps) => {
 
   let element = (
     <input
+      {...rest}
       className="latte-workspace__input"
       onFocus={handleFocus}
       onBlur={handleBlur}

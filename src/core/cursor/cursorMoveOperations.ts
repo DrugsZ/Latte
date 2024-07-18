@@ -2,7 +2,7 @@ import type { DisplayObject } from 'Latte/core/displayObject'
 import { Matrix } from 'Latte/math/matrix'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
 import { EditOperation } from 'Latte/core/modelChange'
-import { Point, subtract, dotProduct, add, divide } from 'Latte/common/Point'
+import { Point, subtract, dotProduct, add, divide } from 'Latte/common/point'
 import type {
   MouseControllerTarget,
   ActiveSelection,

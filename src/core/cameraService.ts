@@ -1,4 +1,4 @@
-import { Point } from 'Latte/common/Point'
+import { Point } from 'Latte/common/point'
 import { Emitter } from 'Latte/common/event'
 import { Matrix } from 'Latte/math/matrix'
 

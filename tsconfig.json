@@ -28,5 +28,5 @@
     "jsx": "react-jsx"
   },
   "include": ["src", "./typings"],
-  "exclude": ["rspack.*.js"]
+  "exclude": ["vite.config.js"]
 }

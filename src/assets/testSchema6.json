@@ -302,6 +302,18 @@
           "opacity": 1,
           "visible": true,
           "blendMode": "NORMAL"
+        },
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 0.9750000238418579,
+            "g": 0.032499998807907104,
+            "b": 0.032499998807907104,
+            "a": 1
+          },
+          "opacity": 0.3,
+          "visible": true,
+          "blendMode": "NORMAL"
         }
       ],
       "strokePaints": [],

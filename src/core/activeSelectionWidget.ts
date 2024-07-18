@@ -5,7 +5,7 @@ import { CoreEditingCommands } from 'Latte/core/coreCommands'
 import type { ViewModel } from 'Latte/core/viewModel'
 
 const ProxyProp = ['x', 'y', 'width', 'height']
-const ProxyWidget = (target: BaseActiveSelectionWidget) =>
+const ProxyWidget = (target: ActiveSelectionWidget) =>
   new Proxy(target, {
     get(target, prop, receiver) {
       if (typeof prop === 'string' && ProxyProp.includes(prop)) {
@@ -22,20 +22,19 @@ const ProxyWidget = (target: BaseActiveSelectionWidget) =>
     },
   })
 
-function ProxyActiveSelectionWidget(target: typeof BaseActiveSelectionWidget) {
+function ProxyActiveSelectionWidget(target: typeof ActiveSelectionWidget) {
   const p = new Proxy(target, {
     construct(
       Target,
-      argArray: ConstructorParameters<typeof BaseActiveSelectionWidget>
+      argArray: ConstructorParameters<typeof ActiveSelectionWidget>
     ) {
-      console.log(1111)
       return ProxyWidget(new Target(...argArray))
     },
   })
 }
 
 @ProxyActiveSelectionWidget
-export class BaseActiveSelectionWidget {
+export class ActiveSelectionWidget {
   private readonly _onDidSelectionChange = new Emitter<ActiveSelection>()
   public readonly onDidSelectionChange = this._onDidSelectionChange.event
 
@@ -49,6 +48,14 @@ export class BaseActiveSelectionWidget {
 
     CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
       position: newPosition,
+      objects,
+    })
+  }
+
+  setFills(fills: Paint[]) {
+    const objects = this._activeSelection.getObjects()
+    CoreEditingCommands.SetElementFills.runCoreEditorCommand(this._viewModel, {
+      newFills: fills,
       objects,
     })
   }

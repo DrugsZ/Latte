@@ -4,7 +4,7 @@ import type {
   FillRenderOptions,
 } from 'Latte/render/renderContributionRegistry'
 import { textureManager } from 'Latte/core/texture'
-import { divide, dotProduct, subtract } from 'Latte/common/Point'
+import { divide, dotProduct, subtract } from 'Latte/common/point'
 
 enum ImageFillScaleMode {
   FILL = 'FILL',

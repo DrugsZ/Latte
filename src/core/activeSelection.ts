@@ -381,13 +381,13 @@ export class ActiveSelection extends Rect {
   }
 
   private set _objects(values: DisplayObject[]) {
-    this._onActiveSelectionChange.fire(this)
     this.__objects = values
+    this._onActiveSelectionChange.fire(this)
   }
 
   public addSelectElement = (element: DisplayObject) => {
     if (!element) return
-    this._objects.push(element)
+    this._objects = this._objects.concat(element)
     this._OBBDirty = true
   }
 

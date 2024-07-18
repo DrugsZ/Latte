@@ -88,7 +88,12 @@ export const FillPanel = (props: PropsWithChildren<FillPanelProps>) => {
 
   const handleSelectionChange = useCallback((e: DisplayObject) => {
     const fills = e.getFills()
+    console.log(fills)
     setFills(fills)
+  }, [])
+
+  const triggerFillsChange = useCallback((fills: Paint[]) => {
+    latte.editor.getSelectionProxy().setFills(fills)
   }, [])
 
   const handleFillChange: FillChangeHandler = useCallback(
@@ -96,6 +101,7 @@ export const FillPanel = (props: PropsWithChildren<FillPanelProps>) => {
       setFills(prev => {
         prev[index] = newFill
         onChange?.(prev)
+        triggerFillsChange([...prev])
         return [...prev]
       })
     },
@@ -106,13 +112,14 @@ export const FillPanel = (props: PropsWithChildren<FillPanelProps>) => {
     setFills(prev => {
       const newFills = [...prev, JSON.parse(DEFAULT_PAINT)]
       onChange?.(newFills)
+      triggerFillsChange(newFills)
       return newFills
     })
   }, [onChange])
 
   useEffect(() => {
     setTimeout(() => {
-      const rm = latte.editor.onDidSelectionChange(handleSelectionChange)
+      latte.editor.onDidSelectionChange(handleSelectionChange)
     }, 0)
   }, [])
 
@@ -132,6 +139,7 @@ export const FillPanel = (props: PropsWithChildren<FillPanelProps>) => {
         if (type === PaintCommonButtonsType.Delete) {
           prev.splice(index, 1)
         }
+        triggerFillsChange(prev)
         return [...prev]
       })
     },

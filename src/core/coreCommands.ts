@@ -3,15 +3,8 @@ import { DisplayObject } from 'Latte/core/displayObject'
 import { Page } from 'Latte/core/page'
 import { EditorDocument } from 'Latte/elements/document'
 import { CommandsRegistry } from 'Latte/core/commandsRegistry'
-import { Matrix } from 'Latte/math/matrix'
-import { Point, subtract, dotProduct, add, divide } from 'Latte/common/Point'
-import {
-  MouseControllerTarget,
-  isResetStartXAxis,
-  isResetStartYAxis,
-  isResetEndXAxis,
-  isResetEndYAxis,
-} from 'Latte/core/activeSelection'
+import { Point, subtract, add, divide } from 'Latte/common/point'
+import { MouseControllerTarget } from 'Latte/core/activeSelection'
 import {
   createDefaultElementSchema,
   deepCopySchema,
@@ -26,6 +19,7 @@ import { KeybindingsRegistry } from 'Latte/services/keybinding/keybindingsRegist
 import { KeyCode, KeyMod } from 'Latte/common/keyCodes'
 import { calcPosition } from 'Latte/math/zIndex'
 import { CursorMoveOperations } from 'Latte/core/cursor/cursorMoveOperations'
+import { CursorUpdateOperations } from 'Latte/core/cursor/cursorUpdateOperations'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -362,7 +356,6 @@ export namespace CoreEditingCommands {
               cacheNum[type] = 0
             }
           }
-          console.log(cacheNum[type])
           item.name = `${type} ${++cacheNum[type]}`
         })
         return shapes
@@ -443,9 +436,9 @@ export namespace CoreEditingCommands {
       ): void {
         const { position, objects } = args
         if (!position || !objects || !objects.length) return
-        viewModel
-          .getModel()
-          .pushEditOperations(CursorMoveOperations.move(position, objects))
+        viewModel.updateNodeWithAABB(
+          CursorMoveOperations.move(position, objects)
+        )
         // viewModel.updateElementData(results)
       }
     })()
@@ -504,11 +497,9 @@ export namespace CoreEditingCommands {
         if (!objects || !objects.length || !rad) {
           return
         }
-        viewModel
-          .getModel()
-          .pushEditOperations(
-            CursorMoveOperations.rotate(objects, rad, transformOrigin)
-          )
+        viewModel.updateNodeWithAABB(
+          CursorMoveOperations.rotate(objects, rad, transformOrigin)
+        )
         // viewModel.updateElementData(results)
       }
     })()
@@ -539,12 +530,41 @@ export namespace CoreEditingCommands {
         viewModel.getActiveSelection()
       )
       if (result) {
-        viewModel.getModel().pushEditOperations(result)
+        viewModel.updateNodeWithAABB(result)
       }
       // viewModel.updateElementData(result)
     }
   }
   export const ResizeElement = new ResizeElementCommand()
+
+  interface UpdateElementFillsCommandOptions extends BaseCommandOptions {
+    objects: DisplayObject[]
+    newFills: Paint[]
+  }
+  export const SetElementFills =
+    new (class extends CoreEditorCommand<UpdateElementFillsCommandOptions> {
+      constructor() {
+        super({
+          id: 'updateElementFills',
+        })
+      }
+
+      public runCoreEditorCommand(
+        viewModel: ViewModel,
+        args: Partial<UpdateElementFillsCommandOptions>
+      ): void {
+        const { objects, newFills } = args
+        if (!objects || !objects.length) {
+          return
+        }
+        viewModel
+          .getModel()
+          .pushEditOperations(
+            CursorUpdateOperations.setFills(objects, newFills)
+          )
+        // viewModel.updateElementData(results)
+      }
+    })()
 
   export const Undo = registerCommand(
     new (class extends CoreEditorCommand<null> {

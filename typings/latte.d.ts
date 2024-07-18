@@ -49,7 +49,7 @@ declare namespace latte.editor {
      * set x
      */
 
-    setX(newX: SetStateAction<number>): void
+    move(newPosition: SetStateAction<IPoint>): void
 
     /**
      * get y
@@ -86,5 +86,11 @@ declare namespace latte.editor {
      */
 
     setHeight(newHeight: SetStateAction<number[]>): void
+
+    /**
+     * setFills
+     */
+
+    setFills(newFills: Paint[]): void
   }
 }

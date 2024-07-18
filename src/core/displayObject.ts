@@ -3,7 +3,7 @@ import { Bounds } from 'Latte/core/bounds'
 import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/math/matrix'
-import { Point } from 'Latte/common/Point'
+import { Point } from 'Latte/common/point'
 import type { RBushNodeAABB } from 'Latte/core/rTree'
 import { rTreeRoot } from 'Latte/core/rTree'
 

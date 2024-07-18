@@ -336,5 +336,7 @@ export class ViewModel {
     return this._modelData
   }
 
-  public updateNodeWithAABB(payload: ISingleEditOperation[]) {}
+  public updateNodeWithAABB(operations: ISingleEditOperation[]) {
+    this._modelData.pushEditOperations(operations)
+  }
 }

@@ -72,8 +72,8 @@ export const SolidColorPaint = (props: SolidPaintProps) => {
       onChange?.({
         ...data,
         color: {
+          ...data.color,
           ...rgbValue,
-          a: data.color.a,
         },
       })
     },
@@ -84,22 +84,70 @@ export const SolidColorPaint = (props: SolidPaintProps) => {
     event => {
       triggerChange(event.target.value)
     },
-    []
+    [triggerChange]
   )
 
   const handleEnterChange: React.KeyboardEventHandler<HTMLInputElement> =
-    useCallback(event => {
-      triggerChange((event.target as HTMLInputElement).value)
+    useCallback(
+      event => {
+        triggerChange((event.target as HTMLInputElement).value)
+      },
+      [triggerChange]
+    )
+
+  const triggerOpacityChange = useCallback(
+    (value: string) => {
+      const newOpacity = Number(value)
+      if (Number.isNaN(newOpacity)) {
+        return
+      }
+      onChange?.({ ...data, opacity: Math.min(newOpacity, 100) / 100 })
+    },
+    [onChange, data]
+  )
+
+  const handleOpacityBlur: ChangeEventHandler<HTMLInputElement> = useCallback(
+    event => {
+      triggerChange(event.target.value)
+    },
+    [triggerOpacityChange]
+  )
+
+  const handleOpacityEnterChange: React.KeyboardEventHandler<HTMLInputElement> =
+    useCallback(
+      event => {
+        triggerOpacityChange((event.target as HTMLInputElement).value)
+      },
+      [triggerOpacityChange]
+    )
+  const handleOpacityInputRedoUndo: ChangeEventHandler<HTMLInputElement> =
+    useCallback(e => {
+      const { inputType } = e.nativeEvent as InputEvent
+      if (inputType === 'historyUndo' || inputType === 'historyRedo') {
+        triggerOpacityChange((e.target as HTMLInputElement).value)
+      }
+    }, [])
+
+  const handleColorInputRedoUndo: ChangeEventHandler<HTMLInputElement> =
+    useCallback(e => {
+      const { inputType } = e.nativeEvent as InputEvent
+      if (inputType === 'historyUndo' || inputType === 'historyRedo') {
+        triggerChange((e.target as HTMLInputElement).value)
+      }
     }, [])
   return (
     <Input
       addonBefore={<SolidPaintPreview fill={data} />}
       onPressEnter={handleEnterChange}
       onBlur={handleBlur}
+      onChange={handleColorInputRedoUndo}
       addonAfter={
         <Input
           style={{ width: 48 }}
-          value={(data.color.a / 1) * 100}
+          value={(data.opacity / 1) * 100}
+          onChange={handleOpacityInputRedoUndo}
+          onBlur={handleOpacityBlur}
+          onPressEnter={handleOpacityEnterChange}
           className="latte-workspace__paint-panels--opacityInputContainer"
         />
       }

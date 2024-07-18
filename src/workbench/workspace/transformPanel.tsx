@@ -39,7 +39,18 @@ export const TransformPanel = (
     }, 0)
   }, [])
 
-  const handleTestInput = useCallback(newNumber => {}, [])
+  const handleTestInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const widget = latte.editor.getSelectionProxy()
+      if (widget) {
+        widget.move(pre => {
+          pre.x = Number(e.target.value)
+          return pre
+        })
+      }
+    },
+    []
+  )
 
   return (
     <WorkspacePanel>
@@ -55,7 +66,7 @@ export const TransformPanel = (
             className="latte-workspace__raw-component__borderFocusWithin"
             prefix="X"
             value={left}
-            onChange={handleTestInput}
+            onBlur={handleTestInput}
           />
         </Col>
         <Col span={12}>

@@ -19,6 +19,7 @@ import type {
 import type { ITextureLoadResult } from 'Latte/core/texture'
 import { createDefaultImagePaint } from 'Latte/common/schema'
 import { Container } from 'Latte/core/container'
+import { add } from 'Latte/common/point'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -67,9 +68,11 @@ export class ViewController {
       y: position.y - prePosition.y,
     }
     const activeElement = this._viewModel.getActiveSelection()
-    CoreEditingCommands.MoveElement.runCoreEditorCommand(this._viewModel, {
+    CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
-      movement,
+      position(prevState) {
+        return add(prevState, movement)
+      },
     })
   }
 
