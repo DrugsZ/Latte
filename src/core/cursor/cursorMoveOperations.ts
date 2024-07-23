@@ -2,7 +2,7 @@ import type { DisplayObject } from 'Latte/core/displayObject'
 import { Matrix } from 'Latte/math/matrix'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
 import { EditOperation } from 'Latte/core/modelChange'
-import { Point, subtract, dotProduct, add, divide } from 'Latte/common/point'
+import { Point, subtract, dot, add, divide } from 'Latte/common/point'
 import type {
   MouseControllerTarget,
   ActiveSelection,
@@ -113,10 +113,7 @@ export class CursorMoveOperations {
   ) {
     const pointInSelectBox = subtract(point, selectTL)
     const pointInSelectBoxScale = divide(pointInSelectBox, selectBox)
-    const pointSizeOnNewSelectBox = dotProduct(
-      newSelectBox,
-      pointInSelectBoxScale
-    )
+    const pointSizeOnNewSelectBox = dot(newSelectBox, pointInSelectBoxScale)
     return add(newSelectBoxTL, pointSizeOnNewSelectBox)
   }
 

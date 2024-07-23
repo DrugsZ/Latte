@@ -88,7 +88,6 @@ export const FillPanel = (props: PropsWithChildren<FillPanelProps>) => {
 
   const handleSelectionChange = useCallback((e: DisplayObject) => {
     const fills = e.getFills()
-    console.log(fills)
     setFills(fills)
   }, [])
 

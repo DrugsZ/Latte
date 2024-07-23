@@ -20,6 +20,7 @@ import { KeyCode, KeyMod } from 'Latte/common/keyCodes'
 import { calcPosition } from 'Latte/math/zIndex'
 import { CursorMoveOperations } from 'Latte/core/cursor/cursorMoveOperations'
 import { CursorUpdateOperations } from 'Latte/core/cursor/cursorUpdateOperations'
+import { SAT } from 'Latte/math/sat'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -166,9 +167,10 @@ export namespace CoreNavigationCommands {
         const { minX, minY, maxX, maxY } = selectBoxBounds
         const selectNode = rTreeRoot.search({ minX, minY, maxX, maxY })
         const displayObjects = selectNode.map(item => item.displayObject)
+        const result = SAT.testCollision(selectBoxBounds, displayObjects)
         viewModel.discardActiveSelection()
-        if (displayObjects.length) {
-          displayObjects.forEach(viewModel.addSelectElement)
+        if (result.length) {
+          result.forEach(viewModel.addSelectElement)
         }
       }
     })()

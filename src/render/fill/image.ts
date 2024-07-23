@@ -4,7 +4,7 @@ import type {
   FillRenderOptions,
 } from 'Latte/render/renderContributionRegistry'
 import { textureManager } from 'Latte/core/texture'
-import { divide, dotProduct, subtract } from 'Latte/common/point'
+import { divide, dot, subtract } from 'Latte/common/point'
 
 enum ImageFillScaleMode {
   FILL = 'FILL',
@@ -59,7 +59,7 @@ export class ImageFillRender
     } else {
       ratio.y = ratio.x
     }
-    const renderSize = dotProduct(ratio, imageSize)
+    const renderSize = dot(ratio, imageSize)
     const client = divide(subtract(boxSize, renderSize), {
       x: 2,
       y: 2,
