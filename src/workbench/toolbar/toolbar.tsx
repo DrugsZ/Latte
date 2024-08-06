@@ -1,82 +1,82 @@
 import classnames from 'classnames'
-import type { PropsWithChildren, ReactElement } from 'react';
+import type { PropsWithChildren, ReactElement } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { OperateMode } from 'Latte/core/cursor'
 import { unknownType } from 'Latte/common/error'
 import DefaultCursor from 'Latte/assets/static/editor-cursor.svg'
 import Shape from 'Latte/assets/static/shape.svg'
 import Pointer from 'Latte/assets/static/pointer.svg'
-import 'Latte/workbench/toolbar/toolbar.css'
+import 'workbench/toolbar/toolbar.css'
 
 interface IToolbarViewProps {
   active: boolean
-  onClick:() => void
+  onClick: () => void
 }
 
-const getSVGComponentByType = (type:OperateMode) => {
-  let svg:null | ReactElement = null
-  switch(type){
-    case  OperateMode.CreateNormalShape:
-      svg = <Shape/>
-      break;
+const getSVGComponentByType = (type: OperateMode) => {
+  let svg: null | ReactElement = null
+  switch (type) {
+    case OperateMode.CreateNormalShape:
+      svg = <Shape />
+      break
     case OperateMode.Edit:
-      svg = <DefaultCursor  fillRule="nonzero"/>
-      break;
+      svg = <DefaultCursor fillRule="nonzero" />
+      break
     case OperateMode.ReadOnly:
-      svg = <Pointer fillRule="evenodd"/>
-      break;
+      svg = <Pointer fillRule="evenodd" />
+      break
     default:
       unknownType(type)
-      break;
+      break
   }
   return svg
 }
 
-const ToolbarView = (props:PropsWithChildren<IToolbarViewProps>) => {
+const ToolbarView = (props: PropsWithChildren<IToolbarViewProps>) => {
   const { active, onClick, children } = props
-  return <div
-  className={classnames('toolbar_view', { 'toolbar_view--active': active })}
-  onClick={onClick}
-  >
-    <span className='toolbar_view__svg-container'>
-       { children }
-    </span>
-  </div>
+  return (
+    <div
+      className={classnames('toolbar_view', { 'toolbar_view--active': active })}
+      onClick={onClick}
+    >
+      <span className="toolbar_view__svg-container">{children}</span>
+    </div>
+  )
 }
 
 const views = [
-      { type: OperateMode.Edit },
-      { type: OperateMode.CreateNormalShape },
-      { type: OperateMode.ReadOnly },
-    ]
+  { type: OperateMode.Edit },
+  { type: OperateMode.CreateNormalShape },
+  { type: OperateMode.ReadOnly },
+]
 
-export const ToolBarPart=(props)=>
-  {
-    const [activeType, setActiveType] = useState(OperateMode.Edit)
+export const ToolBarPart = props => {
+  const [activeType, setActiveType] = useState(OperateMode.Edit)
 
+  useEffect(() => {
+    const handleModeChange = (mode: OperateMode) => {
+      setActiveType(mode)
+    }
+    setTimeout(() => {
+      latte.editor.onDidOperateModeChange(handleModeChange)
+    }, 0)
+  }, [])
 
-    useEffect(() => {
-      const handleModeChange = (mode:OperateMode) => {
-        setActiveType(mode)
-      }
-      setTimeout(() => {
-        latte.editor.onDidOperateModeChange(handleModeChange)
-      },0)
-    },[])
+  const handleSwitchType = useCallback((type: OperateMode) => {
+    setActiveType(type)
+    latte.editor.setOperateMode(type)
+  }, [])
 
-    const handleSwitchType = useCallback((type: OperateMode) => {
-      setActiveType(type)
-      latte.editor.setOperateMode(type)
-    }, [])
-
-    return <div className="toolbar toolbar-container">
-      {
-        views.map(item => <ToolbarView 
+  return (
+    <div className="toolbar toolbar-container">
+      {views.map(item => (
+        <ToolbarView
           active={item.type === activeType}
-          onClick={handleSwitchType.bind(null,item.type)}
+          onClick={handleSwitchType.bind(null, item.type)}
         >
           {getSVGComponentByType(item.type)}
-        </ToolbarView>)
-      }
+        </ToolbarView>
+      ))}
     </div>
-  }
+  )
+}

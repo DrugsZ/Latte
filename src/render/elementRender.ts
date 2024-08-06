@@ -21,6 +21,21 @@ import type { Camera } from 'Latte/core/cameraService'
 import type { ViewModel } from 'Latte/core/viewModel'
 import { Matrix } from 'Latte/math/matrix'
 
+const mergePaints = (paints: Paint[]): Paint[] => {
+  const result: Paint[] = []
+  for (let i = paints.length - 1; i >= 0; i--) {
+    const curPaint = paints[i]
+    if (!curPaint.visible) {
+      continue
+    }
+    result.unshift(curPaint)
+    if (curPaint.opacity === 1) {
+      break
+    }
+  }
+  return result
+}
+
 registerEditorShapeRender(EditorElementTypeKind.ELLIPSE, EllipseShapeRender)
 registerEditorShapeRender(EditorElementTypeKind.RECTANGLE, RectShapeRender)
 registerEditorFillRender(FillType.SOLID, SolidColorFillRender)
@@ -95,6 +110,10 @@ class ElementRender extends ViewPart {
     ctx.clip()
   }
 
+  private _applyCommonAttrToCtx(ctx: CanvasRenderingContext2D, paint: Paint) {
+    ctx.globalAlpha = paint.opacity
+  }
+
   private _renderDisplayObject(
     ctx: CanvasRenderingContext2D,
     vpMatrix: IMatrixLike,
@@ -103,9 +122,13 @@ class ElementRender extends ViewPart {
     ctx.save()
     this._applyTransform(ctx, vpMatrix, displayObject)
     this._createClipArea(ctx, displayObject)
-    const fills = displayObject.getFills()
+    const fills = mergePaints(displayObject.getFills())
+    if (fills.length === 0) {
+      return
+    }
     fills.forEach(item => {
       const fillRender = getEditorFillRender(item.type)
+      this._applyCommonAttrToCtx(ctx, item)
       fillRender(item, ctx, {
         contextSize: {
           width: displayObject.width,

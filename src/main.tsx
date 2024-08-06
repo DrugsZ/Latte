@@ -1,5 +1,6 @@
-import { layout, App } from 'Latte/workbench/layout/layoutService'
+import { App } from 'workbench/layout/layoutService'
 import 'Latte/assets/css/global.css'
+import 'workbench//components/root.css'
 
 // layout.startup(document.getElementById('root'))
 
