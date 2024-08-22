@@ -20,6 +20,9 @@ import { registerAPI } from 'Latte/api'
 
 import { ActiveSelectionWidget } from 'Latte/core/activeSelectionWidget'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
+import { Vector } from 'Latte/common/vector'
+
+const tempVec2 = Vector.create(0, 0)
 
 export class ViewModel {
   private _focusPageId: string = ''
@@ -87,18 +90,18 @@ export class ViewModel {
   }
 
   private _createPickProxyCache() {
-    const pick = (point: IPoint) => {
+    const pick = (vec: ReadonlyVec2) => {
       if (!this._pickActive) {
         return this.elementTreeRoot
       }
-      return this.pickService.pick.call(this.pickService, point)
+      return this.pickService.pick.call(this.pickService, vec)
     }
 
-    const pickActiveSelection = (point: IPoint) => {
+    const pickActiveSelection = (vec: ReadonlyVec2) => {
       if (!this._pickActive) {
         return MouseControllerTarget.NONE
       }
-      return this.pickService.pickActiveSelection.call(this.pickService, point)
+      return this.pickService.pickActiveSelection.call(this.pickService, vec)
     }
 
     this._cachePickProxy = {

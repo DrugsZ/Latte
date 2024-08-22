@@ -4,7 +4,7 @@ import type {
   FillRenderOptions,
 } from 'Latte/render/renderContributionRegistry'
 import { textureManager } from 'Latte/core/texture'
-import { divide, dot, subtract } from 'Latte/common/point'
+import { Vector } from 'Latte/common/vector'
 
 enum ImageFillScaleMode {
   FILL = 'FILL',
@@ -43,32 +43,30 @@ export class ImageFillRender
   }
 
   private _calcFillInfo(
-    imageSize: IPoint,
-    boxSize: IPoint,
+    imageSize: vec2,
+    boxSize: vec2,
     fillType: ImageFillScaleMode.FILL | ImageFillScaleMode.FIT
   ) {
-    const ratio = divide(boxSize, imageSize)
-    if (ratio.y < ratio.x) {
+    const ratio = Vector.divide(boxSize, imageSize)
+    let [x, y] = ratio
+    if (y < x) {
       if (fillType === ImageFillScaleMode.FILL) {
-        ratio.y = ratio.x
+        y = x
       } else {
-        ratio.x = ratio.y
+        x = y
       }
     } else if (fillType === ImageFillScaleMode.FILL) {
-      ratio.x = ratio.y
+      x = y
     } else {
-      ratio.y = ratio.x
+      y = x
     }
-    const renderSize = dot(ratio, imageSize)
-    const client = divide(subtract(boxSize, renderSize), {
-      x: 2,
-      y: 2,
-    })
+    const renderSize = Vector.dot(ratio, imageSize)
+    const client = Vector.divide(Vector.subtract(boxSize, renderSize), [2, 2])
     return {
-      dx: client.x,
-      dy: client.y,
-      dWidth: renderSize.x,
-      dHeight: renderSize.y,
+      dx: client[0],
+      dy: client[1],
+      dWidth: renderSize[0],
+      dHeight: renderSize[1],
     }
   }
 
@@ -80,8 +78,8 @@ export class ImageFillRender
   ) => {
     const { width, height } = imgBitMap
     const { dx, dy, dHeight, dWidth } = this._calcFillInfo(
-      { x: width, y: height },
-      { x: size.width, y: size.height },
+      Vector.create(width, height),
+      Vector.create(size.width, size.height),
       imageScaleMode
     )
     ctx.drawImage(imgBitMap, dx, dy, dWidth, dHeight)

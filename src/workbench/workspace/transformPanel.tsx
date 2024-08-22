@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { DisplayObject } from 'Latte/core/displayObject'
 
 interface TransformPanelState {
-  size: IPoint
+  size: vec2
   transform: IMatrixLike
 }
 

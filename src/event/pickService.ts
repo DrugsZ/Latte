@@ -14,7 +14,7 @@ import type { ActiveSelection } from 'Latte/core/activeSelection'
 import type { EditorDocument } from 'Latte/elements/document'
 
 export interface IPickerService {
-  pick(point: IPoint): EventTarget | null
+  pick(vec: ReadonlyVec2): EventTarget | null
 }
 
 export class PickService implements IPickerService {
@@ -26,9 +26,9 @@ export class PickService implements IPickerService {
     this.pick = this.pick.bind(this)
   }
 
-  private _isPointInEllipse = (point: IPoint, item: Ellipse) => {
+  private _isPointInEllipse = (vec: ReadonlyVec2, item: Ellipse) => {
     const { width, height } = item.OBB
-    const { x, y } = point
+    const [x, y] = vec
     const radiusX = width / 2
     const radiusY = height / 2
     const squareX = (x - radiusX) * (x - radiusX)
@@ -37,7 +37,7 @@ export class PickService implements IPickerService {
     return ellipseDistance(squareX, squareY, radiusX, radiusY) <= 1
   }
 
-  private _isPointInRect = (point: IPoint, item: Rect) => {
+  private _isPointInRect = (vec: ReadonlyVec2, item: Rect) => {
     const { width, height } = item.OBB
     const fills = item.getFills()
     if (!fills) return false
@@ -49,7 +49,7 @@ export class PickService implements IPickerService {
       : [border, border, border, border]
     const hasBorder = currentBorders.some(b => !!b)
     if (!hasBorder) {
-      return inBox(0, 0, width, height, point.x, point.y)
+      return inBox(0, 0, width, height, vec[0], vec[1])
     }
     return inRectWithRadius(
       0,
@@ -58,20 +58,17 @@ export class PickService implements IPickerService {
       height,
       currentBorders,
       0,
-      point.x,
-      point.y
+      vec[0],
+      vec[1]
     )
   }
 
-  pick(point: IPoint) {
+  pick(vec: ReadonlyVec2) {
     let target: DisplayObject = this._root
     const findElements =
       this._getVisibleElementRenderObjects().slice().reverse() || []
     findElements.some(item => {
-      const localPosition = Matrix.applyMatrixInvertToPoint(
-        item.transform,
-        point
-      )
+      const localPosition = Matrix.applyMatrixInvertToPoint(item.transform, vec)
       if (isRect(item) && this._isPointInRect(localPosition, item)) {
         target = item
         return true
@@ -85,8 +82,8 @@ export class PickService implements IPickerService {
     return target
   }
 
-  pickActiveSelection(point: IPoint) {
-    return this._activeSelection.hitTest(point)
+  pickActiveSelection(vec: ReadonlyVec2) {
+    return this._activeSelection.hitTest(vec)
   }
 
   disabled() {}

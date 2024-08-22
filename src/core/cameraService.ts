@@ -1,6 +1,7 @@
 import { Point } from 'Latte/common/point'
 import { Emitter } from 'Latte/common/event'
 import { Matrix } from 'Latte/math/matrix'
+import { Vector } from 'Latte/common/vector'
 
 export class Camera {
   private _zoom: number = 1
@@ -28,7 +29,7 @@ export class Camera {
   private readonly _onCameraViewChange = new Emitter<Camera>()
   public readonly onCameraViewChange = this._onCameraViewChange.event
 
-  setZoom(value: number, viewPortPoint?: IPoint) {
+  setZoom(value: number, viewPortPoint?: ReadonlyVec2) {
     const oldMatrix = this._matrix.clone()
     this._zoom = value
     this._updateMatrix()
@@ -37,16 +38,13 @@ export class Camera {
     }
   }
 
-  private _adjustPosition(preMatrix: IMatrixLike, viewPortPoint: IPoint) {
+  private _adjustPosition(preMatrix: IMatrixLike, viewPortPoint: ReadonlyVec2) {
     const newViewPort = Matrix.applyMatrixInvertToPoint(
       this._matrix,
       Matrix.apply(viewPortPoint, preMatrix)
     )
-    const newMove = {
-      x: newViewPort.x - viewPortPoint.x,
-      y: newViewPort.y - viewPortPoint.y,
-    }
-    this.move(-newMove.x, -newMove.y)
+    const newMove = Vector.subtract(newViewPort, viewPortPoint)
+    this.move(-newMove[0], -newMove[1])
   }
 
   private _updateMatrix() {

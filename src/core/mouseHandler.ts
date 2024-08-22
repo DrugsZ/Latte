@@ -14,6 +14,10 @@ import type { DisplayObject } from 'Latte/core/displayObject'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import * as dom from 'Latte/event/dom'
 
+import { Vector } from 'Latte/common/vector'
+
+const tempVec2 = Vector.create(0, 0)
+
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms
 
@@ -279,12 +283,14 @@ export class MouseHandler {
 
   private _setupMouseWheelZoomListener(): void {
     const onMouseWheel = (browserEvent: IMouseWheelEvent) => {
-      const client = this._view.client2Viewport({
-        x: browserEvent.offsetX,
-        y: browserEvent.offsetY,
-      })
+      tempVec2[0] = browserEvent.offsetX
+      tempVec2[1] = browserEvent.offsetY
+      const client = this._view.client2Viewport(tempVec2)
       this._viewController.dispatchWheel(
-        new StandardWheelEvent(browserEvent, client)
+        new StandardWheelEvent(browserEvent, {
+          x: client[0],
+          y: client[1],
+        })
       )
     }
     this._element.addEventListener(dom.EventType.MOUSE_WHEEL, onMouseWheel, {

@@ -216,29 +216,29 @@ export class ActiveSelectionCorner {
     }
   }
 
-  private _hitTestResize(point: IPoint) {
+  private _hitTestResize(vec: ReadonlyVec2) {
     const { x, y } = this._getCenter()
     const { _RESIZE_WIDTH: RESIZE_WIDTH, _RESIZE_HEIGHT: RESIZE_HEIGHT } =
       ActiveSelectionCorner
     const startX = x - RESIZE_WIDTH / 2
     const startY = y - RESIZE_HEIGHT / 2
-    return inBox(startX, startY, RESIZE_WIDTH, RESIZE_HEIGHT, point.x, point.y)
+    return inBox(startX, startY, RESIZE_WIDTH, RESIZE_HEIGHT, vec[0], vec[1])
   }
 
-  private _hitTestRotate(point: IPoint) {
+  private _hitTestRotate(vec: ReadonlyVec2) {
     const { x, y } = this._getRotateCenter()
     const { _ROTATE_WIDTH: ROTATE_WIDTH, _ROTATE_HEIGHT: ROTATE_HEIGHT } =
       ActiveSelectionCorner
     const startX = x - ROTATE_WIDTH / 2
     const startY = y - ROTATE_HEIGHT / 2
-    return inBox(startX, startY, ROTATE_WIDTH, ROTATE_HEIGHT, point.x, point.y)
+    return inBox(startX, startY, ROTATE_WIDTH, ROTATE_HEIGHT, vec[0], vec[1])
   }
 
-  public hitTest(point: IPoint) {
-    if (this._hitTestResize(point)) {
+  public hitTest(vec: ReadonlyVec2) {
+    if (this._hitTestResize(vec)) {
       return this._resizeControllerType
     }
-    if (this._hitTestRotate(point)) {
+    if (this._hitTestRotate(vec)) {
       return this._rotateControllerType
     }
     return null
@@ -334,10 +334,10 @@ class ActiveSelectionCornerCollection {
     }
   }
 
-  public hitTest(point: IPoint) {
+  public hitTest(vec: ReadonlyVec2) {
     let result: MouseControllerTarget | null = null
     this._corners.some(item => {
-      result = item.hitTest(point)
+      result = item.hitTest(vec)
       return !!result
     })
     return result
@@ -456,15 +456,15 @@ export class ActiveSelection extends Rect {
     return this._cornerCollection.getCorners()
   }
 
-  private _hitContext(point: IPoint) {
+  private _hitContext(vec: vec2) {
     const { width, height } = this.OBB
-    if (inBox(0, 0, width, height, point.x, point.y)) {
+    if (inBox(0, 0, width, height, vec[0], vec[1])) {
       return MouseControllerTarget.SELECTION_CONTEXT
     }
     return MouseControllerTarget.NONE
   }
 
-  private _hitBorder(point: IPoint) {
+  private _hitBorder(vec: vec2) {
     const { width, height } = this.OBB
     if (
       inLine(
@@ -473,8 +473,8 @@ export class ActiveSelection extends Rect {
         width,
         0,
         DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
-        point.x,
-        point.y
+        vec[0],
+        vec[1]
       )
     ) {
       return MouseControllerTarget.SELECT_RESIZE_TOP
@@ -486,8 +486,8 @@ export class ActiveSelection extends Rect {
         0,
         height,
         DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
-        point.x,
-        point.y
+        vec[0],
+        vec[1]
       )
     ) {
       return MouseControllerTarget.SELECT_RESIZE_LEFT
@@ -499,8 +499,8 @@ export class ActiveSelection extends Rect {
         width,
         height,
         DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
-        point.x,
-        point.y
+        vec[0],
+        vec[1]
       )
     ) {
       return MouseControllerTarget.SELECT_RESIZE_BOTTOM
@@ -512,8 +512,8 @@ export class ActiveSelection extends Rect {
         width,
         height,
         DEFAULT_ACTIVE_SELECTION_LINT_WIDTH,
-        point.x,
-        point.y
+        vec[0],
+        vec[1]
       )
     ) {
       return MouseControllerTarget.SELECT_RESIZE_RIGHT
@@ -521,13 +521,13 @@ export class ActiveSelection extends Rect {
     return null
   }
 
-  private _hitCorner(point: IPoint) {
-    return this._cornerCollection.hitTest(point)
+  private _hitCorner(vec: vec2) {
+    return this._cornerCollection.hitTest(vec)
   }
 
-  public hitTest(point: IPoint) {
+  public hitTest(vec: vec2) {
     const { transform } = this.OBB
-    const localPosition = Matrix.applyMatrixInvertToPoint(transform, point)
+    const localPosition = Matrix.applyMatrixInvertToPoint(transform, vec)
     let target: MouseControllerTarget | null = null
     target = target || (!this.hasActive() ? MouseControllerTarget.NONE : null)
     target = target || this._hitCorner(localPosition)

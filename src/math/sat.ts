@@ -12,37 +12,41 @@ import type DisplayObject from 'Latte/core/container'
 import type Rect from 'Latte/elements/rect'
 import type Ellipse from 'Latte/elements/ellipse'
 import { Matrix } from 'Latte/math/matrix'
+import { Vector } from 'Latte/common/vector'
 
-const DEFAULT_SELECT_BOX_AXIS = [new Point(0, 1), new Point(1, 0)]
+const DEFAULT_SELECT_BOX_AXIS = [Vector.create(0, 1), Vector.create(1, 0)]
 
-const tmp = new Point(0, 0)
+const tmp = Vector.create(0, 0)
 
-function pointCircleCollision(point: IPoint, circle: IPoint, r: number) {
+function pointCircleCollision(
+  point: ReadonlyVec2,
+  circle: ReadonlyVec2,
+  r: number
+) {
   if (r === 0) return false
-  return magnitude(subtract(circle, point)) <= r * r
+  return Vector.magnitude(Vector.subtract(circle, point)) <= r * r
 }
 
-type TrianglePoint = [IPoint, IPoint, IPoint]
+type TrianglePoint = [ReadonlyVec2, ReadonlyVec2, ReadonlyVec2]
 
 class TriangleCircleCollision {
   private static _pointInTriangle(
-    point: IPoint,
-    triangle: [IPoint, IPoint, IPoint]
+    point: ReadonlyVec2,
+    triangle: TrianglePoint
   ) {
     // compute vectors & dot products
-    const center = new Point()
-    center.copyFrom(point)
+    const center = Vector.clone(point)
     const t0 = triangle[0]
     const t1 = triangle[1]
     const t2 = triangle[2]
-    const v0 = subtract(t2, t0)
-    const v1 = subtract(t1, t0)
-    const v2 = subtract(center, t0)
-    const dot00 = dotProduct(v0, v0)
-    const dot01 = dotProduct(v0, v1)
-    const dot02 = dotProduct(v0, v2)
-    const dot11 = dotProduct(v1, v1)
-    const dot12 = dotProduct(v1, v2)
+    const v0 = Vector.subtract(t2, t0)
+    const v1 = Vector.subtract(t1, t0)
+    const v2 = Vector.subtract(center, t0)
+    const dot00 = Vector.dotProduct(v0, v0)
+    const dot01 = Vector.dotProduct(v0, v1)
+    const dot02 = Vector.dotProduct(v0, v2)
+    const dot11 = Vector.dotProduct(v1, v1)
+    const dot12 = Vector.dotProduct(v1, v2)
 
     // Compute barycentric coordinates
     const b = dot00 * dot11 - dot01 * dot01
@@ -53,57 +57,57 @@ class TriangleCircleCollision {
   }
 
   private static _lineCircleCollide(
-    a: IPoint,
-    b: IPoint,
-    center: IPoint,
+    a: ReadonlyVec2,
+    b: ReadonlyVec2,
+    center: ReadonlyVec2,
     radius: number,
-    nearest?: Point
+    nearest?: ReadonlyVec2
   ) {
     // check to see if start or end points lie within circle
     if (pointCircleCollision(a, center, radius)) {
       if (nearest) {
-        nearest.copyFrom(a)
+        Vector.clone(a, nearest)
       }
       return true
     }
     if (pointCircleCollision(b, center, radius)) {
       if (nearest) {
-        nearest.copyFrom(b)
+        nearest = Vector.clone(a, nearest)
       }
       return true
     }
 
     // vector d
-    const d = subtract(b, a)
+    const d = Vector.subtract(b, a)
 
     // vector lc
-    const lc = subtract(center, a)
+    const lc = Vector.subtract(center, a)
 
     // project lc onto d, resulting in vector p
-    const dLen2 = magnitude(d) // len2 of d
-    const p = new Point(0, 0)
+    const dLen2 = Vector.magnitude(d) // len2 of d
+    const p = Vector.create(0, 0)
     if (dLen2 > 0) {
-      const dp = dotProduct(lc, d) / dLen2
-      p.x = d.x * dp
-      p.y = d.y * dp
+      const dp = Vector.dotProduct(lc, d) / dLen2
+      p[0] = d[0] * dp
+      p[1] = d[1] * dp
     }
 
     if (!nearest) nearest = tmp
-    nearest = add(a, p)
+    Vector.add(a, p, nearest)
 
     // len2 of p
-    const pLen2 = magnitude(p)
+    const pLen2 = Vector.magnitude(p)
 
     // check collision
     return (
       pointCircleCollision(nearest, center, radius) &&
       pLen2 <= dLen2 &&
-      dotProduct(p, d) >= 0
+      Vector.dotProduct(p, d) >= 0
     )
   }
   private static _singleTriangleCircleCollision(
-    triangle: [IPoint, IPoint, IPoint],
-    circle: IPoint,
+    triangle: TrianglePoint,
+    circle: ReadonlyVec2,
     radius: number
   ) {
     if (this._pointInTriangle(circle, triangle)) return true
@@ -117,7 +121,7 @@ class TriangleCircleCollision {
   }
   public static collision(
     triangles: TrianglePoint | TrianglePoint[],
-    circle: IPoint,
+    circle: ReadonlyVec2,
     radius: number
   ) {
     const firstElement = triangles[0]
@@ -142,13 +146,13 @@ class Projection {
   }
 }
 
-const project = (axes: IPoint, axis: IPoint[]) => {
+const project = (axes: ReadonlyVec2, axis: ReadonlyVec2[]) => {
   const scalars: number[] = []
-  const v = new Point()
+  const v = Vector.create(0, 0)
 
   axis.forEach(point => {
-    v.copyFrom(point)
-    scalars.push(dotProduct(v, axes))
+    Vector.clone(point, v)
+    scalars.push(Vector.dotProduct(v, axes))
   })
   return new Projection(Math.min(...scalars), Math.max(...scalars))
 }
@@ -161,19 +165,19 @@ export class SAT {
   private static _getRectPointFromTopLeft(rect: Rect) {
     const { width, height } = rect
     return [
-      new Point(0, 0),
-      new Point(width, 0),
-      new Point(width, height),
-      new Point(0, height),
+      Vector.create(0, 0),
+      Vector.create(width, 0),
+      Vector.create(width, height),
+      Vector.create(0, height),
     ].map(item => Matrix.apply(item, rect.transform))
   }
 
   private static _getRectangleAxis(rect: Rect) {
     const transformPoint = this._getRectPointFromTopLeft(rect)
-    const axesList: IPoint[] = []
+    const axesList: ReadonlyVec2[] = []
     for (let i = 1, len = transformPoint.length; i < len; i++) {
-      const edge = subtract(transformPoint[i], transformPoint[i - 1])
-      axesList.push(normal(edge))
+      const edge = Vector.subtract(transformPoint[i], transformPoint[i - 1])
+      axesList.push(Vector.normal(edge))
     }
     return axesList
   }
@@ -181,14 +185,14 @@ export class SAT {
   private static _getSelectBoxPoint(selectBox: Bounds) {
     const { x, y, width, height } = selectBox.getRectangle()
     return [
-      new Point(x, y),
-      new Point(x + width, y),
-      new Point(x + width, y + height),
-      new Point(x, y + height),
+      Vector.create(x, y),
+      Vector.create(x + width, y),
+      Vector.create(x + width, y + height),
+      Vector.create(x, y + height),
     ]
   }
 
-  private static _testRectangle(selectVector: IPoint[], rect: Rect) {
+  private static _testRectangle(selectVector: ReadonlyVec2[], rect: Rect) {
     let projectionSelectBox: Projection
     let projectionTestRect: Projection
     const axes = this._getRectangleAxis(rect).concat(DEFAULT_SELECT_BOX_AXIS)
@@ -212,16 +216,13 @@ export class SAT {
     } else {
       tempMatrix.d = width / height
     }
-    const centerOriginTL = Matrix.apply(
-      { x: width / 2, y: height / 2 },
-      {
-        ...object.transform,
-        tx: 0,
-        ty: 0,
-      }
-    )
-    centerOriginTL.x += x
-    centerOriginTL.y += y
+    const centerOriginTL = Matrix.apply(Vector.create(width / 2, height / 2), {
+      ...object.transform,
+      tx: 0,
+      ty: 0,
+    })
+    centerOriginTL[0] += x
+    centerOriginTL[1] += y
     const newCenter = Matrix.apply(centerOriginTL, tempMatrix)
     Matrix.multiply(tempMatrix, tempMatrix, object.transform)
     tempMatrix.b = 0
@@ -235,7 +236,7 @@ export class SAT {
     }
   }
 
-  private static _testEllipse(selectVector: IPoint[], object: Ellipse) {
+  private static _testEllipse(selectVector: ReadonlyVec2[], object: Ellipse) {
     const { currentMatrix, newCenter, radius } =
       this._transformEllipseToCircle(object)
     console.log(currentMatrix, newCenter)

@@ -49,7 +49,7 @@ declare namespace latte.editor {
      * set x
      */
 
-    move(newPosition: SetStateAction<IPoint>): void
+    move(newPosition: SetStateAction<vec2>): void
 
     /**
      * get y

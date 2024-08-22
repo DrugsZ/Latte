@@ -1,4 +1,5 @@
-import { Point } from 'Latte/common/point'
+import type { Point } from 'Latte/common/point'
+import { Vector } from 'Latte/common/vector'
 
 const degrees = 180 / Math.PI
 
@@ -51,11 +52,14 @@ export class Matrix implements IMatrixLike {
 
   static getScale(mat: IMatrixLike) {
     const { a: a1, b: b1, c: c1, d: d1 } = mat
-    return new Point(Math.sqrt(a1 * a1 + c1 * c1), Math.sqrt(b1 * b1 + d1 * d1))
+    return Vector.create(
+      Math.sqrt(a1 * a1 + c1 * c1),
+      Math.sqrt(b1 * b1 + d1 * d1)
+    )
   }
 
   static getTranslation(mat: Matrix) {
-    return new Point(mat.tx, mat.ty)
+    return Vector.create(mat.tx, mat.ty)
   }
 
   static fromMatrixOrigin = (
@@ -73,14 +77,14 @@ export class Matrix implements IMatrixLike {
     return out
   }
 
-  static apply<P extends IPoint = Point>(
-    pos: IPoint,
+  static apply<P extends vec2 = vec2>(
+    pos: ReadonlyVec2,
     a: IMatrixLike,
     newPos?: P
   ): P {
-    newPos = (newPos || new Point()) as P
-    newPos.x = a.a * pos.x + a.c * pos.y + a.tx
-    newPos.y = a.b * pos.x + a.d * pos.y + a.ty
+    newPos = (newPos || Vector.create(0, 0)) as P
+    newPos[0] = a.a * pos[0] + a.c * pos[1] + a.tx
+    newPos[1] = a.b * pos[0] + a.d * pos[1] + a.ty
 
     return newPos
   }
@@ -95,20 +99,20 @@ export class Matrix implements IMatrixLike {
     return Math.atan2(mat.b, mat.a) * degrees
   }
 
-  static applyMatrixInvertToPoint<P extends IPoint = Point>(
+  static applyMatrixInvertToPoint<P extends vec2 = vec2>(
     mat: IMatrixLike,
-    pos: IPoint,
+    pos: vec2,
     newPos?: P
   ) {
-    newPos = (newPos || new Point()) as P
+    newPos = (newPos || Vector.create(0, 0)) as P
 
     const id = 1 / (mat.a * mat.d + mat.c * -mat.b)
 
-    const { x, y } = pos
+    const [x, y] = pos
 
-    newPos.x =
+    newPos[0] =
       mat.d * id * x + -mat.c * id * y + (mat.ty * mat.c - mat.tx * mat.d) * id
-    newPos.y =
+    newPos[1] =
       mat.a * id * y + -mat.b * id * x + (-mat.ty * mat.a + mat.tx * mat.b) * id
 
     return newPos

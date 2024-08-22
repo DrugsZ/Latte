@@ -2,6 +2,9 @@ import type { PickService } from 'Latte/event/pickService'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import type DisplayObject from 'Latte/core/container'
 import * as dom from 'Latte/event/dom'
+import { Vector } from 'Latte/common/vector'
+
+const tempVec2 = Vector.create(0, 0)
 
 export interface IMouseEvent {
   readonly browserEvent: MouseEvent
@@ -86,15 +89,25 @@ export interface PickProxy {
 export class EditorMouseEventFactory {
   constructor(
     private readonly _viewDom: HTMLElement,
-    private readonly _client2Viewport: (point: IPoint) => IPoint,
+    private readonly _client2Viewport: (vec: ReadonlyVec2) => ReadonlyVec2,
     private readonly _pickProxy: PickProxy
   ) {}
 
   private _create(e: MouseEvent): EditorMouseEvent {
-    const client = this._client2Viewport({ x: e.offsetX, y: e.offsetY })
+    tempVec2[0] = e.offsetX
+    tempVec2[1] = e.offsetY
+    const client = this._client2Viewport(tempVec2)
     const elementTarget = this._pickProxy.pick(client)
     const controller = this._pickProxy.pickActiveSelection(client)
-    return new EditorMouseEvent(e, client, elementTarget, controller)
+    return new EditorMouseEvent(
+      e,
+      {
+        x: client[0],
+        y: client[1],
+      },
+      elementTarget,
+      controller
+    )
   }
 
   public onContextMenu(callback: (e: EditorMouseEvent) => void) {
