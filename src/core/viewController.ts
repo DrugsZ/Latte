@@ -20,6 +20,7 @@ import type { ITextureLoadResult } from 'Latte/core/texture'
 import { createDefaultImagePaint } from 'Latte/common/schema'
 import { Container } from 'Latte/core/container'
 import { add } from 'Latte/common/point'
+import { Vector } from 'Latte/common/vector'
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -257,6 +258,9 @@ export class ViewController {
     const delta = Math.min(Math.max(Math.abs(deltaY) / 4, 1), 16)
     const zoom = currentCamera.getZoom()
     const step = zoom * 0.02
-    currentCamera.setZoom(zoom + step * delta * symbol, client)
+    currentCamera.setZoom(
+      zoom + step * delta * symbol,
+      Vector.create(client.x, client.y)
+    )
   }
 }

@@ -3,12 +3,12 @@ import { Bounds } from 'Latte/core/bounds'
 import type { Container } from 'Latte/core/container'
 import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/math/matrix'
-import { Point } from 'Latte/common/point'
 import type { RBushNodeAABB } from 'Latte/core/rTree'
 import { rTreeRoot } from 'Latte/core/rTree'
+import { Vector } from 'Latte/common/vector'
 
-const beforeTransformPoint = new Point(0, 0)
-const afterTransformPoint = new Point(0, 0)
+const beforeTransformPoint = Vector.create(0, 0) // new Point(0, 0)
+const afterTransformPoint = Vector.create(0, 0) // new Point(0, 0)
 export abstract class DisplayObject<
   T extends BaseElementSchema = BaseElementSchema
 > extends EventTarget {
@@ -150,21 +150,21 @@ export abstract class DisplayObject<
     tempMatrix.tx = tx
     tempMatrix.ty = ty
     // tl
-    beforeTransformPoint.x = x
-    beforeTransformPoint.y = y
+    beforeTransformPoint[0] = x
+    beforeTransformPoint[1] = y
     this._bounds.addPoint(beforeTransformPoint)
     // tr
-    beforeTransformPoint.x = x + this.width
+    beforeTransformPoint[0] = x + this.width
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
     this._bounds.addPoint(afterTransformPoint)
     // br
-    beforeTransformPoint.x = x + this.width
-    beforeTransformPoint.y = y + this.height
+    beforeTransformPoint[0] = x + this.width
+    beforeTransformPoint[1] = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
     this._bounds.addPoint(afterTransformPoint)
     // bl
-    beforeTransformPoint.x = x
-    beforeTransformPoint.y = y + this.height
+    beforeTransformPoint[0] = x
+    beforeTransformPoint[1] = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
     this._bounds.addPoint(afterTransformPoint)
     this._boundDirty = false

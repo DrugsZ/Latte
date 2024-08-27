@@ -10,12 +10,16 @@ import { ViewController } from 'Latte/core/viewController'
 import { Matrix } from 'Latte/math/matrix'
 import { PickArea } from 'Latte/view/pickArea'
 import { DragHandler } from 'Latte/core/dragHandler'
+import { Vector } from 'Latte/common/vector'
+import { Point } from 'Latte/common/point'
 
 export enum RenderEnum {
   ViewportChange,
   ZoomChange,
   ElementChange,
 }
+
+const tempVec2 = Vector.create(0, 0)
 
 export default class View extends ViewEventHandler {
   private _renderElement: ElementRender
@@ -110,15 +114,15 @@ export default class View extends ViewEventHandler {
     })
   }
 
-  public client2Viewport(client: IPoint) {
+  public client2Viewport(vec: ReadonlyVec2) {
     const currentCamera = this.getCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
-    return Matrix.applyMatrixInvertToPoint(vpMatrix, client)
+    return Matrix.applyMatrixInvertToPoint(vpMatrix, vec)
   }
 
-  public viewport2Client(viewPort: IPoint) {
+  public viewport2Client(vec: ReadonlyVec2) {
     const currentCamera = this.getCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
-    return Matrix.apply(viewPort, vpMatrix)
+    return Matrix.apply(vec, vpMatrix)
   }
 }

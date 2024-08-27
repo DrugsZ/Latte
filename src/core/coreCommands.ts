@@ -21,6 +21,7 @@ import { calcPosition } from 'Latte/math/zIndex'
 import { CursorMoveOperations } from 'Latte/core/cursor/cursorMoveOperations'
 import { CursorUpdateOperations } from 'Latte/core/cursor/cursorUpdateOperations'
 import { SAT } from 'Latte/math/sat'
+import { Vector } from 'Latte/common/vector'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -180,8 +181,8 @@ export namespace CoreEditingCommands {
   interface CreateElementCommandOptions<
     T extends BaseElementSchema = RectangleElement
   > extends BaseCommandOptions {
-    position: IPoint
-    startPosition: IPoint
+    position: ReadonlyVec2
+    startPosition: ReadonlyVec2
     paint: Paint | Paint[]
     parent: BaseElementSchema['guid']
     sourceElement: T
@@ -197,9 +198,12 @@ export namespace CoreEditingCommands {
         })
       }
 
-      private _getCreateResizeKey(position: IPoint, startPosition: IPoint) {
-        const { x, y } = startPosition
-        const { x: newX, y: newY } = position
+      private _getCreateResizeKey(
+        position: ReadonlyVec2,
+        startPosition: ReadonlyVec2
+      ) {
+        const [x, y] = startPosition
+        const [newX, newY] = position
         let key = MouseControllerTarget.SELECT_RESIZE_RIGHT_BOTTOM
         if (newY < y) {
           if (newX < x) {
@@ -215,8 +219,8 @@ export namespace CoreEditingCommands {
 
       private _resizeActiveCreate(
         viewModel: ViewModel,
-        position: IPoint,
-        startPosition: IPoint
+        position: ReadonlyVec2,
+        startPosition: ReadonlyVec2
       ) {
         CoreEditingCommands.ResizeElement.runCoreEditorCommand(viewModel, {
           key: this._getCreateResizeKey(position, startPosition),
@@ -257,26 +261,23 @@ export namespace CoreEditingCommands {
           column = (paints.length / row) >> 0
         }
         const result: {
-          position: IPoint
+          position: ReadonlyVec2
           paint: Paint
         }[] = []
-        const box = new Point(0, 0)
-        const pre = new Point(0, 0)
+        const box = Vector.create(0, 0) // new Point(0, 0)
+        const pre = Vector.create(0, 0) // new Point(0, 0)
         paints.forEach((paint, index) => {
           result.push({
-            position: {
-              x: pre.x,
-              y: box.y,
-            },
+            position: Vector.create(pre[0], box[1]),
             paint,
           })
-          pre.x += (paint as ImagePaint).originalImageWidth
-          pre.y = Math.max(pre.y, (paint as ImagePaint).originalImageHeight)
+          pre[0] += (paint as ImagePaint).originalImageWidth
+          pre[1] = Math.max(pre[1], (paint as ImagePaint).originalImageHeight)
           if (!((index + 1) % column)) {
-            box.x = Math.max(pre.x, box.x)
-            box.y += pre.y
-            pre.y = 0
-            pre.x = 0
+            box[0] = Math.max(pre[0], box[0])
+            box[1] += pre[1]
+            pre[1] = 0
+            pre[0] = 0
           }
         })
         return {
@@ -287,14 +288,13 @@ export namespace CoreEditingCommands {
 
       private _createByPaint(
         defaultSchema: BaseElementSchema,
-        position: IPoint,
+        position: ReadonlyVec2,
         paint: Paint
       ) {
         if (paint) {
           defaultSchema.fillPaints = [paint]
         }
-        defaultSchema.transform.tx = position.x
-        defaultSchema.transform.ty = position.y
+        ;[defaultSchema.transform.tx, defaultSchema.transform.ty] = position
         defaultSchema.size.x = (paint as ImagePaint).originalImageWidth
         defaultSchema.size.y = (paint as ImagePaint).originalImageHeight
         defaultSchema.name = (paint as ImagePaint).image.name
@@ -303,14 +303,14 @@ export namespace CoreEditingCommands {
 
       private _createByPaints(
         defaultSchema: BaseElementSchema,
-        position: IPoint,
+        position: ReadonlyVec2,
         paints: Paint[]
       ) {
         const { paintElementsPosition, paintElementsBox } =
           this._calcPaintElementPosition(paints)
-        const startPoint = subtract(
+        const startPoint = Vector.subtract(
           position,
-          divide(paintElementsBox, { x: 2, y: 2 })
+          Vector.divide(paintElementsBox, Vector.create(2, 2))
         )
         return paintElementsPosition.map(p => {
           const { position, paint } = p
@@ -318,7 +318,7 @@ export namespace CoreEditingCommands {
           currentSchema.guid = getUId()
           return this._createByPaint(
             currentSchema,
-            add(position, startPoint),
+            Vector.add(position, startPoint),
             paint
           )
         })
@@ -421,7 +421,7 @@ export namespace CoreEditingCommands {
     })()
 
   interface BaseMoveToCommandOptions extends BaseCommandOptions {
-    position: latte.editor.SetStateAction<IPoint>
+    position: latte.editor.SetStateAction<ReadonlyVec2>
     objects: DisplayObject[]
   }
   export const MoveElementTo =
@@ -508,7 +508,7 @@ export namespace CoreEditingCommands {
 
   interface ResizeElementCommandOptions extends BaseCommandOptions {
     key: MouseControllerTarget
-    position: IPoint
+    position: ReadonlyVec2
   }
 
   class ResizeElementCommand extends CoreEditorCommand<ResizeElementCommandOptions> {

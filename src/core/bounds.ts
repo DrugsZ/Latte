@@ -1,4 +1,7 @@
+import { Vector } from 'Latte/common/vector'
 import { Rectangle } from 'Latte/core/rectangle'
+
+const tempVec = Vector.create(0, 0)
 
 export class Bounds {
   public minX: number = Infinity
@@ -28,11 +31,11 @@ export class Bounds {
     this.maxY = -Infinity
   }
 
-  addPoint(point: IPoint): void {
-    this.minX = Math.min(this.minX, point.x)
-    this.maxX = Math.max(this.maxX, point.x)
-    this.minY = Math.min(this.minY, point.y)
-    this.maxY = Math.max(this.maxY, point.y)
+  addPoint(vec: ReadonlyVec2): void {
+    this.minX = Math.min(this.minX, vec[0])
+    this.maxX = Math.max(this.maxX, vec[0])
+    this.minY = Math.min(this.minY, vec[1])
+    this.maxY = Math.max(this.maxY, vec[1])
   }
 
   getRectangle() {
@@ -52,8 +55,12 @@ export class Bounds {
 
   merge(bound: Bounds) {
     const { minX, minY, maxX, maxY } = bound
-    this.addPoint({ x: minX, y: minY })
-    this.addPoint({ x: maxX, y: maxY })
+    tempVec[0] = minX
+    tempVec[1] = minY
+    this.addPoint(tempVec)
+    tempVec[0] = maxX
+    tempVec[1] = maxY
+    this.addPoint(tempVec)
   }
 
   getCenter() {

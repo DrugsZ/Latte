@@ -43,7 +43,7 @@ export class ActiveSelectionWidget {
     private _activeSelection: ActiveSelection
   ) {}
 
-  move(newPosition: latte.editor.SetStateAction<IPoint>) {
+  move(newPosition: latte.editor.SetStateAction<ReadonlyVec2>) {
     const objects = this._activeSelection.getObjects()
 
     CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {

@@ -2,7 +2,6 @@ import type { DisplayObject } from 'Latte/core/displayObject'
 import { Matrix } from 'Latte/math/matrix'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
 import { EditOperation } from 'Latte/core/modelChange'
-import { Point, subtract, dot, add, divide } from 'Latte/common/point'
 import type {
   MouseControllerTarget,
   ActiveSelection,
@@ -15,6 +14,7 @@ import {
 } from 'Latte/core/activeSelection'
 
 import { isFunction } from 'Latte/utils/assert'
+import { Vector } from 'Latte/common/vector'
 
 export class CursorMoveOperations {
   static tempMatrix = new Matrix()
@@ -42,7 +42,7 @@ export class CursorMoveOperations {
       ])
       diffMatrix.tx = x
       diffMatrix.ty = y
-      const newP1 = Matrix.apply(OBB, diffMatrix)
+      const newP1 = Matrix.apply(Vector.create(OBB.x, OBB.y), diffMatrix)
       const { transform } = object
       // how get skewX in transform: first get pureTransform without skewX, eg: removeSkewXTransform
       // second: get skewY transform same as skewX, eg: skewToY
@@ -66,8 +66,7 @@ export class CursorMoveOperations {
       }
       Matrix.multiply(diffMatrix, removeSkewXTransform, diffMatrix)
       Matrix.multiply(diffMatrix, diffMatrix, skewXTransform)
-      diffMatrix.tx = newP1.x
-      diffMatrix.ty = newP1.y
+      ;[diffMatrix.tx, diffMatrix.ty] = newP1
       result.push(
         EditOperation.update(object.getGuidKey(), {
           transform: { ...diffMatrix },
@@ -85,7 +84,10 @@ export class CursorMoveOperations {
     })
   }
 
-  private static _getPointOnSelectBoxAxis(selectBoxOBB: OBB, point: IPoint) {
+  private static _getPointOnSelectBoxAxis(
+    selectBoxOBB: OBB,
+    point: ReadonlyVec2
+  ) {
     const {
       x: selectBoxTLX,
       y: selectBoxTLY,
@@ -96,30 +98,30 @@ export class CursorMoveOperations {
       selectBoxTransform
     ) as Matrix
     return Matrix.apply(
-      {
-        x: point.x - selectBoxTLX,
-        y: point.y - selectBoxTLY,
-      },
+      Vector.create(point[0] - selectBoxTLX, point[1] - selectBoxTLY),
       invertTransform
     )
   }
 
   private static _getNewPointOnSelectBoxChange(
-    selectBox: IPoint,
-    selectTL: IPoint,
-    newSelectBox: IPoint,
-    newSelectBoxTL: IPoint,
-    point: IPoint
+    selectBox: ReadonlyVec2,
+    selectTL: ReadonlyVec2,
+    newSelectBox: ReadonlyVec2,
+    newSelectBoxTL: ReadonlyVec2,
+    point: ReadonlyVec2
   ) {
-    const pointInSelectBox = subtract(point, selectTL)
-    const pointInSelectBoxScale = divide(pointInSelectBox, selectBox)
-    const pointSizeOnNewSelectBox = dot(newSelectBox, pointInSelectBoxScale)
-    return add(newSelectBoxTL, pointSizeOnNewSelectBox)
+    const pointInSelectBox = Vector.subtract(point, selectTL)
+    const pointInSelectBoxScale = Vector.divide(pointInSelectBox, selectBox)
+    const pointSizeOnNewSelectBox = Vector.dot(
+      newSelectBox,
+      pointInSelectBoxScale
+    )
+    return Vector.add(newSelectBoxTL, pointSizeOnNewSelectBox)
   }
 
   private static _getRectInfoBeforeAndAfter(
     selectOBB: OBB,
-    position: IPoint,
+    vec: ReadonlyVec2,
     key: MouseControllerTarget
   ) {
     const {
@@ -129,33 +131,30 @@ export class CursorMoveOperations {
       width: selectBoxWidth,
       height: selectBoxHeight,
     } = selectOBB
-    const oldSelectBoxTL = new Point(selectBoxTLX, selectBoxTLY)
-    const oldSelectBoxRect = new Point(selectBoxWidth, selectBoxHeight)
-    const positionOnSelectBox = this._getPointOnSelectBoxAxis(
-      selectOBB,
-      position
-    )
-    const startPoint = new Point(0, 0)
-    const rbPoint = new Point(selectOBB.width, selectOBB.height)
-    const newStartPoint = startPoint.clone()
-    const newEndPoint = rbPoint.clone()
+    const oldSelectBoxTL = Vector.create(selectBoxTLX, selectBoxTLY)
+    const oldSelectBoxRect = Vector.create(selectBoxWidth, selectBoxHeight)
+    const positionOnSelectBox = this._getPointOnSelectBoxAxis(selectOBB, vec)
+    const startPoint = Vector.create(0, 0)
+    const rbPoint = Vector.create(selectOBB.width, selectOBB.height)
+    const newStartPoint = Vector.clone(startPoint)
+    const newEndPoint = Vector.clone(rbPoint)
     if (isResetStartXAxis(key)) {
-      newStartPoint.x = positionOnSelectBox.x
+      ;[newStartPoint[0]] = positionOnSelectBox
     }
 
     if (isResetStartYAxis(key)) {
-      newStartPoint.y = positionOnSelectBox.y
+      ;[, newStartPoint[1]] = positionOnSelectBox
     }
 
     if (isResetEndXAxis(key)) {
-      newEndPoint.x = positionOnSelectBox.x
+      ;[newEndPoint[0]] = positionOnSelectBox
     }
 
     if (isResetEndYAxis(key)) {
-      newEndPoint.y = positionOnSelectBox.y
+      ;[, newEndPoint[0]] = positionOnSelectBox
     }
 
-    const newSelectBoxTL = add(
+    const newSelectBoxTL = Vector.add(
       oldSelectBoxTL,
       Matrix.apply(newStartPoint, {
         ...selectBoxTransform,
@@ -163,7 +162,7 @@ export class CursorMoveOperations {
         ty: 0,
       })
     )
-    const newSelectBoxRect = subtract(newEndPoint, newStartPoint)
+    const newSelectBoxRect = Vector.subtract(newEndPoint, newStartPoint)
     return {
       oldSelectBoxTL,
       oldSelectBoxRect,
@@ -174,7 +173,7 @@ export class CursorMoveOperations {
 
   private static _getNewOBB = (
     objectOBB: OBB,
-    getNewPoint: (point: IPoint) => IPoint,
+    getNewPoint: (point: ReadonlyVec2) => ReadonlyVec2,
     selectBoxTransform: IMatrixLike
   ): Pick<BaseElementSchema, 'size' | 'transform'> => {
     const { x, y, width, height, transform } = objectOBB
@@ -191,20 +190,20 @@ export class CursorMoveOperations {
       pureTransform,
       invertTransform
     )
-    const objectTL = new Point(x, y)
-    const objectVWidth = add(
+    const objectTL = Vector.create(x, y)
+    const objectVWidth = Vector.add(
       objectTL,
-      Matrix.apply(new Point(width, 0), localTransform)
+      Matrix.apply(Vector.create(width, 0), localTransform)
     )
-    const objectVHeight = add(
+    const objectVHeight = Vector.add(
       objectTL,
-      Matrix.apply(new Point(0, height), localTransform)
+      Matrix.apply(Vector.create(0, height), localTransform)
     )
     const newTl = getNewPoint(objectTL)
     const newObjectVWidth = getNewPoint(objectVWidth)
     const newObjectVHeight = getNewPoint(objectVHeight)
-    const vcWidth = subtract(newObjectVWidth, newTl)
-    const vcWRad = Math.atan2(vcWidth.y, vcWidth.x)
+    const vcWidth = Vector.subtract(newObjectVWidth, newTl)
+    const vcWRad = Math.atan2(vcWidth[1], vcWidth[0])
     const vcWTM = {
       a: Math.cos(vcWRad),
       b: Math.sin(vcWRad),
@@ -213,10 +212,10 @@ export class CursorMoveOperations {
       tx: 0,
       ty: 0,
     }
-    const vcHeight = subtract(newObjectVHeight, newTl)
+    const vcHeight = Vector.subtract(newObjectVHeight, newTl)
     const newVcInvert = Matrix.invert(vcWTM)
     const vcHTS1 = Matrix.apply(vcHeight, newVcInvert!)
-    const vcHSkew = Math.PI / 2 - Math.atan2(vcHTS1.y, vcHTS1.x)
+    const vcHSkew = Math.PI / 2 - Math.atan2(vcHTS1[1], vcHTS1[0])
     const vcHTM = {
       a: 1,
       b: 0,
@@ -230,23 +229,23 @@ export class CursorMoveOperations {
     const { a, b, c, d } = this.tempMatrix
     return {
       size: {
-        x: Math.sqrt(vcWidth.x * vcWidth.x + vcWidth.y * vcWidth.y),
-        y: vcHTS1.y,
+        x: Math.sqrt(Vector.len(vcWidth)),
+        y: vcHTS1[1],
       },
       transform: {
         a,
         b,
         c,
         d,
-        tx: newTl.x,
-        ty: newTl.y,
+        tx: newTl[0],
+        ty: newTl[1],
       },
     }
   }
 
   public static resize(
     key: MouseControllerTarget,
-    position: IPoint,
+    position: ReadonlyVec2,
     activeElement: ActiveSelection
   ) {
     const { transform: selectBoxTransform } = activeElement.OBB
@@ -258,11 +257,14 @@ export class CursorMoveOperations {
       newSelectBoxRect,
     } = this._getRectInfoBeforeAndAfter(activeElement.OBB, position, key)
 
-    if (Math.abs(newSelectBoxRect.x) < 1 || Math.abs(newSelectBoxRect.y) < 1) {
+    if (
+      Math.abs(newSelectBoxRect[0]) < 1 ||
+      Math.abs(newSelectBoxRect[1]) < 1
+    ) {
       return
     }
 
-    const getNewPoint = (point: IPoint) =>
+    const getNewPoint = (point: ReadonlyVec2) =>
       this._getNewPointOnSelectBoxChange.call(
         this,
         oldSelectBoxRect,
@@ -287,7 +289,7 @@ export class CursorMoveOperations {
   }
 
   public static move(
-    newPosition: latte.editor.SetStateAction<IPoint>,
+    newPosition: latte.editor.SetStateAction<ReadonlyVec2>,
     objects: DisplayObject[]
   ) {
     const result: ISingleEditOperation[] = []
@@ -297,12 +299,9 @@ export class CursorMoveOperations {
       let tx
       let ty
       if (isFunction(newPosition)) {
-        ;({ x: tx, y: ty } = newPosition({
-          x,
-          y,
-        }))
+        ;[tx, ty] = newPosition([x, y])
       } else {
-        ;({ x: tx, y: ty } = newPosition)
+        ;[tx, ty] = newPosition
       }
       result.push(
         EditOperation.update(object.getGuidKey(), {
