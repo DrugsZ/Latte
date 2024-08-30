@@ -19,8 +19,9 @@ import type {
 import type { ITextureLoadResult } from 'Latte/core/texture'
 import { createDefaultImagePaint } from 'Latte/common/schema'
 import { Container } from 'Latte/core/container'
-import { add } from 'Latte/common/point'
 import { Vector } from 'Latte/common/vector'
+
+const tempVec2 = Vector.create(0, 0)
 
 export interface IMouseDispatchData {
   target: DisplayObject
@@ -64,15 +65,13 @@ export class ViewController {
     if (!prePosition) {
       return
     }
-    const movement = {
-      x: position.x - prePosition.x,
-      y: position.y - prePosition.y,
-    }
+    tempVec2[0] = position.x - prePosition.x
+    tempVec2[1] = position.y - prePosition.y
     const activeElement = this._viewModel.getActiveSelection()
     CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       position(prevState) {
-        return add(prevState, movement)
+        return Vector.add(prevState, tempVec2)
       },
     })
   }
@@ -109,7 +108,7 @@ export class ViewController {
   private _resizeElement(key: MouseControllerTarget, position: IPoint) {
     CoreEditingCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
-      position,
+      position: Vector.cloneFormPoint(position, tempVec2),
     })
   }
 
@@ -155,9 +154,18 @@ export class ViewController {
     this._viewModel.getModel().pushStackElement()
     const fi = files.map(item => createDefaultImagePaint(item))
     CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
-      startPosition: position,
+      startPosition: Vector.cloneFormPoint(position, tempVec2),
       paint: fi,
     })
+  }
+
+  private _dragOnClientToMoveCanvas(data: IMouseDispatchData) {
+    const { browserEvent: e } = data
+    const newX = e.movementX
+    const newY = e.movementY
+    const currentCamera = this._viewModel.getCamera()
+    const vpMatrix = currentCamera.getViewPortMatrix()
+    currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
   }
 
   private _dragOnClientToEdit(data: IMouseDispatchData) {
@@ -176,12 +184,7 @@ export class ViewController {
   private _dragOnClient(data: IMouseDispatchData) {
     const editMode = this._viewModel.getCursorOperateMode()
     if (editMode === OperateMode.ReadOnly) {
-      const { browserEvent: e } = data
-      const newX = e.movementX
-      const newY = e.movementY
-      const currentCamera = this._viewModel.getCamera()
-      const vpMatrix = currentCamera.getViewPortMatrix()
-      currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
+      this._dragOnClientToMoveCanvas(data)
     } else if (editMode === OperateMode.Edit) {
       this._dragOnClientToEdit(data)
     } else if (editMode === OperateMode.CreateNormalShape) {
@@ -220,8 +223,10 @@ export class ViewController {
     }
     const lastDisplay = (curTarget as Container).getLast()
     CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
-      position,
-      startPosition,
+      position: position ? Vector.cloneFormPoint(position) : undefined,
+      startPosition: startPosition
+        ? Vector.cloneFormPoint(startPosition)
+        : startPosition,
       parent: JSON.parse(curTarget.id),
       insertAfter: lastDisplay.zIndex,
     })

@@ -17,6 +17,13 @@ export namespace Vector {
     return out
   }
 
+  export const cloneFormPoint = (point: IPoint, out?: vec2) => {
+    out = out || create(0, 0)
+    out[0] = point.x
+    out[1] = point.y
+    return out
+  }
+
   export const equals = (a: ReadonlyVec2, b: ReadonlyVec2) =>
     a[0] === b[0] && a[1] === b[1]
 

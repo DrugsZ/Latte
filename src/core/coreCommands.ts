@@ -230,11 +230,11 @@ export namespace CoreEditingCommands {
 
       private _createElement(
         viewModel: ViewModel,
-        startPosition: IPoint,
-        position?: IPoint
+        startPosition: ReadonlyVec2,
+        position?: ReadonlyVec2
       ) {
         const type = viewModel.getCursorCreateElementType()
-        let { x: left, y: top } = startPosition
+        let [left, top] = startPosition
         let size = {}
         if (position) {
           size = { width: 1, height: 1 }
@@ -472,7 +472,10 @@ export namespace CoreEditingCommands {
         viewModel
           .getModel()
           .pushEditOperations(
-            CursorMoveOperations.move(pre => add(pre, movement), objects)
+            CursorMoveOperations.move(
+              pre => Vector.add(pre, Vector.cloneFormPoint(movement)),
+              objects
+            )
           )
         // viewModel.updateElementData(results)
       }
@@ -564,7 +567,6 @@ export namespace CoreEditingCommands {
           .pushEditOperations(
             CursorUpdateOperations.setFills(objects, newFills)
           )
-        // viewModel.updateElementData(results)
       }
     })()
 
