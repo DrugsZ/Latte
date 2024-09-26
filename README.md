@@ -2,11 +2,11 @@
 
 <!-- PROJECT SHIELDS -->
 
-[Contributors][contributors-url]
-[Forks][forks-url]
-[Stars][stars-url]
-[Issues][issues-url]
-[MIT License][license-url]
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![Apache-2.0 license][license-shield]][license-url]
 
 <!-- PROJECT LOGO -->
 
