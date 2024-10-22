@@ -2,11 +2,11 @@
 
 <!-- PROJECT SHIELDS -->
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![Apache-2.0 license][license-shield]][license-url]
+[Contributors][contributors-url]
+[Forks][forks-url]
+[Stargazers][stars-url]
+[Issues][issues-url]
+[Apache-2.0 license][license-url]
 
 <!-- PROJECT LOGO -->
 
@@ -32,6 +32,18 @@ Start previewing demos:
 ```bash
 pnpm test
 ```
+
+### Roadmap
+
+- [ ] Absorption Line
+- [ ] Life Cycle
+- [ ] Configuration Manager
+- [ ] Context Menu
+- [ ] Ruler
+- [ ] Mouse Box Select
+- [ ] Frame
+- [ ] Text, Path...
+- [ ] Render
 
 ### Contributing
 
