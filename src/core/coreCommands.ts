@@ -143,8 +143,8 @@ export namespace CoreNavigationCommands {
     })()
 
   interface MouseBoxSelectCommandOptions extends BaseCommandOptions {
-    startPosition?: IPoint
-    position?: IPoint
+    startPosition?: ReadonlyVec2
+    position?: ReadonlyVec2
   }
 
   export const MouseBoxSelect =
@@ -230,11 +230,11 @@ export namespace CoreEditingCommands {
 
       private _createElement(
         viewModel: ViewModel,
-        startPosition: IPoint,
-        position?: IPoint
+        startPosition: ReadonlyVec2,
+        position?: ReadonlyVec2
       ) {
         const type = viewModel.getCursorCreateElementType()
-        let { x: left, y: top } = startPosition
+        let [left,top] = startPosition
         let size = {}
         if (position) {
           size = { width: 1, height: 1 }
@@ -446,9 +446,9 @@ export namespace CoreEditingCommands {
     })()
 
   interface BaseMoveCommandOptions extends BaseCommandOptions {
-    startPosition: IPoint
-    position: IPoint
-    movement: IPoint
+    startPosition: ReadonlyVec2
+    position: ReadonlyVec2
+    movement: ReadonlyVec2
     objects: DisplayObject[]
   }
   export const MoveElement =
@@ -472,7 +472,7 @@ export namespace CoreEditingCommands {
         viewModel
           .getModel()
           .pushEditOperations(
-            CursorMoveOperations.move(pre => add(pre, movement), objects)
+            CursorMoveOperations.move(pre => Vector.add(pre, movement), objects)
           )
         // viewModel.updateElementData(results)
       }
@@ -480,7 +480,7 @@ export namespace CoreEditingCommands {
 
   interface RotateElementCommandOptions extends BaseCommandOptions {
     objects: DisplayObject[]
-    transformOrigin?: IPoint
+    transformOrigin?: ReadonlyVec2
     rad: number
   }
   export const RotateElementTransform =

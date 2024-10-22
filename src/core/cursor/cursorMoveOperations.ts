@@ -21,7 +21,7 @@ export class CursorMoveOperations {
   public static rotate(
     objects: DisplayObject[],
     rad: number,
-    transformOrigin?: IPoint
+    transformOrigin?: ReadonlyVec2
   ): ISingleEditOperation[] {
     const result: ISingleEditOperation[] = []
 
@@ -36,10 +36,7 @@ export class CursorMoveOperations {
         tx: 0,
         ty: 0,
       }
-      const [x, y] = Matrix.fromMatrixOrigin([0, 0], diffMatrix, [
-        center.x,
-        center.y,
-      ])
+      const [x, y] = Matrix.fromMatrixOrigin([0, 0], diffMatrix, center)
       diffMatrix.tx = x
       diffMatrix.ty = y
       const newP1 = Matrix.apply(Vector.create(OBB.x, OBB.y), diffMatrix)

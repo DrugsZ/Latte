@@ -71,4 +71,11 @@ export namespace Vector {
     }
     return v
   }
+
+  export function point2Vec2(point:IPoint | undefined | null) {
+    if(!point){
+      return undefined
+    }
+    return create(point.x,point.y)
+  }
 }

@@ -7,6 +7,7 @@ import { Matrix } from 'Latte/math/matrix'
 import { DEFAULT_ACTIVE_SELECTION_LINT_WIDTH } from 'Latte/constants/editor'
 import { Emitter } from 'Latte/common/event'
 import { registerAPI } from 'Latte/api'
+import { Vector } from 'Latte/common/vector'
 
 const tempMatrix = {
   a: 1,
@@ -177,7 +178,7 @@ export class ActiveSelectionCorner {
   constructor(
     private readonly _resizeControllerType: MouseControllerTarget,
     private readonly _rotateControllerType: MouseControllerTarget,
-    private readonly _getCenter: () => IPoint,
+    private readonly _getCenter: () => ReadonlyVec2,
     private readonly _coefficients: {
       x: -1 | 1
       y: -1 | 1
@@ -185,11 +186,11 @@ export class ActiveSelectionCorner {
   ) {}
 
   get x() {
-    return this._getCenter().x - ActiveSelectionCorner._RESIZE_WIDTH / 2
+    return this._getCenter()[0] - ActiveSelectionCorner._RESIZE_WIDTH / 2
   }
 
   get y() {
-    return this._getCenter().y - ActiveSelectionCorner._RESIZE_HEIGHT / 2
+    return this._getCenter()[1] - ActiveSelectionCorner._RESIZE_HEIGHT / 2
   }
 
   get width() {
@@ -201,7 +202,7 @@ export class ActiveSelectionCorner {
   }
 
   private _getRotateCenter() {
-    const { x, y } = this._getCenter()
+    const [ x, y ] = this._getCenter()
     const {
       _RESIZE_WIDTH: RESIZE_WIDTH,
       _RESIZE_HEIGHT: RESIZE_HEIGHT,
@@ -217,7 +218,7 @@ export class ActiveSelectionCorner {
   }
 
   private _hitTestResize(vec: ReadonlyVec2) {
-    const { x, y } = this._getCenter()
+    const [ x, y ] = this._getCenter()
     const { _RESIZE_WIDTH: RESIZE_WIDTH, _RESIZE_HEIGHT: RESIZE_HEIGHT } =
       ActiveSelectionCorner
     const startX = x - RESIZE_WIDTH / 2
@@ -310,28 +311,22 @@ class ActiveSelectionCornerCollection {
     )
   }
 
-  private _leftTopCornerCenter = () => ({ x: 0, y: 0 })
+  private _leftTopCornerCenter = () => (Vector.create(0,0))
 
   private _rightTopCornerCenter = () => {
     const { OBB } = this._activeSelection
 
-    return {
-      x: OBB.width,
-      y: 0,
-    }
+    return Vector.create(OBB.width,0)
   }
 
   private _leftBottomCornerCenter = () => {
     const { OBB } = this._activeSelection
-    return { x: 0, y: OBB.height }
+    return Vector.create(0, OBB.height)
   }
 
   private _rightBottomCornerCenter = () => {
     const { OBB } = this._activeSelection
-    return {
-      x: OBB.width,
-      y: OBB.height,
-    }
+    return Vector.create(OBB.width,OBB.height)
   }
 
   public hitTest(vec: ReadonlyVec2) {

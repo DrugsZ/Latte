@@ -98,7 +98,7 @@ export class Cursor {
 
   public setBoxSelectBounds(
     eventDispatcher: ViewModelEventDispatcher,
-    points?: IPoint[]
+    points?: ReadonlyVec2[]
   ) {
     this._selectBounds.clear()
     points?.forEach(this._selectBounds.addPoint.bind(this._selectBounds))
