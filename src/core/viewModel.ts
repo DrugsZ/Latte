@@ -327,7 +327,7 @@ export class ViewModel {
     return this._cursor.getCreateNormalElementType()
   }
 
-  setBoxSelectBounds(points?: IPoint[]) {
+  setBoxSelectBounds(points?: ReadonlyVec2[]) {
     this._cursor.setBoxSelectBounds(this._eventDispatcher, points)
   }
 

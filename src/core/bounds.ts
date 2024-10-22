@@ -64,13 +64,13 @@ export class Bounds {
   }
 
   getCenter() {
-    if (this.isEmpty()) {
-      return { x: 0, y: 0 }
+    const vec = Vector.create(0,0)
+    if (!this.isEmpty()) {
+      vec[0] = (this.maxX - this.minX) / 2 + this.minX
+      vec[1] = (this.maxY - this.minY) / 2 + this.minY
     }
-    return {
-      x: (this.maxX - this.minX) / 2 + this.minX,
-      y: (this.maxY - this.minY) / 2 + this.minY,
-    }
+    
+    return vec
   }
 
   getHalfExtents() {

@@ -60,42 +60,33 @@ export class ViewController {
     }
   }
 
-  private _moveSelectionElement(position: IPoint, prePosition?: IPoint | null) {
+  private _moveSelectionElement(position: ReadonlyVec2, prePosition?: ReadonlyVec2 | null) {
     if (!prePosition) {
       return
     }
-    const movement = {
-      x: position.x - prePosition.x,
-      y: position.y - prePosition.y,
-    }
+    const movement = Vector.subtract(position,prePosition)
     const activeElement = this._viewModel.getActiveSelection()
     CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       position(prevState) {
-        return add(prevState, movement)
+        return Vector.add(prevState, movement)
       },
     })
   }
 
   private _rotateSelectionElement(
-    position: IPoint,
-    prePosition?: IPoint | null
+    position: ReadonlyVec2,
+    prePosition?: ReadonlyVec2 | null
   ) {
     if (!prePosition) {
       return
     }
     const activeElement = this._viewModel.getActiveSelection()
     const center = activeElement.getCenter()
-    const prePoint = {
-      x: prePosition.x - center.x,
-      y: prePosition.y - center.y,
-    }
-    const newPoint = {
-      x: position.x - center.x,
-      y: position.y - center.y,
-    }
+    const prePoint = Vector.subtract(prePosition,center)
+    const newPoint = Vector.subtract(position,center)
     const rad =
-      Math.atan2(newPoint.y, newPoint.x) - Math.atan2(prePoint.y, prePoint.x)
+      Math.atan2(newPoint[1], newPoint[0]) - Math.atan2(prePoint[1], prePoint[0])
     CoreEditingCommands.RotateElementTransform.runCoreEditorCommand(
       this._viewModel,
       {
@@ -106,19 +97,19 @@ export class ViewController {
     )
   }
 
-  private _resizeElement(key: MouseControllerTarget, position: IPoint) {
+  private _resizeElement(key: MouseControllerTarget, position: ReadonlyVec2) {
     CoreEditingCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
       position,
     })
   }
 
-  private _createPickArea(data: IMouseDispatchData) {
+  private _createPickArea(startPosition:ReadonlyVec2, endPosition:ReadonlyVec2) {
     CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
       this._viewModel,
       {
-        startPosition: data.startPosition,
-        position: data.position,
+        startPosition,
+        position: endPosition,
       }
     )
   }
@@ -139,8 +130,8 @@ export class ViewController {
     if (editMode === OperateMode.CreateNormalShape) {
       if (!this._viewModel.getActiveSelection().isActive()) {
         this._createElement({
-          startPosition: e.client,
-          target: e.target,
+          startPosition: Vector.create(e.client.x,e.client.y),
+          target:e.target,
         })
       }
       this._viewModel.setCursorOperateMode(OperateMode.Edit)
@@ -155,21 +146,24 @@ export class ViewController {
     this._viewModel.getModel().pushStackElement()
     const fi = files.map(item => createDefaultImagePaint(item))
     CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
-      startPosition: position,
+      startPosition: Vector.point2Vec2(position),
       paint: fi,
     })
   }
 
   private _dragOnClientToEdit(data: IMouseDispatchData) {
     const { controllerTargetType } = data
+    const position = Vector.create(data.position.x, data.position.y)
+    const prePosition = data.prePosition ? Vector.create(data.prePosition?.x,data.prePosition?.y) : null
+    const startPosition = Vector.create(data.startPosition?.x, data.startPosition?.y)
     if (controllerTargetType === MouseControllerTarget.SELECTION_CONTEXT) {
-      this._moveSelectionElement(data.position, data.prePosition)
+      this._moveSelectionElement(position, prePosition)
     } else if (isRotateKey(controllerTargetType)) {
-      this._rotateSelectionElement(data.position, data.prePosition)
+      this._rotateSelectionElement(position, prePosition)
     } else if (isResizeKey(controllerTargetType)) {
-      this._resizeElement(controllerTargetType, data.position)
+      this._resizeElement(controllerTargetType, position)
     } else if (controllerTargetType === MouseControllerTarget.NONE) {
-      this._createPickArea(data)
+      this._createPickArea(startPosition,position)
     }
   }
 
@@ -186,9 +180,9 @@ export class ViewController {
       this._dragOnClientToEdit(data)
     } else if (editMode === OperateMode.CreateNormalShape) {
       this._createElement({
-        startPosition: data.startPosition,
+        startPosition: Vector.point2Vec2(data.startPosition),
         target: data.target,
-        position: data.position,
+        position: Vector.point2Vec2(data.position),
       })
     }
   }
@@ -206,8 +200,8 @@ export class ViewController {
   }
 
   private _createElement(options: {
-    startPosition?: IPoint
-    position?: IPoint
+    startPosition?: ReadonlyVec2
+    position?: ReadonlyVec2
     target: DisplayObject
   }): void {
     const { startPosition, position, target } = options
