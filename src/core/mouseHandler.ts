@@ -212,7 +212,6 @@ class MouseDownOperation {
       metaKey: this._mouseDownState.metaKey,
       shiftKey: this._mouseDownState.shiftKey,
       mouseDownCount: this._mouseDownState.count,
-      prePosition: this._lastMouseEvent ? this._lastMouseEvent.client : null,
 
       leftButton: this._mouseDownState.leftButton,
       rightButton: this._mouseDownState.rightButton,
@@ -267,7 +266,6 @@ export class MouseHandler {
       target: e.target,
       controllerTargetType: e.controllerTargetType,
       position: e.client,
-      prePosition: null,
 
       altKey: e.altKey,
       ctrlKey: e.ctrlKey,

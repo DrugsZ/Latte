@@ -72,10 +72,20 @@ export namespace Vector {
     return v
   }
 
-  export function point2Vec2(point:IPoint | undefined | null) {
-    if(!point){
+  export function point2Vec2<T extends IPoint | undefined | null>(
+    point: T,
+    out?: vec2
+  ): T extends IPoint ? vec2 : undefined
+  export function point2Vec2(
+    point: IPoint | undefined | null,
+    out?: vec2
+  ): vec2 | undefined {
+    if (!point) {
       return undefined
     }
-    return create(point.x,point.y)
+    out = out || create(0, 0)
+    out[0] = point.x
+    out[1] = point.y
+    return out
   }
 }
