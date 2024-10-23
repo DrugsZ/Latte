@@ -69,6 +69,7 @@
     "no-nested-ternary": "off",
     "no-bitwise": "off",
     "default-case": "off",
-    "no-continue": "off"
+    "no-continue": "off",
+    "no-restricted-syntax": "off"
   }
 }

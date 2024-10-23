@@ -2,6 +2,7 @@ import type { Camera } from 'Latte/core/cameraService'
 import type { DisplayObject } from 'Latte/core/displayObject'
 import type { MouseControllerTarget } from 'Latte/core/activeSelection'
 import type { OperateMode } from 'Latte/core/cursor'
+import type { ICursorState } from 'Latte/core/cursor/cursorState'
 
 export enum ViewEventType {
   ViewFocusPageChange,
@@ -12,6 +13,7 @@ export enum ViewEventType {
   ViewHoverControllerKeyChange,
   ViewCursorOperateModeChange,
   ViewCursorMove,
+  ViewCursorStateChange,
 }
 
 export enum ViewElementChangeType {
@@ -71,6 +73,11 @@ export class ViewCursorMoveEvent {
   constructor(public readonly selectMode: boolean) {}
 }
 
+export class ViewCursorStateChangeEvent {
+  public readonly type = ViewEventType.ViewCursorStateChange
+  constructor(public readonly state: ICursorState) {}
+}
+
 export type ViewEvent =
   | ViewFocusPageChangeEvent
   | ViewCameraUpdateEvent
@@ -80,3 +87,4 @@ export type ViewEvent =
   | ViewCursorOperateModeChange
   | ViewActiveSelectionChangeEvent
   | ViewCursorMoveEvent
+  | ViewCursorStateChangeEvent

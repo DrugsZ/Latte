@@ -64,12 +64,11 @@ export class Bounds {
   }
 
   getCenter() {
-    const vec = Vector.create(0,0)
+    const vec = Vector.create(0, 0)
     if (!this.isEmpty()) {
       vec[0] = (this.maxX - this.minX) / 2 + this.minX
       vec[1] = (this.maxY - this.minY) / 2 + this.minY
     }
-    
     return vec
   }
 

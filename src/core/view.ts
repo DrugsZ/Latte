@@ -12,6 +12,7 @@ import { PickArea } from 'Latte/view/pickArea'
 import { DragHandler } from 'Latte/core/dragHandler'
 import { Vector } from 'Latte/common/vector'
 import { Point } from 'Latte/common/point'
+import { ViewAdsorptionLine } from 'Latte/view/viewAdsorptionLine'
 
 export enum RenderEnum {
   ViewportChange,
@@ -32,6 +33,7 @@ export default class View extends ViewEventHandler {
   private _viewParts: ViewPart[] = []
   private _viewController: ViewController
   private _pickArea: PickArea
+  private _viewAdsorptionLine: ViewAdsorptionLine
 
   constructor(
     private _viewModel: ViewModel,
@@ -55,6 +57,9 @@ export default class View extends ViewEventHandler {
 
     this._selectBox = new SelectBox(this._viewModel)
     this._viewParts.push(this._selectBox)
+
+    this._viewAdsorptionLine = new ViewAdsorptionLine(this._viewModel)
+    this._viewParts.push(this._viewAdsorptionLine)
 
     this._mouseHandler = new MouseHandler(
       this,

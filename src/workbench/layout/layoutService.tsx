@@ -79,10 +79,10 @@ export const App = () => {
   }, [])
   return (
     <>
-      <ToolBarPart />
-      <Panel />
+      {/* <ToolBarPart /> */}
+      {/* <Panel /> */}
       <div ref={editorDOMRef} className="editor"></div>
-      <WorkspacePart />
+      {/* <WorkspacePart /> */}
     </>
   )
 }

@@ -9,6 +9,16 @@ import { Vector } from 'Latte/common/vector'
 
 const beforeTransformPoint = Vector.create(0, 0) // new Point(0, 0)
 const afterTransformPoint = Vector.create(0, 0) // new Point(0, 0)
+class DisplayObjectOBB {
+  private _OBBPoints: [ReadonlyVec2, ReadonlyVec2, ReadonlyVec2, ReadonlyVec2] =
+    [
+      Vector.create(0, 0),
+      Vector.create(0, 0),
+      Vector.create(0, 0),
+      Vector.create(0, 0),
+    ]
+}
+
 export abstract class DisplayObject<
   T extends BaseElementSchema = BaseElementSchema
 > extends EventTarget {
@@ -27,11 +37,35 @@ export abstract class DisplayObject<
     displayObject: this,
   }
 
+  private _OBBPoints: [ReadonlyVec2, ReadonlyVec2, ReadonlyVec2, ReadonlyVec2] =
+    [
+      Vector.create(0, 0),
+      Vector.create(0, 0),
+      Vector.create(0, 0),
+      Vector.create(0, 0),
+    ]
+
   constructor(element: T) {
     super()
     this.type = element.type
     this._elementData = element
   }
+
+  // private _getLimitValue() {
+  //   let minX = Infinity
+  //   let maxX = -Infinity
+  //   let minY = Infinity
+  //   let maxY = -Infinity
+
+  //   this._OBBPoints.forEach(item => {
+  //     minX = Math.min(minX, item[0])
+  //     maxX = Math.max(maxX, item[0])
+  //     minY = Math.min(minY, item[1])
+  //     maxY = Math.max(maxY, item[1])
+  //   })
+
+  //   return [minX, maxX, minY, maxY]
+  // }
 
   private static resize(
     element: DisplayObject,
@@ -152,21 +186,23 @@ export abstract class DisplayObject<
     // tl
     beforeTransformPoint[0] = x
     beforeTransformPoint[1] = y
-    this._bounds.addPoint(beforeTransformPoint)
+    Vector.clone(beforeTransformPoint, this._OBBPoints[0])
     // tr
     beforeTransformPoint[0] = x + this.width
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
-    this._bounds.addPoint(afterTransformPoint)
+    Vector.clone(afterTransformPoint, this._OBBPoints[1])
     // br
     beforeTransformPoint[0] = x + this.width
     beforeTransformPoint[1] = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
-    this._bounds.addPoint(afterTransformPoint)
+    Vector.clone(afterTransformPoint, this._OBBPoints[2])
     // bl
     beforeTransformPoint[0] = x
     beforeTransformPoint[1] = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
-    this._bounds.addPoint(afterTransformPoint)
+    Vector.clone(afterTransformPoint, this._OBBPoints[3])
+    this._OBBPoints.forEach(this._bounds.addPoint, this._bounds)
+    // this._getLimitValue()
     this._boundDirty = false
   }
   // TODO: use EventService to implements
@@ -189,6 +225,10 @@ export abstract class DisplayObject<
       this._updateRBush()
     }
     return this._bounds
+  }
+
+  public getOBBPoints() {
+    return this._OBBPoints
   }
 
   public getBoundingClientRect() {

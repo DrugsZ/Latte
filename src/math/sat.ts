@@ -239,7 +239,6 @@ export class SAT {
   private static _testEllipse(selectVector: ReadonlyVec2[], object: Ellipse) {
     const { currentMatrix, newCenter, radius } =
       this._transformEllipseToCircle(object)
-    console.log(currentMatrix, newCenter)
     const [newTL, newTR, newBR, newBL] = selectVector.map(point =>
       Matrix.apply(point, currentMatrix)
     )
@@ -259,7 +258,6 @@ export class SAT {
     switch (object.type) {
       case EditorElementTypeKind.ELLIPSE:
         result = this._testEllipse(selectVector, object)
-        console.log(result)
         break
       case EditorElementTypeKind.RECTANGLE:
         result = this._testRectangle(selectVector, object)
