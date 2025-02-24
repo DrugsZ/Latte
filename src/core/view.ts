@@ -11,16 +11,14 @@ import { Matrix } from 'Latte/math/matrix'
 import { PickArea } from 'Latte/view/pickArea'
 import { DragHandler } from 'Latte/core/dragHandler'
 import { Vector } from 'Latte/common/vector'
-import { Point } from 'Latte/common/point'
 import { ViewAdsorptionLine } from 'Latte/view/viewAdsorptionLine'
+import { ViewGrid } from 'Latte/view/viewGrid'
 
 export enum RenderEnum {
   ViewportChange,
   ZoomChange,
   ElementChange,
 }
-
-const tempVec2 = Vector.create(0, 0)
 
 export default class View extends ViewEventHandler {
   private _renderElement: ElementRender
@@ -34,6 +32,7 @@ export default class View extends ViewEventHandler {
   private _viewController: ViewController
   private _pickArea: PickArea
   private _viewAdsorptionLine: ViewAdsorptionLine
+  private _viewGrid: ViewGrid
 
   constructor(
     private _viewModel: ViewModel,
@@ -60,6 +59,9 @@ export default class View extends ViewEventHandler {
 
     this._viewAdsorptionLine = new ViewAdsorptionLine(this._viewModel)
     this._viewParts.push(this._viewAdsorptionLine)
+
+    this._viewGrid = new ViewGrid(this._viewModel)
+    this._viewParts.push(this._viewGrid)
 
     this._mouseHandler = new MouseHandler(
       this,

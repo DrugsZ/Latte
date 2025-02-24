@@ -202,8 +202,13 @@ export class StandardWheelEvent {
   public readonly shiftKey: boolean
   public readonly altKey: boolean
   public readonly metaKey: boolean
+  public readonly speed: number
 
-  constructor(e: IMouseWheelEvent, public readonly client: IPoint) {
+  constructor(
+    e: IMouseWheelEvent,
+    public readonly client: IPoint,
+    speed?: number
+  ) {
     this.browserEvent = e || null
     this.target = e ? e.target || (<any>e).targetNode || e.srcElement : null
 
@@ -213,6 +218,7 @@ export class StandardWheelEvent {
     this.shiftKey = e.shiftKey
     this.altKey = e.altKey
     this.metaKey = e.metaKey
+    this.speed = speed || this.deltaY
   }
 
   public preventDefault(): void {

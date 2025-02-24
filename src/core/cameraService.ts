@@ -3,9 +3,11 @@ import { Emitter } from 'Latte/common/event'
 import { Matrix } from 'Latte/math/matrix'
 import { Vector } from 'Latte/common/vector'
 
+import { MAX_ZOOM, MIN_ZOOM } from 'Latte/assets/constant'
+
 export class Camera {
-  private _zoom: number = 1
-  private _viewport: {
+  private _zoom = 1
+  private _physicalViewport: {
     width: number
     height: number
   }
@@ -17,12 +19,12 @@ export class Camera {
       width: number
       height: number
     },
-    zoom: number = 1
+    zoom = 1
   ) {
-    this._viewport = {
+    this._physicalViewport = {
       ...size,
     }
-    this._zoom = zoom
+    this._setZoomValue(zoom)
     this._position = new Point(size.width / 2, size.height / 2)
   }
 
@@ -31,11 +33,26 @@ export class Camera {
 
   setZoom(value: number, viewPortPoint?: ReadonlyVec2) {
     const oldMatrix = this._matrix.clone()
-    this._zoom = value
-    this._updateMatrix()
+    if (!this._setZoomValue(value)) {
+      return
+    }
+    // _adjustPosition will call _updateMatrix. After the matrix update completes,
+    // the cameraViewChange event will be triggered. To ensure execution order,
+    // use an async queue when invoking _updateMatrix if necessary.
     if (viewPortPoint) {
       this._adjustPosition(oldMatrix, viewPortPoint)
+    } else {
+      this._updateMatrix()
     }
+  }
+
+  private _setZoomValue(value: number) {
+    const newZoom = Math.min(Math.max(value, MIN_ZOOM), MAX_ZOOM)
+    if (newZoom === this._zoom) {
+      return false
+    }
+    this._zoom = newZoom
+    return true
   }
 
   private _adjustPosition(preMatrix: IMatrixLike, viewPortPoint: ReadonlyVec2) {
@@ -48,12 +65,12 @@ export class Camera {
   }
 
   private _updateMatrix() {
-    const tx = this._viewport.width / 2 - this._position.x / this._zoom
-    const ty = this._viewport.height / 2 - this._position.y / this._zoom
-    this._matrix.a = 1 / this._zoom
+    const tx = this._physicalViewport.width / 2 - this._position.x * this._zoom
+    const ty = this._physicalViewport.height / 2 - this._position.y * this._zoom
+    this._matrix.a = 1 * this._zoom
     this._matrix.b = 0
     this._matrix.c = 0
-    this._matrix.d = 1 / this._zoom
+    this._matrix.d = 1 * this._zoom
     this._matrix.tx = tx
     this._matrix.ty = ty
     this._onCameraViewChange.fire(this)
@@ -78,8 +95,8 @@ export class Camera {
   getViewport(): Rectangle {
     const renderCenterX = this._position.x
     const renderCenterY = this._position.y
-    const renderWidth = this._viewport.width * this._zoom
-    const renderHeight = this._viewport.height * this._zoom
+    const renderWidth = this._physicalViewport.width / this._zoom
+    const renderHeight = this._physicalViewport.height / this._zoom
     return {
       x: renderCenterX - renderWidth / 2,
       y: renderCenterY - renderHeight / 2,
@@ -122,7 +139,7 @@ class CameraService<T = any> {
     const viewportCenterX = size.x + width / 2
     const viewportCenterY = size.y + height / 2
 
-    const newCamera = new Camera(fullSize, 1 / minRatio)
+    const newCamera = new Camera(fullSize, minRatio)
     newCamera.setPosition(viewportCenterX, viewportCenterY)
     this._cameraMaps.set(id, newCamera)
     newCamera.onCameraViewChange(event => {
