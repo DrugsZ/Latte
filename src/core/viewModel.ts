@@ -22,10 +22,12 @@ import { ActiveSelectionWidget } from 'Latte/core/activeSelectionWidget'
 import type { ISingleEditOperation } from 'Latte/core/modelChange'
 import { Vector } from 'Latte/common/vector'
 
+import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
+
 const tempVec2 = Vector.create(0, 0)
 
 export class ViewModel {
-  private _focusPageId: string = ''
+  private _focusPageId = ''
   private _modelData: ModelData
   pickService: PickService
 
@@ -40,7 +42,7 @@ export class ViewModel {
 
   private _cursor: Cursor = new Cursor()
 
-  private _pickActive: boolean = true
+  private _pickActive = true
 
   private _cachePickProxy: PickProxy
 
@@ -56,6 +58,7 @@ export class ViewModel {
     this._bindCameraEvent()
     this._initElementTree()
     this._bindModelEvent()
+    this._bindCursorEvent()
 
     this._cursor.onDidCursorOperateModeChange(e => {
       if (e === OperateMode.ReadOnly) {
@@ -78,9 +81,9 @@ export class ViewModel {
     this._elementTree = new ElementTree(
       this._modelData.getCurrentState().elements
     )
-    this._elementTree.document.getChildren().forEach(page => {
+    for (const page of this._elementTree.document.getChildren()) {
       this._createCamera(page.id, page.getBoundingClientRect())
-    })
+    }
     this.focusPageId = this._elementTree.document.getChildren()[0].id
     this.pickService = new PickService(
       this.getVisibleElementRenderObjects,
@@ -133,13 +136,18 @@ export class ViewModel {
   }
 
   private _onCreateElementHandler(event: IElementChange) {
-    const newNode = this._elementTree.createElementByData(
-      this._modelData.getElementSchemaById(event.target)!
-    )
+    const elementSchema = this._modelData.getElementSchemaById(event.target)
+    if (!elementSchema) {
+      console.warn('Element schema not found for target:', event.target)
+      return
+    }
+
+    const newNode = this._elementTree.createElementByData(elementSchema)
     const focusPage = this._elementTree.getElementById(
       this._focusPageId
     ) as Page
-    if (!newNode) {
+
+    if (!newNode || !focusPage) {
       return
     }
     focusPage?.appendChild(newNode)
@@ -200,6 +208,14 @@ export class ViewModel {
         )
       )
       this._activeSelection.updateOBB()
+    })
+  }
+
+  private _bindCursorEvent() {
+    this._cursor.onCursorStateChange(e => {
+      this._eventDispatcher.emitViewEvent(
+        new viewEvents.ViewCursorStateChangeEvent(e)
+      )
     })
   }
 
@@ -341,5 +357,39 @@ export class ViewModel {
 
   public updateNodeWithAABB(operations: ISingleEditOperation[]) {
     this._modelData.pushEditOperations(operations)
+  }
+
+  public onElementWillMove = (movement: ReadonlyVec2) => {
+    const objects = this.focusPage.getVisibleElementRenderObjects()
+    const vecs: ElementAdsorptionRecord[] = []
+    for (const object of objects) {
+      if (this._activeSelection.hasSelected(object)) {
+        continue
+      }
+      const center = object.getBounds().getCenter()
+      const obbPoints = object.getOBBPoints()
+      vecs.push([...obbPoints, center])
+    }
+    const cur = [
+      this._activeSelection.getBounds().getCenter(),
+      ...this._activeSelection.getOBBPoints(),
+    ]
+    return this._cursor.onElementWillMove(vecs, cur, movement)
+  }
+
+  public onElementDidMove = () => {
+    const cur = [
+      this._activeSelection.getBounds().getCenter(),
+      ...this._activeSelection.getOBBPoints(),
+    ]
+    return this._cursor.onElementDidMove(cur)
+  }
+
+  public onElementMoveEnd = () => {
+    const cur = [
+      this._activeSelection.getBounds().getCenter(),
+      ...this._activeSelection.getOBBPoints(),
+    ]
+    this._cursor.onElementMoveEnd(cur)
   }
 }

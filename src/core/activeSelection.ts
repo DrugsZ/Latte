@@ -202,7 +202,7 @@ export class ActiveSelectionCorner {
   }
 
   private _getRotateCenter() {
-    const [ x, y ] = this._getCenter()
+    const [x, y] = this._getCenter()
     const {
       _RESIZE_WIDTH: RESIZE_WIDTH,
       _RESIZE_HEIGHT: RESIZE_HEIGHT,
@@ -218,7 +218,7 @@ export class ActiveSelectionCorner {
   }
 
   private _hitTestResize(vec: ReadonlyVec2) {
-    const [ x, y ] = this._getCenter()
+    const [x, y] = this._getCenter()
     const { _RESIZE_WIDTH: RESIZE_WIDTH, _RESIZE_HEIGHT: RESIZE_HEIGHT } =
       ActiveSelectionCorner
     const startX = x - RESIZE_WIDTH / 2
@@ -311,12 +311,12 @@ class ActiveSelectionCornerCollection {
     )
   }
 
-  private _leftTopCornerCenter = () => (Vector.create(0,0))
+  private _leftTopCornerCenter = () => Vector.create(0, 0)
 
   private _rightTopCornerCenter = () => {
     const { OBB } = this._activeSelection
 
-    return Vector.create(OBB.width,0)
+    return Vector.create(OBB.width, 0)
   }
 
   private _leftBottomCornerCenter = () => {
@@ -326,7 +326,7 @@ class ActiveSelectionCornerCollection {
 
   private _rightBottomCornerCenter = () => {
     const { OBB } = this._activeSelection
-    return Vector.create(OBB.width,OBB.height)
+    return Vector.create(OBB.width, OBB.height)
   }
 
   public hitTest(vec: ReadonlyVec2) {
@@ -550,5 +550,12 @@ export class ActiveSelection extends Rect {
       fills.push(...item.getFills())
     })
     return fills
+  }
+
+  public override getOBBPoints() {
+    if (this._objects.length === 1) {
+      return this._objects[0].getOBBPoints()
+    }
+    return super.getOBBPoints()
   }
 }

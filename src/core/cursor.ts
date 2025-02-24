@@ -5,8 +5,14 @@ import * as viewEvents from 'Latte/view/viewEvents'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Bounds } from 'Latte/core/bounds'
 import { Emitter } from 'Latte/common/event'
+import { AdsorptionResolver } from 'Latte/core/cursor/cursorAbsorptionLine'
+import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
 
 import { registerAPI } from 'Latte/api'
+import { Vector } from 'Latte/common/vector'
+
+import type { ICursorState } from 'Latte/core/cursor/cursorState'
+import { CursorStateAccessor } from 'Latte/core/cursor/cursorState'
 
 export enum CursorEditMode {
   Edit,
@@ -23,6 +29,8 @@ export enum OperateMode {
   CreateNormalShape,
 }
 
+export const cacheMovement = Vector.create(0, 0)
+
 export class Cursor {
   private _hoverControllerKey: MouseControllerTarget
   private _hoverObject: DisplayObject | null
@@ -30,12 +38,26 @@ export class Cursor {
   private _createType: CursorCreateType = EditorElementTypeKind.RECTANGLE
   private _selectBounds: Bounds = new Bounds()
 
+  private readonly _adsorptionResolver = new AdsorptionResolver(this)
+
   private readonly _onDidCursorOperateModeChange = new Emitter<OperateMode>()
   public readonly onDidCursorOperateModeChange =
     this._onDidCursorOperateModeChange.event
+  private _isXAdsorbing = false
+  private _isYAdsorbing = false
+
+  private _stateAccessor = new CursorStateAccessor()
+  public readonly onCursorStateChange = this._stateAccessor.onCursorStateChange
   constructor() {
     registerAPI('onDidOperateModeChange', this.onDidCursorOperateModeChange)
   }
+
+  private _listenCursorStateChange = (state: ICursorState) => {}
+
+  setState(state: Partial<ICursorState>) {
+    this._stateAccessor.setState(state)
+  }
+
   setHoverObject(
     hoverObject: DisplayObject | null,
     eventDispatcher: ViewModelEventDispatcher
@@ -103,5 +125,19 @@ export class Cursor {
     this._selectBounds.clear()
     points?.forEach(this._selectBounds.addPoint.bind(this._selectBounds))
     eventDispatcher.emitViewEvent(new viewEvents.ViewCursorMoveEvent(true))
+  }
+
+  public onElementDidMove = (curs: ReadonlyVec2[]) =>
+    this._adsorptionResolver.onElementDidMove(curs)
+
+  public onElementMoveEnd = (curs: ReadonlyVec2[]) =>
+    this._adsorptionResolver.onElementMoveEnd(curs)
+
+  public onElementWillMove(
+    vecs: ElementAdsorptionRecord[],
+    curs: ReadonlyVec2[],
+    movement: ReadonlyVec2
+  ) {
+    return this._adsorptionResolver.onElementWillMove(vecs, curs, movement)
   }
 }
