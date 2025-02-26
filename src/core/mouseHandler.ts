@@ -279,16 +279,40 @@ export class MouseHandler {
     })
   }
 
+  private _preventWheelDefault(e: MouseEvent) {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+    }
+  }
+
   private _setupMouseWheelZoomListener(): void {
+    let speedTimer: number | null = null
+    let speed = 0
+    const calcSpeed = (e: IMouseWheelEvent) => {
+      speed += e.deltaY
+      if (!speedTimer) {
+        speedTimer = setTimeout(() => {
+          speedTimer = null
+          speed = 0
+        }, 50)
+      }
+      return speed
+    }
     const onMouseWheel = (browserEvent: IMouseWheelEvent) => {
       tempVec2[0] = browserEvent.offsetX
       tempVec2[1] = browserEvent.offsetY
+      this._preventWheelDefault(browserEvent)
       const client = this._view.client2Viewport(tempVec2)
+      const speed = calcSpeed(browserEvent)
       this._viewController.dispatchWheel(
-        new StandardWheelEvent(browserEvent, {
-          x: client[0],
-          y: client[1],
-        })
+        new StandardWheelEvent(
+          browserEvent,
+          {
+            x: client[0],
+            y: client[1],
+          },
+          speed
+        )
       )
     }
     this._element.addEventListener(dom.EventType.MOUSE_WHEEL, onMouseWheel, {

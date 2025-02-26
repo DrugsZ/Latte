@@ -252,19 +252,17 @@ export class ViewController {
   }
 
   public dispatchWheel(event: StandardWheelEvent) {
+    // TODO: need to on other file
     const currentCamera = this._viewModel.getCamera()
     const { deltaY, deltaX, client } = event
     if (!event.ctrlKey && !event.metaKey) {
       currentCamera.move(deltaX, deltaY)
       return
     }
-    const symbol = deltaY > 0 ? 1 : -1
-    const delta = Math.min(Math.max(Math.abs(deltaY) / 4, 1), 16)
+
     const zoom = currentCamera.getZoom()
-    const step = zoom * 0.02
-    currentCamera.setZoom(
-      zoom + step * delta * symbol,
-      Vector.create(client.x, client.y)
-    )
+    const step = (0.04 * event.speed) / 100
+
+    currentCamera.setZoom(zoom / (1 + step), Vector.create(client.x, client.y))
   }
 }

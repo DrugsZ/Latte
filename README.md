@@ -35,7 +35,7 @@ pnpm test
 
 ### Roadmap
 
-- [ ] Absorption Line
+- [x] Absorption Line
 - [ ] Life Cycle
 - [ ] Configuration Manager
 - [ ] Context Menu
