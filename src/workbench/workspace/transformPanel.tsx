@@ -2,7 +2,7 @@ import { WorkspacePanel } from 'workbench/workspace/workspacePanel'
 import { Input } from 'workbench/components/input'
 import { Row, Col } from 'workbench/components/row'
 import { useCallback, useEffect, useState } from 'react'
-import type { DisplayObject } from 'Latte/core/displayObject'
+import type { DisplayObject } from 'Latte/core/elements/displayObject'
 
 interface TransformPanelState {
   size: vec2

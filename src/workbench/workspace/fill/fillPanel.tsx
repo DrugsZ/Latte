@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { useCallback, useState, useEffect } from 'react'
-import type { DisplayObject } from 'Latte/core/displayObject'
+import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import type { WorkspacePanelIconButton } from 'workbench/workspace/workspacePanel'
 import {
   WorkspacePanel,

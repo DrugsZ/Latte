@@ -1,7 +1,7 @@
 import classnames from 'classnames'
 import type { PropsWithChildren, ReactElement } from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { OperateMode } from 'Latte/core/cursor'
+import { OperateMode } from 'Latte/core/cursor/cursor'
 import { unknownType } from 'Latte/common/error'
 import DefaultCursor from 'Latte/assets/static/editor-cursor.svg'
 import Shape from 'Latte/assets/static/shape.svg'
