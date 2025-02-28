@@ -1,5 +1,5 @@
 import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
-import type { Camera } from 'Latte/core/cameraService'
+import type { Camera } from 'Latte/core/services/camera/cameraService'
 
 class RenderService {
   private _ctx: CanvasRenderingContext2D
