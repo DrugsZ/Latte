@@ -1,4 +1,4 @@
-import type { DisplayObject } from 'Latte/core/displayObject'
+import type { DisplayObject } from 'Latte/core/elements/displayObject'
 
 import RBush from 'rbush/index'
 

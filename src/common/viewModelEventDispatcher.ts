@@ -1,6 +1,6 @@
 import { Emitter } from 'Latte/common/event'
 import type { ViewEvent } from 'Latte/view/viewEvents'
-import type { ViewEventHandler } from 'Latte/view/viewEventHandler'
+import type { ViewEventHandler } from 'Latte/core/viewParts/base/viewEventHandler'
 
 export class ViewModelEventDispatcher {
   private readonly _onEvent = new Emitter<ViewEvent>()

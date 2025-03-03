@@ -27,6 +27,6 @@
     },
     "jsx": "react-jsx"
   },
-  "include": ["src", "./typings"],
+  "include": ["src", "src/typings"],
   "exclude": ["vite.config.js"]
 }

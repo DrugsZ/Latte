@@ -1,6 +1,6 @@
 import { Emitter } from 'Latte/common/event'
-import { MouseControllerTarget } from 'Latte/core/activeSelection'
-import type { DisplayObject } from 'Latte/core/displayObject'
+import { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
+import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 
 interface IAbsorbPoint {

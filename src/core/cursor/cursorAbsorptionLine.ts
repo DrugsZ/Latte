@@ -1,5 +1,5 @@
 import { Vector } from 'Latte/common/vector'
-import type { Cursor } from 'Latte/core/cursor'
+import type { Cursor } from 'Latte/core/cursor/cursor'
 
 const DEFAULT_ABSORB_SIZE = 10
 

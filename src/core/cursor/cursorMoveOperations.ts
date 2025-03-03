@@ -1,19 +1,19 @@
-import type { DisplayObject } from 'Latte/core/displayObject'
-import { Matrix } from 'Latte/math/matrix'
-import type { ISingleEditOperation } from 'Latte/core/modelChange'
-import { EditOperation } from 'Latte/core/modelChange'
+import type { DisplayObject } from 'Latte/core/elements/displayObject'
+import { Matrix } from 'Latte/core/utils/matrix'
+import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
+import { EditOperation } from 'Latte/core/model/modelChange'
 import type {
   MouseControllerTarget,
   ActiveSelection,
-} from 'Latte/core/activeSelection'
+} from 'Latte/core/selection/activeSelection'
 import {
   isResetStartXAxis,
   isResetStartYAxis,
   isResetEndXAxis,
   isResetEndYAxis,
-} from 'Latte/core/activeSelection'
+} from 'Latte/core/selection/activeSelection'
 
-import { isFunction } from 'Latte/utils/assert'
+import { isFunction } from 'Latte/common/assert'
 import { Vector } from 'Latte/common/vector'
 
 export class CursorMoveOperations {
