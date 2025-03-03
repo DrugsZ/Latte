@@ -8,7 +8,7 @@ import DomElementObserver from 'Latte/core/dom/domElementObserver'
 import { CommandService } from 'Latte/core/services/command/commandService'
 import { KeybindingService } from 'Latte/core/services/keybinding/keybindingService'
 import { ProxyLatte } from 'Latte/api'
-import { ActiveSelectionWidget } from 'Latte/core/selection/activeSelectionWidget'
+import { ConfigurationService } from 'Latte/core/services/configuration/configurationService'
 
 window.latte = ProxyLatte
 class Editor {
@@ -20,6 +20,7 @@ class Editor {
   private _cameraService: CameraService<string>
   private _commandService: CommandService
   private _keybindingService: KeybindingService
+  private _configurationService: ConfigurationService
 
   constructor(private _domElement: HTMLCanvasElement) {
     this._renderElementObserver = new DomElementObserver(this._domElement)
@@ -38,6 +39,7 @@ class Editor {
 
     this._commandService = new CommandService()
     this._keybindingService = new KeybindingService(this._commandService)
+    this._configurationService = new ConfigurationService()
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
