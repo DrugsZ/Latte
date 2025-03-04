@@ -11,4 +11,9 @@ export abstract class ViewPart extends ViewEventHandler {
     this._context.addViewEventHandler(this)
   }
   public abstract render(ctx: CanvasRenderingContext2D, camera: Camera): void
+
+  public override dispose(): void {
+    this._context.removeViewEventHandler(this)
+    super.dispose()
+  }
 }

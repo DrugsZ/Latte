@@ -15,13 +15,14 @@ import {
 } from 'Latte/core/services/keybinding/keybindingResolver'
 import type { IKeybindingItem } from 'Latte/core/services/keybinding/keybindingsRegistry'
 import { KeybindingsRegistry } from 'Latte/core/services/keybinding/keybindingsRegistry'
+import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 
 interface CurrentChord {
   keypress: string
   // label: string | null
 }
 
-export class KeybindingService {
+export class KeybindingService extends Disposable {
   private _currentChords: CurrentChord[] = []
   private _cacheResolver: KeybindingResolver | null
   private _currentlyDispatchingCommandId: string | null
@@ -31,15 +32,18 @@ export class KeybindingService {
   }
 
   constructor(private _commandService: CommandService) {
+    super()
     this._registerKeyListeners()
     this._currentlyDispatchingCommandId = null
   }
 
+  private _keyListener = (e: KeyboardEvent) => {
+    const event = new StandardKeyboardEvent(e)
+    this._dispatch(event)
+  }
+
   private _registerKeyListeners() {
-    window.addEventListener(dom.EventType.KEY_DOWN, e => {
-      const event = new StandardKeyboardEvent(e)
-      this._dispatch(event)
-    })
+    window.addEventListener(dom.EventType.KEY_DOWN, this._keyListener)
   }
 
   private _dispatch(event: IKeyboardEvent) {
@@ -162,5 +166,11 @@ export class KeybindingService {
       this._cacheResolver = new KeybindingResolver(binds)
     }
     return this._cacheResolver
+  }
+
+  public override dispose(): void {
+    this._cacheResolver = null
+    window.removeEventListener(dom.EventType.KEY_DOWN, this._keyListener)
+    super.dispose()
   }
 }

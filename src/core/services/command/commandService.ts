@@ -5,8 +5,9 @@ import type {
 import { CommandsRegistry } from 'Latte/core/services/command/commandsRegistry'
 import type { Event } from 'Latte/common/event'
 import { Emitter } from 'Latte/common/event'
+import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 
-export class CommandService implements ICommandService {
+export class CommandService extends Disposable implements ICommandService {
   private readonly _onWillExecuteCommand: Emitter<ICommandEvent> =
     new Emitter<ICommandEvent>()
   public readonly onWillExecuteCommand: Event<ICommandEvent> =

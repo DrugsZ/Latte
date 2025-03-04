@@ -10,7 +10,6 @@ import { ViewController } from 'Latte/core/view/viewController'
 import { Matrix } from 'Latte/core/utils/matrix'
 import { PickArea } from 'Latte/core/viewParts/pickArea/pickArea'
 import { DragHandler } from 'Latte/core/dom/dragHandler'
-import { Vector } from 'Latte/common/vector'
 import { ViewAdsorptionLine } from 'Latte/core/viewParts/adsorptionLine/viewAdsorptionLine'
 import { ViewGrid } from 'Latte/core/viewParts/grid/viewGrid'
 
@@ -131,5 +130,12 @@ export default class View extends ViewEventHandler {
     const currentCamera = this.getCamera()
     const vpMatrix = currentCamera.getViewPortMatrix()
     return Matrix.apply(vec, vpMatrix)
+  }
+
+  public override dispose(): void {
+    for (const viewPart of this._viewParts) {
+      viewPart.dispose()
+    }
+    super.dispose()
   }
 }
