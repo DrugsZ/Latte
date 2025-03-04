@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as viewEvents from 'Latte/core/viewParts/base/viewEvents'
+import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 
-export class ViewEventHandler {
+export class ViewEventHandler extends Disposable {
   private _shouldRender: boolean = true
 
   public shouldRender(): boolean {

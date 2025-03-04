@@ -1,6 +1,7 @@
+import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 import { Emitter } from 'Latte/common/event'
 
-class DomElementObserver {
+class DomElementObserver extends Disposable {
   private _domCacheWidth: number
   private _domCacheHeight: number
   private readonly _onDOMWheel = new Emitter<WheelEvent>()
@@ -8,6 +9,7 @@ class DomElementObserver {
   private readonly _onResize = new Emitter<UIEvent>()
   public readonly onResize = this._onResize.event
   constructor(private readonly _domElement: HTMLElement) {
+    super()
     this._initDOMSize()
     this._initEventListener()
   }
@@ -31,6 +33,12 @@ class DomElementObserver {
   private _initEventListener() {
     this._domElement.addEventListener('wheel', this._onDOMWheel.fire)
     this._domElement.addEventListener('resize', this._onResize.fire)
+  }
+
+  public override dispose(): void {
+    this._domElement.removeEventListener('wheel', this._onDOMWheel.fire)
+    this._domElement.removeEventListener('resize', this._onResize.fire)
+    super.dispose()
   }
 }
 

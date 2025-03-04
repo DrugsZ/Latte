@@ -9,9 +9,14 @@ import { CommandService } from 'Latte/core/services/command/commandService'
 import { KeybindingService } from 'Latte/core/services/keybinding/keybindingService'
 import { ProxyLatte } from 'Latte/api'
 import { ConfigurationService } from 'Latte/core/services/configuration/configurationService'
+import {
+  LifecycleService,
+  LifecyclePhase,
+  Disposable,
+} from 'Latte/core/services/lifecycle/lifecycleService'
 
 window.latte = ProxyLatte
-class Editor {
+class Editor extends Disposable {
   private _modelData: ModelData | null
   private _viewModel: ViewModel
   private _view: View
@@ -21,8 +26,25 @@ class Editor {
   private _commandService: CommandService
   private _keybindingService: KeybindingService
   private _configurationService: ConfigurationService
+  private _lifecycleService: LifecycleService
 
   constructor(private _domElement: HTMLCanvasElement) {
+    super()
+    this._lifecycleService = new LifecycleService()
+    this.init()
+    this._lifecycleService.phase = LifecyclePhase.Ready
+  }
+
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  _getViewModel(): ViewModel {
+    return this._viewModel
+  }
+
+  getCameraService(): CameraService {
+    return this._cameraService
+  }
+
+  public init() {
     this._renderElementObserver = new DomElementObserver(this._domElement)
     this._cameraService = new CameraService(
       this._renderElementObserver.canvasSize
@@ -42,13 +64,16 @@ class Editor {
     this._configurationService = new ConfigurationService()
   }
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  _getViewModel(): ViewModel {
-    return this._viewModel
-  }
-
-  getCameraService(): CameraService {
-    return this._cameraService
+  public override dispose() {
+    this._view.dispose()
+    this._renderElementObserver.dispose()
+    this._cameraService.dispose()
+    this._commandService.dispose()
+    this._keybindingService.dispose()
+    this._configurationService.dispose()
+    this._lifecycleService.phase = LifecyclePhase.Destroy
+    this._lifecycleService.dispose()
+    super.dispose()
   }
 }
 

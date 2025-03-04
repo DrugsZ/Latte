@@ -4,6 +4,7 @@ import { Matrix } from 'Latte/core/utils/matrix'
 import { Vector } from 'Latte/common/vector'
 
 import { MAX_ZOOM, MIN_ZOOM } from 'Latte/assets/constant'
+import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 
 export class Camera {
   private _zoom = 1
@@ -110,7 +111,7 @@ export class Camera {
   }
 }
 
-class CameraService<T = any> {
+class CameraService<T = any> extends Disposable {
   private _cameraMaps: Map<T, Camera> = new Map()
 
   private readonly _onCameraViewChange = new Emitter<Camera>()
@@ -120,7 +121,9 @@ class CameraService<T = any> {
       width: number
       height: number
     }
-  ) {}
+  ) {
+    super()
+  }
 
   public createCamera(
     id: T,
@@ -142,10 +145,12 @@ class CameraService<T = any> {
     const newCamera = new Camera(fullSize, minRatio)
     newCamera.setPosition(viewportCenterX, viewportCenterY)
     this._cameraMaps.set(id, newCamera)
-    newCamera.onCameraViewChange(event => {
-      this._onCameraViewChange.fire(event)
-    })
+    newCamera.onCameraViewChange(this._listCameraViewChange)
     return newCamera
+  }
+
+  private _listCameraViewChange = event => {
+    this._onCameraViewChange.fire(event)
   }
   public getViewport(id: T) {
     if (!this._cameraMaps.has(id)) {
@@ -160,6 +165,11 @@ class CameraService<T = any> {
       throw Error(`can not found camera by id: ${id}`)
     }
     return this._cameraMaps.get(id) as Camera
+  }
+
+  public override dispose(): void {
+    this._cameraMaps.clear()
+    super.dispose()
   }
 }
 

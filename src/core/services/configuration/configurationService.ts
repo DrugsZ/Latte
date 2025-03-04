@@ -1,9 +1,11 @@
 import { DefaultConfigurationModel } from 'Latte/core/services/configuration/configuration'
+import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 
-export class ConfigurationService {
+export class ConfigurationService extends Disposable {
   private _defaultConfiguration: DefaultConfigurationModel
 
   constructor() {
+    super()
     this._defaultConfiguration = new DefaultConfigurationModel()
   }
 
