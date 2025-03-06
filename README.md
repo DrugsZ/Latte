@@ -36,8 +36,8 @@ pnpm test
 ### Roadmap
 
 - [x] Absorption Line
-- [ ] Life Cycle
-- [ ] Configuration Manager
+- [x] Life Cycle
+- [x] Configuration Manager
 - [ ] Context Menu
 - [ ] Ruler
 - [ ] Mouse Box Select
