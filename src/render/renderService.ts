@@ -1,52 +1,8 @@
 import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
 import type { Camera } from 'Latte/core/services/camera/cameraService'
 
-// load and manage textures
-interface Texture {}
-
-// create and render sprites
-interface Graphics {
-  circle(cx: number, cy: number, radius: number): void
-
-  rect(x: number, y: number, width: number, height: number): void
-
-  roundRect(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radii:
-      | number
-      | [number, number]
-      | [number, number, number]
-      | [number, number, number, number]
-  ): void
-
-  line(x1: number, y1: number, x2: number, y2: number): void
-
-  ellipse(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    rotation: number,
-    startAngle: number,
-    endAngle: number,
-    counterclockwise: boolean
-  ): void
-
-  text(text: string, x: number, y: number, maxWidth): void
-}
-
-interface Style {}
-
-interface IRenderService {
-  Graphics: Graphics
-
-  Style: Style
-
-  Texture: Texture
-}
+// TODO: Implement IRenderService
+import { IRenderService } from 'Latte/render/render'
 
 class RenderService {
   private _ctx: CanvasRenderingContext2D
