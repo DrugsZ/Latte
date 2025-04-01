@@ -6,7 +6,11 @@ export const enum LifecyclePhase {
   Destroy,
 }
 
-export abstract class Disposable {
+export interface IDisposable {
+  dispose(): void
+}
+
+export abstract class Disposable implements IDisposable {
   public dispose(): void {
     console.log(`${this} whose to be disposed`)
   }
