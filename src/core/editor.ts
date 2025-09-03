@@ -15,6 +15,8 @@ import {
   Disposable,
 } from 'Latte/core/services/lifecycle/lifecycleService'
 
+import { ContextMenu } from 'Latte/core/services/contextmenu/contextMenu'
+
 window.latte = ProxyLatte
 class Editor extends Disposable {
   private _modelData: ModelData | null
@@ -27,6 +29,7 @@ class Editor extends Disposable {
   private _keybindingService: KeybindingService
   private _configurationService: ConfigurationService
   private _lifecycleService: LifecycleService
+  private _contextMenu: ContextMenu
 
   constructor(private _domElement: HTMLCanvasElement) {
     super()
@@ -62,6 +65,13 @@ class Editor extends Disposable {
     this._commandService = new CommandService()
     this._keybindingService = new KeybindingService(this._commandService)
     this._configurationService = new ConfigurationService()
+    this._contextMenu = new ContextMenu()
+
+    this._domElement.addEventListener('contextmenu', event => {
+      event.preventDefault()
+      this._contextMenu.showContextMenu({ x: event.clientX, y: event.clientY })
+    })
+    window.test = this._contextMenu
   }
 
   public override dispose() {

@@ -3,40 +3,143 @@ body {
   box-sizing: border-box;
 }
 
+/**
+ * 主题色系统
+ * - 使用CSS变量定义所有主题色
+ * - 通过切换.theme-xxx类来切换主题
+ */
+
+/* 共享尺寸变量 - 不受主题影响 */
 :root {
-  /* cursor start */
+  /* 尺寸变量 - 适用于所有主题 */
+  --toolbar-height: 48px;
+  --primary-line-height: 24px;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  /* 间距系统 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* 图标尺寸 */
+  --size-icon-toolbar-width: 20px;
+  --size-icon-toolbar-height: 20px;
+
+  /* 交互时间 */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
+  --transition-slow: 0.4s;
+
+  /* 阴影等级 */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+
+  /* 层级系统 */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal: 1040;
+  --z-index-tooltip: 1050;
+}
+
+/* 深色主题 (默认) */
+:root,
+.theme-dark {
+  /* 品牌色 */
+  --color-primary: #0d99ff;
+  --color-primary-hover: #2eadff;
+  --color-primary-active: #0078d4;
+  --color-primary-light: rgba(13, 153, 255, 0.15);
+
+  /* 辅助色 */
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-danger: #dc3545;
+  --color-info: #17a2b8;
+
+  /* 中性色 */
+  --color-bg-base: #282c34;
+  --color-bg-subtle: #21252b;
+  --color-bg-elevated: #323842;
+
+  /* 边框色 */
+  --color-border: #3e4452;
+  --color-border-light: #4a5161;
+  --color-border-focused: var(--color-primary);
+
+  /* 文本色 */
+  --color-text-primary: #abb2bf;
+  --color-text-secondary: #a0a8b7;
+  --color-text-disabled: #6e7681;
+  --color-text-inverse: #ffffff;
+
+  /* 功能区颜色 */
+  --bg-toolbar: #2c2c2c;
+  --bg-toolbar-hover: #111111;
+  --bg-toolbar-active: var(--color-primary);
+
+  --color-icon-toolbar-default: #e6e6e6;
+  --color-icon-toolbar-active: #ffffff;
+
+  /* 遗留变量支持 */
+  --primary-background-color: var(--color-bg-base);
+  --context-menu-background-color: var(--color-bg-subtle);
+  --primary-text-color: var(--color-text-primary);
+
+  /* 光标 */
   --cursor-editor: url("static/editor-cursor.svg")4 4,
     auto !important;
   --cursor-readonly: url("static/editor-pointer-cursor.svg")4 4,
     auto !important;
-  /* cursor end */
+}
 
-  /* region size start */
-  --toolbar-height: 48px;
-  /* region size end */
+/* 亮色主题 */
+.theme-light {
+  /* 品牌色 */
+  --color-primary: #0d99ff;
+  --color-primary-hover: #007ad4;
+  --color-primary-active: #0062a8;
+  --color-primary-light: rgba(13, 153, 255, 0.1);
 
-  /* background start */
-  --bg-toolbar: #2c2c2c;
-  --bg-toolbar-hover: #111111;
-  --bg-toolbar-active: #0d99ff;
-  /* background end */
+  /* 辅助色 */
+  --color-success: #22863a;
+  --color-warning: #b08800;
+  --color-danger: #cb2431;
+  --color-info: #0366d6;
 
+  /* 中性色 */
+  --color-bg-base: #ffffff;
+  --color-bg-subtle: #f6f8fa;
+  --color-bg-elevated: #ffffff;
 
-  /* color start */
-  --color-icon-toolbar-default: #000000;
+  /* 边框色 */
+  --color-border: #e1e4e8;
+  --color-border-light: #ebeef0;
+  --color-border-focused: var(--color-primary);
+
+  /* 文本色 */
+  --color-text-primary: #24292e;
+  --color-text-secondary: #586069;
+  --color-text-disabled: #959da5;
+  --color-text-inverse: #ffffff;
+
+  /* 功能区颜色 */
+  --bg-toolbar: #f5f5f5;
+  --bg-toolbar-hover: #e0e0e0;
+  --bg-toolbar-active: var(--color-primary);
+
+  --color-icon-toolbar-default: #24292e;
   --color-icon-toolbar-active: #ffffff;
 
-  --color-border: #e6e6e6;
-  --color-border-focused: #0d99ff;
-
-
-  --color-text-secondary: #b3b3b3;
-  /* color end */
-
-  /* icon size start*/
-  --size-icon-toolbar-width: 20px;
-  --size-icon-toolbar-height: 20px;
-  /* icon size end*/
+  /* 遗留变量支持 */
+  --primary-background-color: var(--color-bg-base);
+  --context-menu-background-color: var(--color-bg-subtle);
+  --primary-text-color: var(--color-text-primary);
 }
 
 #root {
@@ -47,4 +150,14 @@ body {
 
 .displayContents {
   display: contents;
+}
+
+.context-view-container {
+  z-index: 10;
+  position: fixed;
+}
+
+.context-view {
+  background-color: var(--context-menu-background-color);
+  border-radius: var(--border-radius-lg);
 }
