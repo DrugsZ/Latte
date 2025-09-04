@@ -74,7 +74,6 @@ enum RenderType {
 }
 
 class ElementRender extends ViewPart {
-  private _textureCanvas: OffscreenCanvas
   private _tempMatrix: IMatrixLike = {
     a: 1,
     b: 0,
@@ -88,15 +87,10 @@ class ElementRender extends ViewPart {
     private readonly _getVisibleElementRenderObjects: () => DisplayObject[]
   ) {
     super(viewModel)
-    this._initCanvas()
   }
 
   public override onElementChange(): boolean {
     return true
-  }
-
-  private _initCanvas() {
-    this._textureCanvas = new OffscreenCanvas(0, 0)
   }
 
   private _createClipArea(

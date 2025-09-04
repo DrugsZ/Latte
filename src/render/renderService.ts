@@ -1,6 +1,9 @@
 import { DEFAULT_BACKGROUND_COLOR } from 'Latte/constants'
 import type { Camera } from 'Latte/core/services/camera/cameraService'
 
+// TODO: Implement IRenderService
+import { IRenderService } from 'Latte/render/render'
+
 class RenderService {
   private _ctx: CanvasRenderingContext2D
   constructor(private readonly _canvas: HTMLCanvasElement) {
