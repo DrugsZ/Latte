@@ -3,7 +3,7 @@ import { EventType } from 'Latte/core/dom/dom'
 import { StandardKeyboardEvent } from 'Latte/core/dom/keyboardEvent'
 import type { IActionViewItem } from 'Latte/ui/actionBar/actionViewItem'
 import { ActionViewItem } from 'Latte/ui/actionBar/actionViewItem'
-import 'Latte/ui/actionBar/actionbar.css'
+import 'Latte/ui/actionBar/actionBar.css'
 import { Separator } from 'Latte/core/common/actions'
 import { KeyCode } from 'Latte/common/keyCodes'
 
