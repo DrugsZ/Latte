@@ -148,7 +148,7 @@ export class CursorMoveOperations {
     }
 
     if (isResetEndYAxis(key)) {
-      ;[, newEndPoint[0]] = positionOnSelectBox
+      ;[, newEndPoint[1]] = positionOnSelectBox
     }
 
     const newSelectBoxTL = Vector.add(
@@ -226,7 +226,7 @@ export class CursorMoveOperations {
     const { a, b, c, d } = this.tempMatrix
     return {
       size: {
-        x: Math.sqrt(Vector.len(vcWidth)),
+        x: Vector.len(vcWidth),
         y: vcHTS1[1],
       },
       transform: {
@@ -273,7 +273,6 @@ export class CursorMoveOperations {
 
     const objects = activeElement.getObjects()
     const result: ISingleEditOperation[] = []
-
     objects.forEach(object => {
       result.push(
         EditOperation.update(
