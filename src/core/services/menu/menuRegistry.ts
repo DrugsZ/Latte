@@ -1,7 +1,7 @@
-import type { Event } from 'Latte/common/event'
+import type { Event } from 'Latte/utils/event'
 import type { IDisposable } from 'Latte/core/services/lifecycle/lifecycleService'
-import { LinkedList } from 'Latte/common/linkedList'
-import { Emitter } from 'Latte/common/event'
+import { LinkedList } from 'Latte/utils/linkedList'
+import { Emitter } from 'Latte/utils/event'
 import type {
   ContextKeyExpression,
   IContext,

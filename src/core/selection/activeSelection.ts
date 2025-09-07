@@ -5,9 +5,9 @@ import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { inBox, inLine } from 'Latte/core/utils/inPointerInPath'
 import { Matrix } from 'Latte/core/utils/matrix'
 import { DEFAULT_ACTIVE_SELECTION_LINT_WIDTH } from 'Latte/constants/editor'
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 import { registerAPI } from 'Latte/api'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 const tempMatrix = {
   a: 1,

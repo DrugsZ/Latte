@@ -17,9 +17,9 @@ import type {
   StandardWheelEvent,
 } from 'Latte/core/dom/mouseEvent'
 import type { ITextureLoadResult } from 'Latte/core/texture'
-import { createDefaultImagePaint } from 'Latte/common/schema'
+import { createDefaultImagePaint } from 'Latte/utils/schema'
 import { Container } from 'Latte/core/elements/container'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 let CACHE_PRE_POINT: vec2 | undefined
 let CACHE_START_POINT: vec2 | undefined

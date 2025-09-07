@@ -1,6 +1,6 @@
-import type { Event } from 'Latte/common/event'
-import { Emitter } from 'Latte/common/event'
-import { LinkedList } from 'Latte/common/linkedList'
+import type { Event } from 'Latte/utils/event'
+import { Emitter } from 'Latte/utils/event'
+import { LinkedList } from 'Latte/utils/linkedList'
 
 export interface ICommandHandler {
   (...args: any[]): void

@@ -1,4 +1,4 @@
-import { LinkedList } from 'Latte/common/linkedList'
+import { LinkedList } from 'Latte/utils/linkedList'
 
 export interface Event<T> {
   (listener: (e: T) => any, thisArgs?: any): any

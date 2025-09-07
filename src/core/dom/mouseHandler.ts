@@ -1,6 +1,6 @@
 import type View from 'Latte/core/view'
 import type { ViewController } from 'Latte/core/view/viewController'
-import { Point } from 'Latte/common/point'
+import { Point } from 'Latte/utils/point'
 import type {
   EditorMouseEvent,
   IMouseWheelEvent,
@@ -14,7 +14,7 @@ import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import type { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import * as dom from 'Latte/core/dom/dom'
 
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 const tempVec2 = Vector.create(0, 0)
 

@@ -1,4 +1,4 @@
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 import { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import { EditorElementTypeKind } from 'Latte/constants/schema'

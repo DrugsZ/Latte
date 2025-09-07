@@ -4,7 +4,7 @@ import type {
   FillRenderOptions,
 } from 'Latte/render/renderContributionRegistry'
 import { textureManager } from 'Latte/core/texture'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 enum ImageFillScaleMode {
   FILL = 'FILL',

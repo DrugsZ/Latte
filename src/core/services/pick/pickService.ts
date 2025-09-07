@@ -1,7 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import type { EventTarget } from 'Latte/core/dom/eventTarget'
 import type DisplayObject from 'Latte/core/elements/container'
-import { isRect, isEllipse } from 'Latte/common/assert'
+import { isRect, isEllipse } from 'Latte/utils/assert'
 import type Ellipse from 'Latte/core/elements/ellipse'
 import type Rect from 'Latte/core/elements/rect'
 import {

@@ -4,7 +4,7 @@ import type DisplayObject from 'Latte/core/elements/container'
 import type Rect from 'Latte/core/elements/rect'
 import type Ellipse from 'Latte/core/elements/ellipse'
 import { Matrix } from 'Latte/core/utils/matrix'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 const DEFAULT_SELECT_BOX_AXIS = [Vector.create(0, 1), Vector.create(1, 0)]
 

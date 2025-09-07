@@ -1,5 +1,5 @@
-import type { Point } from 'Latte/common/point'
-import { Vector } from 'Latte/common/vector'
+import type { Point } from 'Latte/utils/point'
+import { Vector } from 'Latte/utils/vector'
 
 const degrees = 180 / Math.PI
 

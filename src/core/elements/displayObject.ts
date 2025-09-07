@@ -5,7 +5,7 @@ import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/core/utils/matrix'
 import type { RBushNodeAABB } from 'Latte/core/rTree'
 import { rTreeRoot } from 'Latte/core/rTree'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 const beforeTransformPoint = Vector.create(0, 0) // new Point(0, 0)
 const afterTransformPoint = Vector.create(0, 0) // new Point(0, 0)

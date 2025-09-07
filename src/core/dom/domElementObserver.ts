@@ -1,5 +1,5 @@
 import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 
 class DomElementObserver extends Disposable {
   private _domCacheWidth: number

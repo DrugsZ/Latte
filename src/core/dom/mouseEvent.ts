@@ -2,7 +2,7 @@ import type { PickService } from 'Latte/core/services/pick/pickService'
 import type { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import type DisplayObject from 'Latte/core/elements/container'
 import * as dom from 'Latte/core/dom/dom'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 const tempVec2 = Vector.create(0, 0)
 

@@ -1,8 +1,8 @@
 import type ModelData from 'Latte/core/model/modelData'
 import type { IElementChange } from 'Latte/core/model/modelData'
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 import type CameraService from 'Latte/core/services/camera/cameraService'
-import { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
+import { ViewModelEventDispatcher } from 'Latte/utils/viewModelEventDispatcher'
 import * as viewEvents from 'Latte/core/viewParts/base/viewEvents'
 import type { ViewEventHandler } from 'Latte/core/viewParts/base/viewEventHandler'
 import { ElementTree } from 'Latte/core/elementTree'
@@ -20,7 +20,7 @@ import { registerAPI } from 'Latte/api'
 
 import { ActiveSelectionWidget } from 'Latte/core/selection/activeSelectionWidget'
 import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
 

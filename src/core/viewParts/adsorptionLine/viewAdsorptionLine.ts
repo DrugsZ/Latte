@@ -1,4 +1,4 @@
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 import type { Camera } from 'Latte/core/services/camera/cameraService'
 import { ViewPart } from 'Latte/core/viewParts/base/viewPart'
 import type { ViewCursorStateChangeEvent } from 'Latte/core/viewParts/base/viewEvents'

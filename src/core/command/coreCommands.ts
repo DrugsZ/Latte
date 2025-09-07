@@ -3,25 +3,25 @@ import { DisplayObject } from 'Latte/core/elements/displayObject'
 import { Page } from 'Latte/core/elements/page'
 import { EditorDocument } from 'Latte/core/elements/document'
 import { CommandsRegistry } from 'Latte/core/services/command/commandsRegistry'
-import { Point, subtract, add, divide } from 'Latte/common/point'
+import { Point, subtract, add, divide } from 'Latte/utils/point'
 import { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import {
   createDefaultElementSchema,
   deepCopySchema,
   getUId,
-} from 'Latte/common/schema'
+} from 'Latte/utils/schema'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { rTreeRoot } from 'Latte/core/rTree'
 import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
 import { EditOperation } from 'Latte/core/model/modelChange'
 import type { IKeybindings } from 'Latte/core/services/keybinding/keybindingsRegistry'
 import { KeybindingsRegistry } from 'Latte/core/services/keybinding/keybindingsRegistry'
-import { KeyCode, KeyMod } from 'Latte/common/keyCodes'
+import { KeyCode, KeyMod } from 'Latte/utils/keyCodes'
 import { calcPosition } from 'Latte/core/utils/zIndex'
 import { CursorMoveOperations } from 'Latte/core/cursor/cursorMoveOperations'
 import { CursorUpdateOperations } from 'Latte/core/cursor/cursorUpdateOperations'
 import { SAT } from 'Latte/core/utils/sat'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&

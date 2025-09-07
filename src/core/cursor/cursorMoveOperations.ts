@@ -13,8 +13,8 @@ import {
   isResetEndYAxis,
 } from 'Latte/core/selection/activeSelection'
 
-import { isFunction } from 'Latte/common/assert'
-import { Vector } from 'Latte/common/vector'
+import { isFunction } from 'Latte/utils/assert'
+import { Vector } from 'Latte/utils/vector'
 
 export class CursorMoveOperations {
   static tempMatrix = new Matrix()

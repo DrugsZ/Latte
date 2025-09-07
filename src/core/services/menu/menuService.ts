@@ -6,8 +6,8 @@ import type {
   MenuItemGroup,
 } from 'Latte/core/services/menu/menuRegistry'
 import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
-import type { Event } from 'Latte/common/event'
-import { Emitter } from 'Latte/common/event'
+import type { Event } from 'Latte/utils/event'
+import { Emitter } from 'Latte/utils/event'
 import MenuItemAction from 'Latte/core/services/menu/menuAction'
 
 interface IMenuService {

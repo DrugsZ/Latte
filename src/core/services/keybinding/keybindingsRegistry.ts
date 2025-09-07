@@ -1,7 +1,7 @@
-import type { Keybinding } from 'Latte/common/keybindings'
-import { decodeKeybinding } from 'Latte/common/keybindings'
-import { LinkedList } from 'Latte/common/linkedList'
-import { OS } from 'Latte/common/platform'
+import type { Keybinding } from 'Latte/utils/keybindings'
+import { decodeKeybinding } from 'Latte/utils/keybindings'
+import { LinkedList } from 'Latte/utils/linkedList'
+import { OS } from 'Latte/utils/platform'
 
 export interface IKeybindings {
   primary?: number

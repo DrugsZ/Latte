@@ -4,7 +4,7 @@ import { Page } from 'Latte/core/elements/page'
 import Frame from 'Latte/core/elements/frame'
 import { EditorDocument } from 'Latte/core/elements/document'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
-import { createDefaultElementSchema } from 'Latte/common/schema'
+import { createDefaultElementSchema } from 'Latte/utils/schema'
 
 import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import type { Container } from 'Latte/core/elements/container'
