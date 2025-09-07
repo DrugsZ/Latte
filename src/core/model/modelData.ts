@@ -1,5 +1,5 @@
-import { createDefaultFile } from 'Latte/common/schema'
-import { Emitter } from 'Latte/common/event'
+import { createDefaultFile } from 'Latte/utils/schema'
+import { Emitter } from 'Latte/utils/event'
 import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
 import { ChangeEventType, ModelChange } from 'Latte/core/model/modelChange'
 import { UndoRedoService } from 'Latte/core/services/undoRedo/undoRedoService'

@@ -1,4 +1,4 @@
-import { isBoolean, isObject, isFunction } from 'Latte/common/assert'
+import { isBoolean, isObject, isFunction } from 'Latte/utils/assert'
 import EventEmitter from 'eventemitter3'
 import type { IEventTarget } from 'Latte/core/dom/interfaces'
 

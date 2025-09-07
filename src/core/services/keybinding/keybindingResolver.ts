@@ -1,4 +1,4 @@
-import type { ResolvedKeybindingItem } from 'Latte/common/keybindings'
+import type { ResolvedKeybindingItem } from 'Latte/utils/keybindings'
 
 export const enum ResultKind {
   /** No keybinding found this sequence of chords */

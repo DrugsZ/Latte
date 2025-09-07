@@ -1,15 +1,15 @@
 import type { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import type { DisplayObject } from 'Latte/core/elements/displayObject'
-import type { ViewModelEventDispatcher } from 'Latte/common/viewModelEventDispatcher'
+import type { ViewModelEventDispatcher } from 'Latte/utils/viewModelEventDispatcher'
 import * as viewEvents from 'Latte/core/viewParts/base/viewEvents'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Bounds } from 'Latte/core/bounds'
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 import { AdsorptionResolver } from 'Latte/core/cursor/cursorAbsorptionLine'
 import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
 
 import { registerAPI } from 'Latte/api'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 import type { ICursorState } from 'Latte/core/cursor/cursorState'
 import { CursorStateAccessor } from 'Latte/core/cursor/cursorState'

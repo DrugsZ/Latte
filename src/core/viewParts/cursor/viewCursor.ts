@@ -16,7 +16,7 @@ import {
   isResizeKey,
   isRotateKey,
 } from 'Latte/core/selection/activeSelection'
-import { unknownType } from 'Latte/common/error'
+import { unknownType } from 'Latte/utils/error'
 
 export const getDegFromTransform = (transform: Matrix) => {
   const { a: matrixA, b: matrixB } = transform

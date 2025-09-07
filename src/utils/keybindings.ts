@@ -1,6 +1,6 @@
-import { KeyCode, KeyCodeUtils } from 'Latte/common/keyCodes'
-import { illegalArgument } from 'Latte/common/error'
-import { OperatingSystem } from 'Latte/common/platform'
+import { KeyCode, KeyCodeUtils } from 'Latte/utils/keyCodes'
+import { illegalArgument } from 'Latte/utils/error'
+import { OperatingSystem } from 'Latte/utils/platform'
 
 const enum BinaryKeybindingsMask {
   CtrlCmd = (1 << 11) >>> 0,

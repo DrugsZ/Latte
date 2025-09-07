@@ -3,8 +3,8 @@ import type {
   ICommandEvent,
 } from 'Latte/core/services/command/commandsRegistry'
 import { CommandsRegistry } from 'Latte/core/services/command/commandsRegistry'
-import type { Event } from 'Latte/common/event'
-import { Emitter } from 'Latte/common/event'
+import type { Event } from 'Latte/utils/event'
+import { Emitter } from 'Latte/utils/event'
 import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
 
 export class CommandService extends Disposable implements ICommandService {

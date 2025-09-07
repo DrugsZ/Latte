@@ -1,7 +1,7 @@
-import { Point } from 'Latte/common/point'
-import { Emitter } from 'Latte/common/event'
+import { Point } from 'Latte/utils/point'
+import { Emitter } from 'Latte/utils/event'
 import { Matrix } from 'Latte/core/utils/matrix'
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 
 import { MAX_ZOOM, MIN_ZOOM } from 'Latte/assets/constant'
 import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'

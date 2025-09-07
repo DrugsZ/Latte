@@ -1,6 +1,6 @@
 import type { IAction } from 'Latte/core/common/actions'
 import { ContextViewService } from 'Latte/core/services/contextmenu/contextViewService'
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 
 export interface IContextMenuShowOptions {
   getAnchor: () => IPoint

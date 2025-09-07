@@ -1,10 +1,10 @@
-import type { Keybinding } from 'Latte/common/keybindings'
+import type { Keybinding } from 'Latte/utils/keybindings'
 import {
   KeyCodeChord,
   ResolvedKeybinding,
   ResolvedKeybindingItem,
   toEmptyArrayIfContainsNull,
-} from 'Latte/common/keybindings'
+} from 'Latte/utils/keybindings'
 import type { CommandService } from 'Latte/core/services/command/commandService'
 import * as dom from 'Latte/core/dom/dom'
 import type { IKeyboardEvent } from 'Latte/core/dom/keyboardEvent'

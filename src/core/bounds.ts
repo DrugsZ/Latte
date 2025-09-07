@@ -1,4 +1,4 @@
-import { Vector } from 'Latte/common/vector'
+import { Vector } from 'Latte/utils/vector'
 import { Rectangle } from 'Latte/core/elements/rectangle'
 
 const tempVec = Vector.create(0, 0)

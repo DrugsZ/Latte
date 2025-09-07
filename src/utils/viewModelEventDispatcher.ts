@@ -1,4 +1,4 @@
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 import type { ViewEvent } from 'Latte/view/viewEvents'
 import type { ViewEventHandler } from 'Latte/core/viewParts/base/viewEventHandler'
 

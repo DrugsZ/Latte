@@ -1,6 +1,6 @@
-import { Emitter } from 'Latte/common/event'
+import { Emitter } from 'Latte/utils/event'
 import type { ActiveSelection } from 'Latte/core/selection/activeSelection'
-import { isFunction } from 'Latte/common/assert'
+import { isFunction } from 'Latte/utils/assert'
 import { CoreEditingCommands } from 'Latte/core/command/coreCommands'
 import type { ViewModel } from 'Latte/core/viweModel/viewModel'
 

@@ -4,9 +4,9 @@ import {
   KeyCode,
   KeyCodeUtils,
   EVENT_KEY_CODE_MAP,
-} from 'Latte/common/keyCodes'
-import * as platform from 'Latte/common/platform'
-import { KeyCodeChord } from 'Latte/common/keybindings'
+} from 'Latte/utils/keyCodes'
+import * as platform from 'Latte/utils/platform'
+import { KeyCodeChord } from 'Latte/utils/keybindings'
 
 function extractKeyCode(e: KeyboardEvent): KeyCode {
   if (e.charCode) {
