@@ -168,7 +168,7 @@ export class CursorMoveOperations {
     }
   }
 
-  private static _getNewOBB = (
+  private static _calculateTransformedObjectGeometry = (
     objectOBB: OBB,
     getNewPoint: (point: ReadonlyVec2) => ReadonlyVec2,
     selectBoxTransform: IMatrixLike
@@ -187,32 +187,59 @@ export class CursorMoveOperations {
       pureTransform,
       invertTransform
     )
-    const objectTL = Vector.create(x, y)
-    const objectVWidth = Vector.add(
-      objectTL,
+    const oldObjectTLVector = Vector.create(x, y)
+    const oldObjectWidthVector = Vector.add(
+      oldObjectTLVector,
       Matrix.apply(Vector.create(width, 0), localTransform)
     )
-    const objectVHeight = Vector.add(
-      objectTL,
+    const oldObjectHeightVector = Vector.add(
+      oldObjectTLVector,
       Matrix.apply(Vector.create(0, height), localTransform)
     )
-    const newTl = getNewPoint(objectTL)
-    const newObjectVWidth = getNewPoint(objectVWidth)
-    const newObjectVHeight = getNewPoint(objectVHeight)
-    const vcWidth = Vector.subtract(newObjectVWidth, newTl)
-    const vcWRad = Math.atan2(vcWidth[1], vcWidth[0])
-    const vcWTM = {
-      a: Math.cos(vcWRad),
-      b: Math.sin(vcWRad),
-      c: -Math.sin(vcWRad),
-      d: Math.cos(vcWRad),
+    const newObjectTLVector = getNewPoint(oldObjectTLVector)
+    const newObjectWidthVector = getNewPoint(oldObjectWidthVector)
+    const newObjectHeightVector = getNewPoint(oldObjectHeightVector)
+    const newWidthLocalVector = Vector.subtract(
+      newObjectWidthVector,
+      newObjectTLVector
+    )
+    const newWidthLocalRad = Math.atan2(
+      newWidthLocalVector[1],
+      newWidthLocalVector[0]
+    )
+    const newWidthTransformMatrix = {
+      a: Math.cos(newWidthLocalRad),
+      b: Math.sin(newWidthLocalRad),
+      c: -Math.sin(newWidthLocalRad),
+      d: Math.cos(newWidthLocalRad),
       tx: 0,
       ty: 0,
     }
-    const vcHeight = Vector.subtract(newObjectVHeight, newTl)
-    const newVcInvert = Matrix.invert(vcWTM)
-    const vcHTS1 = Matrix.apply(vcHeight, newVcInvert!)
-    const vcHSkew = Math.PI / 2 - Math.atan2(vcHTS1[1], vcHTS1[0])
+    const widthTransformationResult = Matrix.apply(
+      Vector.create(width, 0),
+      newWidthTransformMatrix
+    )
+    const actualHeightVectorAfterSize = Vector.subtract(
+      newObjectHeightVector,
+      newObjectTLVector
+    )
+    const oldHeightDot = Vector.crossProduct(
+      widthTransformationResult,
+      actualHeightVectorAfterSize
+    )
+    const newHeightDot = Vector.crossProduct(
+      widthTransformationResult,
+      Matrix.apply(Vector.create(0, height), newWidthTransformMatrix)
+    )
+    const flipY = oldHeightDot * newHeightDot < 0
+    const newVcInvert = Matrix.invert(newWidthTransformMatrix)
+    const heightTransformWorldVector = Matrix.apply(
+      actualHeightVectorAfterSize,
+      newVcInvert!
+    )
+    const vcHSkew =
+      Math.PI / 2 -
+      Math.atan2(heightTransformWorldVector[1], heightTransformWorldVector[0])
     const vcHTM = {
       a: 1,
       b: 0,
@@ -221,21 +248,21 @@ export class CursorMoveOperations {
       tx: 0,
       ty: 0,
     }
-    Matrix.multiply(this.tempMatrix, vcWTM, vcHTM)
+    Matrix.multiply(this.tempMatrix, newWidthTransformMatrix, vcHTM)
     Matrix.multiply(this.tempMatrix, this.tempMatrix, selectBoxTransform)
     const { a, b, c, d } = this.tempMatrix
     return {
       size: {
-        x: Vector.len(vcWidth),
-        y: vcHTS1[1],
+        x: Vector.len(newWidthLocalVector),
+        y: Math.abs(heightTransformWorldVector[1]),
       },
       transform: {
         a,
         b,
-        c,
-        d,
-        tx: newTl[0],
-        ty: newTl[1],
+        c: c * (flipY ? -1 : 1),
+        d: d * (flipY ? -1 : 1),
+        tx: newObjectTLVector[0],
+        ty: newObjectTLVector[1],
       },
     }
   }
@@ -277,7 +304,11 @@ export class CursorMoveOperations {
       result.push(
         EditOperation.update(
           object.getGuidKey(),
-          this._getNewOBB(object.OBB, getNewPoint, selectBoxTransform)
+          this._calculateTransformedObjectGeometry(
+            object.OBB,
+            getNewPoint,
+            selectBoxTransform
+          )
         )
       )
     })
