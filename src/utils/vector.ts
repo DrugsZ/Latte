@@ -56,10 +56,10 @@ export namespace Vector {
     a[0] * b[1] - a[1] * b[0]
 
   export const magnitude = (vec: ReadonlyVec2) =>
-    Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1])
+    Math.abs(Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1]))
 
   export const len = (vec: ReadonlyVec2) =>
-    Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1])
+    Math.abs(Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1]))
 
   export const edge = (vec: ReadonlyVec2) => create(-vec[1], vec[0])
 
