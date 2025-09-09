@@ -27,30 +27,3 @@ export class Point {
     return Point.equals(this, other)
   }
 }
-
-export const subtract = (a: IPoint, b: IPoint) =>
-  new Point(a.x - b.x, a.y - b.y)
-export const dot = (a: IPoint, b: IPoint) => new Point(a.x * b.x, a.y * b.y)
-export const add = (a: IPoint, b: IPoint) => new Point(a.x + b.x, a.y + b.y)
-export const divide = (a: IPoint, b: IPoint) => new Point(a.x / b.x, a.y / b.y)
-
-export const dotProduct = (a: IPoint, b: IPoint) => a.x * b.x + a.y * b.y
-
-export const crossProduct = (a: IPoint, b: IPoint) => a.x * b.y - b.x * a.y
-
-export const magnitude = (point: IPoint) =>
-  point.x * point.x + point.y * point.y
-
-export const len = (point: IPoint) => Math.sqrt(magnitude(point))
-
-export const edge = (point: IPoint) => new Point(-point.y, point.x)
-
-export const normal = (point: IPoint) => {
-  const p = new Point(0, 0)
-  const m = len(point)
-  if (m !== 0) {
-    p.x = point.x / m
-    p.y = point.y / m
-  }
-  return p
-}

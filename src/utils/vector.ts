@@ -53,7 +53,7 @@ export namespace Vector {
     a[0] * b[0] + a[1] * b[1]
 
   export const crossProduct = (a: ReadonlyVec2, b: ReadonlyVec2) =>
-    a[0] * b[0] - a[1] * b[1]
+    a[0] * b[1] - a[1] * b[0]
 
   export const magnitude = (vec: ReadonlyVec2) =>
     Math.sqrt(vec[0] * vec[0] + vec[1] * vec[1])
