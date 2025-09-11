@@ -168,11 +168,11 @@ export class CursorMoveOperations {
     }
   }
 
-  private static _calculateTransformedObjectGeometry = (
+  private static _calculateObjectControlPoints = (
     objectOBB: OBB,
-    getNewPoint: (point: ReadonlyVec2) => ReadonlyVec2,
+    pointTransformFn: (point: ReadonlyVec2) => ReadonlyVec2,
     selectBoxTransform: IMatrixLike
-  ): Pick<BaseElementSchema, 'size' | 'transform'> => {
+  ) => {
     const { x, y, width, height, transform } = objectOBB
     const pureTransform = {
       ...transform,
@@ -187,84 +187,169 @@ export class CursorMoveOperations {
       pureTransform,
       invertTransform
     )
-    const oldObjectTLVector = Vector.create(x, y)
-    const oldObjectWidthVector = Vector.add(
-      oldObjectTLVector,
+    const originalTopLeftPoint = Vector.create(x, y)
+    const originalTopRightPoint = Vector.add(
+      originalTopLeftPoint,
       Matrix.apply(Vector.create(width, 0), localTransform)
     )
-    const oldObjectHeightVector = Vector.add(
-      oldObjectTLVector,
+    const originalBottomLeftVector = Vector.add(
+      originalTopLeftPoint,
       Matrix.apply(Vector.create(0, height), localTransform)
     )
-    const newObjectTLVector = getNewPoint(oldObjectTLVector)
-    const newObjectWidthVector = getNewPoint(oldObjectWidthVector)
-    const newObjectHeightVector = getNewPoint(oldObjectHeightVector)
-    const newWidthLocalVector = Vector.subtract(
-      newObjectWidthVector,
-      newObjectTLVector
+    const transformedTopLeftPoint = pointTransformFn(originalTopLeftPoint)
+    const transformedTopRightPoint = pointTransformFn(originalTopRightPoint)
+    const transformedBottomLeftVector = pointTransformFn(
+      originalBottomLeftVector
     )
-    const newWidthLocalRad = Math.atan2(
-      newWidthLocalVector[1],
-      newWidthLocalVector[0]
+    const transformedWidthVector = Vector.subtract(
+      transformedTopRightPoint,
+      transformedTopLeftPoint
     )
-    const newWidthTransformMatrix = {
-      a: Math.cos(newWidthLocalRad),
-      b: Math.sin(newWidthLocalRad),
-      c: -Math.sin(newWidthLocalRad),
-      d: Math.cos(newWidthLocalRad),
+
+    const result = {
+      transformedTopLeftPoint,
+      transformedTopRightPoint,
+      transformedBottomLeftVector,
+      transformedWidthVector,
+    }
+    console.log('result', result)
+    return result
+  }
+
+  private static _computeGeometryFromTransformedPoints = (
+    widthVector: ReadonlyVec2
+  ) => {
+    const widthVectorAngle = Math.atan2(widthVector[1], widthVector[0])
+    return {
+      a: Math.cos(widthVectorAngle),
+      b: Math.sin(widthVectorAngle),
+      c: -Math.sin(widthVectorAngle),
+      d: Math.cos(widthVectorAngle),
       tx: 0,
       ty: 0,
     }
-    const widthTransformationResult = Matrix.apply(
-      Vector.create(width, 0),
-      newWidthTransformMatrix
-    )
-    const actualHeightVectorAfterSize = Vector.subtract(
-      newObjectHeightVector,
-      newObjectTLVector
-    )
+  }
+
+  private static _checkFlipVertically = (
+    actualHeightVectorAfterSize: ReadonlyVec2,
+    actualWidthVectorAfterSize: ReadonlyVec2,
+    oldBottomLeftVector: ReadonlyVec2,
+    newWidthTransformMatrix: IMatrixLike
+  ) => {
+    // const widthTransformationResult = Matrix.apply(
+    //   oldTopRightVector,
+    //   newWidthTransformMatrix
+    // )
+    // const actualHeightVectorAfterSize = Vector.subtract(
+    //   transformedBottomLeftVector,
+    //   transformedTopLeftPoint
+    // )
     const oldHeightDot = Vector.crossProduct(
-      widthTransformationResult,
+      actualWidthVectorAfterSize,
       actualHeightVectorAfterSize
     )
     const newHeightDot = Vector.crossProduct(
-      widthTransformationResult,
-      Matrix.apply(Vector.create(0, height), newWidthTransformMatrix)
+      actualWidthVectorAfterSize,
+      Matrix.apply(oldBottomLeftVector, newWidthTransformMatrix)
     )
-    const flipY = oldHeightDot * newHeightDot < 0
+    return oldHeightDot * newHeightDot < 0
+  }
+
+  private static __calculateTransformedObjectHeightSkew = (
+    heightTransformWorldVector: ReadonlyVec2
+  ) => {
+    const heightSkewAngle =
+      Math.PI / 2 -
+      Math.atan2(heightTransformWorldVector[1], heightTransformWorldVector[0])
+    return {
+      a: 1,
+      b: 0,
+      c: Math.tan(heightSkewAngle),
+      d: 1,
+      tx: 0,
+      ty: 0,
+    }
+  }
+
+  private static _updateObjectGeometryAfterResize(
+    widthTransform: IMatrixLike,
+    heightSkew: IMatrixLike,
+    worldTransform: IMatrixLike,
+    width: number,
+    height: number,
+    topLeft: ReadonlyVec2,
+    shouldFlipVertically: boolean
+  ) {
+    Matrix.multiply(this.tempMatrix, widthTransform, heightSkew)
+    Matrix.multiply(this.tempMatrix, this.tempMatrix, worldTransform)
+    const { a, b, c, d } = this.tempMatrix
+    return {
+      size: {
+        x: width,
+        y: height,
+      },
+      transform: {
+        a,
+        b,
+        c: c * (shouldFlipVertically ? -1 : 1),
+        d: d * (shouldFlipVertically ? -1 : 1),
+        tx: topLeft[0],
+        ty: topLeft[1],
+      },
+    }
+  }
+
+  private static _calculateTransformedObjectGeometry = (
+    objectOBB: OBB,
+    getNewPoint: (point: ReadonlyVec2) => ReadonlyVec2,
+    selectBoxTransform: IMatrixLike
+  ): Pick<BaseElementSchema, 'size' | 'transform'> => {
+    const { height } = objectOBB
+
+    const {
+      transformedTopLeftPoint,
+      transformedBottomLeftVector,
+      transformedWidthVector,
+    } = CursorMoveOperations._calculateObjectControlPoints(
+      objectOBB,
+      getNewPoint,
+      selectBoxTransform
+    )
+    const newWidthTransformMatrix = this._computeGeometryFromTransformedPoints(
+      transformedWidthVector
+    )
+    const actualHeightVectorAfterSize = Vector.subtract(
+      transformedBottomLeftVector,
+      transformedTopLeftPoint
+    )
+
+    const shouldFlipVertically = this._checkFlipVertically(
+      actualHeightVectorAfterSize,
+      transformedWidthVector,
+      Vector.create(0, height),
+      newWidthTransformMatrix
+    )
     const newVcInvert = Matrix.invert(newWidthTransformMatrix)
     const heightTransformWorldVector = Matrix.apply(
       actualHeightVectorAfterSize,
       newVcInvert!
     )
-    const vcHSkew =
-      Math.PI / 2 -
-      Math.atan2(heightTransformWorldVector[1], heightTransformWorldVector[0])
-    const vcHTM = {
-      a: 1,
-      b: 0,
-      c: Math.tan(vcHSkew),
-      d: 1,
-      tx: 0,
-      ty: 0,
-    }
+    const vcHTM = this.__calculateTransformedObjectHeightSkew(
+      heightTransformWorldVector
+    )
     Matrix.multiply(this.tempMatrix, newWidthTransformMatrix, vcHTM)
     Matrix.multiply(this.tempMatrix, this.tempMatrix, selectBoxTransform)
     const { a, b, c, d } = this.tempMatrix
-    return {
-      size: {
-        x: Vector.len(newWidthLocalVector),
-        y: Math.abs(heightTransformWorldVector[1]),
-      },
-      transform: {
-        a,
-        b,
-        c: c * (flipY ? -1 : 1),
-        d: d * (flipY ? -1 : 1),
-        tx: newObjectTLVector[0],
-        ty: newObjectTLVector[1],
-      },
-    }
+
+    return this._updateObjectGeometryAfterResize(
+      newWidthTransformMatrix,
+      vcHTM,
+      selectBoxTransform,
+      Vector.len(transformedWidthVector),
+      Math.abs(heightTransformWorldVector[1]),
+      transformedTopLeftPoint,
+      shouldFlipVertically
+    )
   }
 
   public static resize(
