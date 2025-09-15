@@ -14,9 +14,9 @@ import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import type { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import * as dom from 'Latte/core/dom/dom'
 
-import { Vector } from 'Latte/utils/vector'
+import { create } from 'Latte/utils/vector'
 
-const tempVec2 = Vector.create(0, 0)
+const tempVec2 = create(0, 0)
 
 class MouseDownState {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms

@@ -1,4 +1,4 @@
-import { Vector } from 'Latte/utils/vector'
+import { create } from 'Latte/utils/vector'
 import type { Camera } from 'Latte/core/services/camera/cameraService'
 import { ViewPart } from 'Latte/core/viewParts/base/viewPart'
 import type { ViewCursorStateChangeEvent } from 'Latte/core/viewParts/base/viewEvents'
@@ -37,7 +37,7 @@ const expandAbsorbToXPoint = (arr: number[]) => {
   const main = arr[0]
   const result: vec2[] = []
   for (let i = 1; i < arr.length; i++) {
-    result.push(Vector.create(main, arr[i]))
+    result.push(create(main, arr[i]))
   }
   return result
 }
@@ -46,7 +46,7 @@ const expandAbsorbToYPoint = (arr: number[]) => {
   const main = arr[0]
   const result: vec2[] = []
   for (let i = 1; i < arr.length; i++) {
-    result.push(Vector.create(arr[i], main))
+    result.push(create(arr[i], main))
   }
   return result
 }

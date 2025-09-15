@@ -20,11 +20,11 @@ import { registerAPI } from 'Latte/api'
 
 import { ActiveSelectionWidget } from 'Latte/core/selection/activeSelectionWidget'
 import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
-import { Vector } from 'Latte/utils/vector'
+import { create } from 'Latte/utils/vector'
 
 import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
 
-const tempVec2 = Vector.create(0, 0)
+const tempVec2 = create(0, 0)
 
 export class ViewModel {
   private _focusPageId = ''
@@ -374,6 +374,9 @@ export class ViewModel {
       this._activeSelection.getBounds().getCenter(),
       ...this._activeSelection.getOBBPoints(),
     ]
+    if (!vecs.length) {
+      return
+    }
     return this._cursor.onElementWillMove(vecs, cur, movement)
   }
 

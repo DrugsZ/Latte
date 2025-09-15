@@ -1,4 +1,3 @@
-/* eslint-disable no-bitwise */
 import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import Rect from 'Latte/core/elements/rect'
 import { EditorElementTypeKind } from 'Latte/constants/schema'
@@ -7,7 +6,7 @@ import { Matrix } from 'Latte/core/utils/matrix'
 import { DEFAULT_ACTIVE_SELECTION_LINT_WIDTH } from 'Latte/constants/editor'
 import { Emitter } from 'Latte/utils/event'
 import { registerAPI } from 'Latte/api'
-import { Vector } from 'Latte/utils/vector'
+import { create } from 'Latte/utils/vector'
 
 const tempMatrix = {
   a: 1,
@@ -311,22 +310,22 @@ class ActiveSelectionCornerCollection {
     )
   }
 
-  private _leftTopCornerCenter = () => Vector.create(0, 0)
+  private _leftTopCornerCenter = () => create(0, 0)
 
   private _rightTopCornerCenter = () => {
     const { OBB } = this._activeSelection
 
-    return Vector.create(OBB.width, 0)
+    return create(OBB.width, 0)
   }
 
   private _leftBottomCornerCenter = () => {
     const { OBB } = this._activeSelection
-    return Vector.create(0, OBB.height)
+    return create(0, OBB.height)
   }
 
   private _rightBottomCornerCenter = () => {
     const { OBB } = this._activeSelection
-    return Vector.create(OBB.width, OBB.height)
+    return create(OBB.width, OBB.height)
   }
 
   public hitTest(vec: ReadonlyVec2) {

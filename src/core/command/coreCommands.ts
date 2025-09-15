@@ -3,7 +3,7 @@ import { DisplayObject } from 'Latte/core/elements/displayObject'
 import { Page } from 'Latte/core/elements/page'
 import { EditorDocument } from 'Latte/core/elements/document'
 import { CommandsRegistry } from 'Latte/core/services/command/commandsRegistry'
-import { Point, subtract, add, divide } from 'Latte/utils/point'
+import { Point } from 'Latte/utils/point'
 import { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import {
   createDefaultElementSchema,
@@ -21,7 +21,12 @@ import { calcPosition } from 'Latte/core/utils/zIndex'
 import { CursorMoveOperations } from 'Latte/core/cursor/cursorMoveOperations'
 import { CursorUpdateOperations } from 'Latte/core/cursor/cursorUpdateOperations'
 import { SAT } from 'Latte/core/utils/sat'
-import { Vector } from 'Latte/utils/vector'
+import {
+  create,
+  subtract as vectorSubtract,
+  add as vectorAdd,
+  divide as vectorDivide,
+} from 'Latte/utils/vector'
 
 export const isLogicTarget = (node?: any): node is DisplayObject =>
   node instanceof DisplayObject &&
@@ -264,11 +269,11 @@ export namespace CoreEditingCommands {
           position: ReadonlyVec2
           paint: Paint
         }[] = []
-        const box = Vector.create(0, 0) // new Point(0, 0)
-        const pre = Vector.create(0, 0) // new Point(0, 0)
+        const box = create(0, 0) // new Point(0, 0)
+        const pre = create(0, 0) // new Point(0, 0)
         paints.forEach((paint, index) => {
           result.push({
-            position: Vector.create(pre[0], box[1]),
+            position: create(pre[0], box[1]),
             paint,
           })
           pre[0] += (paint as ImagePaint).originalImageWidth
@@ -308,9 +313,9 @@ export namespace CoreEditingCommands {
       ) {
         const { paintElementsPosition, paintElementsBox } =
           this._calcPaintElementPosition(paints)
-        const startPoint = Vector.subtract(
+        const startPoint = vectorSubtract(
           position,
-          Vector.divide(paintElementsBox, Vector.create(2, 2))
+          vectorDivide(paintElementsBox, create(2, 2))
         )
         return paintElementsPosition.map(p => {
           const { position, paint } = p
@@ -318,7 +323,7 @@ export namespace CoreEditingCommands {
           currentSchema.guid = getUId()
           return this._createByPaint(
             currentSchema,
-            Vector.add(position, startPoint),
+            vectorAdd(position, startPoint),
             paint
           )
         })
@@ -472,7 +477,7 @@ export namespace CoreEditingCommands {
         viewModel
           .getModel()
           .pushEditOperations(
-            CursorMoveOperations.move(pre => Vector.add(pre, movement), objects)
+            CursorMoveOperations.move(pre => vectorAdd(pre, movement), objects)
           )
         // viewModel.updateElementData(results)
       }

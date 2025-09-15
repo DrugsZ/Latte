@@ -14,7 +14,16 @@ import {
 } from 'Latte/core/selection/activeSelection'
 
 import { isFunction } from 'Latte/utils/assert'
-import { Vector } from 'Latte/utils/vector'
+import {
+  create,
+  subtract,
+  divide,
+  dot,
+  add,
+  clone,
+  crossProduct,
+  len,
+} from 'Latte/utils/vector'
 
 export class CursorMoveOperations {
   static tempMatrix = new Matrix()
@@ -39,7 +48,7 @@ export class CursorMoveOperations {
       const [x, y] = Matrix.fromMatrixOrigin([0, 0], diffMatrix, center)
       diffMatrix.tx = x
       diffMatrix.ty = y
-      const newP1 = Matrix.apply(Vector.create(OBB.x, OBB.y), diffMatrix)
+      const newP1 = Matrix.apply(create(OBB.x, OBB.y), diffMatrix)
       const { transform } = object
       // how get skewX in transform: first get pureTransform without skewX, eg: removeSkewXTransform
       // second: get skewY transform same as skewX, eg: skewToY
@@ -95,7 +104,7 @@ export class CursorMoveOperations {
       selectBoxTransform
     ) as Matrix
     return Matrix.apply(
-      Vector.create(point[0] - selectBoxTLX, point[1] - selectBoxTLY),
+      create(point[0] - selectBoxTLX, point[1] - selectBoxTLY),
       invertTransform
     )
   }
@@ -107,13 +116,10 @@ export class CursorMoveOperations {
     newSelectBoxTL: ReadonlyVec2,
     point: ReadonlyVec2
   ) {
-    const pointInSelectBox = Vector.subtract(point, selectTL)
-    const pointInSelectBoxScale = Vector.divide(pointInSelectBox, selectBox)
-    const pointSizeOnNewSelectBox = Vector.dot(
-      newSelectBox,
-      pointInSelectBoxScale
-    )
-    return Vector.add(newSelectBoxTL, pointSizeOnNewSelectBox)
+    const pointInSelectBox = subtract(point, selectTL)
+    const pointInSelectBoxScale = divide(pointInSelectBox, selectBox)
+    const pointSizeOnNewSelectBox = dot(newSelectBox, pointInSelectBoxScale)
+    return add(newSelectBoxTL, pointSizeOnNewSelectBox)
   }
 
   private static _getRectInfoBeforeAndAfter(
@@ -128,13 +134,13 @@ export class CursorMoveOperations {
       width: selectBoxWidth,
       height: selectBoxHeight,
     } = selectOBB
-    const oldSelectBoxTL = Vector.create(selectBoxTLX, selectBoxTLY)
-    const oldSelectBoxRect = Vector.create(selectBoxWidth, selectBoxHeight)
+    const oldSelectBoxTL = create(selectBoxTLX, selectBoxTLY)
+    const oldSelectBoxRect = create(selectBoxWidth, selectBoxHeight)
     const positionOnSelectBox = this._getPointOnSelectBoxAxis(selectOBB, vec)
-    const startPoint = Vector.create(0, 0)
-    const rbPoint = Vector.create(selectOBB.width, selectOBB.height)
-    const newStartPoint = Vector.clone(startPoint)
-    const newEndPoint = Vector.clone(rbPoint)
+    const startPoint = create(0, 0)
+    const rbPoint = create(selectOBB.width, selectOBB.height)
+    const newStartPoint = clone(startPoint)
+    const newEndPoint = clone(rbPoint)
     if (isResetStartXAxis(key)) {
       ;[newStartPoint[0]] = positionOnSelectBox
     }
@@ -151,7 +157,7 @@ export class CursorMoveOperations {
       ;[, newEndPoint[1]] = positionOnSelectBox
     }
 
-    const newSelectBoxTL = Vector.add(
+    const newSelectBoxTL = add(
       oldSelectBoxTL,
       Matrix.apply(newStartPoint, {
         ...selectBoxTransform,
@@ -159,7 +165,7 @@ export class CursorMoveOperations {
         ty: 0,
       })
     )
-    const newSelectBoxRect = Vector.subtract(newEndPoint, newStartPoint)
+    const newSelectBoxRect = subtract(newEndPoint, newStartPoint)
     return {
       oldSelectBoxTL,
       oldSelectBoxRect,
@@ -187,21 +193,21 @@ export class CursorMoveOperations {
       pureTransform,
       invertTransform
     )
-    const originalTopLeftPoint = Vector.create(x, y)
-    const originalTopRightPoint = Vector.add(
+    const originalTopLeftPoint = create(x, y)
+    const originalTopRightPoint = add(
       originalTopLeftPoint,
-      Matrix.apply(Vector.create(width, 0), localTransform)
+      Matrix.apply(create(width, 0), localTransform)
     )
-    const originalBottomLeftVector = Vector.add(
+    const originalBottomLeftVector = add(
       originalTopLeftPoint,
-      Matrix.apply(Vector.create(0, height), localTransform)
+      Matrix.apply(create(0, height), localTransform)
     )
     const transformedTopLeftPoint = pointTransformFn(originalTopLeftPoint)
     const transformedTopRightPoint = pointTransformFn(originalTopRightPoint)
     const transformedBottomLeftVector = pointTransformFn(
       originalBottomLeftVector
     )
-    const transformedWidthVector = Vector.subtract(
+    const transformedWidthVector = subtract(
       transformedTopRightPoint,
       transformedTopLeftPoint
     )
@@ -240,15 +246,15 @@ export class CursorMoveOperations {
     //   oldTopRightVector,
     //   newWidthTransformMatrix
     // )
-    // const actualHeightVectorAfterSize = Vector.subtract(
+    // const actualHeightVectorAfterSize = (
     //   transformedBottomLeftVector,
     //   transformedTopLeftPoint
     // )
-    const oldHeightDot = Vector.crossProduct(
+    const oldHeightDot = crossProduct(
       actualWidthVectorAfterSize,
       actualHeightVectorAfterSize
     )
-    const newHeightDot = Vector.crossProduct(
+    const newHeightDot = crossProduct(
       actualWidthVectorAfterSize,
       Matrix.apply(oldBottomLeftVector, newWidthTransformMatrix)
     )
@@ -318,7 +324,7 @@ export class CursorMoveOperations {
     const newWidthTransformMatrix = this._computeGeometryFromTransformedPoints(
       transformedWidthVector
     )
-    const actualHeightVectorAfterSize = Vector.subtract(
+    const actualHeightVectorAfterSize = subtract(
       transformedBottomLeftVector,
       transformedTopLeftPoint
     )
@@ -326,7 +332,7 @@ export class CursorMoveOperations {
     const shouldFlipVertically = this._checkFlipVertically(
       actualHeightVectorAfterSize,
       transformedWidthVector,
-      Vector.create(0, height),
+      create(0, height),
       newWidthTransformMatrix
     )
     const newVcInvert = Matrix.invert(newWidthTransformMatrix)
@@ -345,7 +351,7 @@ export class CursorMoveOperations {
       newWidthTransformMatrix,
       vcHTM,
       selectBoxTransform,
-      Vector.len(transformedWidthVector),
+      len(transformedWidthVector),
       Math.abs(heightTransformWorldVector[1]),
       transformedTopLeftPoint,
       shouldFlipVertically
@@ -365,13 +371,6 @@ export class CursorMoveOperations {
       newSelectBoxTL,
       newSelectBoxRect,
     } = this._getRectInfoBeforeAndAfter(activeElement.OBB, position, key)
-
-    if (
-      Math.abs(newSelectBoxRect[0]) < 1 ||
-      Math.abs(newSelectBoxRect[1]) < 1
-    ) {
-      return
-    }
 
     const getNewPoint = (point: ReadonlyVec2) =>
       this._getNewPointOnSelectBoxChange.call(
