@@ -375,7 +375,7 @@ export class ViewModel {
       ...this._activeSelection.getOBBPoints(),
     ]
     if (!vecs.length) {
-      return
+      return movement
     }
     return this._cursor.onElementWillMove(vecs, cur, movement)
   }

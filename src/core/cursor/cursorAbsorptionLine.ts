@@ -53,7 +53,7 @@ function quickSort<T>(
 
 type GetCompareNum = (a: ReadonlyVec2) => number
 
-function binarySearch<T extends Array<any>>(
+function binarySearch<T extends Array<number[]>>(
   nums: T,
   target: number,
   getNumber: GetCompareNum,
@@ -221,7 +221,6 @@ export class AdsorptionPointsResolver {
     movement: number,
     getNumber: GetCompareNum
   ) {
-    console.log(points)
     return binarySearch<AdsorptionLine[]>(points, vec, getNumber, movement)
   }
 
@@ -232,7 +231,6 @@ export class AdsorptionPointsResolver {
   ) {
     this._cacheMap = cacheMap
     const { x: xPoints, y: yPoints } = this._cacheMap.getSortedData()
-    console.log('🚀 ~ AdsorptionPointsResolver ~ resolve ~ xPoints:', xPoints)
     const x = this._getClosedVec(xPoints, vec[0], movement[0], a => a[0])
     const y = this._getClosedVec(
       yPoints,
