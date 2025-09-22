@@ -8,8 +8,12 @@ import {
   isResizeKey,
 } from 'Latte/core/selection/activeSelection'
 import {
-  CoreNavigationCommands,
-  CoreEditingCommands,
+  MouseBoxSelect,
+  SetActiveSelection,
+  MoveElementTo,
+  RotateElementTransform,
+  ResizeElement,
+  CreateNewElement,
 } from 'Latte/core/command/coreCommands'
 import { OperateMode } from 'Latte/core/cursor/cursor'
 import type {
@@ -41,7 +45,7 @@ export interface IMouseDispatchData {
   browserEvent: MouseEvent
 }
 
-export const isLogicTarget = (node?: any): node is DisplayObject =>
+export const isLogicTarget = (node?: unknown): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
@@ -72,7 +76,7 @@ export class ViewController {
     // (movement, diff, movement)
     // console.log('movement2', movement)
     const activeElement = this._viewModel.getActiveSelection()
-    CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
+    MoveElementTo.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       position(prevState) {
         return add(prevState, newMovement)
@@ -91,41 +95,32 @@ export class ViewController {
     const rad =
       Math.atan2(newPoint[1], newPoint[0]) -
       Math.atan2(prePoint[1], prePoint[0])
-    CoreEditingCommands.RotateElementTransform.runCoreEditorCommand(
-      this._viewModel,
-      {
-        objects: activeElement.getObjects(),
-        rad,
-        transformOrigin: center,
-      }
-    )
+    RotateElementTransform.runCoreEditorCommand(this._viewModel, {
+      objects: activeElement.getObjects(),
+      rad,
+      transformOrigin: center,
+    })
   }
 
   private _resizeElement(key: MouseControllerTarget, position: ReadonlyVec2) {
-    CoreEditingCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
+    ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
       position,
     })
   }
 
   private _createPickArea(endPosition: ReadonlyVec2) {
-    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
-      this._viewModel,
-      {
-        startPosition: CACHE_START_POINT,
-        position: endPosition,
-      }
-    )
+    MouseBoxSelect.runCoreEditorCommand(this._viewModel, {
+      startPosition: CACHE_START_POINT,
+      position: endPosition,
+    })
   }
 
   public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
-    CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
-      this._viewModel,
-      {
-        target,
-        multipleMode,
-      }
-    )
+    SetActiveSelection.runCoreEditorCommand(this._viewModel, {
+      target,
+      multipleMode,
+    })
   }
 
   public emitMouseUp(e: EditorMouseEvent) {
@@ -141,16 +136,13 @@ export class ViewController {
       this._viewModel.setCursorOperateMode(OperateMode.Edit)
     }
     this._viewModel.onElementMoveEnd()
-    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
-      this._viewModel,
-      {}
-    )
+    MouseBoxSelect.runCoreEditorCommand(this._viewModel, {})
   }
 
   public emitDrop(files: ITextureLoadResult[], position: IPoint) {
     this._viewModel.getModel().pushStackElement()
     const fi = files.map(item => createDefaultImagePaint(item))
-    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
+    CreateNewElement.runCoreEditorCommand(this._viewModel, {
       startPosition: point2Vec2(position),
       paint: fi,
     })
@@ -221,7 +213,7 @@ export class ViewController {
       curTarget = this._viewModel.focusPage
     }
     const lastDisplay = (curTarget as Container).getLast()
-    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
+    CreateNewElement.runCoreEditorCommand(this._viewModel, {
       position,
       startPosition,
       parent: JSON.parse(curTarget.id),

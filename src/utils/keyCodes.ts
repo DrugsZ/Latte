@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 /*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -488,7 +487,6 @@ for (let i = 0; i <= KeyCode.MAX_VALUE; i++) {
   IMMUTABLE_KEY_CODE_TO_CODE[i] = ScanCode.DependsOnKbLayout
 }
 
-// eslint-disable-next-line func-names
 ;(function () {
   // See https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
   // See https://github.com/microsoft/node-native-keymap/blob/88c0b0e5/deps/chromium/keyboard_codes_win.h
@@ -2489,53 +2487,54 @@ for (let i = 0; i <= KeyCode.MAX_VALUE; i++) {
   IMMUTABLE_KEY_CODE_TO_CODE[KeyCode.Enter] = ScanCode.Enter
 })()
 
-export namespace KeyCodeUtils {
-  export function toString(keyCode: KeyCode): string {
-    return uiMap.keyCodeToStr(keyCode)
-  }
-  export function fromString(key: string): KeyCode {
-    return uiMap.strToKeyCode(key)
+export function keyCodeToString(keyCode: KeyCode): string {
+  return uiMap.keyCodeToStr(keyCode)
+}
+
+export function stringToKeyCode(key: string): KeyCode {
+  return uiMap.strToKeyCode(key)
+}
+
+export function keyCodeToUserSettingsUS(keyCode: KeyCode): string {
+  return userSettingsUSMap.keyCodeToStr(keyCode)
+}
+
+export function keyCodeToUserSettingsGeneral(keyCode: KeyCode): string {
+  return userSettingsGeneralMap.keyCodeToStr(keyCode)
+}
+
+export function keyCodeFromUserSettings(key: string): KeyCode {
+  return (
+    userSettingsUSMap.strToKeyCode(key) ||
+    userSettingsGeneralMap.strToKeyCode(key)
+  )
+}
+
+export function keyCodeToElectronAccelerator(keyCode: KeyCode): string | null {
+  if (keyCode >= KeyCode.Numpad0 && keyCode <= KeyCode.NumpadDivide) {
+    // [Electron Accelerators] Electron is able to parse numpad keys, but unfortunately it
+    // renders them just as regular keys in menus. For example, num0 is rendered as "0",
+    // numdiv is rendered as "/", numsub is rendered as "-".
+    //
+    // This can lead to incredible confusion, as it makes numpad based keybindings indistinguishable
+    // from keybindings based on regular keys.
+    //
+    // We therefore need to fall back to custom rendering for numpad keys.
+    return null
   }
 
-  export function toUserSettingsUS(keyCode: KeyCode): string {
-    return userSettingsUSMap.keyCodeToStr(keyCode)
-  }
-  export function toUserSettingsGeneral(keyCode: KeyCode): string {
-    return userSettingsGeneralMap.keyCodeToStr(keyCode)
-  }
-  export function fromUserSettings(key: string): KeyCode {
-    return (
-      userSettingsUSMap.strToKeyCode(key) ||
-      userSettingsGeneralMap.strToKeyCode(key)
-    )
+  switch (keyCode) {
+    case KeyCode.UpArrow:
+      return 'Up'
+    case KeyCode.DownArrow:
+      return 'Down'
+    case KeyCode.LeftArrow:
+      return 'Left'
+    case KeyCode.RightArrow:
+      return 'Right'
   }
 
-  export function toElectronAccelerator(keyCode: KeyCode): string | null {
-    if (keyCode >= KeyCode.Numpad0 && keyCode <= KeyCode.NumpadDivide) {
-      // [Electron Accelerators] Electron is able to parse numpad keys, but unfortunately it
-      // renders them just as regular keys in menus. For example, num0 is rendered as "0",
-      // numdiv is rendered as "/", numsub is rendered as "-".
-      //
-      // This can lead to incredible confusion, as it makes numpad based keybindings indistinguishable
-      // from keybindings based on regular keys.
-      //
-      // We therefore need to fall back to custom rendering for numpad keys.
-      return null
-    }
-
-    switch (keyCode) {
-      case KeyCode.UpArrow:
-        return 'Up'
-      case KeyCode.DownArrow:
-        return 'Down'
-      case KeyCode.LeftArrow:
-        return 'Left'
-      case KeyCode.RightArrow:
-        return 'Right'
-    }
-
-    return uiMap.keyCodeToStr(keyCode)
-  }
+  return uiMap.keyCodeToStr(keyCode)
 }
 
 export const enum KeyMod {

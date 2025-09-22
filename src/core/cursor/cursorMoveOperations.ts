@@ -218,7 +218,6 @@ export class CursorMoveOperations {
       transformedBottomLeftVector,
       transformedWidthVector,
     }
-    console.log('result', result)
     return result
   }
 

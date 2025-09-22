@@ -1,8 +1,7 @@
-/* eslint-disable default-case */
 import {
   KeyMod,
   KeyCode,
-  KeyCodeUtils,
+  stringToKeyCode,
   EVENT_KEY_CODE_MAP,
 } from 'Latte/utils/keyCodes'
 import * as platform from 'Latte/utils/platform'
@@ -12,7 +11,7 @@ function extractKeyCode(e: KeyboardEvent): KeyCode {
   if (e.charCode) {
     // "keypress" events mostly
     const char = String.fromCharCode(e.charCode).toUpperCase()
-    return KeyCodeUtils.fromString(char)
+    return stringToKeyCode(char)
   }
 
   const { keyCode } = e
