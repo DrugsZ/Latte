@@ -78,43 +78,6 @@ function binarySearch<T extends Array<number[]>>(
   return result
 }
 
-// function binarySearch<T extends Array<any>>(
-//   nums: T,
-//   target: number,
-//   getNumber: GetCompareNum
-// ): (typeof nums)[number] | undefined {
-//   let left = 0
-//   let right = nums.length - 1
-
-//   while (left <= right) {
-//     const mid = Math.floor((left + right) / 2)
-//     const midNumber = getNumber(nums[mid])
-
-//     if (midNumber === target) {
-//       return nums[mid]
-//     }
-//     if (midNumber < target) {
-//       left = mid + 1
-//     } else {
-//       right = mid - 1
-//     }
-//   }
-
-//   if (left >= nums.length) {
-//     return nums[nums.length - 1]
-//   }
-//   if (right < 0) {
-//     return nums[0]
-//   }
-
-//   const leftNumber = getNumber(nums[left])
-//   const rightNumber = getNumber(nums[right])
-
-//   return Math.abs(leftNumber - target) < Math.abs(rightNumber - target)
-//     ? nums[left]
-//     : nums[right]
-// }
-
 export class OtherElementAbsorptionVectorMap {
   private _xAxisArr: AdsorptionLine[] = []
   private _yAxisArr: AdsorptionLine[] = []

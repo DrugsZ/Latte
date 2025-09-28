@@ -2,7 +2,6 @@ import type { ViewModel } from 'Latte/core/viweModel/viewModel'
 import { DisplayObject } from 'Latte/core/elements/displayObject'
 import { Page } from 'Latte/core/elements/page'
 import { EditorDocument } from 'Latte/core/elements/document'
-import { CommandsRegistry } from 'Latte/core/services/command/commandsRegistry'
 import { MouseControllerTarget } from 'Latte/core/selection/activeSelection'
 import {
   createDefaultElementSchema,
@@ -13,8 +12,6 @@ import { EditorElementTypeKind } from 'Latte/constants/schema'
 import { rTreeRoot } from 'Latte/core/rTree'
 import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
 import { EditOperation } from 'Latte/core/model/modelChange'
-import type { IKeybindings } from 'Latte/core/services/keybinding/keybindingsRegistry'
-import { KeybindingsRegistry } from 'Latte/core/services/keybinding/keybindingsRegistry'
 import { KeyCode, KeyMod } from 'Latte/utils/keyCodes'
 import { calcPosition } from 'Latte/core/utils/zIndex'
 import { CursorMoveOperations } from 'Latte/core/cursor/cursorMoveOperations'
@@ -26,73 +23,18 @@ import {
   add as vectorAdd,
   divide as vectorDivide,
 } from 'Latte/utils/vector'
+import { Command } from 'Latte/core/command/command'
+import { MenuId } from 'Latte/core/services/menu/menuRegistry'
 
 export const isLogicTarget = (node?: unknown): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
 
-export interface ICommandKeybindingsOptions extends IKeybindings {
-  weight: number
-  /**
-   * the default keybinding arguments
-   */
-  args?: unknown
-}
-export interface ICommandOptions {
-  id: string
-  kbOpts?: ICommandKeybindingsOptions | ICommandKeybindingsOptions[]
-}
-
-export abstract class Command {
-  public id: string
-  private readonly _kbOpts:
-    | ICommandKeybindingsOptions
-    | ICommandKeybindingsOptions[]
-    | undefined
-  constructor(opts: ICommandOptions) {
-    this.id = opts.id
-    this._kbOpts = opts.kbOpts
-  }
-  public register(): void {
-    if (this._kbOpts) {
-      const kbOptsArr = Array.isArray(this._kbOpts)
-        ? this._kbOpts
-        : [this._kbOpts]
-      kbOptsArr.forEach(kbOpts => {
-        const desc = {
-          id: this.id,
-          weight: kbOpts.weight,
-          args: kbOpts.args,
-          primary: kbOpts.primary,
-          secondary: kbOpts.secondary,
-        }
-
-        KeybindingsRegistry.registerKeybindingRule(desc)
-      })
-    }
-    CommandsRegistry.registerCommand(this.id, args => this.runCommand(args))
-  }
-
-  public abstract runCommand(args: unknown): void | Promise<void>
-}
-
 function registerCommand<T extends Command>(command: T): T {
   command.register()
   return command
 }
-
-// export abstract class Command {
-//   constructor(public id: string) {
-
-//   }
-//   public register(): void {
-//     CommandsRegistry.registerCommand(this.id, args => this.runCommand(args))
-//   }
-
-//   public abstract runCommand(args: any): void | Promise<void>
-// }
-
 export abstract class CoreEditorCommand<T> extends Command {
   public runCommand(args: unknown) {
     const viewModel = globalThis.getEditor()._getViewModel()
@@ -617,6 +559,11 @@ export const DeleteElement = registerCommand(
         kbOpts: {
           primary: KeyCode.Backspace,
           weight: 1,
+        },
+        menu: {
+          id: MenuId.EditorContext,
+          title: '删除',
+          group: 'edit',
         },
       })
     }

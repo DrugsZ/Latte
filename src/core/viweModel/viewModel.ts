@@ -375,6 +375,7 @@ export class ViewModel {
       ...this._activeSelection.getOBBPoints(),
     ]
     if (!vecs.length) {
+      // Defensive: No vectors to process, return original movement unchanged
       return movement
     }
     return this._cursor.onElementWillMove(vecs, cur, movement)

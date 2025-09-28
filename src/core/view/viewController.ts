@@ -45,7 +45,7 @@ export interface IMouseDispatchData {
   browserEvent: MouseEvent
 }
 
-export const isLogicTarget = (node?: unknown): node is DisplayObject =>
+export const isLogicTarget = (node: unknown): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
