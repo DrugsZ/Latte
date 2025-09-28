@@ -7,9 +7,9 @@ import { Bounds } from 'Latte/core/bounds'
 import { Emitter } from 'Latte/utils/event'
 import { AdsorptionResolver } from 'Latte/core/cursor/cursorAbsorptionLine'
 import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
+import { create } from 'Latte/utils/vector'
 
 import { registerAPI } from 'Latte/api'
-import { Vector } from 'Latte/utils/vector'
 
 import type { ICursorState } from 'Latte/core/cursor/cursorState'
 import { CursorStateAccessor } from 'Latte/core/cursor/cursorState'
@@ -29,7 +29,7 @@ export enum OperateMode {
   CreateNormalShape,
 }
 
-export const cacheMovement = Vector.create(0, 0)
+export const cacheMovement = create(0, 0)
 
 export class Cursor {
   private _hoverControllerKey: MouseControllerTarget

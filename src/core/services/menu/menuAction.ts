@@ -1,5 +1,5 @@
 import type { IAction } from 'Latte/core/common/actions'
-import type { IMenuItem } from 'Latte/core/services/menu/menuRegistry'
+import type { ICommandMenuItem } from 'Latte/core/services/menu/menuRegistry'
 import type { CommandService } from 'Latte/core/services/command/commandService'
 
 export default class MenuItemAction implements IAction {
@@ -9,7 +9,7 @@ export default class MenuItemAction implements IAction {
   readonly enabled: boolean = true
   readonly _commandService: CommandService
 
-  constructor(public readonly item: IMenuItem) {
+  constructor(public readonly item: ICommandMenuItem) {
     this.id = item.command.id
     this.label = item.command.title || item.command.id
     this.tooltip = item.command.tooltip || ''

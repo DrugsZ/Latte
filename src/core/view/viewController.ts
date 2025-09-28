@@ -8,8 +8,12 @@ import {
   isResizeKey,
 } from 'Latte/core/selection/activeSelection'
 import {
-  CoreNavigationCommands,
-  CoreEditingCommands,
+  MouseBoxSelect,
+  SetActiveSelection,
+  MoveElementTo,
+  RotateElementTransform,
+  ResizeElement,
+  CreateNewElement,
 } from 'Latte/core/command/coreCommands'
 import { OperateMode } from 'Latte/core/cursor/cursor'
 import type {
@@ -19,7 +23,7 @@ import type {
 import type { ITextureLoadResult } from 'Latte/core/texture'
 import { createDefaultImagePaint } from 'Latte/utils/schema'
 import { Container } from 'Latte/core/elements/container'
-import { Vector } from 'Latte/utils/vector'
+import { subtract, add, create, point2Vec2 } from 'Latte/utils/vector'
 
 let CACHE_PRE_POINT: vec2 | undefined
 let CACHE_START_POINT: vec2 | undefined
@@ -41,7 +45,7 @@ export interface IMouseDispatchData {
   browserEvent: MouseEvent
 }
 
-export const isLogicTarget = (node?: any): node is DisplayObject =>
+export const isLogicTarget = (node: unknown): node is DisplayObject =>
   node instanceof DisplayObject &&
   !(node instanceof Page) &&
   !(node instanceof EditorDocument)
@@ -65,17 +69,17 @@ export class ViewController {
     if (!CACHE_PRE_POINT) {
       return
     }
-    const movement = Vector.subtract(position, CACHE_PRE_POINT)
+    const movement = subtract(position, CACHE_PRE_POINT)
     const newMovement = this._viewModel.onElementWillMove(movement)
     // console.log('movement1', movement[0], movement[1])
 
-    // Vector.add(movement, diff, movement)
+    // (movement, diff, movement)
     // console.log('movement2', movement)
     const activeElement = this._viewModel.getActiveSelection()
-    CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
+    MoveElementTo.runCoreEditorCommand(this._viewModel, {
       objects: activeElement.getObjects(),
       position(prevState) {
-        return Vector.add(prevState, newMovement)
+        return add(prevState, newMovement)
       },
     })
   }
@@ -86,46 +90,37 @@ export class ViewController {
     }
     const activeElement = this._viewModel.getActiveSelection()
     const center = activeElement.getCenter()
-    const prePoint = Vector.subtract(CACHE_PRE_POINT, center)
-    const newPoint = Vector.subtract(position, center)
+    const prePoint = subtract(CACHE_PRE_POINT, center)
+    const newPoint = subtract(position, center)
     const rad =
       Math.atan2(newPoint[1], newPoint[0]) -
       Math.atan2(prePoint[1], prePoint[0])
-    CoreEditingCommands.RotateElementTransform.runCoreEditorCommand(
-      this._viewModel,
-      {
-        objects: activeElement.getObjects(),
-        rad,
-        transformOrigin: center,
-      }
-    )
+    RotateElementTransform.runCoreEditorCommand(this._viewModel, {
+      objects: activeElement.getObjects(),
+      rad,
+      transformOrigin: center,
+    })
   }
 
   private _resizeElement(key: MouseControllerTarget, position: ReadonlyVec2) {
-    CoreEditingCommands.ResizeElement.runCoreEditorCommand(this._viewModel, {
+    ResizeElement.runCoreEditorCommand(this._viewModel, {
       key,
       position,
     })
   }
 
   private _createPickArea(endPosition: ReadonlyVec2) {
-    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
-      this._viewModel,
-      {
-        startPosition: CACHE_START_POINT,
-        position: endPosition,
-      }
-    )
+    MouseBoxSelect.runCoreEditorCommand(this._viewModel, {
+      startPosition: CACHE_START_POINT,
+      position: endPosition,
+    })
   }
 
   public setSelectElement(target: DisplayObject, multipleMode?: boolean) {
-    CoreNavigationCommands.SetActiveSelection.runCoreEditorCommand(
-      this._viewModel,
-      {
-        target,
-        multipleMode,
-      }
-    )
+    SetActiveSelection.runCoreEditorCommand(this._viewModel, {
+      target,
+      multipleMode,
+    })
   }
 
   public emitMouseUp(e: EditorMouseEvent) {
@@ -134,24 +129,21 @@ export class ViewController {
     if (editMode === OperateMode.CreateNormalShape) {
       if (!this._viewModel.getActiveSelection().isActive()) {
         this._createElement({
-          startPosition: Vector.create(e.client.x, e.client.y),
+          startPosition: create(e.client.x, e.client.y),
           target: e.target,
         })
       }
       this._viewModel.setCursorOperateMode(OperateMode.Edit)
     }
     this._viewModel.onElementMoveEnd()
-    CoreNavigationCommands.MouseBoxSelect.runCoreEditorCommand(
-      this._viewModel,
-      {}
-    )
+    MouseBoxSelect.runCoreEditorCommand(this._viewModel, {})
   }
 
   public emitDrop(files: ITextureLoadResult[], position: IPoint) {
     this._viewModel.getModel().pushStackElement()
     const fi = files.map(item => createDefaultImagePaint(item))
-    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
-      startPosition: Vector.point2Vec2(position),
+    CreateNewElement.runCoreEditorCommand(this._viewModel, {
+      startPosition: point2Vec2(position),
       paint: fi,
     })
   }
@@ -182,14 +174,14 @@ export class ViewController {
       currentCamera.move(-newX / vpMatrix.a, -newY / vpMatrix.d)
     } else if (editMode === OperateMode.Edit) {
       this._dragOnClientToEdit(
-        Vector.point2Vec2(data.position),
+        point2Vec2(data.position),
         data.controllerTargetType
       )
     } else if (editMode === OperateMode.CreateNormalShape) {
       this._createElement({
-        startPosition: Vector.point2Vec2(data.startPosition),
+        startPosition: point2Vec2(data.startPosition),
         target: data.target,
-        position: Vector.point2Vec2(data.position),
+        position: point2Vec2(data.position),
       })
     }
     this._viewModel.onElementDidMove()
@@ -221,7 +213,7 @@ export class ViewController {
       curTarget = this._viewModel.focusPage
     }
     const lastDisplay = (curTarget as Container).getLast()
-    CoreEditingCommands.CreateNewElement.runCoreEditorCommand(this._viewModel, {
+    CreateNewElement.runCoreEditorCommand(this._viewModel, {
       position,
       startPosition,
       parent: JSON.parse(curTarget.id),
@@ -247,8 +239,8 @@ export class ViewController {
       )
       this._viewModel.setCursorHoverControllerKey(controllerTargetType)
     }
-    CACHE_PRE_POINT = Vector.point2Vec2(data.position, CACHE_PRE_POINT)
-    CACHE_START_POINT = Vector.point2Vec2(data.startPosition, CACHE_START_POINT)
+    CACHE_PRE_POINT = point2Vec2(data.position, CACHE_PRE_POINT)
+    CACHE_START_POINT = point2Vec2(data.startPosition, CACHE_START_POINT)
   }
 
   public dispatchWheel(event: StandardWheelEvent) {
@@ -263,6 +255,6 @@ export class ViewController {
     const zoom = currentCamera.getZoom()
     const step = (0.04 * event.speed) / 100
 
-    currentCamera.setZoom(zoom / (1 + step), Vector.create(client.x, client.y))
+    currentCamera.setZoom(zoom / (1 + step), create(client.x, client.y))
   }
 }

@@ -1,4 +1,9 @@
-import { KeyCode, KeyCodeUtils } from 'Latte/utils/keyCodes'
+import {
+  KeyCode,
+  keyCodeToString,
+  KeyMod,
+  KeyChord,
+} from 'Latte/utils/keyCodes'
 import { illegalArgument } from 'Latte/utils/error'
 import { OperatingSystem } from 'Latte/utils/platform'
 
@@ -141,7 +146,7 @@ export class ResolvedKeybinding {
     if (chord.metaKey) {
       result += 'meta+'
     }
-    result += KeyCodeUtils.toString(chord.keyCode)
+    result += keyCodeToString(chord.keyCode)
 
     return result
   }
@@ -163,12 +168,12 @@ export class ResolvedKeybindingItem {
   public readonly resolvedKeybinding: ResolvedKeybinding | undefined
   public readonly chords: string[]
   public readonly command: string | null
-  public readonly commandArgs: any
+  public readonly commandArgs: unknown
 
   constructor(
     resolvedKeybinding: ResolvedKeybinding | undefined,
     command: string | null,
-    commandArgs: any
+    commandArgs: unknown
   ) {
     this.resolvedKeybinding = resolvedKeybinding
     this.chords = resolvedKeybinding

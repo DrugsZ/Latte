@@ -4,11 +4,19 @@ import type DisplayObject from 'Latte/core/elements/container'
 import type Rect from 'Latte/core/elements/rect'
 import type Ellipse from 'Latte/core/elements/ellipse'
 import { Matrix } from 'Latte/core/utils/matrix'
-import { Vector } from 'Latte/utils/vector'
+import {
+  create,
+  magnitude,
+  subtract,
+  clone,
+  dotProduct,
+  add,
+  normal,
+} from 'Latte/utils/vector'
 
-const DEFAULT_SELECT_BOX_AXIS = [Vector.create(0, 1), Vector.create(1, 0)]
+const DEFAULT_SELECT_BOX_AXIS = [create(0, 1), create(1, 0)]
 
-const tmp = Vector.create(0, 0)
+const tmp = create(0, 0)
 
 function pointCircleCollision(
   point: ReadonlyVec2,
@@ -16,7 +24,7 @@ function pointCircleCollision(
   r: number
 ) {
   if (r === 0) return false
-  return Vector.magnitude(Vector.subtract(circle, point)) <= r * r
+  return magnitude(subtract(circle, point)) <= r * r
 }
 
 type TrianglePoint = [ReadonlyVec2, ReadonlyVec2, ReadonlyVec2]
@@ -27,18 +35,18 @@ class TriangleCircleCollision {
     triangle: TrianglePoint
   ) {
     // compute vectors & dot products
-    const center = Vector.clone(point)
+    const center = clone(point)
     const t0 = triangle[0]
     const t1 = triangle[1]
     const t2 = triangle[2]
-    const v0 = Vector.subtract(t2, t0)
-    const v1 = Vector.subtract(t1, t0)
-    const v2 = Vector.subtract(center, t0)
-    const dot00 = Vector.dotProduct(v0, v0)
-    const dot01 = Vector.dotProduct(v0, v1)
-    const dot02 = Vector.dotProduct(v0, v2)
-    const dot11 = Vector.dotProduct(v1, v1)
-    const dot12 = Vector.dotProduct(v1, v2)
+    const v0 = subtract(t2, t0)
+    const v1 = subtract(t1, t0)
+    const v2 = subtract(center, t0)
+    const dot00 = dotProduct(v0, v0)
+    const dot01 = dotProduct(v0, v1)
+    const dot02 = dotProduct(v0, v2)
+    const dot11 = dotProduct(v1, v1)
+    const dot12 = dotProduct(v1, v2)
 
     // Compute barycentric coordinates
     const b = dot00 * dot11 - dot01 * dot01
@@ -58,43 +66,43 @@ class TriangleCircleCollision {
     // check to see if start or end points lie within circle
     if (pointCircleCollision(a, center, radius)) {
       if (nearest) {
-        Vector.clone(a, nearest)
+        clone(a, nearest)
       }
       return true
     }
     if (pointCircleCollision(b, center, radius)) {
       if (nearest) {
-        nearest = Vector.clone(a, nearest)
+        nearest = clone(a, nearest)
       }
       return true
     }
 
     // vector d
-    const d = Vector.subtract(b, a)
+    const d = subtract(b, a)
 
     // vector lc
-    const lc = Vector.subtract(center, a)
+    const lc = subtract(center, a)
 
     // project lc onto d, resulting in vector p
-    const dLen2 = Vector.magnitude(d) // len2 of d
-    const p = Vector.create(0, 0)
+    const dLen2 = magnitude(d) // len2 of d
+    const p = create(0, 0)
     if (dLen2 > 0) {
-      const dp = Vector.dotProduct(lc, d) / dLen2
+      const dp = dotProduct(lc, d) / dLen2
       p[0] = d[0] * dp
       p[1] = d[1] * dp
     }
 
     if (!nearest) nearest = tmp
-    Vector.add(a, p, nearest)
+    add(a, p, nearest)
 
     // len2 of p
-    const pLen2 = Vector.magnitude(p)
+    const pLen2 = magnitude(p)
 
     // check collision
     return (
       pointCircleCollision(nearest, center, radius) &&
       pLen2 <= dLen2 &&
-      Vector.dotProduct(p, d) >= 0
+      dotProduct(p, d) >= 0
     )
   }
   private static _singleTriangleCircleCollision(
@@ -140,11 +148,11 @@ class Projection {
 
 const project = (axes: ReadonlyVec2, axis: ReadonlyVec2[]) => {
   const scalars: number[] = []
-  const v = Vector.create(0, 0)
+  const v = create(0, 0)
 
   axis.forEach(point => {
-    Vector.clone(point, v)
-    scalars.push(Vector.dotProduct(v, axes))
+    clone(point, v)
+    scalars.push(dotProduct(v, axes))
   })
   return new Projection(Math.min(...scalars), Math.max(...scalars))
 }
@@ -157,10 +165,10 @@ export class SAT {
   private static _getRectPointFromTopLeft(rect: Rect) {
     const { width, height } = rect
     return [
-      Vector.create(0, 0),
-      Vector.create(width, 0),
-      Vector.create(width, height),
-      Vector.create(0, height),
+      create(0, 0),
+      create(width, 0),
+      create(width, height),
+      create(0, height),
     ].map(item => Matrix.apply(item, rect.transform))
   }
 
@@ -168,8 +176,8 @@ export class SAT {
     const transformPoint = this._getRectPointFromTopLeft(rect)
     const axesList: ReadonlyVec2[] = []
     for (let i = 1, len = transformPoint.length; i < len; i++) {
-      const edge = Vector.subtract(transformPoint[i], transformPoint[i - 1])
-      axesList.push(Vector.normal(edge))
+      const edge = subtract(transformPoint[i], transformPoint[i - 1])
+      axesList.push(normal(edge))
     }
     return axesList
   }
@@ -177,10 +185,10 @@ export class SAT {
   private static _getSelectBoxPoint(selectBox: Bounds) {
     const { x, y, width, height } = selectBox.getRectangle()
     return [
-      Vector.create(x, y),
-      Vector.create(x + width, y),
-      Vector.create(x + width, y + height),
-      Vector.create(x, y + height),
+      create(x, y),
+      create(x + width, y),
+      create(x + width, y + height),
+      create(x, y + height),
     ]
   }
 
@@ -208,7 +216,7 @@ export class SAT {
     } else {
       tempMatrix.d = width / height
     }
-    const centerOriginTL = Matrix.apply(Vector.create(width / 2, height / 2), {
+    const centerOriginTL = Matrix.apply(create(width / 2, height / 2), {
       ...object.transform,
       tx: 0,
       ty: 0,

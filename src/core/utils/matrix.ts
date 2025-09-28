@@ -1,9 +1,8 @@
 import type { Point } from 'Latte/utils/point'
-import { Vector } from 'Latte/utils/vector'
+import { create } from 'Latte/utils/vector'
 
 const degrees = 180 / Math.PI
 
-/* eslint-disable no-param-reassign */
 export class Matrix implements IMatrixLike {
   public a: number
 
@@ -52,14 +51,11 @@ export class Matrix implements IMatrixLike {
 
   static getScale(mat: IMatrixLike) {
     const { a: a1, b: b1, c: c1, d: d1 } = mat
-    return Vector.create(
-      Math.sqrt(a1 * a1 + c1 * c1),
-      Math.sqrt(b1 * b1 + d1 * d1)
-    )
+    return create(Math.sqrt(a1 * a1 + c1 * c1), Math.sqrt(b1 * b1 + d1 * d1))
   }
 
   static getTranslation(mat: Matrix) {
-    return Vector.create(mat.tx, mat.ty)
+    return create(mat.tx, mat.ty)
   }
 
   static fromMatrixOrigin = (
@@ -82,7 +78,7 @@ export class Matrix implements IMatrixLike {
     a: IMatrixLike,
     newPos?: P
   ): P {
-    newPos = (newPos || Vector.create(0, 0)) as P
+    newPos = (newPos || create(0, 0)) as P
     newPos[0] = a.a * pos[0] + a.c * pos[1] + a.tx
     newPos[1] = a.b * pos[0] + a.d * pos[1] + a.ty
 
@@ -104,7 +100,7 @@ export class Matrix implements IMatrixLike {
     pos: vec2,
     newPos?: P
   ) {
-    newPos = (newPos || Vector.create(0, 0)) as P
+    newPos = (newPos || create(0, 0)) as P
 
     const id = 1 / (mat.a * mat.d + mat.c * -mat.b)
 

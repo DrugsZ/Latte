@@ -1,4 +1,4 @@
-import { Vector } from 'Latte/utils/vector'
+import { create, clone } from 'Latte/utils/vector'
 import type { Cursor } from 'Latte/core/cursor/cursor'
 
 const DEFAULT_ABSORB_SIZE = 10
@@ -53,7 +53,7 @@ function quickSort<T>(
 
 type GetCompareNum = (a: ReadonlyVec2) => number
 
-function binarySearch<T extends Array<any>>(
+function binarySearch<T extends Array<number[]>>(
   nums: T,
   target: number,
   getNumber: GetCompareNum,
@@ -77,43 +77,6 @@ function binarySearch<T extends Array<any>>(
   }
   return result
 }
-
-// function binarySearch<T extends Array<any>>(
-//   nums: T,
-//   target: number,
-//   getNumber: GetCompareNum
-// ): (typeof nums)[number] | undefined {
-//   let left = 0
-//   let right = nums.length - 1
-
-//   while (left <= right) {
-//     const mid = Math.floor((left + right) / 2)
-//     const midNumber = getNumber(nums[mid])
-
-//     if (midNumber === target) {
-//       return nums[mid]
-//     }
-//     if (midNumber < target) {
-//       left = mid + 1
-//     } else {
-//       right = mid - 1
-//     }
-//   }
-
-//   if (left >= nums.length) {
-//     return nums[nums.length - 1]
-//   }
-//   if (right < 0) {
-//     return nums[0]
-//   }
-
-//   const leftNumber = getNumber(nums[left])
-//   const rightNumber = getNumber(nums[right])
-
-//   return Math.abs(leftNumber - target) < Math.abs(rightNumber - target)
-//     ? nums[left]
-//     : nums[right]
-// }
 
 export class OtherElementAbsorptionVectorMap {
   private _xAxisArr: AdsorptionLine[] = []
@@ -257,7 +220,7 @@ export class AdsorptionResolver {
   private _adsorptionPointsResolver: AdsorptionPointsResolver =
     new AdsorptionPointsResolver()
 
-  private _afterAbsorbMovement: vec2 = Vector.create(0, 0)
+  private _afterAbsorbMovement: vec2 = create(0, 0)
 
   constructor(private _cursor: Cursor) {}
 
@@ -291,12 +254,12 @@ export class AdsorptionResolver {
     return {
       x: absorptionXPoints,
       y: absorptionYPoints,
-      diff: Vector.create(absorptionDiffX, absorptionDiffY),
+      diff: create(absorptionDiffX, absorptionDiffY),
     }
   }
 
   private _getCloseInfo(data: AbsorptionResult[]): AbsorptionResult {
-    let [diffX, diffY] = Vector.create(
+    let [diffX, diffY] = create(
       Number.POSITIVE_INFINITY,
       Number.POSITIVE_INFINITY
     )
@@ -328,14 +291,14 @@ export class AdsorptionResolver {
     y: new Set(),
   }
 
-  private _preAbsorbPoints = Vector.create(Number.NaN, Number.NaN)
-  private _curAbsorbPoints = Vector.create(0, 0)
+  private _preAbsorbPoints = create(Number.NaN, Number.NaN)
+  private _curAbsorbPoints = create(0, 0)
 
   private _absorbStatus = {
     x: false,
     y: false,
   }
-  private _accumulator: vec2 = Vector.create(0, 0)
+  private _accumulator: vec2 = create(0, 0)
 
   private _addMovementToAccumulator(movement: vec2) {
     if (this._absorbStatus.x) {
@@ -433,7 +396,7 @@ export class AdsorptionResolver {
     movement: ReadonlyVec2
   ) {
     this._addMovementToAccumulator(movement)
-    Vector.clone(movement, this._afterAbsorbMovement)
+    clone(movement, this._afterAbsorbMovement)
     return this._onElementWillMove(vecs, curs, movement)
   }
 

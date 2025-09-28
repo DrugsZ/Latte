@@ -1,7 +1,7 @@
 import { Emitter } from 'Latte/utils/event'
 import type { ActiveSelection } from 'Latte/core/selection/activeSelection'
 import { isFunction } from 'Latte/utils/assert'
-import { CoreEditingCommands } from 'Latte/core/command/coreCommands'
+import { MoveElementTo, SetElementFills } from 'Latte/core/command/coreCommands'
 import type { ViewModel } from 'Latte/core/viweModel/viewModel'
 
 const ProxyProp = ['x', 'y', 'width', 'height']
@@ -46,7 +46,7 @@ export class ActiveSelectionWidget {
   move(newPosition: latte.editor.SetStateAction<ReadonlyVec2>) {
     const objects = this._activeSelection.getObjects()
 
-    CoreEditingCommands.MoveElementTo.runCoreEditorCommand(this._viewModel, {
+    MoveElementTo.runCoreEditorCommand(this._viewModel, {
       position: newPosition,
       objects,
     })
@@ -54,7 +54,7 @@ export class ActiveSelectionWidget {
 
   setFills(fills: Paint[]) {
     const objects = this._activeSelection.getObjects()
-    CoreEditingCommands.SetElementFills.runCoreEditorCommand(this._viewModel, {
+    SetElementFills.runCoreEditorCommand(this._viewModel, {
       newFills: fills,
       objects,
     })

@@ -14,7 +14,16 @@ import {
 } from 'Latte/core/selection/activeSelection'
 
 import { isFunction } from 'Latte/utils/assert'
-import { Vector } from 'Latte/utils/vector'
+import {
+  create,
+  subtract,
+  divide,
+  dot,
+  add,
+  clone,
+  crossProduct,
+  len,
+} from 'Latte/utils/vector'
 
 export class CursorMoveOperations {
   static tempMatrix = new Matrix()
@@ -39,7 +48,7 @@ export class CursorMoveOperations {
       const [x, y] = Matrix.fromMatrixOrigin([0, 0], diffMatrix, center)
       diffMatrix.tx = x
       diffMatrix.ty = y
-      const newP1 = Matrix.apply(Vector.create(OBB.x, OBB.y), diffMatrix)
+      const newP1 = Matrix.apply(create(OBB.x, OBB.y), diffMatrix)
       const { transform } = object
       // how get skewX in transform: first get pureTransform without skewX, eg: removeSkewXTransform
       // second: get skewY transform same as skewX, eg: skewToY
@@ -95,7 +104,7 @@ export class CursorMoveOperations {
       selectBoxTransform
     ) as Matrix
     return Matrix.apply(
-      Vector.create(point[0] - selectBoxTLX, point[1] - selectBoxTLY),
+      create(point[0] - selectBoxTLX, point[1] - selectBoxTLY),
       invertTransform
     )
   }
@@ -107,13 +116,10 @@ export class CursorMoveOperations {
     newSelectBoxTL: ReadonlyVec2,
     point: ReadonlyVec2
   ) {
-    const pointInSelectBox = Vector.subtract(point, selectTL)
-    const pointInSelectBoxScale = Vector.divide(pointInSelectBox, selectBox)
-    const pointSizeOnNewSelectBox = Vector.dot(
-      newSelectBox,
-      pointInSelectBoxScale
-    )
-    return Vector.add(newSelectBoxTL, pointSizeOnNewSelectBox)
+    const pointInSelectBox = subtract(point, selectTL)
+    const pointInSelectBoxScale = divide(pointInSelectBox, selectBox)
+    const pointSizeOnNewSelectBox = dot(newSelectBox, pointInSelectBoxScale)
+    return add(newSelectBoxTL, pointSizeOnNewSelectBox)
   }
 
   private static _getRectInfoBeforeAndAfter(
@@ -128,13 +134,13 @@ export class CursorMoveOperations {
       width: selectBoxWidth,
       height: selectBoxHeight,
     } = selectOBB
-    const oldSelectBoxTL = Vector.create(selectBoxTLX, selectBoxTLY)
-    const oldSelectBoxRect = Vector.create(selectBoxWidth, selectBoxHeight)
+    const oldSelectBoxTL = create(selectBoxTLX, selectBoxTLY)
+    const oldSelectBoxRect = create(selectBoxWidth, selectBoxHeight)
     const positionOnSelectBox = this._getPointOnSelectBoxAxis(selectOBB, vec)
-    const startPoint = Vector.create(0, 0)
-    const rbPoint = Vector.create(selectOBB.width, selectOBB.height)
-    const newStartPoint = Vector.clone(startPoint)
-    const newEndPoint = Vector.clone(rbPoint)
+    const startPoint = create(0, 0)
+    const rbPoint = create(selectOBB.width, selectOBB.height)
+    const newStartPoint = clone(startPoint)
+    const newEndPoint = clone(rbPoint)
     if (isResetStartXAxis(key)) {
       ;[newStartPoint[0]] = positionOnSelectBox
     }
@@ -151,7 +157,7 @@ export class CursorMoveOperations {
       ;[, newEndPoint[1]] = positionOnSelectBox
     }
 
-    const newSelectBoxTL = Vector.add(
+    const newSelectBoxTL = add(
       oldSelectBoxTL,
       Matrix.apply(newStartPoint, {
         ...selectBoxTransform,
@@ -159,7 +165,7 @@ export class CursorMoveOperations {
         ty: 0,
       })
     )
-    const newSelectBoxRect = Vector.subtract(newEndPoint, newStartPoint)
+    const newSelectBoxRect = subtract(newEndPoint, newStartPoint)
     return {
       oldSelectBoxTL,
       oldSelectBoxRect,
@@ -168,11 +174,11 @@ export class CursorMoveOperations {
     }
   }
 
-  private static _getNewOBB = (
+  private static _calculateObjectControlPoints = (
     objectOBB: OBB,
-    getNewPoint: (point: ReadonlyVec2) => ReadonlyVec2,
+    pointTransformFn: (point: ReadonlyVec2) => ReadonlyVec2,
     selectBoxTransform: IMatrixLike
-  ): Pick<BaseElementSchema, 'size' | 'transform'> => {
+  ) => {
     const { x, y, width, height, transform } = objectOBB
     const pureTransform = {
       ...transform,
@@ -187,57 +193,168 @@ export class CursorMoveOperations {
       pureTransform,
       invertTransform
     )
-    const objectTL = Vector.create(x, y)
-    const objectVWidth = Vector.add(
-      objectTL,
-      Matrix.apply(Vector.create(width, 0), localTransform)
+    const originalTopLeftPoint = create(x, y)
+    const originalTopRightPoint = add(
+      originalTopLeftPoint,
+      Matrix.apply(create(width, 0), localTransform)
     )
-    const objectVHeight = Vector.add(
-      objectTL,
-      Matrix.apply(Vector.create(0, height), localTransform)
+    const originalBottomLeftVector = add(
+      originalTopLeftPoint,
+      Matrix.apply(create(0, height), localTransform)
     )
-    const newTl = getNewPoint(objectTL)
-    const newObjectVWidth = getNewPoint(objectVWidth)
-    const newObjectVHeight = getNewPoint(objectVHeight)
-    const vcWidth = Vector.subtract(newObjectVWidth, newTl)
-    const vcWRad = Math.atan2(vcWidth[1], vcWidth[0])
-    const vcWTM = {
-      a: Math.cos(vcWRad),
-      b: Math.sin(vcWRad),
-      c: -Math.sin(vcWRad),
-      d: Math.cos(vcWRad),
+    const transformedTopLeftPoint = pointTransformFn(originalTopLeftPoint)
+    const transformedTopRightPoint = pointTransformFn(originalTopRightPoint)
+    const transformedBottomLeftVector = pointTransformFn(
+      originalBottomLeftVector
+    )
+    const transformedWidthVector = subtract(
+      transformedTopRightPoint,
+      transformedTopLeftPoint
+    )
+
+    const result = {
+      transformedTopLeftPoint,
+      transformedTopRightPoint,
+      transformedBottomLeftVector,
+      transformedWidthVector,
+    }
+    return result
+  }
+
+  private static _computeGeometryFromTransformedPoints = (
+    widthVector: ReadonlyVec2
+  ) => {
+    const widthVectorAngle = Math.atan2(widthVector[1], widthVector[0])
+    return {
+      a: Math.cos(widthVectorAngle),
+      b: Math.sin(widthVectorAngle),
+      c: -Math.sin(widthVectorAngle),
+      d: Math.cos(widthVectorAngle),
       tx: 0,
       ty: 0,
     }
-    const vcHeight = Vector.subtract(newObjectVHeight, newTl)
-    const newVcInvert = Matrix.invert(vcWTM)
-    const vcHTS1 = Matrix.apply(vcHeight, newVcInvert!)
-    const vcHSkew = Math.PI / 2 - Math.atan2(vcHTS1[1], vcHTS1[0])
-    const vcHTM = {
+  }
+
+  private static _checkFlipVertically = (
+    actualHeightVectorAfterSize: ReadonlyVec2,
+    actualWidthVectorAfterSize: ReadonlyVec2,
+    oldBottomLeftVector: ReadonlyVec2,
+    newWidthTransformMatrix: IMatrixLike
+  ) => {
+    // const widthTransformationResult = Matrix.apply(
+    //   oldTopRightVector,
+    //   newWidthTransformMatrix
+    // )
+    // const actualHeightVectorAfterSize = (
+    //   transformedBottomLeftVector,
+    //   transformedTopLeftPoint
+    // )
+    const oldHeightDot = crossProduct(
+      actualWidthVectorAfterSize,
+      actualHeightVectorAfterSize
+    )
+    const newHeightDot = crossProduct(
+      actualWidthVectorAfterSize,
+      Matrix.apply(oldBottomLeftVector, newWidthTransformMatrix)
+    )
+    return oldHeightDot * newHeightDot < 0
+  }
+
+  private static __calculateTransformedObjectHeightSkew = (
+    heightTransformWorldVector: ReadonlyVec2
+  ) => {
+    const heightSkewAngle =
+      Math.PI / 2 -
+      Math.atan2(heightTransformWorldVector[1], heightTransformWorldVector[0])
+    return {
       a: 1,
       b: 0,
-      c: Math.tan(vcHSkew),
+      c: Math.tan(heightSkewAngle),
       d: 1,
       tx: 0,
       ty: 0,
     }
-    Matrix.multiply(this.tempMatrix, vcWTM, vcHTM)
-    Matrix.multiply(this.tempMatrix, this.tempMatrix, selectBoxTransform)
+  }
+
+  private static _updateObjectGeometryAfterResize(
+    widthTransform: IMatrixLike,
+    heightSkew: IMatrixLike,
+    worldTransform: IMatrixLike,
+    width: number,
+    height: number,
+    topLeft: ReadonlyVec2,
+    shouldFlipVertically: boolean
+  ) {
+    Matrix.multiply(this.tempMatrix, widthTransform, heightSkew)
+    Matrix.multiply(this.tempMatrix, this.tempMatrix, worldTransform)
     const { a, b, c, d } = this.tempMatrix
     return {
       size: {
-        x: Vector.len(vcWidth),
-        y: vcHTS1[1],
+        x: width,
+        y: height,
       },
       transform: {
         a,
         b,
-        c,
-        d,
-        tx: newTl[0],
-        ty: newTl[1],
+        c: c * (shouldFlipVertically ? -1 : 1),
+        d: d * (shouldFlipVertically ? -1 : 1),
+        tx: topLeft[0],
+        ty: topLeft[1],
       },
     }
+  }
+
+  private static _calculateTransformedObjectGeometry = (
+    objectOBB: OBB,
+    getNewPoint: (point: ReadonlyVec2) => ReadonlyVec2,
+    selectBoxTransform: IMatrixLike
+  ): Pick<BaseElementSchema, 'size' | 'transform'> => {
+    const { height } = objectOBB
+
+    const {
+      transformedTopLeftPoint,
+      transformedBottomLeftVector,
+      transformedWidthVector,
+    } = CursorMoveOperations._calculateObjectControlPoints(
+      objectOBB,
+      getNewPoint,
+      selectBoxTransform
+    )
+    const newWidthTransformMatrix = this._computeGeometryFromTransformedPoints(
+      transformedWidthVector
+    )
+    const actualHeightVectorAfterSize = subtract(
+      transformedBottomLeftVector,
+      transformedTopLeftPoint
+    )
+
+    const shouldFlipVertically = this._checkFlipVertically(
+      actualHeightVectorAfterSize,
+      transformedWidthVector,
+      create(0, height),
+      newWidthTransformMatrix
+    )
+    const newVcInvert = Matrix.invert(newWidthTransformMatrix)
+    const heightTransformWorldVector = Matrix.apply(
+      actualHeightVectorAfterSize,
+      newVcInvert!
+    )
+    const vcHTM = this.__calculateTransformedObjectHeightSkew(
+      heightTransformWorldVector
+    )
+    Matrix.multiply(this.tempMatrix, newWidthTransformMatrix, vcHTM)
+    Matrix.multiply(this.tempMatrix, this.tempMatrix, selectBoxTransform)
+    const { a, b, c, d } = this.tempMatrix
+
+    return this._updateObjectGeometryAfterResize(
+      newWidthTransformMatrix,
+      vcHTM,
+      selectBoxTransform,
+      len(transformedWidthVector),
+      Math.abs(heightTransformWorldVector[1]),
+      transformedTopLeftPoint,
+      shouldFlipVertically
+    )
   }
 
   public static resize(
@@ -253,13 +370,6 @@ export class CursorMoveOperations {
       newSelectBoxTL,
       newSelectBoxRect,
     } = this._getRectInfoBeforeAndAfter(activeElement.OBB, position, key)
-
-    if (
-      Math.abs(newSelectBoxRect[0]) < 1 ||
-      Math.abs(newSelectBoxRect[1]) < 1
-    ) {
-      return
-    }
 
     const getNewPoint = (point: ReadonlyVec2) =>
       this._getNewPointOnSelectBoxChange.call(
@@ -277,7 +387,11 @@ export class CursorMoveOperations {
       result.push(
         EditOperation.update(
           object.getGuidKey(),
-          this._getNewOBB(object.OBB, getNewPoint, selectBoxTransform)
+          this._calculateTransformedObjectGeometry(
+            object.OBB,
+            getNewPoint,
+            selectBoxTransform
+          )
         )
       )
     })

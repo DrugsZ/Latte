@@ -1,7 +1,7 @@
-import { Vector } from 'Latte/utils/vector'
+import { create } from 'Latte/utils/vector'
 import { Rectangle } from 'Latte/core/elements/rectangle'
 
-const tempVec = Vector.create(0, 0)
+const tempVec = create(0, 0)
 
 export class Bounds {
   public minX: number = Infinity
@@ -64,7 +64,7 @@ export class Bounds {
   }
 
   getCenter() {
-    const vec = Vector.create(0, 0)
+    const vec = create(0, 0)
     if (!this.isEmpty()) {
       vec[0] = (this.maxX - this.minX) / 2 + this.minX
       vec[1] = (this.maxY - this.minY) / 2 + this.minY

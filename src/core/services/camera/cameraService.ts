@@ -1,7 +1,7 @@
 import { Point } from 'Latte/utils/point'
 import { Emitter } from 'Latte/utils/event'
 import { Matrix } from 'Latte/core/utils/matrix'
-import { Vector } from 'Latte/utils/vector'
+import { subtract } from 'Latte/utils/vector'
 
 import { MAX_ZOOM, MIN_ZOOM } from 'Latte/assets/constant'
 import { Disposable } from 'Latte/core/services/lifecycle/lifecycleService'
@@ -61,7 +61,7 @@ export class Camera {
       this._matrix,
       Matrix.apply(viewPortPoint, preMatrix)
     )
-    const newMove = Vector.subtract(newViewPort, viewPortPoint)
+    const newMove = subtract(newViewPort, viewPortPoint)
     this.move(-newMove[0], -newMove[1])
   }
 

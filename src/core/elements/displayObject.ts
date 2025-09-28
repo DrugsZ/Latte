@@ -5,10 +5,10 @@ import type { EditorElementTypeKind } from 'Latte/constants/schema'
 import { Matrix } from 'Latte/core/utils/matrix'
 import type { RBushNodeAABB } from 'Latte/core/rTree'
 import { rTreeRoot } from 'Latte/core/rTree'
-import { Vector } from 'Latte/utils/vector'
+import { create, clone } from 'Latte/utils/vector'
 
-const beforeTransformPoint = Vector.create(0, 0) // new Point(0, 0)
-const afterTransformPoint = Vector.create(0, 0) // new Point(0, 0)
+const beforeTransformPoint = create(0, 0) // new Point(0, 0)
+const afterTransformPoint = create(0, 0) // new Point(0, 0)
 
 export abstract class DisplayObject<
   T extends BaseElementSchema = BaseElementSchema
@@ -29,12 +29,7 @@ export abstract class DisplayObject<
   }
 
   private _OBBPoints: [ReadonlyVec2, ReadonlyVec2, ReadonlyVec2, ReadonlyVec2] =
-    [
-      Vector.create(0, 0),
-      Vector.create(0, 0),
-      Vector.create(0, 0),
-      Vector.create(0, 0),
-    ]
+    [create(0, 0), create(0, 0), create(0, 0), create(0, 0)]
 
   constructor(element: T) {
     super()
@@ -141,7 +136,6 @@ export abstract class DisplayObject<
     return this._elementData.name
   }
 
-  // eslint-disable-next-line class-methods-use-this
   getBorder(): number | number[] | null {
     return null
   }
@@ -177,21 +171,21 @@ export abstract class DisplayObject<
     // tl
     beforeTransformPoint[0] = x
     beforeTransformPoint[1] = y
-    Vector.clone(beforeTransformPoint, this._OBBPoints[0])
+    clone(beforeTransformPoint, this._OBBPoints[0])
     // tr
     beforeTransformPoint[0] = x + this.width
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
-    Vector.clone(afterTransformPoint, this._OBBPoints[1])
+    clone(afterTransformPoint, this._OBBPoints[1])
     // br
     beforeTransformPoint[0] = x + this.width
     beforeTransformPoint[1] = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
-    Vector.clone(afterTransformPoint, this._OBBPoints[2])
+    clone(afterTransformPoint, this._OBBPoints[2])
     // bl
     beforeTransformPoint[0] = x
     beforeTransformPoint[1] = y + this.height
     Matrix.apply(beforeTransformPoint, tempMatrix, afterTransformPoint)
-    Vector.clone(afterTransformPoint, this._OBBPoints[3])
+    clone(afterTransformPoint, this._OBBPoints[3])
     this._OBBPoints.forEach(this._bounds.addPoint, this._bounds)
     // this._getLimitValue()
     this._boundDirty = false
