@@ -1,4 +1,3 @@
-/* eslint-disable no-bitwise */
 import { ViewPart } from 'Latte/core/viewParts/base/viewPart'
 import type { ViewModel } from 'Latte/core/viweModel/viewModel'
 import type { Camera } from 'Latte/core/services/camera/cameraService'
@@ -146,7 +145,7 @@ export class ViewCursor extends ViewPart {
     Matrix.multiply(this._tempMatrix, camera.getViewPortMatrix(), OBB.transform)
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)
-    ctx.lineWidth = 2
+    ctx.lineWidth = 4 / camera.getZoom()
     ctx.beginPath()
     ctx.strokeStyle = '#0B94BF'
     ctx.strokeRect(0, 0, OBB.width, OBB.height)

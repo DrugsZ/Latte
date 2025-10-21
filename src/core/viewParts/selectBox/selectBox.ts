@@ -2,6 +2,7 @@ import { ViewPart } from 'Latte/core/viewParts/base/viewPart'
 import { Matrix } from 'Latte/core/utils/matrix'
 import type { Camera } from 'Latte/core/services/camera/cameraService'
 import type { ActiveSelection } from 'Latte/core/selection/activeSelection'
+import { ActiveSelectionCorner } from 'Latte/core/selection/activeSelection'
 
 export class SelectBox extends ViewPart {
   private _tempMatrix = new Matrix()
@@ -50,11 +51,13 @@ export class SelectBox extends ViewPart {
     )
     const { a, b, c, d, tx, ty } = this._tempMatrix
     ctx.setTransform(a, b, c, d, tx, ty)
-    ctx.lineWidth = 2 * camera.getZoom()
+    ctx.lineWidth = 4 / camera.getZoom()
     ctx.beginPath()
     ctx.strokeStyle = '#0B94BF'
     ctx.strokeRect(0, 0, rect.width, rect.height)
     ctx.closePath()
+    ctx.lineWidth = 1 / camera.getZoom()
+    ActiveSelectionCorner.setScale(1 / camera.getZoom())
     this._renderControl(ctx, activeSelection)
   }
 }

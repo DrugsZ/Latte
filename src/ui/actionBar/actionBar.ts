@@ -105,14 +105,12 @@ export class ActionBar {
     const lastFocus = this._focusItem
       ? this.viewItems[this._focusItem!]
       : undefined
-    console.log('🚀 ~ ActionBar ~ _updateFocus ~ lastFocus:', lastFocus)
     this._focusItem = index
     if (lastFocus?.action.id === Separator.ID) {
       this._focusItem = undefined
       return
     }
     lastFocus?.blur()
-    console.log('🚀 ~ ActionBar ~ _updateFocus ~ _focusItem:', this._focusItem)
     if (typeof this._focusItem === 'number') {
       this.viewItems[this._focusItem].focus()
     }

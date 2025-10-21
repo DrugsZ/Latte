@@ -11,7 +11,6 @@ import { PickService } from 'Latte/core/services/pick/pickService'
 import {
   MouseControllerTarget,
   ActiveSelection,
-  ActiveSelectionCorner,
 } from 'Latte/core/selection/activeSelection'
 import type { DisplayObject } from 'Latte/core/elements/displayObject'
 import { OperateMode, Cursor } from 'Latte/core/cursor/cursor'
@@ -20,11 +19,8 @@ import { registerAPI } from 'Latte/api'
 
 import { ActiveSelectionWidget } from 'Latte/core/selection/activeSelectionWidget'
 import type { ISingleEditOperation } from 'Latte/core/model/modelChange'
-import { create } from 'Latte/utils/vector'
 
 import type { ElementAdsorptionRecord } from 'Latte/core/cursor/cursorAbsorptionLine'
-
-const tempVec2 = create(0, 0)
 
 export class ViewModel {
   private _focusPageId = ''
@@ -121,11 +117,12 @@ export class ViewModel {
   }
 
   private _bindCameraEvent() {
+    console.log('hasCall')
     this._cameraService.onCameraViewChange(event => {
       this._eventDispatcher.emitViewEvent(
         new viewEvents.ViewCameraUpdateEvent(event)
       )
-      ActiveSelectionCorner.setScale(event.getZoom())
+      // ActiveSelectionCorner.setScale(1 / event.getZoom())
       const focusPage = this._elementTree.getElementById(
         this._focusPageId
       ) as Page
