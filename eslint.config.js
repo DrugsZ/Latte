@@ -66,6 +66,7 @@ export default defineConfig(
       "no-continue": "off",
       "no-restricted-syntax": "off",
       "guard-for-in": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off"
     },
   }
 );
