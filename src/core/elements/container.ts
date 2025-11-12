@@ -6,7 +6,16 @@ export abstract class Container<
 > extends DisplayObject<T> {
   protected _children: DisplayObject<BaseElementSchema>[] = []
 
-  getBounds() {
+  private static tempMatrix = {
+    a: 1,
+    b: 0,
+    c: 0,
+    d: 1,
+    tx: 0,
+    ty: 0,
+  }
+
+  protected override _updateBounds() {
     this._children.forEach(element => {
       if (!element.visible) {
         return
@@ -14,7 +23,29 @@ export abstract class Container<
       const elementBBox = element.getBounds()
       this._bounds.merge(elementBBox)
     })
-    return this._bounds
+    const rect = this._bounds.getRectangle()
+    Container.tempMatrix.tx = rect.x
+    Container.tempMatrix.ty = rect.y
+    this._elementData.transform = { ...Container.tempMatrix }
+    this._elementData.size = {
+      x: rect.width,
+      y: rect.height,
+    }
+  }
+
+  // Override getBounds to calculate bounds based on children, but if has pre bound, use pre & new add child
+  getBounds() {
+    if (this._children.length === 1) {
+      return this._children[0].getBounds()
+    }
+    return super.getBounds()
+  }
+
+  get OBB() {
+    if (this._children.length === 1) {
+      return this._children[0].OBB
+    }
+    return super.OBB
   }
 
   getChildren() {
@@ -48,7 +79,7 @@ export abstract class Container<
     return result
   }
 
-  private _appendChild(child: DisplayObject) {
+  protected _appendChild(child: DisplayObject) {
     const childLength = this._children.length
     let index = 0
     let isAddEnd = false
@@ -65,6 +96,7 @@ export abstract class Container<
     this._children.splice(index, 0, child)
     child.parentNode?.removeChild(child)
     child.parentNode = this
+    this._boundDirty = true
   }
 
   appendChild(...child: DisplayObject[]) {
@@ -87,22 +119,6 @@ export abstract class Container<
     return hasFindRemove
   }
 
-  render() {
-    const { size, transform } = this._elementData
-    const { a, b, c, d, tx: x, ty: y } = transform
-    const { x: width, y: height } = size
-
-    return {
-      type: 'frame',
-      x,
-      y,
-      width,
-      height,
-      transform: [a, b, c, d, 0, 0],
-      fills: this.getFills(),
-    }
-  }
-
   getFirst() {
     return this._children[0]
   }
@@ -111,5 +127,3 @@ export abstract class Container<
     return this._children[this._children.length - 1]
   }
 }
-
-export default DisplayObject

@@ -22,7 +22,7 @@ export abstract class DisplayObject<
   parentNode: Container | null = null
 
   protected _bounds: Bounds = new Bounds()
-  private _boundDirty: boolean = true
+  protected _boundDirty: boolean = true
   private _inactive: boolean = false
   private _rBushNode: RBushNodeAABB = {
     displayObject: this,
@@ -36,22 +36,6 @@ export abstract class DisplayObject<
     this.type = element.type
     this._elementData = element
   }
-
-  // private _getLimitValue() {
-  //   let minX = Infinity
-  //   let maxX = -Infinity
-  //   let minY = Infinity
-  //   let maxY = -Infinity
-
-  //   this._OBBPoints.forEach(item => {
-  //     minX = Math.min(minX, item[0])
-  //     maxX = Math.max(maxX, item[0])
-  //     minY = Math.min(minY, item[1])
-  //     maxY = Math.max(maxY, item[1])
-  //   })
-
-  //   return [minX, maxX, minY, maxY]
-  // }
 
   private static resize(
     element: DisplayObject,
@@ -149,7 +133,7 @@ export abstract class DisplayObject<
     return this._inactive
   }
 
-  private _updateBounds() {
+  protected _updateBounds() {
     this._bounds.clear()
     const worldMatrix = this.transform
     const x = worldMatrix.tx
@@ -208,6 +192,7 @@ export abstract class DisplayObject<
     if (this._boundDirty) {
       this._updateBounds()
       this._updateRBush()
+      this._boundDirty = false
     }
     return this._bounds
   }
@@ -245,7 +230,7 @@ export abstract class DisplayObject<
     return this._bounds.getHalfExtents()
   }
 
-  public appendChild() {}
+  public appendChild(child: DisplayObject) {}
 
   public removeChild(removeChild: DisplayObject) {}
 }
