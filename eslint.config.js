@@ -16,6 +16,8 @@ export default defineConfig(
           alwaysTryTypes: true,
           project: [
             './tsconfig.json',
+            './packages/*/tsconfig.json',
+            './apps/*/tsconfig.json'
           ],
         },
       },
@@ -31,9 +33,7 @@ export default defineConfig(
       "no-param-reassign": "off",
       "class-methods-use-this": "off",
 
-      "no-restricted-imports": ["error", {
-        patterns: [".*"],
-      }],
+      "import/no-relative-packages": "error",
 
       "consistent-return": "off",
       "no-console": "off",
