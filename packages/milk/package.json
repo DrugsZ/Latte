@@ -1,5 +1,5 @@
 {
-  "name": "@latte/milk",
+  "name": "@latte-js/milk",
   "version": "0.1.0",
   "description": "React UI component library for Latte",
   "main": "./dist/index.js",
@@ -7,15 +7,45 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --watch",
     "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DrugsZ/Latte.git",
+    "directory": "packages/milk"
+  },
+  "keywords": [
+    "latte-js",
+    "latte",
+    "react",
+    "ui",
+    "components"
+  ],
+  "author": "FateLee",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/DrugsZ/Latte#readme",
+  "publishConfig": {
+    "access": "public"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "dependencies": {
-    "@latte/espresso": "workspace:*",
-    "@latte/syrup": "workspace:*",
+    "@latte-js/espresso": "workspace:*",
+    "@latte-js/syrup": "workspace:*",
     "clsx": "^2.0.0",
     "zustand": "^4.5.0"
   },

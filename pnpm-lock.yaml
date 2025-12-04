@@ -71,10 +71,10 @@ importers:
 
   packages/art:
     dependencies:
-      '@latte/bean':
+      '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean
-      '@latte/espresso':
+      '@latte-js/espresso':
         specifier: workspace:*
         version: link:../espresso
     devDependencies:
@@ -87,10 +87,10 @@ importers:
 
   packages/barista:
     dependencies:
-      '@latte/bean':
+      '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean
-      '@latte/espresso':
+      '@latte-js/espresso':
         specifier: workspace:*
         version: link:../espresso
     devDependencies:
@@ -103,22 +103,25 @@ importers:
 
   packages/bean:
     devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)(yaml@2.3.1)
       typescript:
         specifier: ^5.3.0
         version: 5.9.3
 
   packages/counter:
     dependencies:
-      '@latte/barista':
+      '@latte-js/barista':
         specifier: workspace:*
         version: link:../barista
-      '@latte/bean':
+      '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean
-      '@latte/espresso':
+      '@latte-js/espresso':
         specifier: workspace:*
         version: link:../espresso
-      '@latte/syrup':
+      '@latte-js/syrup':
         specifier: workspace:*
         version: link:../syrup
     devDependencies:
@@ -131,7 +134,7 @@ importers:
 
   packages/espresso:
     dependencies:
-      '@latte/bean':
+      '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean
       gl-matrix:
@@ -153,10 +156,10 @@ importers:
 
   packages/milk:
     dependencies:
-      '@latte/espresso':
+      '@latte-js/espresso':
         specifier: workspace:*
         version: link:../espresso
-      '@latte/syrup':
+      '@latte-js/syrup':
         specifier: workspace:*
         version: link:../syrup
       clsx:
@@ -184,7 +187,7 @@ importers:
 
   packages/syrup:
     dependencies:
-      '@latte/bean':
+      '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean
       mitt:

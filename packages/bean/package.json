@@ -1,17 +1,48 @@
 {
-  "name": "@latte/bean",
+  "name": "@latte-js/bean",
   "version": "0.1.0",
   "description": "Foundation type definitions and protocol contracts for Latte Engine",
-  "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "tsc --emitDeclarationOnly",
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --watch",
     "lint": "eslint src/",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DrugsZ/Latte.git",
+    "directory": "packages/bean"
+  },
+  "keywords": [
+    "latte-js",
+    "latte",
+    "types",
+    "protocols",
+    "foundation"
+  ],
+  "author": "FateLee",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/DrugsZ/Latte#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
+    "tsup": "^8.0.0",
     "typescript": "^5.3.0"
   }
 }

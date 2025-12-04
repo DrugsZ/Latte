@@ -1,5 +1,5 @@
 {
-  "name": "@latte/syrup",
+  "name": "@latte-js/syrup",
   "version": "0.1.0",
   "description": "Extension infrastructure and DI system",
   "main": "./dist/index.js",
@@ -10,8 +10,38 @@
     "dev": "tsup src/index.ts --watch",
     "clean": "rm -rf dist"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DrugsZ/Latte.git",
+    "directory": "packages/syrup"
+  },
+  "keywords": [
+    "latte-js",
+    "latte",
+    "dependency-injection",
+    "di",
+    "extension",
+    "plugin"
+  ],
+  "author": "FateLee",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/DrugsZ/Latte#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "@latte/bean": "workspace:*",
+    "@latte-js/bean": "workspace:*",
     "mitt": "^3.0.0"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 {
-  "name": "@latte/espresso",
+  "name": "@latte-js/espresso",
   "version": "0.1.0",
   "description": "High-performance data kernel based on SharedArrayBuffer and SoA",
   "main": "./dist/index.js",
@@ -12,8 +12,38 @@
     "test": "vitest",
     "clean": "rm -rf dist"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DrugsZ/Latte.git",
+    "directory": "packages/espresso"
+  },
+  "keywords": [
+    "latte-js",
+    "latte",
+    "data-kernel",
+    "sharedarraybuffer",
+    "soa",
+    "performance"
+  ],
+  "author": "FateLee",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/DrugsZ/Latte#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "@latte/bean": "workspace:*",
+    "@latte-js/bean": "workspace:*",
     "gl-matrix": "^3.4.0",
     "uuid": "^9.0.0"
   },
