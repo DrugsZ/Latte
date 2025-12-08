@@ -1,10 +1,10 @@
 import { NodeType } from '../schema'
 
-export function isFrameNode(nodeType: NodeType): boolean {
+export function isFrame(nodeType: NodeType): boolean {
   return nodeType === NodeType.FRAME
 }
 
-export function isGroupNode(nodeType: NodeType): boolean {
+export function isGroup(nodeType: NodeType): boolean {
   return nodeType === NodeType.GROUP
 }
 
@@ -13,7 +13,7 @@ export function isContainerNode(nodeType: NodeType): boolean {
 }
 
 export function isRect(nodeType: NodeType): boolean {
-  return nodeType === NodeType.RECT
+  return nodeType === NodeType.RECTANGLE
 }
 
 export function isEllipse(nodeType: NodeType): boolean {

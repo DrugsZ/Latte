@@ -1,0 +1,30 @@
+{
+  "files": [],
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* 路径别名 (Monorepo 核心配置) */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+
+      /* 映射到包的源码目录，实现“修改源码即生效”和“点击跳转” */
+      "@latte-js/bean": ["../../packages/bean/src/index.ts"],
+      "@latte-js/espresso": ["../../packages/espresso/src/index.ts"],
+      "@latte-js/barista": ["../../packages/barista/src/index.ts"],
+      "@latte-js/art": ["../../packages/art/src/index.ts"],
+      "@latte-js/syrup": ["../../packages/syrup/src/index.ts"],
+      "@latte-js/workbench": ["../../packages/workbench/src/index.ts"],
+      "@latte-js/milk": ["../../packages/milk/src/index.ts"]
+    }
+  },
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

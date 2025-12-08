@@ -9,7 +9,7 @@ export enum NodeType {
   PATH,
   TEXT,
   DOCUMENT = 128 | 1,
-  PAGE,
-  GROUP,
+  CANVAS,
   FRAME,
+  GROUP,
 }

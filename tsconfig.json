@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
+    "baseUrl": ".",
     "target": "esnext",
     "module": "esnext",
     "esModuleInterop": true,
@@ -19,6 +20,15 @@
     "jsx": "react-jsx",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": false,
+    "paths": {
+      "@latte-js/bean": ["packages/bean/src/index.ts"],
+      "@latte-js/espresso": ["packages/espresso/src/index.ts"],
+      "@latte-js/barista": ["packages/barista/src/index.ts"],
+      "@latte-js/art": ["packages/art/src/index.ts"],
+      "@latte-js/syrup": ["packages/syrup/src/index.ts"],
+      "@latte-js/workbench": ["packagecounterch/src/index.ts"],
+      "@latte-js/milk": ["packages/milk/src/index.ts"]
+    }
   }
 }

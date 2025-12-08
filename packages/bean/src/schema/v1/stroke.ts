@@ -1,4 +1,4 @@
-import { IPaint } from './fill'
+import type { IPaint } from './fill'
 
 export interface IStrokeSchema {
   strokeWeight: number

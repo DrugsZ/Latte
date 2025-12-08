@@ -14,6 +14,27 @@
         "!.next/cache/**"
       ]
     },
+    "test": {
+      "dependsOn": [],
+      "inputs": [
+        "src/**/*.tsx",
+        "src/**/*.ts",
+        "test/**/*.ts"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
+    "e2e": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "playwright-report/**",
+        "test-results/**"
+      ],
+      "cache": true
+    },
     "dev": {
       "cache": false,
       "persistent": true

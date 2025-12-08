@@ -1,8 +1,8 @@
-import { IBaseElementSchema, IDType } from './nodes'
+import type { ILatteNode, IDType } from './nodes'
 
-interface LatteFile {
+export interface LatteFile {
   type: 'NODE_CHANGES'
-  elements: IBaseElementSchema[]
+  elements: ILatteNode[]
   sessionID: number
   guid: IDType
 }

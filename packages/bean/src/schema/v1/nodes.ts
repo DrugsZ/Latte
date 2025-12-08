@@ -1,9 +1,14 @@
-import { Matrix } from '../../math'
-import { NodeType } from './types'
-import { IStrokeSchema } from './stroke'
-import { IPaint } from './fill'
+import type { Matrix } from '../../math'
+import type { NodeType } from './types'
+import type { IStrokeSchema } from './stroke'
+import type { IPaint } from './fill'
 
 export type IDType = `${number | string}:${number | string}`
+
+export interface IParentIndex {
+  guid: IDType
+  position: string
+}
 
 export interface IBaseNodeSchema {
   type: NodeType
@@ -15,50 +20,63 @@ export interface IBaseNodeSchema {
 }
 
 export interface IBaseChildNodeSchema extends IBaseNodeSchema {
-  parentIndex: {
-    guid: IDType
-    position: string
-  }
+  parentIndex: IParentIndex
 }
 
-export interface IBaseElementSchema
-  extends IStrokeSchema,
-    IBaseChildNodeSchema {
+export interface IBaseSizeAbleNodeSchema
+  extends IStrokeSchema, IBaseChildNodeSchema {
   name: string
   size: {
     x: number
     y: number
   }
   locked: boolean
+}
+
+export interface IBaseCanFillNodeSchema extends IBaseSizeAbleNodeSchema {
   fillPaints?: IPaint[]
 }
 
-export interface ILatteDocument extends IBaseNodeSchema {
+export interface ILatteDocumentNode extends IBaseNodeSchema {
   type: NodeType.DOCUMENT
 }
 
-export interface IPage extends IBaseChildNodeSchema {
-  type: NodeType.PAGE
+export interface ICanvasNode extends IBaseChildNodeSchema {
+  type: NodeType.CANVAS
   backgrounds: IPaint[]
 }
 
-export interface IFrameElement extends IBaseElementSchema {
+export interface IFrameNode extends IBaseSizeAbleNodeSchema {
   type: NodeType.FRAME
 }
-export interface IGroupElement extends IBaseElementSchema {
+export interface IGroupNode extends IBaseSizeAbleNodeSchema {
   type: NodeType.GROUP
 }
 
-export type ContainerElement = IPage | IFrameElement | IGroupElement
-
-export interface IBaseNodeCornerSchema extends IBaseElementSchema {
+export type ContainerNode = ICanvasNode | IFrameNode | IGroupNode
+export interface IBaseNodeCornerSchema extends IBaseSizeAbleNodeSchema {
   cornerRadius: number
   cornerSmoothing: number
 }
 
-export interface IRectangleElement extends IBaseNodeCornerSchema {
+export interface IRectangle {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export type OBB = IRectangle & {
+  transform: Matrix
+}
+
+export interface IPoint {
+  x: number
+  y: number
+}
+
+export interface IRectangleNode extends IBaseNodeCornerSchema {
   type: NodeType.RECTANGLE
-  cornerRadius: number | 'MIXED'
   topLeftRadius: number
   topRightRadius: number
   bottomLeftRadius: number
@@ -69,18 +87,9 @@ export interface IRectangleElement extends IBaseNodeCornerSchema {
   strokeRightWeight: number
 }
 
-export interface IRectangle {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-export type OBB = Rectangle & {
-  transform: IMatrixLike
-}
-
-export interface IPoint {
-  x: number
-  y: number
-}
+export type ILatteNode =
+  | ILatteDocumentNode
+  | ICanvasNode
+  | IFrameNode
+  | IGroupNode
+  | IRectangleNode
