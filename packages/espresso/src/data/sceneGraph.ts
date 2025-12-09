@@ -1,69 +1,82 @@
-// packages/espresso/src/data/SceneGraph.ts
 import { NodeType } from '@latte-js/bean'
 import { Allocator } from './allocator'
 import {
   MAX_NODES,
   NULL_INDEX,
-  MAT_SIZE,
   MAT_A,
   MAT_D,
   DIRTY_STRUCTURE,
+  MAT_SIZE,
 } from './config'
+import { TOTAL_MEMORY_BYTES, LAYOUT_DEF } from './memoryLayout'
 
-// 变更观察者接口 (解耦)
 export interface IMutationObserver {
   onDirty(index: number, flag: number): void
 }
 
 export class SceneGraph {
-  // --- 组件组合 ---
+  public readonly buffer: SharedArrayBuffer
+
   public readonly allocator = new Allocator()
-  private _observer: IMutationObserver = { onDirty: () => {} } // 默认空实现
+  private _observer: IMutationObserver = { onDirty: () => {} }
 
-  // --- A. 物理内存 (SharedArrayBuffer) ---
+  public readonly parent!: Int32Array
+  public readonly firstChild!: Int32Array
+  public readonly nextSibling!: Int32Array
+  public readonly prevSibling!: Int32Array
+  public readonly lastChild!: Int32Array
 
-  // 拓扑结构 (Int32, 4 bytes)
-  // LCRS 双向链表 + 尾指针优化
-  public readonly parent = new Int32Array(new SharedArrayBuffer(MAX_NODES * 4))
-  public readonly firstChild = new Int32Array(
-    new SharedArrayBuffer(MAX_NODES * 4)
-  )
-  public readonly nextSibling = new Int32Array(
-    new SharedArrayBuffer(MAX_NODES * 4)
-  )
-  public readonly prevSibling = new Int32Array(
-    new SharedArrayBuffer(MAX_NODES * 4)
-  )
-  public readonly lastChild = new Int32Array(
-    new SharedArrayBuffer(MAX_NODES * 4)
-  )
-  public readonly matrix = new Float32Array(
-    new SharedArrayBuffer(MAX_NODES * MAT_SIZE * 4)
-  )
-  public readonly size = new Float32Array(
-    new SharedArrayBuffer(MAX_NODES * 2 * 4)
-  )
+  public readonly matrix!: Float32Array
+  public readonly size!: Float32Array
 
-  public readonly type = new Uint8Array(new SharedArrayBuffer(MAX_NODES))
-  public readonly visible = new Uint8Array(new SharedArrayBuffer(MAX_NODES))
-  public readonly opacity = new Float32Array(
-    new SharedArrayBuffer(MAX_NODES * 4)
-  )
-  public readonly textPtr = new Int32Array(new SharedArrayBuffer(MAX_NODES * 4))
+  public readonly type!: Uint8Array
+  public readonly visible!: Uint8Array
+  public readonly opacity!: Float32Array
+  public readonly textPtr!: Int32Array
 
   private _uuidToIndex = new Map<string, number>()
   private _indexToUuid = new Map<number, string>()
   public nameMap = new Map<number, string>()
 
-  constructor() {
+  constructor(existingBuffer?: SharedArrayBuffer) {
+    const isHost = !existingBuffer
+
+    if (existingBuffer) {
+      if (existingBuffer.byteLength !== TOTAL_MEMORY_BYTES) {
+        throw new Error(
+          `[SceneGraph] Buffer size mismatch! Expected ${TOTAL_MEMORY_BYTES}, got ${existingBuffer.byteLength}`
+        )
+      }
+      this.buffer = existingBuffer
+    } else {
+      this.buffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
+    }
+
+    let byteOffset = 0
+
+    for (const item of LAYOUT_DEF) {
+      // @ts-ignore
+      this[item.name] = new item.type(this.buffer, byteOffset, item.size)
+
+      byteOffset += item.size * item.type.BYTES_PER_ELEMENT
+    }
+    if (isHost) {
+      this.initMemory()
+    }
+  }
+
+  private initMemory() {
     this.parent.fill(NULL_INDEX)
     this.firstChild.fill(NULL_INDEX)
     this.nextSibling.fill(NULL_INDEX)
     this.prevSibling.fill(NULL_INDEX)
     this.lastChild.fill(NULL_INDEX)
-    this.textPtr.fill(NULL_INDEX)
-
-    this.createNode(NodeType.DOCUMENT, 'root')
+    for (let i = 0; i < MAX_NODES; i++) {
+      const base = i * 6
+      this.matrix[base + 0] = 1
+      this.matrix[base + 3] = 1
+    }
+    this.type[0] = NodeType.DOCUMENT
   }
 
   public setObserver(obs: IMutationObserver) {
@@ -96,70 +109,52 @@ export class SceneGraph {
     this.allocator.free(index)
   }
 
-  /**
-   * 将 child 挂载到 parent 的末尾
-   */
   public appendChild(parent: number, child: number) {
     if (parent === child) throw new Error('Cycle: Append self')
 
-    // 1. 确保 child 干净
     if (this.parent[child] !== NULL_INDEX) {
       this.detach(child)
     }
 
-    // 2. 认父
     this.parent[child] = parent
 
-    // 3. 链接兄弟
     const last = this.lastChild[parent]
 
     if (last !== NULL_INDEX) {
-      // 父亲有孩子：挂在老幺后面
       this.nextSibling[last] = child
       this.prevSibling[child] = last
     } else {
-      // 父亲没孩子：成为老大
       this.firstChild[parent] = child
       this.prevSibling[child] = NULL_INDEX
     }
 
-    // 4. 更新收尾
-    this.nextSibling[child] = NULL_INDEX // 我是新老幺
-    this.lastChild[parent] = child // 父亲记住我
+    this.nextSibling[child] = NULL_INDEX
+    this.lastChild[parent] = child
 
     this.markDirty(parent, DIRTY_STRUCTURE)
   }
 
-  /**
-   * 将 child 插到 refNode 之后
-   */
   public insertAfter(parent: number, child: number, refNode: number) {
     if (this.parent[child] !== NULL_INDEX) this.detach(child)
 
     this.parent[child] = parent
 
-    const next = this.nextSibling[refNode] // ref 的弟弟
+    const next = this.nextSibling[refNode]
 
-    // 1. 链接 ref -> child
     this.nextSibling[refNode] = child
     this.prevSibling[child] = refNode
 
-    // 2. 链接 child -> next
     this.nextSibling[child] = next
 
     if (next !== NULL_INDEX) {
       this.prevSibling[next] = child
     } else {
-      // 后面没人了，说明 child 成了新老幺
       this.lastChild[parent] = child
     }
 
     this.markDirty(parent, DIRTY_STRUCTURE)
   }
 
-  /**
-   * 摘除节点 (保持孤儿状态)
-   */
   public detach(child: number) {
     const parent = this.parent[child]
     if (parent === NULL_INDEX) return
@@ -205,6 +200,10 @@ export class SceneGraph {
     this.nextSibling[i] = NULL_INDEX
     this.prevSibling[i] = NULL_INDEX
     this.lastChild[i] = NULL_INDEX
+
+    this.type[i] = NULL_INDEX
+    this.visible[i] = NULL_INDEX
+    this.opacity[i] = NULL_INDEX
     this.textPtr[i] = NULL_INDEX
 
     const m = i * MAT_SIZE
