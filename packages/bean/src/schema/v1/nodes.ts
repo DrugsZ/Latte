@@ -93,3 +93,7 @@ export type ILatteNode =
   | IFrameNode
   | IGroupNode
   | IRectangleNode
+
+export interface ILatteFile {
+  elements: ILatteNode[]
+}

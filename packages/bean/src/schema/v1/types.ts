@@ -8,7 +8,7 @@ export enum NodeType {
   POLYLINE,
   PATH,
   TEXT,
-  DOCUMENT = 128 | 1,
+  DOCUMENT = 128,
   CANVAS,
   FRAME,
   GROUP,
