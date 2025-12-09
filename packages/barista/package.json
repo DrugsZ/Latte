@@ -2,9 +2,9 @@
   "name": "@latte-js/barista",
   "version": "0.1.0",
   "description": "Logic scheduling and calculation engine (Worker Host)",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.js",
+  "module": "./src/index.mjs",
+  "types": "./src/index.ts",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts --watch",
@@ -14,13 +14,6 @@
     "dist",
     "README.md"
   ],
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DrugsZ/Latte.git",
@@ -37,7 +30,16 @@
   "license": "GPL-3.0-or-later",
   "homepage": "https://github.com/DrugsZ/Latte#readme",
   "publishConfig": {
-    "access": "public"
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js"
+      }
+    }
   },
   "dependencies": {
     "@latte-js/bean": "workspace:*",
