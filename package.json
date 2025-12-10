@@ -1,5 +1,6 @@
 {
   "name": "latte",
+  "type": "module",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -44,7 +45,7 @@
     "typescript": "^5.3.0",
     "typescript-eslint": "^8.43.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^1.0.0"
+    "vitest": "^4.0.15"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

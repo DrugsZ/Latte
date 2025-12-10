@@ -55,17 +55,17 @@ export class SceneGraph {
     let byteOffset = 0
 
     for (const item of LAYOUT_DEF) {
-      // @ts-ignore
+      // @ts-expect-error  just close ts error
       this[item.name] = new item.type(this.buffer, byteOffset, item.size)
 
       byteOffset += item.size * item.type.BYTES_PER_ELEMENT
     }
     if (isHost) {
-      this.initMemory()
+      this._initMemory()
     }
   }
 
-  private initMemory() {
+  private _initMemory() {
     this.parent.fill(NULL_INDEX)
     this.firstChild.fill(NULL_INDEX)
     this.nextSibling.fill(NULL_INDEX)
@@ -162,11 +162,9 @@ export class SceneGraph {
     const prev = this.prevSibling[child]
     const next = this.nextSibling[child]
 
-    // 1. 修复前驱
     if (prev !== NULL_INDEX) {
       this.nextSibling[prev] = next
     } else {
-      // 我是老大，父亲的 firstChild 要指向我的弟弟
       this.firstChild[parent] = next
     }
 
@@ -201,9 +199,8 @@ export class SceneGraph {
     this.prevSibling[i] = NULL_INDEX
     this.lastChild[i] = NULL_INDEX
 
-    this.type[i] = NULL_INDEX
-    this.visible[i] = NULL_INDEX
-    this.opacity[i] = NULL_INDEX
+    this.visible[i] = 1
+    this.opacity[i] = 1
     this.textPtr[i] = NULL_INDEX
 
     const m = i * MAT_SIZE
