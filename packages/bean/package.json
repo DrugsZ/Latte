@@ -2,7 +2,7 @@
   "name": "@latte-js/bean",
   "version": "0.1.0",
   "description": "Foundation type definitions and protocol contracts for Latte Engine",
-  "main": "./src/index.js",
+  "main": "./src/index.ts",
   "module": "./dist/index.mjs",
   "types": "./src/index.ts",
   "sideEffects": false,
