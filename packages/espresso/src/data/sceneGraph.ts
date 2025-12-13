@@ -1,4 +1,4 @@
-import { NodeType } from '@latte-js/bean'
+import { NodeType, StrokeAlign } from '@latte-js/bean'
 import { Allocator } from './allocator'
 import {
   MAX_NODES,
@@ -33,6 +33,11 @@ export class SceneGraph {
   public readonly visible!: Uint8Array
   public readonly opacity!: Float32Array
   public readonly textPtr!: Int32Array
+
+  public readonly locked!: Uint8Array
+
+  public readonly strokeWeight!: Int32Array
+  public readonly strokeAlign!: Uint8Array
 
   private _uuidToIndex = new Map<string, number>()
   private _indexToUuid = new Map<number, string>()
@@ -71,6 +76,14 @@ export class SceneGraph {
     this.nextSibling.fill(NULL_INDEX)
     this.prevSibling.fill(NULL_INDEX)
     this.lastChild.fill(NULL_INDEX)
+
+    this.visible.fill(1)
+    this.opacity.fill(1.0)
+    this.locked.fill(0)
+    this.textPtr.fill(NULL_INDEX)
+
+    this.strokeWeight.fill(1)
+    this.strokeAlign.fill(StrokeAlign.CENTER)
     for (let i = 0; i < MAX_NODES; i++) {
       const base = i * 6
       this.matrix[base + 0] = 1
@@ -202,6 +215,11 @@ export class SceneGraph {
     this.visible[i] = 1
     this.opacity[i] = 1
     this.textPtr[i] = NULL_INDEX
+
+    this.locked[i] = 0
+
+    this.strokeWeight[i] = 1
+    this.strokeAlign[i] = StrokeAlign.CENTER
 
     const m = i * MAT_SIZE
     this.matrix.fill(0, m, m + 6)

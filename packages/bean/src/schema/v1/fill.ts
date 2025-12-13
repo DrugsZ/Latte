@@ -1,4 +1,6 @@
-import { Matrix } from '../../math'
+import type { Matrix } from '../../math'
+import type { BlendModeType } from './blend'
+
 export enum FillType {
   SOLID = 'SOLID',
   GRADIENT_LINEAR = 'GRADIENT_LINEAR',
@@ -6,25 +8,6 @@ export enum FillType {
   GRADIENT_ANGULAR = 'GRADIENT_ANGULAR',
   GRADIENT_DIAMOND = 'GRADIENT_DIAMOND',
   IMAGE = 'IMAGE',
-}
-
-export enum BlendModeType {
-  NORMAL = 'NORMAL',
-  DARKEN = 'DARKEN',
-  MULTIPLY = 'MULTIPLY',
-  COLOR_BURN = 'COLOR_BURN',
-  LIGHTEN = 'LIGHTEN',
-  SCREEN = 'SCREEN',
-  COLOR_DODGE = 'COLOR_DODGE',
-  OVERLAY = 'OVERLAY',
-  SOFT_LIGHT = 'SOFT_LIGHT',
-  HARD_LIGHT = 'HARD_LIGHT',
-  DIFFERENCE = 'DIFFERENCE',
-  EXCLUSION = 'EXCLUSION',
-  HUE = 'HUE',
-  SATURATION = 'SATURATION',
-  COLOR = 'COLOR',
-  LUMINOSITY = 'LUMINOSITY',
 }
 
 export interface IBaseFill {

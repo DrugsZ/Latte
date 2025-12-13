@@ -12,8 +12,12 @@ export const LAYOUT_DEF = [
 
   { name: 'type', type: Uint8Array, size: MAX_NODES },
   { name: 'visible', type: Uint8Array, size: MAX_NODES },
+  { name: 'locked', type: Uint8Array, size: MAX_NODES },
   { name: 'opacity', type: Float32Array, size: MAX_NODES },
   { name: 'textPtr', type: Int32Array, size: MAX_NODES },
+
+  { name: 'strokeWeight', type: Int32Array, size: MAX_NODES },
+  { name: 'strokeAlign', type: Uint8Array, size: MAX_NODES },
 ] as const
 
 export const TOTAL_MEMORY_BYTES = LAYOUT_DEF.reduce((acc, item) => {

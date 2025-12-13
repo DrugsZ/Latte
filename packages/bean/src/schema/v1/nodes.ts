@@ -17,6 +17,8 @@ export interface IBaseNodeSchema {
   visible: boolean
   opacity: number
   transform: Matrix
+  strokeWeight: number
+  locked: boolean
 }
 
 export interface IBaseChildNodeSchema extends IBaseNodeSchema {
@@ -30,7 +32,6 @@ export interface IBaseSizeAbleNodeSchema
     x: number
     y: number
   }
-  locked: boolean
 }
 
 export interface IBaseCanFillNodeSchema extends IBaseSizeAbleNodeSchema {
