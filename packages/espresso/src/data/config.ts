@@ -28,3 +28,13 @@ export const DIRTY_STRUCTURE = 1 << 2 // add, remove
 export const DIRTY_TEXT = 1 << 3 // test  content
 
 export const BIT_IS_CONTAINER = 0b10000000
+
+export const DEFAULT_HEAP_SIZE = 1024 * 1024 * 10 // default 10MB
+
+const isLittleEndian = () => {
+  const arr = new Uint16Array([1])
+  const bytes = new Uint8Array(arr.buffer)
+  return bytes[0] === 1
+}
+
+export const LITTLE_ENDIAN = isLittleEndian() ? 4 : 8 // window is use little endian, but if ssr, should get endian

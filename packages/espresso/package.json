@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@latte-js/bean": "workspace:*",
-    "gl-matrix": "^3.4.0",
+    "gl-matrix": "^3.4.4",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

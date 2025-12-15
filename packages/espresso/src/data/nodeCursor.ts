@@ -1,18 +1,13 @@
-import type { SceneGraph } from './sceneGraph'
 import type { StrokeAlignKey } from '@latte-js/bean'
 import { StrokeAlign } from '@latte-js/bean'
-import {
-  NULL_INDEX,
-  MAT_TX,
-  MAT_TY,
-  MAT_SIZE,
-  DIRTY_TRANSFORM,
-  MAX_NODES,
-} from './config'
+import type { mat2d } from 'gl-matrix'
+import { DIRTY_TRANSFORM, MAX_NODES, NULL_INDEX } from './config'
+import { HierarchyOps, TransformOps } from './ops'
+import type { SceneGraph } from './sceneGraph'
 
 export class NodeCursor {
-  private readonly _index: number
-  private readonly _generation: number
+  private _index: number
+  private _generation: number
 
   constructor(
     private _graph: SceneGraph,
@@ -28,13 +23,33 @@ export class NodeCursor {
     }
   }
 
+  public to(idx: number) {
+    const oldIndex = this._index
+    const oldGeneration = this._generation
+
+    this._index = idx
+    this._generation = this._graph.allocator.generations[idx]
+
+    try {
+      this._checkAlive()
+    } catch (e) {
+      this._index = oldIndex
+      this._generation = oldGeneration
+      throw e
+    }
+
+    return this
+  }
+
   get index() {
     return this._index
   }
+
   get id() {
     this._checkAlive()
     return this._graph.getUUID(this._index)
   }
+
   get type() {
     this._checkAlive()
     return this._graph.type[this._index]
@@ -48,44 +63,81 @@ export class NodeCursor {
     this._checkAlive()
     this._graph.nameMap.set(this._index, v)
   }
+  public *children(flyweight = true) {
+    this._checkAlive()
 
+    let curr = this._graph.firstChild[this._index]
+    let safeguard = 0
+
+    if (flyweight) {
+      const scratch = new NodeCursor(this._graph, this._index)
+      while (curr !== NULL_INDEX) {
+        if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
+        yield scratch.to(curr)
+        curr = this._graph.nextSibling[curr]
+      }
+      return
+    }
+
+    while (curr !== NULL_INDEX) {
+      if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
+      yield new NodeCursor(this._graph, curr)
+      curr = this._graph.nextSibling[curr]
+    }
+  }
+
+  // region transform start
   get x() {
     this._checkAlive()
-    return this._graph.matrix[this._index * MAT_SIZE + MAT_TX]
+    return TransformOps.getX(this._graph, this._index)
   }
   set x(v: number) {
     this._checkAlive()
-    this._graph.matrix[this._index * MAT_SIZE + MAT_TX] = v
+    TransformOps.setX(this._graph, this._index, v)
   }
 
   get y() {
     this._checkAlive()
-    return this._graph.matrix[this._index * MAT_SIZE + MAT_TY]
+    return TransformOps.getY(this._graph, this._index)
   }
   set y(v: number) {
     this._checkAlive()
-    this._graph.matrix[this._index * MAT_SIZE + MAT_TY] = v
+    TransformOps.setY(this._graph, this._index, v)
   }
 
   get width() {
     this._checkAlive()
-    return this._graph.size[this._index * 2]
+    return TransformOps.getWidth(this._graph, this._index)
   }
   set width(v: number) {
     this._checkAlive()
-    this._graph.size[this._index * 2] = v
+    TransformOps.setWidth(this._graph, this._index, v)
     this._graph.markDirty(this._index, DIRTY_TRANSFORM)
   }
 
   get height() {
     this._checkAlive()
-    return this._graph.size[this._index * 2 + 1]
+    return TransformOps.getHeight(this._graph, this._index)
   }
   set height(v: number) {
     this._checkAlive()
-    this._graph.size[this._index * 2 + 1] = v
+    TransformOps.setHeight(this._graph, this._index, v)
     this._graph.markDirty(this._index, DIRTY_TRANSFORM)
   }
+
+  get matrix() {
+    return TransformOps.getMatrix(this._graph, this._index)
+  }
+
+  set matrix(mat: mat2d) {
+    TransformOps.setMatrix(this._graph, this._index, mat)
+  }
+
+  resetMatrix() {
+    TransformOps.identityMatrix(this._graph, this._index)
+  }
+
+  // region transform end
 
   get locked() {
     this._checkAlive()
@@ -139,32 +191,17 @@ export class NodeCursor {
 
   get parent() {
     this._checkAlive()
-    const pIdx = this._graph.parent[this._index]
+    const pIdx = HierarchyOps.getParent(this._graph, this._index)
     return pIdx !== NULL_INDEX ? new NodeCursor(this._graph, pIdx) : null
   }
 
   public appendChild(child: NodeCursor) {
     this._checkAlive()
-    this._graph.appendChild(this._index, child.index)
+    HierarchyOps.appendChild(this._graph, this._index, child.index)
   }
 
   public remove() {
     this._checkAlive()
-    this._graph.deleteNode(this._index)
-  }
-
-  public *children() {
-    this._checkAlive()
-
-    let curr = this._graph.firstChild[this._index]
-    let safeguard = 0
-
-    while (curr !== NULL_INDEX) {
-      if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
-
-      yield new NodeCursor(this._graph, curr)
-
-      curr = this._graph.nextSibling[curr]
-    }
+    HierarchyOps.remove(this._graph, this._index)
   }
 }
