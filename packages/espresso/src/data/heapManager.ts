@@ -33,15 +33,27 @@ export class HeapManager {
     return ptr
   }
 
-  public write(data: Uint8Array, oldPtr: number): number {
-    const oldData = this.read(oldPtr, data.byteLength)
-    const ptr = this.alloc(data.byteLength)
-    this.view.set(data, ptr)
+  public write(data: Uint8Array): number {
+    const contentLen = data.byteLength
+    const totalSize = 4 + contentLen
+    const ptr = this.alloc(totalSize)
+    const view = new DataView(this.buffer, ptr, 4)
+    view.setUint32(0, contentLen, true)
+    this.view.set(data, ptr + 4)
     return ptr
   }
 
-  public read(ptr: number, length: number): Uint8Array {
-    return this.view.subarray(ptr, ptr + length)
+  public read(ptr: number): Uint8Array | null {
+    if (ptr + 4 > this.buffer.byteLength) {
+      console.warn(`[BlobManager] Pointer out of bounds: ${ptr}`)
+      return null
+    }
+    const view = new DataView(this.buffer, ptr, 4)
+    const contentLen = view.getUint32(0, true)
+    if (contentLen === 0) {
+      return null
+    }
+    return this.view.subarray(ptr + 4, ptr + 4 + contentLen)
   }
 
   private _resize(newSize: number) {

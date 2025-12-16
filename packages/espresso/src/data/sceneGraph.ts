@@ -8,6 +8,8 @@ import {
   DIRTY_STRUCTURE,
   MAT_SIZE,
 } from './config'
+import { BlobManager } from './blobManager'
+import { HeapManager } from './heapManager'
 import { TOTAL_MEMORY_BYTES, LAYOUT_DEF } from './memoryLayout'
 
 export interface IMutationObserver {
@@ -39,6 +41,9 @@ export class SceneGraph {
   public readonly strokeWeight!: Int32Array
   public readonly strokeAlign!: Uint8Array
 
+  public readonly blobs: BlobManager
+  public readonly heap: HeapManager = new HeapManager()
+
   private _uuidToIndex = new Map<string, number>()
   private _indexToUuid = new Map<number, string>()
   public nameMap = new Map<number, string>()
@@ -68,6 +73,8 @@ export class SceneGraph {
     if (isHost) {
       this._initMemory()
     }
+
+    this.blobs = new BlobManager(this.heap)
   }
 
   private _initMemory() {
