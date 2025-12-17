@@ -125,15 +125,15 @@ export class NodeCursor {
     this._graph.markDirty(this._index, DIRTY_TRANSFORM)
   }
 
-  get matrix() {
+  get transform() {
     return TransformOps.getMatrix(this._graph, this._index)
   }
 
-  set matrix(mat: mat2d) {
+  set transform(mat: mat2d) {
     TransformOps.setMatrix(this._graph, this._index, mat)
   }
 
-  resetMatrix() {
+  resetTransform() {
     TransformOps.identityMatrix(this._graph, this._index)
   }
 
@@ -203,5 +203,18 @@ export class NodeCursor {
   public remove() {
     this._checkAlive()
     HierarchyOps.remove(this._graph, this._index)
+  }
+
+  get style() {
+    const ptr = this._graph.blobIndexToPtr.get(this._index)
+    if (!ptr) {
+      return {}
+    }
+    return this._graph.blobs.read(ptr) || {}
+  }
+
+  set style(style: object) {
+    const ptr = this._graph.blobs.write(style)
+    this._graph.blobIndexToPtr.set(this._index, ptr)
   }
 }

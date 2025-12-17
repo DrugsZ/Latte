@@ -1,26 +1,26 @@
 import { NodeType, StrokeAlign } from '@latte-js/bean'
+import { type IGraphObserver } from '../typing'
 import { Allocator } from './allocator'
+import { BlobManager } from './blobManager'
 import {
-  MAX_NODES,
-  NULL_INDEX,
+  DIRTY_STRUCTURE,
   MAT_A,
   MAT_D,
-  DIRTY_STRUCTURE,
   MAT_SIZE,
+  MAX_NODES,
+  NULL_INDEX,
 } from './config'
-import { BlobManager } from './blobManager'
 import { HeapManager } from './heapManager'
-import { TOTAL_MEMORY_BYTES, LAYOUT_DEF } from './memoryLayout'
-
-export interface IMutationObserver {
-  onDirty(index: number, flag: number): void
-}
+import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
+import { MutationTracker } from './mutationTracker'
 
 export class SceneGraph {
+  private _observers: IGraphObserver[] = []
+  private _mutationTracker = new MutationTracker()
+
   public readonly buffer: SharedArrayBuffer
 
   public readonly allocator = new Allocator()
-  private _observer: IMutationObserver = { onDirty: () => {} }
 
   public readonly parent!: Int32Array
   public readonly firstChild!: Int32Array
@@ -42,6 +42,7 @@ export class SceneGraph {
   public readonly strokeAlign!: Uint8Array
 
   public readonly blobs: BlobManager
+  public readonly blobIndexToPtr = new Map<number, number>()
   public readonly heap: HeapManager = new HeapManager()
 
   private _uuidToIndex = new Map<string, number>()
@@ -99,12 +100,23 @@ export class SceneGraph {
     this.type[0] = NodeType.DOCUMENT
   }
 
-  public setObserver(obs: IMutationObserver) {
-    this._observer = obs
+  public setObserver(obs: IGraphObserver) {
+    this._observers.push(obs)
+  }
+
+  public notifyObservers(
+    id: string,
+    key: string,
+    oldValue: string | number,
+    newValue: string | number
+  ) {
+    for (const obs of this._observers) {
+      obs.update(id, key, oldValue, newValue)
+    }
   }
 
   public markDirty(index: number, flag: number) {
-    this._observer.onDirty(index, flag)
+    this._mutationTracker.mark(index, flag)
   }
 
   public createNode(type: NodeType, uuid: string): number {

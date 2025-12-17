@@ -19,6 +19,10 @@ export interface IBaseNodeSchema {
   transform: Matrix
   strokeWeight: number
   locked: boolean
+  size: {
+    x: number
+    y: number
+  }
 }
 
 export interface IBaseChildNodeSchema extends IBaseNodeSchema {
@@ -28,17 +32,13 @@ export interface IBaseChildNodeSchema extends IBaseNodeSchema {
 export interface IBaseSizeAbleNodeSchema
   extends IStrokeSchema, IBaseChildNodeSchema {
   name: string
-  size: {
-    x: number
-    y: number
-  }
 }
 
 export interface IBaseCanFillNodeSchema extends IBaseSizeAbleNodeSchema {
   fillPaints?: IPaint[]
 }
 
-export interface ILatteDocumentNode extends IBaseNodeSchema {
+export interface ILatteDocumentNode extends IBaseChildNodeSchema {
   type: NodeType.DOCUMENT
 }
 
