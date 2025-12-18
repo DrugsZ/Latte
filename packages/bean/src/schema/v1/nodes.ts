@@ -2,6 +2,7 @@ import type { Matrix } from '../../math'
 import type { NodeType } from './types'
 import type { IStrokeSchema } from './stroke'
 import type { IPaint } from './fill'
+import type { BlendModeType } from './blend'
 
 export type IDType = `${number | string}:${number | string}`
 
@@ -23,6 +24,7 @@ export interface IBaseNodeSchema {
     x: number
     y: number
   }
+  blendMode: BlendModeType
 }
 
 export interface IBaseChildNodeSchema extends IBaseNodeSchema {

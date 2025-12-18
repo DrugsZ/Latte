@@ -1,8 +1,15 @@
-import type { StrokeAlignKey } from '@latte-js/bean'
+import type {
+  StrokeAlignKey,
+  StrokeJoinKey,
+  StrokeStyleKey,
+  DashCapKey,
+  IPaint,
+} from '@latte-js/bean'
+
 import { StrokeAlign } from '@latte-js/bean'
 import type { mat2d } from 'gl-matrix'
 import { DIRTY_TRANSFORM, MAX_NODES, NULL_INDEX } from './config'
-import { HierarchyOps, TransformOps } from './ops'
+import { HierarchyOps, TransformOps, StyleOps } from './ops'
 import type { SceneGraph } from './sceneGraph'
 
 export class NodeCursor {
@@ -139,54 +146,36 @@ export class NodeCursor {
 
   // region transform end
 
+  // region style start
+
   get locked() {
     this._checkAlive()
-    return this._graph.locked[this._index] === 1
+    return StyleOps.getLocked(this._graph, this._index)
   }
 
   set locked(v: boolean) {
     this._checkAlive()
-    this._graph.locked[this._index] = v ? 1 : 0
+    StyleOps.setLocked(this._graph, this._index, v)
   }
 
   get visible() {
     this._checkAlive()
-    return this._graph.visible[this._index] === 1
+    return StyleOps.getVisible(this._graph, this._index)
   }
 
   set visible(v: boolean) {
     this._checkAlive()
-    this._graph.visible[this._index] = v ? 1 : 0
+    StyleOps.setVisible(this._graph, this._index, v)
   }
 
   get opacity() {
     this._checkAlive()
-    return this._graph.opacity[this._index]
+    return StyleOps.getOpacity(this._graph, this._index)
   }
 
   set opacity(v: number) {
     this._checkAlive()
-    this._graph.opacity[this._index] = v
-  }
-
-  get strokeWIdth() {
-    this._checkAlive()
-    return this._graph.strokeWeight[this._index]
-  }
-
-  set strokeWIdth(v: number) {
-    this._checkAlive()
-    this._graph.strokeWeight[this._index] = v
-  }
-
-  get strokeAlign(): StrokeAlignKey {
-    this._checkAlive()
-    return StrokeAlign[this._graph.strokeAlign[this._index]] as StrokeAlignKey
-  }
-
-  set strokeAlign(v: StrokeAlignKey) {
-    this._checkAlive()
-    this._graph.strokeAlign[this._index] = StrokeAlign[v]
+    StyleOps.setOpacity(this._graph, this._index, v)
   }
 
   get parent() {
@@ -205,16 +194,63 @@ export class NodeCursor {
     HierarchyOps.remove(this._graph, this._index)
   }
 
-  get style() {
-    const ptr = this._graph.blobIndexToPtr.get(this._index)
-    if (!ptr) {
-      return {}
-    }
-    return this._graph.blobs.read(ptr) || {}
+  get fills() {
+    return StyleOps.getFills(this._graph, this._index)
   }
 
-  set style(style: object) {
-    const ptr = this._graph.blobs.write(style)
-    this._graph.blobIndexToPtr.set(this._index, ptr)
+  set fills(style: IPaint[]) {
+    StyleOps.setStyle(this._graph, this._index, style)
   }
+
+  get strokeWidth() {
+    this._checkAlive()
+    return StyleOps.getStrokeWidth(this._graph, this._index)
+  }
+
+  set strokeWidth(v: number) {
+    this._checkAlive()
+    StyleOps.setStrokeWidth(this._graph, this._index, v)
+  }
+
+  get strokeAlign(): StrokeAlignKey {
+    this._checkAlive()
+    return StyleOps.getStrokeAlign(this._graph, this._index)
+  }
+
+  set strokeAlign(v: StrokeAlignKey) {
+    this._checkAlive()
+    StyleOps.setStrokeAlign(this._graph, this._index, v)
+  }
+
+  get strokeJoin(): StrokeJoinKey {
+    this._checkAlive()
+    return StyleOps.getStrokeJoin(this._graph, this._index)
+  }
+
+  set strokeJoin(v: StrokeJoinKey) {
+    this._checkAlive()
+    StyleOps.setStrokeJoin(this._graph, this._index, v)
+  }
+
+  get strokeStyle(): StrokeStyleKey {
+    this._checkAlive()
+    return StyleOps.getStrokeStyle(this._graph, this._index)
+  }
+
+  set strokeStyle(v: StrokeStyleKey) {
+    this._checkAlive()
+    StyleOps.setStrokeStyle(this._graph, this._index, v)
+  }
+
+  get dashCap(): DashCapKey {
+    this._checkAlive()
+    return StyleOps.getDashCap(this._graph, this._index)
+  }
+
+  set dashCap(v: DashCapKey) {
+    this._checkAlive()
+    StyleOps.setDashCap(this._graph, this._index, v)
+  }
+
+  // region style end
 }

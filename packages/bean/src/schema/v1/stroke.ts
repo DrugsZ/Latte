@@ -14,16 +14,22 @@ export enum StrokeJoin {
   ROUND,
 }
 
+export type StrokeJoinKey = keyof typeof StrokeJoin
+
 export enum StrokeStyle {
   SOLID,
   DASH,
 }
+
+export type StrokeStyleKey = keyof typeof StrokeStyle
 
 export enum DashCap {
   NONE,
   SQUARE,
   ROUND,
 }
+
+export type DashCapKey = keyof typeof DashCap
 
 export interface IStrokeSchema {
   strokeWeight: number

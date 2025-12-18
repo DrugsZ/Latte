@@ -18,6 +18,10 @@ export const LAYOUT_DEF = [
 
   { name: 'strokeWeight', type: Int32Array, size: MAX_NODES },
   { name: 'strokeAlign', type: Uint8Array, size: MAX_NODES },
+  { name: 'strokeJoin', type: Uint8Array, size: MAX_NODES },
+  { name: 'strokeStyle', type: Uint8Array, size: MAX_NODES },
+
+  { name: 'dashCap', type: Uint8Array, size: MAX_NODES },
 ] as const
 
 export const TOTAL_MEMORY_BYTES = LAYOUT_DEF.reduce((acc, item) => {

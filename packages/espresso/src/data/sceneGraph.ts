@@ -40,6 +40,9 @@ export class SceneGraph {
 
   public readonly strokeWeight!: Int32Array
   public readonly strokeAlign!: Uint8Array
+  public readonly strokeJoin!: Uint8Array
+  public readonly strokeStyle!: Uint8Array
+  public readonly dashCap!: Uint8Array
 
   public readonly blobs: BlobManager
   public readonly blobIndexToPtr = new Map<number, number>()
