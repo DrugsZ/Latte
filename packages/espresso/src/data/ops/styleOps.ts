@@ -9,11 +9,11 @@ import {
 import type { SceneGraph } from '../sceneGraph'
 
 export const StyleOps = {
-  getStrokeWidth(graph: SceneGraph, index: number): number {
+  getStrokeWeight(graph: SceneGraph, index: number): number {
     return graph.strokeWeight[index]
   },
 
-  setStrokeWidth(graph: SceneGraph, index: number, v: number) {
+  setStrokeWeight(graph: SceneGraph, index: number, v: number) {
     graph.strokeWeight[index] = v
   },
 

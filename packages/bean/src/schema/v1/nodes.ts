@@ -11,8 +11,8 @@ export interface IParentIndex {
   position: string
 }
 
-export interface IBaseNodeSchema {
-  type: NodeType
+export interface IBaseNodeSchema extends IStrokeSchema {
+  type: NodeType | keyof typeof NodeType
   guid: IDType
   name: string
   visible: boolean
@@ -31,8 +31,7 @@ export interface IBaseChildNodeSchema extends IBaseNodeSchema {
   parentIndex: IParentIndex
 }
 
-export interface IBaseSizeAbleNodeSchema
-  extends IStrokeSchema, IBaseChildNodeSchema {
+export interface IBaseSizeAbleNodeSchema extends IBaseChildNodeSchema {
   name: string
 }
 
@@ -41,23 +40,27 @@ export interface IBaseCanFillNodeSchema extends IBaseSizeAbleNodeSchema {
 }
 
 export interface ILatteDocumentNode extends IBaseChildNodeSchema {
-  type: NodeType.DOCUMENT
+  type: NodeType.DOCUMENT | 'DOCUMENT'
 }
 
-export interface ICanvasNode extends IBaseChildNodeSchema {
-  type: NodeType.CANVAS
+export interface IPageNode extends IBaseChildNodeSchema {
+  type: NodeType.CANVAS | 'CANVAS'
   backgrounds: IPaint[]
 }
 
-export interface IFrameNode extends IBaseSizeAbleNodeSchema {
-  type: NodeType.FRAME
+export interface IFrameNode extends IBaseCanFillNodeSchema {
+  type: NodeType.FRAME | 'FRAME'
 }
 export interface IGroupNode extends IBaseSizeAbleNodeSchema {
-  type: NodeType.GROUP
+  type: NodeType.GROUP | 'GROUP'
 }
 
-export type ContainerNode = ICanvasNode | IFrameNode | IGroupNode
-export interface IBaseNodeCornerSchema extends IBaseSizeAbleNodeSchema {
+export type ContainerNode =
+  | ILatteDocumentNode
+  | IPageNode
+  | IFrameNode
+  | IGroupNode
+export interface IBaseNodeCornerSchema extends IBaseCanFillNodeSchema {
   cornerRadius: number
   cornerSmoothing: number
 }
@@ -79,7 +82,7 @@ export interface IPoint {
 }
 
 export interface IRectangleNode extends IBaseNodeCornerSchema {
-  type: NodeType.RECTANGLE
+  type: NodeType.RECTANGLE | 'RECTANGLE'
   topLeftRadius: number
   topRightRadius: number
   bottomLeftRadius: number
@@ -90,12 +93,47 @@ export interface IRectangleNode extends IBaseNodeCornerSchema {
   strokeRightWeight: number
 }
 
+export interface IEllipseNode extends IBaseCanFillNodeSchema {
+  type: NodeType.ELLIPSE | 'ELLIPSE'
+}
+
+export interface ICircleNode extends IBaseCanFillNodeSchema {
+  type: NodeType.CIRCLE | 'CIRCLE'
+}
+
+export interface ITextNode extends IBaseCanFillNodeSchema {
+  type: NodeType.TEXT | 'TEXT'
+}
+
+export interface IPathNode extends IBaseCanFillNodeSchema {
+  type: NodeType.PATH | 'PATH'
+}
+
+export interface ILineNode extends IBaseCanFillNodeSchema {
+  type: NodeType.LINE | 'LINE'
+}
+
+export interface IPolygonNode extends IBaseCanFillNodeSchema {
+  type: NodeType.POLYGON | 'POLYGON'
+}
+
+export interface IStarNode extends IBaseCanFillNodeSchema {
+  type: NodeType.STAR | 'STAR'
+}
+
 export type ILatteNode =
   | ILatteDocumentNode
-  | ICanvasNode
+  | IPageNode
   | IFrameNode
   | IGroupNode
   | IRectangleNode
+  | IEllipseNode
+  | ICircleNode
+  | ITextNode
+  | IPathNode
+  | ILineNode
+  | IPolygonNode
+  | IStarNode
 
 export interface ILatteFile {
   elements: ILatteNode[]

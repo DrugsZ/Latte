@@ -13,7 +13,31 @@ export const HierarchyOps = {
     graph.appendChild(parentIndex, childIndex)
   },
 
-  remove: (graph: SceneGraph, deleteIndex: number) => {
-    graph.deleteNode(deleteIndex)
+  remove: (graph: SceneGraph, index: number) => {
+    graph.deleteNode(index)
+  },
+
+  detach: (graph: SceneGraph, index: number) => {
+    graph.detach(index)
+  },
+
+  insertAfter: (
+    graph: SceneGraph,
+    parent: number,
+    child: number,
+    refNode: number
+  ) => {
+    graph.insertAfter(parent, child, refNode)
+  },
+
+  getChildren: (graph: SceneGraph, parent: number): number[] => {
+    const children: number[] = []
+    let curr = graph.firstChild[parent]
+    while (curr !== -1) {
+      // -1 is NULL_INDEX
+      children.push(curr)
+      curr = graph.nextSibling[curr]
+    }
+    return children
   },
 }

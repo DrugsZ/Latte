@@ -191,6 +191,11 @@ export class NodeCursor {
 
   public remove() {
     this._checkAlive()
+    HierarchyOps.detach(this._graph, this._index)
+  }
+
+  public delete() {
+    this._checkAlive()
     HierarchyOps.remove(this._graph, this._index)
   }
 
@@ -202,14 +207,14 @@ export class NodeCursor {
     StyleOps.setStyle(this._graph, this._index, style)
   }
 
-  get strokeWidth() {
+  get strokeWeight() {
     this._checkAlive()
-    return StyleOps.getStrokeWidth(this._graph, this._index)
+    return StyleOps.getStrokeWeight(this._graph, this._index)
   }
 
-  set strokeWidth(v: number) {
+  set strokeWeight(v: number) {
     this._checkAlive()
-    StyleOps.setStrokeWidth(this._graph, this._index, v)
+    StyleOps.setStrokeWeight(this._graph, this._index, v)
   }
 
   get strokeAlign(): StrokeAlignKey {

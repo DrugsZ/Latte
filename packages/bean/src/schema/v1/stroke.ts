@@ -33,10 +33,10 @@ export type DashCapKey = keyof typeof DashCap
 
 export interface IStrokeSchema {
   strokeWeight: number
-  strokeAlign: StrokeAlign
-  strokeJoin: StrokeJoin
-  miterAngle: number
-  strokeStyle: StrokeStyle
-  dashCap: DashCap
+  strokeAlign: StrokeAlignKey
+  strokeJoin: StrokeJoinKey
+  // miterAngle: number
+  strokeStyle: StrokeStyleKey
+  dashCap: DashCapKey
   strokePaints?: IPaint[]
 }

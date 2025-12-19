@@ -68,4 +68,16 @@ export const TransformOps = {
     graph.matrix[ptr + MAT_A] = 1
     graph.matrix[ptr + MAT_D] = 1
   },
+
+  getTransform: (graph: SceneGraph, index: number): Float32Array => {
+    const ptr = index * MAT_SIZE
+    return graph.matrix.subarray(ptr, ptr + 6)
+  },
+
+  setTransform: (graph: SceneGraph, index: number, transform: number[]) => {
+    const ptr = index * MAT_SIZE
+    for (let i = 0; i < 6; i++) {
+      graph.matrix[ptr + i] = transform[i]
+    }
+  },
 }

@@ -1,3 +1,4 @@
+import type { IDType } from '@latte-js/bean'
 import { NodeType, StrokeAlign } from '@latte-js/bean'
 import { type IGraphObserver } from '../typing'
 import { Allocator } from './allocator'
@@ -122,7 +123,7 @@ export class SceneGraph {
     this._mutationTracker.mark(index, flag)
   }
 
-  public createNode(type: NodeType, uuid: string): number {
+  public createNode(type: NodeType, uuid: IDType): number {
     const { index } = this.allocator.alloc()
 
     this._uuidToIndex.set(uuid, index)
