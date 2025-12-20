@@ -12,7 +12,7 @@ export interface IParentIndex {
 }
 
 export interface IBaseNodeSchema extends IStrokeSchema {
-  type: NodeType | keyof typeof NodeType
+  type: keyof typeof NodeType
   guid: IDType
   name: string
   visible: boolean
@@ -40,19 +40,19 @@ export interface IBaseCanFillNodeSchema extends IBaseSizeAbleNodeSchema {
 }
 
 export interface ILatteDocumentNode extends IBaseChildNodeSchema {
-  type: NodeType.DOCUMENT | 'DOCUMENT'
+  type: 'DOCUMENT'
 }
 
 export interface IPageNode extends IBaseChildNodeSchema {
-  type: NodeType.CANVAS | 'CANVAS'
+  type: 'CANVAS'
   backgrounds: IPaint[]
 }
 
 export interface IFrameNode extends IBaseCanFillNodeSchema {
-  type: NodeType.FRAME | 'FRAME'
+  type: 'FRAME'
 }
 export interface IGroupNode extends IBaseSizeAbleNodeSchema {
-  type: NodeType.GROUP | 'GROUP'
+  type: 'GROUP'
 }
 
 export type ContainerNode =
@@ -82,7 +82,7 @@ export interface IPoint {
 }
 
 export interface IRectangleNode extends IBaseNodeCornerSchema {
-  type: NodeType.RECTANGLE | 'RECTANGLE'
+  type: 'RECTANGLE'
   topLeftRadius: number
   topRightRadius: number
   bottomLeftRadius: number
@@ -94,31 +94,31 @@ export interface IRectangleNode extends IBaseNodeCornerSchema {
 }
 
 export interface IEllipseNode extends IBaseCanFillNodeSchema {
-  type: NodeType.ELLIPSE | 'ELLIPSE'
+  type: 'ELLIPSE'
 }
 
 export interface ICircleNode extends IBaseCanFillNodeSchema {
-  type: NodeType.CIRCLE | 'CIRCLE'
+  type: 'CIRCLE'
 }
 
 export interface ITextNode extends IBaseCanFillNodeSchema {
-  type: NodeType.TEXT | 'TEXT'
+  type: 'TEXT'
 }
 
 export interface IPathNode extends IBaseCanFillNodeSchema {
-  type: NodeType.PATH | 'PATH'
+  type: 'PATH'
 }
 
 export interface ILineNode extends IBaseCanFillNodeSchema {
-  type: NodeType.LINE | 'LINE'
+  type: 'LINE'
 }
 
 export interface IPolygonNode extends IBaseCanFillNodeSchema {
-  type: NodeType.POLYGON | 'POLYGON'
+  type: 'POLYGON'
 }
 
 export interface IStarNode extends IBaseCanFillNodeSchema {
-  type: NodeType.STAR | 'STAR'
+  type: 'STAR'
 }
 
 export type ILatteNode =

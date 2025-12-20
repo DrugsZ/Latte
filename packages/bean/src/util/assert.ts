@@ -1,45 +1,69 @@
+import type {
+  IFrameNode,
+  ILatteNode,
+  IGroupNode,
+  IRectangleNode,
+  IPageNode,
+  ILatteDocumentNode,
+  ContainerNode,
+  IEllipseNode,
+  ICircleNode,
+  ITextNode,
+  IPathNode,
+  ILineNode,
+  IPolygonNode,
+  IStarNode,
+} from '../schema'
 import { NodeType } from '../schema'
 
-export function isFrame(nodeType: NodeType): boolean {
-  return nodeType === NodeType.FRAME
+export function isFrame(node: ILatteNode): node is IFrameNode {
+  return node.type === NodeType[NodeType.FRAME]
 }
 
-export function isGroup(nodeType: NodeType): boolean {
-  return nodeType === NodeType.GROUP
+export function isPage(node: ILatteNode): node is IPageNode {
+  return node.type === NodeType[NodeType.CANVAS]
 }
 
-export function isContainerNode(nodeType: NodeType): boolean {
-  return !!(nodeType & 128)
+export function isDocument(node: ILatteNode): node is ILatteDocumentNode {
+  return node.type === NodeType[NodeType.DOCUMENT]
 }
 
-export function isRect(nodeType: NodeType): boolean {
-  return nodeType === NodeType.RECTANGLE
+export function isGroup(node: ILatteNode): node is IGroupNode {
+  return node.type === NodeType[NodeType.GROUP]
 }
 
-export function isEllipse(nodeType: NodeType): boolean {
-  return nodeType === NodeType.ELLIPSE
+export function isContainerNode(node: ILatteNode): node is ContainerNode {
+  return (NodeType[node.type] & NodeType.DOCUMENT) !== 0
 }
 
-export function isCircle(nodeType: NodeType): boolean {
-  return nodeType === NodeType.CIRCLE
+export function isRect(node: ILatteNode): node is IRectangleNode {
+  return node.type === NodeType[NodeType.RECTANGLE]
 }
 
-export function isText(nodeType: NodeType): boolean {
-  return nodeType === NodeType.TEXT
+export function isEllipse(node: ILatteNode): node is IEllipseNode {
+  return node.type === NodeType[NodeType.ELLIPSE]
 }
 
-export function isPath(nodeType: NodeType): boolean {
-  return nodeType === NodeType.PATH
+export function isCircle(node: ILatteNode): node is ICircleNode {
+  return node.type === NodeType[NodeType.CIRCLE]
 }
 
-export function isLine(nodeType: NodeType): boolean {
-  return nodeType === NodeType.LINE
+export function isText(node: ILatteNode): node is ITextNode {
+  return node.type === NodeType[NodeType.TEXT]
 }
 
-export function isPolygon(nodeType: NodeType): boolean {
-  return nodeType === NodeType.POLYGON
+export function isPath(node: ILatteNode): node is IPathNode {
+  return node.type === NodeType[NodeType.PATH]
 }
 
-export function isStar(nodeType: NodeType): boolean {
-  return nodeType === NodeType.STAR
+export function isLine(node: ILatteNode): node is ILineNode {
+  return node.type === NodeType[NodeType.LINE]
+}
+
+export function isPolygon(node: ILatteNode): node is IPolygonNode {
+  return node.type === NodeType[NodeType.POLYGON]
+}
+
+export function isStar(node: ILatteNode): node is IStarNode {
+  return node.type === NodeType[NodeType.STAR]
 }
