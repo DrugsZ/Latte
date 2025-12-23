@@ -27,7 +27,7 @@ export default defineConfig(
       "typescript-eslint/lines-between-class-members": "off",
       "max-classes-per-file": "off",
       "import/prefer-default-export": "off",
-      "@typescript-eslint/lines-between-class-members": "off",
+      "@typescript-eslint/no-explicit-any": "off",
       "no-underscore-dangle": "off",
       "no-plusplus": "off",
       "no-param-reassign": "off",
