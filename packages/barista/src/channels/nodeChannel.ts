@@ -2,6 +2,7 @@ import type { INodeService } from '@latte-js/bean'
 import type { IServerChannel } from '../ipc'
 
 export class NodeChannel implements INodeService, IServerChannel {
+  public static readonly channelName = 'node'
   constructor() {}
 
   async create(type: string, x: number, y: number): Promise<string> {

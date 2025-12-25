@@ -6,7 +6,6 @@ import type {
   IPaint,
 } from '@latte-js/bean'
 
-import { StrokeAlign } from '@latte-js/bean'
 import type { mat2d } from 'gl-matrix'
 import { DIRTY_TRANSFORM, MAX_NODES, NULL_INDEX } from './config'
 import { HierarchyOps, TransformOps, StyleOps } from './ops'

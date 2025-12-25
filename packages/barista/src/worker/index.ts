@@ -13,8 +13,8 @@ const initEngine = (buffer: SharedArrayBuffer) => {
 
 const initChannelServer = (port: MessagePort) => {
   channelServer = new ChannelServer(new IPCMessagePortProtocol(port))
-  channels.forEach(channel => {
-    channelServer!.registerChannel(channel[0], new channel[1]())
+  channels.forEach(ctor => {
+    channelServer!.registerChannel(ctor.channelName, new ctor())
   })
 }
 

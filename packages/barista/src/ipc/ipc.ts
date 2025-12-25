@@ -1,3 +1,11 @@
+import type {
+  JsonRpcId,
+  JsonRpcRequest,
+  JsonRpcNotification,
+  JsonRpcSuccessResponse,
+  JsonRpcErrorResponse,
+} from '@latte-js/bean'
+
 export interface IChannel {
   call<T>(command: string, ...args: any[]): Promise<T>
   listen<T>(event: string, ...args: any[]): void
@@ -22,50 +30,16 @@ export interface IChannelServer {
   registerChannel(channelName: string, channel: IServerChannel): void
 }
 
-export type JsonRpcId = string | number | null
-
-export interface JsonRpcRequest {
-  jsonrpc: '2.0'
-  method: string
-  params?: any
-  id: JsonRpcId
-}
-
-export interface JsonRpcNotification {
-  jsonrpc: '2.0'
-  method: string
-  params?: any
-}
-
-export interface JsonRpcSuccessResponse {
-  jsonrpc: '2.0'
-  result: any
-  id: JsonRpcId
-}
-
-export interface JsonRpcError {
-  code: number
-  message: string
-  data?: any
-}
-
-export interface JsonRpcErrorResponse {
-  jsonrpc: '2.0'
-  error: JsonRpcError
-  id: JsonRpcId
-}
-
-export type JsonRpcResponse = JsonRpcSuccessResponse | JsonRpcErrorResponse
-
-export type JsonRpcMessage =
-  | JsonRpcRequest
-  | JsonRpcNotification
-  | JsonRpcResponse
-
 export interface IDisposable {
   dispose(): void
 }
 
+/**
+ * Creates a standard JSON-RPC 2.0 Request object.
+ * @param method The name of the method to be invoked.
+ * @param id A unique identifier established by the client.
+ * @param params The parameter values to be used during the invocation of the method.
+ */
 export const createJsonRpcRequest = (
   method: string,
   id: JsonRpcId,
@@ -77,6 +51,11 @@ export const createJsonRpcRequest = (
   id,
 })
 
+/**
+ * Creates a standard JSON-RPC 2.0 Notification object.
+ * @param method The name of the method to be invoked.
+ * @param params The parameter values to be used during the invocation of the method.
+ */
 export const createJsonRpcNotification = (
   method: string,
   params?: any
@@ -86,6 +65,11 @@ export const createJsonRpcNotification = (
   params,
 })
 
+/**
+ * Creates a standard JSON-RPC 2.0 Success Response object.
+ * @param id The identifier established by the client in the request.
+ * @param result The result of the method invocation.
+ */
 export const createJsonRpcSuccessResponse = (
   id: JsonRpcId,
   result: any
@@ -95,6 +79,13 @@ export const createJsonRpcSuccessResponse = (
   id,
 })
 
+/**
+ * Creates a standard JSON-RPC 2.0 Error Response object.
+ * @param id The identifier established by the client in the request.
+ * @param code A number that indicates the error type that occurred.
+ * @param message A string providing a short description of the error.
+ * @param data A primitive or structured value that contains additional information about the error.
+ */
 export const createJsonRpcErrorResponse = (
   id: JsonRpcId,
   code: number,
