@@ -10,5 +10,6 @@ export type {
   IChannelClient,
   IChannelServer,
   IDisposable,
-  RemoteChannel,
 } from './ipc'
+
+export { toService, fromService } from './proxyChannel'

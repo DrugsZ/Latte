@@ -1,6 +1,6 @@
-import type { INodeService } from '@latte-js/bean'
-import { SceneGraph } from '@latte-js/espresso'
+import { type IServiceMap, type ChannelID, Channels } from '@latte-js/bean'
 import { ChannelClient } from '../ipc/channelClient'
+import { toService } from '../ipc'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
 import { Lifecycle } from '../lifecycle/lifecycle'
 
@@ -13,9 +13,17 @@ export class BaristaClient {
     this._worker = worker
   }
 
+  public getService<T extends ChannelID>(channelId: T): IServiceMap[T] {
+    return toService(
+      this._channelClient.getChannel(channelId)
+    ) as IServiceMap[T]
+  }
+
   private async _initIPC(port: MessagePort) {
     this._channelClient = new ChannelClient(new IPCMessagePortProtocol(port))
-    const nodeService = this._channelClient.getChannel<INodeService>('node')
+    const nodeService = this.getService(Channels.Node)
+    const id = await nodeService?.create('test', '1', 0, 0)
+    console.log('🚀 ~ BaristaClient ~ _initIPC ~ id:', id)
   }
 
   public async init(sharedBuffer: SharedArrayBuffer) {
@@ -29,11 +37,11 @@ export class BaristaClient {
       },
       [this._messageChannel.port2]
     )
-    this._initIPC(this._messageChannel.port1)
     return new Promise((resolve, reject) => {
       this._worker.onmessage = (e: MessageEvent) => {
-        const { type, payload, requestId } = e.data
-        if (type === Lifecycle.INIT_KERNEL_SUCCESS && requestId === requestId) {
+        const { type, payload, requestId: resId } = e.data
+        if (type === Lifecycle.INIT_KERNEL_SUCCESS && resId === requestId) {
+          this._initIPC(this._messageChannel.port1)
           resolve(payload)
         }
       }

@@ -1,29 +1,27 @@
-import type {
-  JsonRpcId,
-  JsonRpcRequest,
-  JsonRpcNotification,
-  JsonRpcSuccessResponse,
-  JsonRpcErrorResponse,
+import {
+  type JsonRpcId,
+  type JsonRpcRequest,
+  type JsonRpcNotification,
+  type JsonRpcSuccessResponse,
+  type JsonRpcErrorResponse,
+  type JsonRpcMessage,
+  JsonRpcMessageType,
+  type IServiceMap,
 } from '@latte-js/bean'
 
 export interface IChannel {
-  call<T>(command: string, ...args: any[]): Promise<T>
-  listen<T>(event: string, ...args: any[]): void
+  call<T>(command: string, ...args: any[]): Promise<T> | void // if end with $, is mean fast, does not need return value to client
+  listen(event: string, listener: (msg: JsonRpcMessage) => void): void
 }
 
-export interface IServerChannel<TContext = string> {
-  call<T>(ctx: TContext, command: string, args?: any[]): Promise<T>
-  listen<T>(ctx: TContext, event: string, args?: any[]): void
-}
-
-export type RemoteChannel<T> = {
-  [K in keyof T]: T[K] extends (...args: infer A) => infer R
-    ? (...args: A) => R extends Promise<any> ? R : Promise<R>
-    : T[K]
+export interface IServerChannel {
+  call<T>(ctx: string, command: string, ...args: any[]): Promise<T>
+  listen(ctx: string, event: string, ...args: any[]): void
 }
 
 export interface IChannelClient {
-  getChannel<T extends object>(channelName: string): RemoteChannel<T>
+  getChannel<T extends keyof IServiceMap>(channelName: T): IChannel
+  getChannel(channelName: string): IChannel
 }
 
 export interface IChannelServer {
@@ -46,6 +44,7 @@ export const createJsonRpcRequest = (
   params?: any
 ): JsonRpcRequest => ({
   jsonrpc: '2.0',
+  type: JsonRpcMessageType.Request,
   method,
   params,
   id,
@@ -54,15 +53,19 @@ export const createJsonRpcRequest = (
 /**
  * Creates a standard JSON-RPC 2.0 Notification object.
  * @param method The name of the method to be invoked.
+ * @param id A unique identifier established by the client.
  * @param params The parameter values to be used during the invocation of the method.
  */
 export const createJsonRpcNotification = (
   method: string,
+  id: JsonRpcId,
   params?: any
 ): JsonRpcNotification => ({
   jsonrpc: '2.0',
+  type: JsonRpcMessageType.Notification,
   method,
   params,
+  id,
 })
 
 /**
@@ -75,6 +78,7 @@ export const createJsonRpcSuccessResponse = (
   result: any
 ): JsonRpcSuccessResponse => ({
   jsonrpc: '2.0',
+  type: JsonRpcMessageType.ResponseSuccess,
   result,
   id,
 })
@@ -93,6 +97,7 @@ export const createJsonRpcErrorResponse = (
   data?: any
 ): JsonRpcErrorResponse => ({
   jsonrpc: '2.0',
+  type: JsonRpcMessageType.ResponseError,
   error: {
     code,
     message,

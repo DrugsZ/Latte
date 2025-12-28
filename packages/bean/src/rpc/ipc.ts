@@ -1,22 +1,33 @@
 export type JsonRpcId = string | number | null
 
-export interface JsonRpcRequest<T = any> {
+export enum JsonRpcMessageType {
+  Request = 'request',
+  Notification = 'notification',
+  ResponseSuccess = 'responseSuccess',
+  ResponseError = 'ResponseError',
+}
+
+export interface JsonRpcBaseMessage {
   jsonrpc: '2.0'
-  method: string
-  params?: T
+  type: JsonRpcMessageType
   id: JsonRpcId
 }
 
-export interface JsonRpcNotification<T = any> {
-  jsonrpc: '2.0'
+export interface JsonRpcRequest<T = any> extends JsonRpcBaseMessage {
+  type: JsonRpcMessageType.Request
   method: string
   params?: T
 }
 
-export interface JsonRpcSuccessResponse<T = any> {
-  jsonrpc: '2.0'
+export interface JsonRpcNotification<T = any> extends JsonRpcBaseMessage {
+  type: JsonRpcMessageType.Notification
+  method: string
+  params?: T
+}
+
+export interface JsonRpcSuccessResponse<T = any> extends JsonRpcBaseMessage {
+  type: JsonRpcMessageType.ResponseSuccess
   result: T
-  id: JsonRpcId
 }
 
 export interface JsonRpcError<T = any> {
@@ -25,10 +36,9 @@ export interface JsonRpcError<T = any> {
   data?: T
 }
 
-export interface JsonRpcErrorResponse<T = any> {
-  jsonrpc: '2.0'
+export interface JsonRpcErrorResponse<T = any> extends JsonRpcBaseMessage {
+  type: JsonRpcMessageType.ResponseError
   error: JsonRpcError<T>
-  id: JsonRpcId
 }
 
 export type JsonRpcResponse<T = any> =

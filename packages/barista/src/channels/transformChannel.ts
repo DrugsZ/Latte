@@ -1,9 +1,4 @@
-import type {
-  ITransformService,
-  mat2d,
-  Point,
-  JsonRpcResponse,
-} from '@latte-js/bean'
+import type { ITransformService, mat2d, Point } from '@latte-js/bean'
 import type { IServerChannel } from '../ipc'
 
 export class TransformChannel implements ITransformService, IServerChannel {
@@ -30,27 +25,23 @@ export class TransformChannel implements ITransformService, IServerChannel {
   async updateSession(payload: {
     matrix: mat2d
     origin: Point
-  }): Promise<JsonRpcResponse> {
-    return Promise.resolve({
-      jsonrpc: '2.0',
-      id: 1,
-      result: null,
-    })
+  }): Promise<void> {
+    return Promise.resolve()
   }
 
-  call<Context = string>(
-    ctx: Context,
+  call<T = any>(
+    ctx: string,
     method: string,
-    args: any[]
-  ): Promise<any> {
+    ...args: any[]
+  ): Promise<T> {
     return (this as any)[method](...args)
   }
 
-  listen<TContext = string>(
-    ctx: TContext,
+  listen(
+    ctx: string,
     event: string,
-    args?: any[]
-  ): Promise<void> {
-    return Promise.resolve()
+    ...args: any[]
+  ): void {
+    //
   }
 }

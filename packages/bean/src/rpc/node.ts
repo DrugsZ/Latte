@@ -1,5 +1,11 @@
-export interface INodeService {
-  create(type: string, x: number, y: number): Promise<string>
+import type { NodeType, IDType } from 'src/schema'
 
-  updateFast$(id: string, x: number, y: number): void
+export interface INodeService {
+  create(id: IDType, type: NodeType, x: number, y: number): Promise<string>
+
+  remove(id: IDType): Promise<void>
+
+  removeChild(child: IDType): Promise<void>
+
+  insertAfter(parent: IDType, child: IDType, ref?: IDType): Promise<void>
 }

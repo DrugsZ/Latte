@@ -1,5 +1,6 @@
+import { type JsonRpcMessage } from '@latte-js/bean'
+import type { IDisposable } from '../ipc'
 import type { IMessagePassingProtocol } from './protocol'
-import type { IDisposable, JsonRpcMessage } from '../ipc'
 
 export class IPCMessagePortProtocol implements IMessagePassingProtocol {
   private _handler: ((e: MessageEvent) => void) | null = null
@@ -9,10 +10,13 @@ export class IPCMessagePortProtocol implements IMessagePassingProtocol {
   }
   onMessage(listener: (data: JsonRpcMessage) => void): IDisposable {
     this._handler = (e: MessageEvent) => listener(e.data)
-    this._port.addEventListener('message', this._handler)
+    this._port.onmessage = e => {
+      console.log(e)
+      this._handler!(e)
+    }
 
     return {
-      dispose: () => this._port.removeEventListener('message', this._handler!),
+      dispose: () => (this._port.onmessage = null),
     }
   }
 

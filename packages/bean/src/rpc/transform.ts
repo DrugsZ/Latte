@@ -1,5 +1,4 @@
 import type { mat2d, Point } from '../math/matrix'
-import type { JsonRpcResponse } from './ipc'
 
 export interface ITransformService {
   /**
@@ -30,10 +29,7 @@ export interface ITransformService {
    * @param payload.matrix - The 2D transformation matrix.
    * @param payload.origin - The origin point for the transformation.
    */
-  updateSession(payload: {
-    matrix: mat2d
-    origin: Point
-  }): Promise<JsonRpcResponse>
+  updateSession(payload: { matrix: mat2d; origin: Point }): Promise<void>
 
   /**
    * Commits the session (Request).

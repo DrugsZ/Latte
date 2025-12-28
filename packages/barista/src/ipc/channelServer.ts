@@ -3,10 +3,13 @@ import {
   createJsonRpcSuccessResponse,
   type IChannelServer,
   type IServerChannel,
+} from './ipc'
+import {
   type JsonRpcMessage,
   type JsonRpcRequest,
   type JsonRpcNotification,
-} from './ipc'
+  JsonRpcMessageType,
+} from '@latte-js/bean'
 import type { IMessagePassingProtocol } from './protocol/protocol'
 
 export class ChannelServer implements IChannelServer {
@@ -21,18 +24,20 @@ export class ChannelServer implements IChannelServer {
   }
 
   public async handleMessage(msg: JsonRpcMessage) {
-    if (!('method' in msg)) {
+    if (
+      msg.type !== JsonRpcMessageType.Request &&
+      msg.type !== JsonRpcMessageType.Notification
+    ) {
       return
     }
 
-    const { method, params } = msg as JsonRpcRequest | JsonRpcNotification
-    const id = 'id' in msg ? (msg as JsonRpcRequest).id : undefined
+    const { method, params, id } = msg as JsonRpcRequest | JsonRpcNotification
     const [channelName, methodName] = method.split('.')
 
     const channel = this._channels.get(channelName)
     if (!channel) {
       console.warn(`[IPC] Unknown channel: ${channelName}`)
-      if (id !== undefined && id !== null) {
+      if (id !== null) {
         this._protocol.send(
           createJsonRpcErrorResponse(id, -32601, `Method not found: ${method}`)
         )
@@ -44,14 +49,18 @@ export class ChannelServer implements IChannelServer {
       const result = await channel.call(
         channelName,
         methodName,
-        Array.isArray(params) ? params : params !== undefined ? [params] : []
+        ...(Array.isArray(params)
+          ? params
+          : params !== undefined
+            ? [params]
+            : [])
       )
 
-      if (id !== undefined && id !== null) {
+      if (id !== null && msg.type === JsonRpcMessageType.Request) {
         this._protocol.send(createJsonRpcSuccessResponse(id, result))
       }
     } catch (e: any) {
-      if (id !== undefined && id !== null) {
+      if (id !== null && msg.type === JsonRpcMessageType.Request) {
         this._protocol.send(
           createJsonRpcErrorResponse(id, -32603, e.message || 'Internal error')
         )
