@@ -25,9 +25,11 @@
       "@latte-js/art": ["packages/art/src/index.ts"],
       "@latte-js/espresso": ["packages/espresso/src/index.ts"],
       "@latte-js/barista": ["packages/barista/src/index.ts"],
+      "@latte-js/barista/worker": ["packages/barista/src/worker/index.ts"],
       "@latte-js/syrup": ["packages/syrup/src/index.ts"],
       "@latte-js/counter": ["packages/counter/src/index.ts"],
-      "@latte-js/milk": ["packages/milk/src/index.ts"]
+      "@latte-js/milk": ["packages/milk/src/index.ts"],
+      "@cafe/*": ["apps/cafe/src/*"]
     }
   }
 }
