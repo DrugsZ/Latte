@@ -13,3 +13,5 @@ export type Point = {
   x: number
   y: number
 }
+
+export type AABB = [number, number, number, number] | IndexedCollection

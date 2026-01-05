@@ -8,6 +8,8 @@ export const LAYOUT_DEF = [
   { name: 'lastChild', type: Int32Array, size: MAX_NODES },
 
   { name: 'matrix', type: Float32Array, size: MAX_NODES * MAT_SIZE },
+  { name: 'worldMatrix', type: Float32Array, size: MAX_NODES * MAT_SIZE },
+  { name: 'aabb', type: Float32Array, size: MAX_NODES * 4 },
   { name: 'size', type: Float32Array, size: MAX_NODES * SIZE_SIZE },
 
   { name: 'type', type: Uint8Array, size: MAX_NODES },

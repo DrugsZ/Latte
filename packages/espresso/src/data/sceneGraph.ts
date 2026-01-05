@@ -30,6 +30,8 @@ export class SceneGraph {
   public readonly lastChild!: Int32Array
 
   public readonly matrix!: Float32Array
+  public readonly worldMatrix!: Float32Array
+  public readonly aabb!: Float32Array
   public readonly size!: Float32Array
 
   public readonly type!: Uint8Array
@@ -96,10 +98,13 @@ export class SceneGraph {
 
     this.strokeWeight.fill(1)
     this.strokeAlign.fill(StrokeAlign.CENTER)
+    this.aabb.fill(0)
     for (let i = 0; i < MAX_NODES; i++) {
       const base = i * 6
       this.matrix[base + 0] = 1
       this.matrix[base + 3] = 1
+      this.worldMatrix[base + 0] = 1
+      this.worldMatrix[base + 3] = 1
     }
     this.type[0] = NodeType.DOCUMENT
   }

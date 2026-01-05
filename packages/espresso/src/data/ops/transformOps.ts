@@ -1,9 +1,9 @@
+import type { AABB } from '@latte-js/bean'
 import { mat2d } from 'gl-matrix'
-import { MAT_A, MAT_D, MAT_SIZE, MAT_TX, MAT_TY } from '../config'
+import { AABB_SIZE, MAT_A, MAT_D, MAT_SIZE, MAT_TX, MAT_TY } from '../config'
 import type { SceneGraph } from '../sceneGraph'
 
 const TEMP_MATRIX = mat2d.create()
-
 export const TransformOps = {
   getX: (graph: SceneGraph, index: number) => {
     return graph.matrix[index * MAT_SIZE + MAT_TX]
@@ -35,6 +35,27 @@ export const TransformOps = {
 
   setHeight: (graph: SceneGraph, index: number, height: number) => {
     graph.size[index * 2 + 1] = height
+  },
+
+  getAABB: (
+    graph: SceneGraph,
+    index: number,
+    out: AABB = Float32Array.from({ length: 4 })
+  ) => {
+    const ptr = index * AABB_SIZE
+    out[0] = graph.aabb[ptr + 0]
+    out[1] = graph.aabb[ptr + 1]
+    out[2] = graph.aabb[ptr + 2]
+    out[3] = graph.aabb[ptr + 3]
+    return out
+  },
+
+  setAABB: (graph: SceneGraph, index: number, aabb: AABB) => {
+    const ptr = index * AABB_SIZE
+    graph.aabb[ptr + 0] = aabb[0]
+    graph.aabb[ptr + 1] = aabb[1]
+    graph.aabb[ptr + 2] = aabb[2]
+    graph.aabb[ptr + 3] = aabb[3]
   },
 
   getMatrix: (

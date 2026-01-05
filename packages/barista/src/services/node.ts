@@ -18,7 +18,7 @@ export class NodeService implements INodeService {
     this._nodeCursor.to(index)
     this._nodeCursor.x = x
     this._nodeCursor.y = y
-    return index.toString()
+    return id
   }
 
   async remove(id: IDType): Promise<void> {

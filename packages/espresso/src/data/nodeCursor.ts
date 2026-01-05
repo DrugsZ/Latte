@@ -4,6 +4,7 @@ import type {
   StrokeStyleKey,
   DashCapKey,
   IPaint,
+  AABB,
 } from '@latte-js/bean'
 
 import type { mat2d } from 'gl-matrix'
@@ -129,6 +130,15 @@ export class NodeCursor {
     this._checkAlive()
     TransformOps.setHeight(this._graph, this._index, v)
     this._graph.markDirty(this._index, DIRTY_TRANSFORM)
+  }
+
+  get aabb() {
+    this._checkAlive()
+    return TransformOps.getAABB(this._graph, this._index)
+  }
+  set aabb(v: AABB) {
+    this._checkAlive()
+    TransformOps.setAABB(this._graph, this._index, v)
   }
 
   get transform() {
