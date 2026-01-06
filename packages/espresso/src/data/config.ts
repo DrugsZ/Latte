@@ -9,6 +9,8 @@ export const MAT_TX = 4
 export const MAT_TY = 5
 export const MAT_SIZE = 6
 
+export const AABB_SIZE = 4
+
 export const PARENT_INDEX_SIZE = 1
 export const FIRST_CHILD_INDEX_SIZE = 1
 export const NEXT_SIBLING_INDEX_SIZE = 1
@@ -27,6 +29,7 @@ export const DIRTY_STYLE = 1 << 1 // color, stroke
 export const DIRTY_STRUCTURE = 1 << 2 // add, remove
 export const DIRTY_AABB = 1 << 3 // DIRTY_AABB
 export const DIRTY_TEXT = 1 << 4 // test  content
+export const DIRTY_NOT_EFFECT = 1 << 5 // not effect on layout
 
 export const BIT_IS_CONTAINER = 0b10000000
 

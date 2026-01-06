@@ -4,13 +4,20 @@ import type {
   StrokeStyleKey,
   DashCapKey,
   IPaint,
-  AABB,
 } from '@latte-js/bean'
 
 import type { mat2d } from 'gl-matrix'
-import { DIRTY_TRANSFORM, MAX_NODES, NULL_INDEX } from './config'
+import {
+  DIRTY_TRANSFORM,
+  MAX_NODES,
+  NULL_INDEX,
+  DIRTY_NOT_EFFECT,
+  DIRTY_AABB,
+  DIRTY_STRUCTURE,
+} from './config'
 import { HierarchyOps, TransformOps, StyleOps } from './ops'
 import type { SceneGraph } from './sceneGraph'
+import { PropId } from './propKeys'
 
 export class NodeCursor {
   private _index: number
@@ -48,6 +55,15 @@ export class NodeCursor {
     return this
   }
 
+  private _mutate(prop: PropId, dirtyFlag: number, executor: () => void) {
+    const oldVal = this[prop]
+    executor()
+    const newValue = this[prop]
+    this._graph.notifyObservers(this.id, prop, oldVal, newValue)
+
+    this._graph.markDirty(this.index, dirtyFlag)
+  }
+
   get index() {
     return this._index
   }
@@ -68,7 +84,9 @@ export class NodeCursor {
   }
   set name(v: string) {
     this._checkAlive()
-    this._graph.nameMap.set(this._index, v)
+    this._mutate(PropId.NAME, DIRTY_NOT_EFFECT, () => {
+      this._graph.nameMap.set(this._index, v)
+    })
   }
   public *children(flyweight = true) {
     this._checkAlive()
@@ -96,11 +114,14 @@ export class NodeCursor {
   // region transform start
   get x() {
     this._checkAlive()
+
     return TransformOps.getX(this._graph, this._index)
   }
   set x(v: number) {
     this._checkAlive()
-    TransformOps.setX(this._graph, this._index, v)
+    this._mutate(PropId.X, DIRTY_TRANSFORM, () => {
+      TransformOps.setX(this._graph, this._index, v)
+    })
   }
 
   get y() {
@@ -109,7 +130,9 @@ export class NodeCursor {
   }
   set y(v: number) {
     this._checkAlive()
-    TransformOps.setY(this._graph, this._index, v)
+    this._mutate(PropId.Y, DIRTY_TRANSFORM, () => {
+      TransformOps.setY(this._graph, this._index, v)
+    })
   }
 
   get width() {
@@ -118,8 +141,9 @@ export class NodeCursor {
   }
   set width(v: number) {
     this._checkAlive()
-    TransformOps.setWidth(this._graph, this._index, v)
-    this._graph.markDirty(this._index, DIRTY_TRANSFORM)
+    this._mutate(PropId.WIDTH, DIRTY_TRANSFORM, () => {
+      TransformOps.setWidth(this._graph, this._index, v)
+    })
   }
 
   get height() {
@@ -128,17 +152,9 @@ export class NodeCursor {
   }
   set height(v: number) {
     this._checkAlive()
-    TransformOps.setHeight(this._graph, this._index, v)
-    this._graph.markDirty(this._index, DIRTY_TRANSFORM)
-  }
-
-  get aabb() {
-    this._checkAlive()
-    return TransformOps.getAABB(this._graph, this._index)
-  }
-  set aabb(v: AABB) {
-    this._checkAlive()
-    TransformOps.setAABB(this._graph, this._index, v)
+    this._mutate(PropId.HEIGHT, DIRTY_TRANSFORM, () => {
+      TransformOps.setHeight(this._graph, this._index, v)
+    })
   }
 
   get transform() {
@@ -146,7 +162,9 @@ export class NodeCursor {
   }
 
   set transform(mat: mat2d) {
-    TransformOps.setMatrix(this._graph, this._index, mat)
+    this._mutate(PropId.TRANSFORM, DIRTY_TRANSFORM, () => {
+      TransformOps.setMatrix(this._graph, this._index, mat)
+    })
   }
 
   resetTransform() {
@@ -164,7 +182,9 @@ export class NodeCursor {
 
   set locked(v: boolean) {
     this._checkAlive()
-    StyleOps.setLocked(this._graph, this._index, v)
+    this._mutate(PropId.LOCKED, DIRTY_NOT_EFFECT, () => {
+      StyleOps.setLocked(this._graph, this._index, v)
+    })
   }
 
   get visible() {
@@ -174,7 +194,9 @@ export class NodeCursor {
 
   set visible(v: boolean) {
     this._checkAlive()
-    StyleOps.setVisible(this._graph, this._index, v)
+    this._mutate(PropId.VISIBLE, DIRTY_NOT_EFFECT, () => {
+      StyleOps.setVisible(this._graph, this._index, v)
+    })
   }
 
   get opacity() {
@@ -184,7 +206,9 @@ export class NodeCursor {
 
   set opacity(v: number) {
     this._checkAlive()
-    StyleOps.setOpacity(this._graph, this._index, v)
+    this._mutate(PropId.OPACITY, DIRTY_NOT_EFFECT, () => {
+      StyleOps.setOpacity(this._graph, this._index, v)
+    })
   }
 
   get parent() {
@@ -195,17 +219,33 @@ export class NodeCursor {
 
   public appendChild(child: NodeCursor) {
     this._checkAlive()
+    const oldParent = child.parent.id
     HierarchyOps.appendChild(this._graph, this._index, child.index)
+    const newParent = child.parent.id
+    this._graph.notifyObservers(child.id, PropId.PARENT, oldParent, newParent)
+    this._graph.markDirty(child.index, DIRTY_TRANSFORM)
+    this._graph.markDirty(this._index, DIRTY_STRUCTURE)
   }
 
-  public remove() {
+  public removeChild(child: NodeCursor) {
+    if (child.parent?.index !== this._index) {
+      throw new Error('[NodeCursor] removeChild: not a child of this node')
+    }
     this._checkAlive()
-    HierarchyOps.detach(this._graph, this._index)
+    HierarchyOps.detach(this._graph, child.index)
+    this._graph.notifyObservers(child.id, PropId.PARENT, this.id, null)
+    this._graph.markDirty(this._index, DIRTY_STRUCTURE)
+    return child
   }
 
   public delete() {
     this._checkAlive()
+    const parentId = this.parent?.id
     HierarchyOps.remove(this._graph, this._index)
+    //FIXME：json serialization
+    const nodeJSON = ''
+    this._graph.notifyObservers(this.id, PropId.REMOVE_SELF, nodeJSON, null)
+    this._graph.markDirty(parentId, DIRTY_STRUCTURE)
   }
 
   get fills() {
@@ -213,7 +253,9 @@ export class NodeCursor {
   }
 
   set fills(style: IPaint[]) {
-    StyleOps.setStyle(this._graph, this._index, style)
+    this._mutate(PropId.FILLS, DIRTY_NOT_EFFECT, () => {
+      StyleOps.setStyle(this._graph, this._index, style)
+    })
   }
 
   get strokeWeight() {
@@ -223,7 +265,9 @@ export class NodeCursor {
 
   set strokeWeight(v: number) {
     this._checkAlive()
-    StyleOps.setStrokeWeight(this._graph, this._index, v)
+    this._mutate(PropId.STROKE_WEIGHT, DIRTY_AABB, () => {
+      StyleOps.setStrokeWeight(this._graph, this._index, v)
+    })
   }
 
   get strokeAlign(): StrokeAlignKey {
@@ -233,7 +277,9 @@ export class NodeCursor {
 
   set strokeAlign(v: StrokeAlignKey) {
     this._checkAlive()
-    StyleOps.setStrokeAlign(this._graph, this._index, v)
+    this._mutate(PropId.STROKES, DIRTY_TRANSFORM, () => {
+      StyleOps.setStrokeAlign(this._graph, this._index, v)
+    })
   }
 
   get strokeJoin(): StrokeJoinKey {
@@ -243,7 +289,9 @@ export class NodeCursor {
 
   set strokeJoin(v: StrokeJoinKey) {
     this._checkAlive()
-    StyleOps.setStrokeJoin(this._graph, this._index, v)
+    this._mutate(PropId.STROKE_JOIN, DIRTY_TRANSFORM, () => {
+      StyleOps.setStrokeJoin(this._graph, this._index, v)
+    })
   }
 
   get strokeStyle(): StrokeStyleKey {
@@ -253,7 +301,9 @@ export class NodeCursor {
 
   set strokeStyle(v: StrokeStyleKey) {
     this._checkAlive()
-    StyleOps.setStrokeStyle(this._graph, this._index, v)
+    this._mutate(PropId.STROKE_STYLE, DIRTY_NOT_EFFECT, () => {
+      StyleOps.setStrokeStyle(this._graph, this._index, v)
+    })
   }
 
   get dashCap(): DashCapKey {
@@ -263,8 +313,8 @@ export class NodeCursor {
 
   set dashCap(v: DashCapKey) {
     this._checkAlive()
-    StyleOps.setDashCap(this._graph, this._index, v)
+    this._mutate(PropId.DASH_CAP, DIRTY_TRANSFORM, () => {
+      StyleOps.setDashCap(this._graph, this._index, v)
+    })
   }
-
-  // region style end
 }

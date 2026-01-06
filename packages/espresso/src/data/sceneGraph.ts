@@ -3,17 +3,11 @@ import { NodeType, StrokeAlign } from '@latte-js/bean'
 import { type IGraphObserver } from '../typing'
 import { Allocator } from './allocator'
 import { BlobManager } from './blobManager'
-import {
-  DIRTY_STRUCTURE,
-  MAT_A,
-  MAT_D,
-  MAT_SIZE,
-  MAX_NODES,
-  NULL_INDEX,
-} from './config'
+import { MAT_A, MAT_D, MAT_SIZE, MAX_NODES, NULL_INDEX } from './config'
 import { HeapManager } from './heapManager'
 import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
 import { MutationTracker } from './mutationTracker'
+import type { PropId } from './propKeys'
 
 export class SceneGraph {
   private _observers: IGraphObserver[] = []
@@ -113,14 +107,14 @@ export class SceneGraph {
     this._observers.push(obs)
   }
 
-  public notifyObservers(
+  public notifyObservers<T>(
     id: string,
-    key: string,
-    oldValue: string | number,
-    newValue: string | number
+    prop: PropId,
+    oldValue: T,
+    newValue: T
   ) {
     for (const obs of this._observers) {
-      obs.update(id, key, oldValue, newValue)
+      obs.update(id, prop, oldValue, newValue)
     }
   }
 
@@ -171,8 +165,6 @@ export class SceneGraph {
 
     this.nextSibling[child] = NULL_INDEX
     this.lastChild[parent] = child
-
-    this.markDirty(parent, DIRTY_STRUCTURE)
   }
 
   public insertAfter(parent: number, child: number, refNode: number) {
@@ -192,8 +184,6 @@ export class SceneGraph {
     } else {
       this.lastChild[parent] = child
     }
-
-    this.markDirty(parent, DIRTY_STRUCTURE)
   }
 
   public detach(child: number) {
@@ -218,8 +208,6 @@ export class SceneGraph {
     this.parent[child] = NULL_INDEX
     this.prevSibling[child] = NULL_INDEX
     this.nextSibling[child] = NULL_INDEX
-
-    this.markDirty(parent, DIRTY_STRUCTURE)
   }
 
   public getIndex(uuid: string) {

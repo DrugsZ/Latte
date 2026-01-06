@@ -1,8 +1,5 @@
+import type { PropId } from './data/propKeys'
+
 export interface IGraphObserver {
-  update(
-    id: string,
-    key: string,
-    oldValue: string | number,
-    newValue: string | number
-  ): void
+  update<T = any>(id: string, key: PropId, oldValue: T, newValue: T): void
 }
