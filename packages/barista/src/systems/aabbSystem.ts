@@ -3,6 +3,7 @@ import {
   type SceneGraph,
   DIRTY_TRANSFORM,
   NodeCursor,
+  TransformOps,
 } from '@latte-js/espresso'
 
 export class AabbSystem {
@@ -26,7 +27,7 @@ export class AabbSystem {
     while (this._queue.length > 0) {
       const index = this._queue.shift()!
       this._cursor.to(index)
-      this._updateAABB()
+      this._updateAABB(index)
       if (this._cursor.type & NodeType.DOCUMENT) {
         this._cursor.children().forEach(child => {
           this._queue.push(child.index)
@@ -35,7 +36,7 @@ export class AabbSystem {
     }
   }
 
-  private _updateAABB(): AABB {
+  private _updateAABB(index: number): AABB {
     const { x, y, width, height, transform } = this._cursor
 
     const corners = [
@@ -66,7 +67,8 @@ export class AabbSystem {
     this._tempAABB[1] = minY + y
     this._tempAABB[2] = maxX + x
     this._tempAABB[3] = maxY + y
-    this._cursor.aabb = this._tempAABB
+    // update aabb should not mark dirty,
+    TransformOps.setAABB(this._scene, index, this._tempAABB)
     return this._tempAABB
   }
 }
