@@ -1,7 +1,7 @@
 import type { NodeType, IDType } from 'src/schema'
 
 export interface INodeService {
-  create(id: IDType, type: NodeType, x: number, y: number): Promise<string>
+  create(id: IDType, type: NodeType, x: number, y: number): Promise<IDType>
 
   remove(id: IDType): Promise<void>
 

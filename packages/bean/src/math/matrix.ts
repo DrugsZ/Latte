@@ -15,3 +15,5 @@ export type Point = {
 }
 
 export type AABB = [number, number, number, number] | IndexedCollection
+
+export type vec2 = [number, number] | IndexedCollection

@@ -42,16 +42,16 @@ export class TransformSystem {
     this._snapshots.clear()
   }
 
-  private _moveTo(id: IDType, x: number, y: number) {
+  private _moveTo(id: IDType, delta: vec2) {
     const index = this._scene.getIndex(id)
     this._cursor.to(index)
-    this._cursor.x = x
-    this._cursor.y = y
+    this._cursor.x = delta[0]
+    this._cursor.y = delta[1]
     this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
-  public moveTo(ids: IDType[], x: number, y: number) {
-    ids.forEach(i => this._moveTo(i, x, y))
+  public moveTo(ids: IDType[], delta: vec2) {
+    ids.forEach(i => this._moveTo(i, delta))
   }
 
   private _moveBy(id: IDType, point: vec2) {

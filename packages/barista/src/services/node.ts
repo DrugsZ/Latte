@@ -1,11 +1,16 @@
 import type { INodeService, NodeType, IDType } from '@latte-js/bean'
-import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
+import { type SceneGraph } from '@latte-js/espresso'
+import type { AccessSystem } from '../systems/systems'
+import type { NodeSystem } from '../systems/nodeSystem'
 
 export class NodeService implements INodeService {
-  private _nodeCursor: NodeCursor
+  private _system: NodeSystem
 
-  constructor(private _sceneGraph: SceneGraph) {
-    this._nodeCursor = new NodeCursor(this._sceneGraph, -1)
+  constructor(
+    private _sceneGraph: SceneGraph,
+    accessSystem: AccessSystem
+  ) {
+    this._system = accessSystem('node')!
   }
 
   async create(
@@ -14,21 +19,14 @@ export class NodeService implements INodeService {
     x: number,
     y: number
   ): Promise<string> {
-    const index = this._sceneGraph.createNode(type, id)
-    this._nodeCursor.to(index)
-    this._nodeCursor.x = x
-    this._nodeCursor.y = y
-    return id
+    return this._system.create(id, type, x, y)
   }
-
   async remove(id: IDType): Promise<void> {
-    const index = this._sceneGraph.getIndex(id)
-    this._sceneGraph.deleteNode(index)
+    return this._system.remove(id)
   }
 
   async removeChild(child: IDType): Promise<void> {
-    const childIndex = this._sceneGraph.getIndex(child)
-    this._sceneGraph.detach(childIndex)
+    return this._system.removeChild(child)
   }
 
   async insertAfter(
@@ -36,9 +34,6 @@ export class NodeService implements INodeService {
     child: IDType,
     ref?: IDType
   ): Promise<void> {
-    const parentIndex = this._sceneGraph.getIndex(parent)
-    const childIndex = this._sceneGraph.getIndex(child)
-    const refIndex = ref ? this._sceneGraph.getIndex(ref) : -1
-    this._sceneGraph.insertAfter(parentIndex, childIndex, refIndex)
+    return this._system.insertAfter(parent, child, ref)
   }
 }

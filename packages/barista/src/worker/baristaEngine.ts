@@ -2,7 +2,7 @@ import { SceneGraph } from '@latte-js/espresso'
 import { ChannelServer, fromService } from '../ipc'
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
 import { createServices } from '../services'
-import { BaristaSystem, TransformSystem } from '../systems'
+import { BaristaSystem, TransformSystem, NodeSystem } from '../systems'
 
 export class BaristaEngine {
   private _sceneGraph: SceneGraph | null = null
@@ -30,7 +30,9 @@ export class BaristaEngine {
     const services = createServices(this._sceneGraph)
 
     Object.entries(services).forEach(([name, factory]) => {
-      const serviceInstance = new factory(this._sceneGraph)
+      const serviceInstance = new factory(this._sceneGraph, name => {
+        return this._systems!.getSystem(name)
+      })
       this._channelServer!.registerChannel(name, fromService(serviceInstance!))
     })
   }
@@ -43,5 +45,6 @@ export class BaristaEngine {
       'transform',
       new TransformSystem(this._sceneGraph)
     )
+    this._systems!.registerSystem('node', new NodeSystem(this._sceneGraph))
   }
 }

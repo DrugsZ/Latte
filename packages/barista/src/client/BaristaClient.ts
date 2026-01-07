@@ -22,8 +22,9 @@ export class BaristaClient {
   private async _initIPC(port: MessagePort) {
     this._channelClient = new ChannelClient(new IPCMessagePortProtocol(port))
     const nodeService = this.getService(Channels.Node)
-    const id = await nodeService?.create('test', '1', 0, 0)
-    console.log('🚀 ~ BaristaClient ~ _initIPC ~ id:', id)
+    const id = await nodeService?.create('test:1', '1', 0, 0)
+    const transformService = this.getService(Channels.Transform)
+    await transformService?.moveTo([id!], [100, 100])
   }
 
   public async init(sharedBuffer: SharedArrayBuffer) {
@@ -32,14 +33,14 @@ export class BaristaClient {
     this._worker.postMessage(
       {
         type: Lifecycle.INIT_KERNEL,
-        payload: { buffer: sharedBuffer },
+        buffer: sharedBuffer,
         requestId,
       },
       [this._messageChannel.port2]
     )
     return new Promise((resolve, reject) => {
       this._worker.onmessage = (e: MessageEvent) => {
-        const { type, payload, requestId: resId } = e.data
+        const { type, payload, resId } = e.data
         if (type === Lifecycle.INIT_KERNEL_SUCCESS && resId === requestId) {
           this._initIPC(this._messageChannel.port1)
           resolve(payload)

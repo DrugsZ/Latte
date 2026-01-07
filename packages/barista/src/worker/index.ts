@@ -12,10 +12,14 @@ self.onmessage = e => {
       const port = e.ports[0]
 
       engine = new BaristaEngine(buffer, new IPCMessagePortProtocol(port))
-      self.postMessage({ type: Lifecycle.INIT_KERNEL_SUCCESS })
+      self.postMessage({
+        type: Lifecycle.INIT_KERNEL_SUCCESS,
+        resId: e.data.requestId,
+      })
     } catch (error) {
       self.postMessage({
         type: Lifecycle.INIT_KERNEL_ERROR,
+        resId: e.data.requestId,
         error: error,
       })
     }

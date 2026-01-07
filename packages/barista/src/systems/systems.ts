@@ -1,8 +1,14 @@
 import type { TransformSystem } from './transformSystem'
+import type { NodeSystem } from './nodeSystem'
 
-interface IBaristaSystemMap {
+export interface IBaristaSystemMap {
   transform?: TransformSystem
+  node?: NodeSystem
 }
+
+export type AccessSystem = <K extends keyof IBaristaSystemMap>(
+  name: K
+) => IBaristaSystemMap[K]
 
 export class BaristaSystem {
   private _systems: IBaristaSystemMap = {}

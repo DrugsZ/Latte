@@ -1,4 +1,5 @@
-import type { mat2d, Point } from '../math/matrix'
+import type { mat2d, Point, vec2 } from '../math/matrix'
+import type { IDType } from '../schema/index'
 
 export interface ITransformService {
   /**
@@ -7,29 +8,7 @@ export interface ITransformService {
    * @param ids - Array of object IDs to be transformed.
    * @returns A promise that resolves when the session has started.
    */
-  startSession(ids: number[]): Promise<void>
-
-  /**
-   * Updates the transformation (Notification).
-   * Note: The '$' suffix indicates a fire-and-forget notification for performance.
-   * Sends the total transformation matrix relative to the starting point.
-   *
-   * @param payload - The transformation data.
-   * @param payload.matrix - The 2D transformation matrix.
-   * @param payload.origin - The origin point for the transformation.
-   */
-  updateSession$(payload: { matrix: mat2d; origin: Point }): void
-
-  /**
-   * Updates the transformation (Notification).
-   * Note: The '$' suffix indicates a fire-and-forget notification for performance.
-   * Sends the total transformation matrix relative to the starting point.
-   *
-   * @param payload - The transformation data.
-   * @param payload.matrix - The 2D transformation matrix.
-   * @param payload.origin - The origin point for the transformation.
-   */
-  updateSession(payload: { matrix: mat2d; origin: Point }): Promise<void>
+  startSession(ids: IDType[]): Promise<void>
 
   /**
    * Commits the session (Request).
@@ -46,4 +25,44 @@ export interface ITransformService {
    * @returns A promise that resolves when the session is aborted.
    */
   abortSession(): Promise<void>
+
+  /**
+   * Moves the object to the specified position (Request).
+   *
+   * @param id - The ID of the object to move.
+   * @param delta - The delta vector [dx, dy].
+   * @returns A promise that resolves when the object is moved.
+   */
+  moveTo(ids: IDType[], delta: vec2): Promise<void>
+
+  moveTo$(ids: IDType[], delta: vec2): void
+
+  /**
+   * Moves the object by the specified delta (Request).
+   *
+   * @param id - The ID of the object to move.
+   * @param delta - The delta vector [dx, dy].
+   * @returns A promise that resolves when the object is moved.
+   */
+
+  moveBy(ids: IDType[], delta: vec2): Promise<void>
+
+  moveBy$(ids: IDType[], delta: vec2): void
+
+  /**
+   * Transforms the object around a pivot point (Request).
+   *
+   * @param id - The ID of the object to transform.
+   * @param matrixPayload - The transformation matrix.
+   * @param pivot - The pivot point for the transformation.
+   * @returns A promise that resolves when the object is transformed.
+   */
+
+  transformAround(
+    ids: IDType[],
+    matrixPayload: mat2d,
+    pivot: vec2
+  ): Promise<void>
+
+  transformAround$(ids: IDType[], matrixPayload: mat2d, pivot: vec2): void
 }
