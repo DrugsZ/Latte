@@ -332,31 +332,40 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     if (!this._ctx) return
 
     this._ctx.beginPath()
-
-    if (typeof cornerRadius === 'number' && cornerRadius > 0) {
-      const r = Math.min(cornerRadius, w / 2, h / 2)
-      this._ctx.moveTo(x + r, y)
-      this._ctx.lineTo(x + w - r, y)
-      this._ctx.arcTo(x + w, y, x + w, y + r, r)
-      this._ctx.lineTo(x + w, y + h - r)
-      this._ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
-      this._ctx.lineTo(x + r, y + h)
-      this._ctx.arcTo(x, y + h, x, y + h - r, r)
-      this._ctx.lineTo(x, y + r)
-      this._ctx.arcTo(x, y, x + r, y, r)
-    } else if (cornerRadius instanceof Float32Array) {
-      const [tl, tr, br, bl] = Array.from(cornerRadius)
-      this._ctx.moveTo(x + tl, y)
-      this._ctx.lineTo(x + w - tr, y)
-      if (tr > 0) this._ctx.arcTo(x + w, y, x + w, y + tr, tr)
-      this._ctx.lineTo(x + w, y + h - br)
-      if (br > 0) this._ctx.arcTo(x + w, y + h, x + w - br, y + h, br)
-      this._ctx.lineTo(x + bl, y + h)
-      if (bl > 0) this._ctx.arcTo(x, y + h, x, y + h - bl, bl)
-      this._ctx.lineTo(x, y + tl)
-      if (tl > 0) this._ctx.arcTo(x, y, x + tl, y, tl)
+    if (typeof (this._ctx as any).roundRect === 'function') {
+      if (typeof cornerRadius === 'number') {
+        ;(this._ctx as any).roundRect(x, y, w, h, cornerRadius)
+      } else if (cornerRadius instanceof Float32Array) {
+        ;(this._ctx as any).roundRect(x, y, w, h, Array.from(cornerRadius))
+      } else {
+        this._ctx.rect(x, y, w, h)
+      }
     } else {
-      this._ctx.rect(x, y, w, h)
+      if (typeof cornerRadius === 'number' && cornerRadius > 0) {
+        const r = Math.min(cornerRadius, w / 2, h / 2)
+        this._ctx.moveTo(x + r, y)
+        this._ctx.lineTo(x + w - r, y)
+        this._ctx.arcTo(x + w, y, x + w, y + r, r)
+        this._ctx.lineTo(x + w, y + h - r)
+        this._ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+        this._ctx.lineTo(x + r, y + h)
+        this._ctx.arcTo(x, y + h, x, y + h - r, r)
+        this._ctx.lineTo(x, y + r)
+        this._ctx.arcTo(x, y, x + r, y, r)
+      } else if (cornerRadius instanceof Float32Array) {
+        const [tl, tr, br, bl] = Array.from(cornerRadius)
+        this._ctx.moveTo(x + tl, y)
+        this._ctx.lineTo(x + w - tr, y)
+        if (tr > 0) this._ctx.arcTo(x + w, y, x + w, y + tr, tr)
+        this._ctx.lineTo(x + w, y + h - br)
+        if (br > 0) this._ctx.arcTo(x + w, y + h, x + w - br, y + h, br)
+        this._ctx.lineTo(x + bl, y + h)
+        if (bl > 0) this._ctx.arcTo(x, y + h, x, y + h - bl, bl)
+        this._ctx.lineTo(x, y + tl)
+        if (tl > 0) this._ctx.arcTo(x, y, x + tl, y, tl)
+      } else {
+        this._ctx.rect(x, y, w, h)
+      }
     }
 
     this._ctx.closePath()

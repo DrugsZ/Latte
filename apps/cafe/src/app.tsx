@@ -1,56 +1,109 @@
 import { useEffect, useRef } from 'react'
-import { editor } from '@latte-js/syrup'
-import { Renderer } from '@latte-js/art'
-import { PropertiesPanel, LayerTree, Toolbar } from '@latte-js/milk'
+// import { editor } from '@latte-js/syrup'
+import { Canvas2DRender, Renderer, Camera } from '@latte-js/art'
+import { BaristaClient } from '@latte-js/barista'
+import { SceneGraph, TOTAL_MEMORY_BYTES, MAX_NODES } from '@latte-js/espresso'
+import { Channels } from '@latte-js/bean'
+import BaristaWorker from '@latte-js/barista/worker?worker'
+// import { PropertiesPanel, LayerTree, Toolbar } from '@latte-js/milk'
+
+let mainGraph: SceneGraph
+let barista: BaristaClient
+async function bootstrap() {
+  const sharedBuffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
+  const allocBuffer = new SharedArrayBuffer(MAX_NODES)
+
+  mainGraph = new SceneGraph(sharedBuffer, allocBuffer)
+
+  const workerInstance = new BaristaWorker()
+
+  barista = new BaristaClient(workerInstance)
+
+  const initResult = await barista.init(sharedBuffer, allocBuffer)
+  console.log('🚀 Engine Started!', initResult)
+  return initResult
+}
 
 // 这是一个胶水组件：负责把非 React 的 Renderer 挂载到 DOM 上
 const CanvasArea = () => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
 
-    // 初始化渲染器
-    // editor.graph 是从 syrup 单例里拿到的
-    const renderer = new Renderer(containerRef.current, editor.graph)
+    const rect = containerRef.current.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
 
-    // 启动渲染循环
-    renderer.start()
+    // 初始化 Camera
+    const camera = new Camera(rect.width, rect.height)
+    camera.fitBounds(-100, -100, rect.right * 2, rect.bottom * 2, 0)
+    console.log('🚀 ~ CanvasArea ~ camera:', camera)
+    console.log('🚀 Initial zoom:', camera.getZoom())
+    console.log('🚀 Initial position:', camera.getPosition())
 
-    // 绑定给 editor (方便 InputService 访问)
-    editor.attachRenderer(renderer)
+    const renderBackend = new Canvas2DRender()
+    renderBackend.init(containerRef.current, dpr)
+    renderBackend.resize(rect.width, rect.height, dpr)
+    let renderer
+    bootstrap().then(() => {
+      console.log('🚀 Bootstrap completed')
+      renderer = new Renderer(mainGraph, renderBackend, camera)
+
+      const nodeService = barista.getService(Channels.Node)
+      nodeService?.onCreate(ids => {
+        ids.forEach(([id, index]) => {
+          mainGraph.registerIdMap(id, index)
+        })
+      })
+
+      nodeService?.onDelete(ids => {
+        ids.forEach(([id, index]) => {
+          mainGraph.unregisterIdMap(id, index)
+        })
+      })
+
+      const transformService = barista.getService(Channels.Transform)
+
+      window.test = () => renderer.renderFrame()
+
+      window.testRender = () => {
+        transformService
+          ?.moveTo(['test:1'], [Math.random() * 400, Math.random() * 400])
+          .then(() => {
+            renderer.renderFrame()
+          })
+      }
+
+      renderer.start()
+    })
 
     return () => {
       renderer.dispose()
     }
   }, [])
 
-  return <div ref={containerRef} className="canvas-container" />
+  return <canvas ref={containerRef} className="canvas-container" />
 }
 
-function App() {
+export function App() {
   return (
     <div className="app-layout">
-      {/* 顶部工具栏 */}
-      <div className="header">
+      {/* <div className="header">
         <Toolbar />
-      </div>
+      </div> */}
 
       <div className="main-content">
-        {/* 左侧图层树 */}
-        <div className="sidebar-left">
+        {/* <div className="sidebar-left">
           <LayerTree />
-        </div>
+        </div> */}
 
-        {/* 中间画布 */}
         <div className="workspace">
           <CanvasArea />
         </div>
 
-        {/* 右侧属性面板 */}
-        <div className="sidebar-right">
+        {/* <div className="sidebar-right">
           <PropertiesPanel />
-        </div>
+        </div> */}
       </div>
     </div>
   )

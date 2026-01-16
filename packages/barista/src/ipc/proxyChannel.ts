@@ -1,5 +1,5 @@
 import type { IChannel, IServerChannel } from '../ipc'
-import { type JsonRpcMessage } from '@latte-js/bean'
+import { JsonRpcMessageType, type JsonRpcMessage } from '@latte-js/bean'
 
 export function toService(channel: IChannel) {
   return new Proxy(
@@ -11,8 +11,12 @@ export function toService(channel: IChannel) {
         }
 
         if (propKey.startsWith('on')) {
-          return (listener: (msg: JsonRpcMessage) => void) => {
-            return channel.listen(propKey, listener)
+          return (listener: (data: any) => void) => {
+            return channel.listen(propKey, (msg: JsonRpcMessage) => {
+              if (msg.type === JsonRpcMessageType.Notification) {
+                listener(msg.params)
+              }
+            })
           }
         }
 
@@ -26,11 +30,13 @@ export function toService(channel: IChannel) {
 
 export const fromService = (service: object) => {
   return new (class implements IServerChannel {
-    listen(_: unknown, event: string, ...args: any[]) {
+    listen(_: unknown, event: string) {
       if (event.startsWith('on')) {
         const target = (service as any)[event]
         if (typeof target === 'function') {
-          return target.apply(service, args)
+          return (listener: (data: any) => void) => {
+            return target.call(service, listener)
+          }
         }
       }
 

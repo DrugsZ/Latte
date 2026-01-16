@@ -36,4 +36,12 @@ export class NodeService implements INodeService {
   ): Promise<void> {
     return this._system.insertAfter(parent, child, ref)
   }
+
+  onCreate(callback: (nodes: [id: IDType, index: number][]) => void) {
+    return this._system.onCreate(callback)
+  }
+
+  onDelete(callback: (nodes: [id: IDType, index: number][]) => void) {
+    return this._system.onDelete(callback)
+  }
 }
