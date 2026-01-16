@@ -15,7 +15,7 @@ export class SceneGraph {
 
   public readonly buffer: SharedArrayBuffer
 
-  public readonly allocator = new Allocator()
+  public readonly allocator: Allocator
 
   public readonly parent!: Int32Array
   public readonly firstChild!: Int32Array
@@ -49,7 +49,10 @@ export class SceneGraph {
   private _indexToUuid = new Map<number, string>()
   public nameMap = new Map<number, string>()
 
-  constructor(existingBuffer?: SharedArrayBuffer) {
+  constructor(
+    existingBuffer?: SharedArrayBuffer,
+    allocatorBuffer?: SharedArrayBuffer
+  ) {
     const isHost = !existingBuffer
 
     if (existingBuffer) {
@@ -62,6 +65,8 @@ export class SceneGraph {
     } else {
       this.buffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
     }
+
+    this.allocator = new Allocator(allocatorBuffer)
 
     let byteOffset = 0
 
@@ -120,6 +125,16 @@ export class SceneGraph {
 
   public markDirty(index: number, flag: number) {
     this._mutationTracker.mark(index, flag)
+  }
+
+  public registerIdMap(uuid: IDType, index: number) {
+    this._uuidToIndex.set(uuid, index)
+    this._indexToUuid.set(index, uuid)
+  }
+
+  public unregisterIdMap(uuid: IDType, index: number) {
+    this._uuidToIndex.delete(uuid)
+    this._indexToUuid.delete(index)
   }
 
   public createNode(type: NodeType, uuid: IDType): number {

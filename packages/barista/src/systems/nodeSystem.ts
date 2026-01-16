@@ -1,8 +1,14 @@
 import type { IDType, NodeType } from '@latte-js/bean'
 import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
+import { Emitter } from '@latte-js/kit'
 
 export class NodeSystem {
   private _nodeCursor: NodeCursor
+  private _onCreate = new Emitter<[id: IDType, index: number][]>()
+  public readonly onCreate = this._onCreate.event
+
+  private _onDelete = new Emitter<[id: IDType, index: number][]>()
+  public readonly onDelete = this._onDelete.event
 
   constructor(private _sceneGraph: SceneGraph) {
     this._nodeCursor = new NodeCursor(this._sceneGraph, 0)
@@ -18,11 +24,15 @@ export class NodeSystem {
     this._nodeCursor.to(index)
     this._nodeCursor.x = x
     this._nodeCursor.y = y
+    this._onCreate.fire([[id, index]])
+    this._nodeCursor.width = 100
+    this._nodeCursor.height = 100
     return id
   }
 
   async remove(id: IDType): Promise<void> {
     const index = this._sceneGraph.getIndex(id)
+    this._onDelete.fire([[id, index]])
     this._sceneGraph.deleteNode(index)
   }
 

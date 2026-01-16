@@ -8,6 +8,8 @@ export {
   DIRTY_STYLE,
   DIRTY_STRUCTURE,
   DIRTY_AABB,
+  NULL_INDEX,
+  MAX_NODES,
 } from './data/config'
-
+export { applyStretchToMatrix } from './math/transform'
 export { TransformOps } from './data/ops/transformOps'

@@ -1,4 +1,9 @@
-import { type IServiceMap, type ChannelID, Channels } from '@latte-js/bean'
+import {
+  type IServiceMap,
+  type ChannelID,
+  Channels,
+  NodeType,
+} from '@latte-js/bean'
 import { ChannelClient } from '../ipc/channelClient'
 import { toService } from '../ipc'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
@@ -22,18 +27,23 @@ export class BaristaClient {
   private async _initIPC(port: MessagePort) {
     this._channelClient = new ChannelClient(new IPCMessagePortProtocol(port))
     const nodeService = this.getService(Channels.Node)
-    const id = await nodeService?.create('test:1', '1', 0, 0)
+    const id = await nodeService?.create('test:1', NodeType.RECTANGLE, 0, 0)
     const transformService = this.getService(Channels.Transform)
     await transformService?.moveTo([id!], [100, 100])
+    const i2d = await nodeService?.create('test:2', NodeType.RECTANGLE, 0, 0)
   }
 
-  public async init(sharedBuffer: SharedArrayBuffer) {
+  public async init(
+    sharedBuffer: SharedArrayBuffer,
+    allocBuffer: SharedArrayBuffer
+  ) {
     this._messageChannel = new MessageChannel()
     const requestId = Math.random().toString(36).substring(2)
     this._worker.postMessage(
       {
         type: Lifecycle.INIT_KERNEL,
         buffer: sharedBuffer,
+        allocBuffer,
         requestId,
       },
       [this._messageChannel.port2]

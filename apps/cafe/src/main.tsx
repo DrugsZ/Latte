@@ -1,19 +1,9 @@
-import { SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
-import { BaristaClient } from '@latte-js/barista'
+import { createRoot } from 'react-dom/client'
+import './index.css'
 
-import BaristaWorker from '@latte-js/barista/worker?worker'
+import { App } from './app'
 
-async function bootstrap() {
-  const sharedBuffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
+const domNode = document.getElementById('root')
+const root = createRoot(domNode!)
 
-  const mainGraph = new SceneGraph(sharedBuffer)
-
-  const workerInstance = new BaristaWorker()
-
-  const barista = new BaristaClient(workerInstance)
-
-  const initResult = await barista.init(sharedBuffer)
-  console.log('🚀 Engine Started!', initResult)
-}
-
-bootstrap()
+root.render(<App />)

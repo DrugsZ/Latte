@@ -8,10 +8,14 @@ let engine: BaristaEngine
 self.onmessage = e => {
   if (e.data.type === Lifecycle.INIT_KERNEL) {
     try {
-      const { buffer } = e.data
+      const { buffer, allocBuffer } = e.data
       const port = e.ports[0]
 
-      engine = new BaristaEngine(buffer, new IPCMessagePortProtocol(port))
+      engine = new BaristaEngine(
+        buffer,
+        new IPCMessagePortProtocol(port),
+        allocBuffer
+      )
       self.postMessage({
         type: Lifecycle.INIT_KERNEL_SUCCESS,
         resId: e.data.requestId,

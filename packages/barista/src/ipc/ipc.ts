@@ -5,18 +5,20 @@ import {
   type JsonRpcSuccessResponse,
   type JsonRpcErrorResponse,
   type JsonRpcMessage,
+  type JsonRpcListenMessage,
+  type JsonRpcUnlistenMessage,
   JsonRpcMessageType,
   type IServiceMap,
 } from '@latte-js/bean'
 
 export interface IChannel {
   call<T>(command: string, ...args: any[]): Promise<T> | void // if end with $, is mean fast, does not need return value to client
-  listen(event: string, listener: (msg: JsonRpcMessage) => void): void
+  listen(event: string, listener: (msg: JsonRpcMessage) => void): IDisposable
 }
 
 export interface IServerChannel {
   call<T>(ctx: string, command: string, ...args: any[]): Promise<T>
-  listen(ctx: string, event: string, ...args: any[]): void
+  listen(ctx: string, event: string, ...args: any[]): any
 }
 
 export interface IChannelClient {
@@ -65,6 +67,36 @@ export const createJsonRpcNotification = (
   type: JsonRpcMessageType.Notification,
   method,
   params,
+  id,
+})
+
+/**
+ * Creates a standard JSON-RPC 2.0 Listen object.
+ * @param method The name of the event to listen to.
+ * @param id A unique identifier for this listener.
+ * @param params Optional parameters for the listener.
+ */
+export const createJsonRpcListenMessage = (
+  method: string,
+  id: JsonRpcId,
+  params?: any
+): JsonRpcListenMessage => ({
+  jsonrpc: '2.0',
+  type: JsonRpcMessageType.Listen,
+  method,
+  params,
+  id,
+})
+
+/**
+ * Creates a standard JSON-RPC 2.0 Unlisten object.
+ * @param id The identifier of the listener to be removed.
+ */
+export const createJsonRpcUnlistenMessage = (
+  id: JsonRpcId
+): JsonRpcUnlistenMessage => ({
+  jsonrpc: '2.0',
+  type: JsonRpcMessageType.Unlisten,
   id,
 })
 

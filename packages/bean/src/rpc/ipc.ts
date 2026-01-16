@@ -5,6 +5,8 @@ export enum JsonRpcMessageType {
   Notification = 'notification',
   ResponseSuccess = 'responseSuccess',
   ResponseError = 'ResponseError',
+  Listen = 'listen',
+  Unlisten = 'unlisten',
 }
 
 export interface JsonRpcBaseMessage {
@@ -23,6 +25,20 @@ export interface JsonRpcNotification<T = any> extends JsonRpcBaseMessage {
   type: JsonRpcMessageType.Notification
   method: string
   params?: T
+}
+
+export interface JsonRpcListenMessage<T = any> extends JsonRpcBaseMessage {
+  type: JsonRpcMessageType.Listen
+  method: string
+  params?: T
+}
+
+export interface JsonRpcUnlistenMessage extends JsonRpcBaseMessage {
+  type: JsonRpcMessageType.Unlisten
+}
+
+export interface IDisposable {
+  dispose(): void
 }
 
 export interface JsonRpcSuccessResponse<T = any> extends JsonRpcBaseMessage {
@@ -48,4 +64,6 @@ export type JsonRpcResponse<T = any> =
 export type JsonRpcMessage<T = any> =
   | JsonRpcRequest<T>
   | JsonRpcNotification<T>
+  | JsonRpcListenMessage<T>
+  | JsonRpcUnlistenMessage
   | JsonRpcResponse<T>

@@ -12,5 +12,6 @@ export {
 } from './contract/renderBackend'
 
 export { Renderer } from './core/render'
+export { Camera } from './core/camera'
 
 export * from './render/canvas/index'

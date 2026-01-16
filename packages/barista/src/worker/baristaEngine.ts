@@ -11,15 +11,19 @@ export class BaristaEngine {
 
   constructor(
     buffer: SharedArrayBuffer,
-    private _protocol: IMessagePassingProtocol
+    private _protocol: IMessagePassingProtocol,
+    allocBuffer: SharedArrayBuffer
   ) {
-    this._initSceneGroup(buffer)
+    this._initSceneGroup(buffer, allocBuffer)
     this._initSystems()
     this._initChannelServer()
   }
 
-  private _initSceneGroup = (buffer: SharedArrayBuffer) => {
-    this._sceneGraph = new SceneGraph(buffer)
+  private _initSceneGroup = (
+    buffer: SharedArrayBuffer,
+    allocBuffer?: SharedArrayBuffer
+  ) => {
+    this._sceneGraph = new SceneGraph(buffer, allocBuffer)
   }
 
   private _initChannelServer = () => {

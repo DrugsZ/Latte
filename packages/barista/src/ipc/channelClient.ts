@@ -1,8 +1,11 @@
 import {
   createJsonRpcNotification,
   createJsonRpcRequest,
+  createJsonRpcListenMessage,
+  createJsonRpcUnlistenMessage,
   type IChannelClient,
   type IChannel,
+  type IDisposable,
 } from './ipc'
 import {
   type JsonRpcId,
@@ -17,7 +20,7 @@ export class ChannelClient implements IChannelClient {
     JsonRpcId,
     { resolve: (value: any) => void; reject: (reason?: any) => void }
   >()
-  private _listeners = new Map<string, (msg: JsonRpcMessage) => void>()
+  private _listeners = new Map<string, Map<number, (msg: JsonRpcMessage) => void>>()
   private _nextId = 0
 
   constructor(private _protocol: IMessagePassingProtocol) {
@@ -42,9 +45,28 @@ export class ChannelClient implements IChannelClient {
     channelName: string,
     method: string,
     listener: (msg: JsonRpcMessage) => void
-  ) {
+  ): IDisposable {
+    const id = this._nextId++
     const eventId = `${channelName}.${method}`
-    this._listeners.set(eventId, listener)
+    if (!this._listeners.has(eventId)) {
+      this._listeners.set(eventId, new Map())
+    }
+    this._listeners.get(eventId)!.set(id, listener)
+
+    this._protocol.send(createJsonRpcListenMessage(eventId, id))
+
+    return {
+      dispose: () => {
+        const listeners = this._listeners.get(eventId)
+        if (listeners) {
+          listeners.delete(id)
+          if (listeners.size === 0) {
+            this._listeners.delete(eventId)
+          }
+        }
+        this._protocol.send(createJsonRpcUnlistenMessage(id))
+      },
+    }
   }
 
   public getChannel<T extends keyof IServiceMap>(channelName: T): IChannel
@@ -87,8 +109,10 @@ export class ChannelClient implements IChannelClient {
       }
     } else if (msg.type === JsonRpcMessageType.Notification) {
       const eventId = msg.method
-      const listener = this._listeners.get(eventId)
-      listener?.(msg)
+      const listeners = this._listeners.get(eventId)
+      if (listeners) {
+        listeners.forEach(listener => listener(msg))
+      }
     }
   }
 }
