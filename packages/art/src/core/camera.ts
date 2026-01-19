@@ -1,6 +1,10 @@
-import { mat2d, vec2 } from 'gl-matrix' // Recommended to use gl-matrix library or create your own wrapper
+import { mat2d, vec2 } from 'gl-matrix'
+import { Emitter } from '@latte-js/kit'
 
 export class Camera {
+  private _onDidChange = new Emitter<void>()
+  public readonly onDidChange = this._onDidChange.event
+
   // --- Core State ---
   private _zoom: number = 1
   private _position = vec2.fromValues(0, 0) // Camera center point in world coordinates
@@ -29,6 +33,7 @@ export class Camera {
     this._viewportWidth = w
     this._viewportHeight = h
     this._matrixDirty = true
+    this._fireUpdate()
   }
 
   // ==========================================
@@ -51,6 +56,7 @@ export class Camera {
     this._position[1] -= worldDy
 
     this._matrixDirty = true
+    this._fireUpdate()
   }
 
   /**
@@ -99,6 +105,7 @@ export class Camera {
     this._position[1] = mouseWorld.y - offsetY / newZoom
 
     this._matrixDirty = true
+    this._fireUpdate()
   }
 
   // ==========================================
@@ -238,6 +245,7 @@ export class Camera {
     this._position[1] = centerY ?? worldHeight / 2
 
     this._matrixDirty = true
+    this._fireUpdate()
   }
 
   /**
@@ -275,6 +283,7 @@ export class Camera {
   public setZoom(zoom: number) {
     this._zoom = Math.min(Math.max(zoom, this._MIN_ZOOM), this._MAX_ZOOM)
     this._matrixDirty = true
+    this._fireUpdate()
   }
 
   /**
@@ -291,6 +300,7 @@ export class Camera {
     this._position[0] = x
     this._position[1] = y
     this._matrixDirty = true
+    this._fireUpdate()
   }
 
   /**
@@ -298,5 +308,9 @@ export class Camera {
    */
   public getPosition(): { x: number; y: number } {
     return { x: this._position[0], y: this._position[1] }
+  }
+
+  private _fireUpdate() {
+    this._onDidChange.fire()
   }
 }

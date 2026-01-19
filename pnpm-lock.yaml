@@ -278,6 +278,9 @@ importers:
 
   packages/syrup:
     dependencies:
+      '@latte-js/barista':
+        specifier: workspace:*
+        version: link:../barista
       '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean

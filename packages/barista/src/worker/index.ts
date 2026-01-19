@@ -6,7 +6,7 @@ import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
 let engine: BaristaEngine
 
 self.onmessage = e => {
-  if (e.data.type === Lifecycle.INIT_KERNEL) {
+  if (e.data.type === Lifecycle.InitKernel) {
     try {
       const { buffer, allocBuffer } = e.data
       const port = e.ports[0]
@@ -17,12 +17,12 @@ self.onmessage = e => {
         allocBuffer
       )
       self.postMessage({
-        type: Lifecycle.INIT_KERNEL_SUCCESS,
+        type: Lifecycle.InitKernelSuccess,
         resId: e.data.requestId,
       })
     } catch (error) {
       self.postMessage({
-        type: Lifecycle.INIT_KERNEL_ERROR,
+        type: Lifecycle.InitKernelError,
         resId: e.data.requestId,
         error: error,
       })

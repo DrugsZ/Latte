@@ -11,7 +11,8 @@ import type { PropId } from './propKeys'
 
 export class SceneGraph {
   private _observers: IGraphObserver[] = []
-  private _mutationTracker = new MutationTracker()
+
+  public readonly tracker = new MutationTracker()
 
   public readonly buffer: SharedArrayBuffer
 
@@ -45,8 +46,8 @@ export class SceneGraph {
   public readonly blobIndexToPtr = new Map<number, number>()
   public readonly heap: HeapManager = new HeapManager()
 
-  private _uuidToIndex = new Map<string, number>()
-  private _indexToUuid = new Map<number, string>()
+  private _uuidToIndex = new Map<IDType, number>()
+  private _indexToUuid = new Map<number, IDType>()
   public nameMap = new Map<number, string>()
 
   constructor(
@@ -124,7 +125,17 @@ export class SceneGraph {
   }
 
   public markDirty(index: number, flag: number) {
-    this._mutationTracker.mark(index, flag)
+    this.tracker.mark(index, flag)
+  }
+
+  public registerIdMap(uuid: IDType, index: number) {
+    this._uuidToIndex.set(uuid, index)
+    this._indexToUuid.set(index, uuid)
+  }
+
+  public unregisterIdMap(uuid: IDType, index: number) {
+    this._uuidToIndex.delete(uuid)
+    this._indexToUuid.delete(index)
   }
 
   public registerIdMap(uuid: IDType, index: number) {
@@ -225,11 +236,11 @@ export class SceneGraph {
     this.nextSibling[child] = NULL_INDEX
   }
 
-  public getIndex(uuid: string) {
+  public getIndex(uuid: IDType) {
     return this._uuidToIndex.get(uuid) ?? NULL_INDEX
   }
-  public getUUID(index: number) {
-    return this._indexToUuid.get(index) ?? ''
+  public getUUID(index: number): IDType | null {
+    return this._indexToUuid.get(index) ?? null
   }
 
   private _resetMemory(i: number, type: NodeType) {

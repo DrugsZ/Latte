@@ -41,7 +41,7 @@ export class BaristaClient {
     const requestId = Math.random().toString(36).substring(2)
     this._worker.postMessage(
       {
-        type: Lifecycle.INIT_KERNEL,
+        type: Lifecycle.InitKernel,
         buffer: sharedBuffer,
         allocBuffer,
         requestId,
@@ -51,7 +51,7 @@ export class BaristaClient {
     return new Promise((resolve, reject) => {
       this._worker.onmessage = (e: MessageEvent) => {
         const { type, payload, resId } = e.data
-        if (type === Lifecycle.INIT_KERNEL_SUCCESS && resId === requestId) {
+        if (type === Lifecycle.InitKernelSuccess && resId === requestId) {
           this._initIPC(this._messageChannel.port1)
           resolve(payload)
         }
