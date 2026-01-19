@@ -1,6 +1,7 @@
 export enum Lifecycle {
-  INIT_KERNEL = 'INIT_KERNEL',
-  INIT_KERNEL_SUCCESS = 'INIT_KERNEL_SUCCESS',
-  INIT_KERNEL_ERROR = 'INIT_KERNEL_ERROR',
-  SHUT_DOWN = 'SHUT_DOWN',
+  InitKernel,
+  InitKernelSuccess,
+  InitKernelError,
+  Readonly,
+  ShutDown,
 }

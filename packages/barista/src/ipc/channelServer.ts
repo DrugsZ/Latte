@@ -15,11 +15,14 @@ import {
   JsonRpcMessageType,
   type JsonRpcId,
 } from '@latte-js/bean'
+import { Emitter } from '@latte-js/kit'
 import type { IMessagePassingProtocol } from './protocol/protocol'
 
 export class ChannelServer implements IChannelServer {
   private _channels = new Map<string, IServerChannel>()
   private _activeListeners = new Map<JsonRpcId, IDisposable>()
+  private _onMessage = new Emitter()
+  public readonly onMessage = this._onMessage.event
 
   constructor(private _protocol: IMessagePassingProtocol) {
     this._protocol.onMessage(this.handleMessage.bind(this))

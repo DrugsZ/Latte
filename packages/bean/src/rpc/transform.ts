@@ -1,4 +1,4 @@
-import type { mat2d, Point, vec2 } from '../math/matrix'
+import type { mat2d, vec2 } from '../math/matrix'
 import type { IDType } from '../schema/index'
 
 export interface ITransformService {

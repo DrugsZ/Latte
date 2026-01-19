@@ -138,15 +138,6 @@ importers:
       '@latte-js/espresso':
         specifier: workspace:*
         version: link:../espresso
-      eventemitter3:
-        specifier: ^5.0.1
-        version: 5.0.1
-      gl-matrix:
-        specifier: ^3.4.4
-        version: 3.4.4
-      rbush:
-        specifier: ^4.0.1
-        version: 4.0.1
     devDependencies:
       tsup:
         specifier: ^8.0.0
@@ -278,6 +269,9 @@ importers:
 
   packages/syrup:
     dependencies:
+      '@latte-js/barista':
+        specifier: workspace:*
+        version: link:../barista
       '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean

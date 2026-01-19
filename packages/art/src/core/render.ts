@@ -1,28 +1,72 @@
 import RBush from 'rbush'
 import { type SceneGraph, NodeCursor } from '@latte-js/espresso'
 import type { IRenderBackend } from '../contract/renderBackend'
-import type { Camera } from './camera'
+import { Camera } from './camera'
 
 export class Renderer {
   private _shouldRender = false
   private _testNumber = 0
   private _nodeCursor: NodeCursor
+  private _camera: Camera
   private _rTree = new RBush()
 
   constructor(
     private _sceneGraph: SceneGraph,
     private _backend: IRenderBackend,
-    private _camera: Camera
+    private _container: HTMLCanvasElement
   ) {
     this._nodeCursor = new NodeCursor(this._sceneGraph, -1)
+    this._initCamera(this._container)
+    this._initRenderBackend(this._container)
+    this._initObserver(this._container)
     this._buildRTree()
+    this.start()
+  }
+
+  public resize(width: number, height: number) {
+    this._backend.resize(width, height, window.devicePixelRatio)
+
+    this.camera.resize(width, height)
+  }
+
+  private _initObserver(container: HTMLCanvasElement) {
+    const observer = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect
+      this.resize(width, height)
+    })
+    observer.observe(container)
+  }
+
+  private _initCamera(container: HTMLCanvasElement) {
+    const rect = container.getBoundingClientRect()
+    this._camera = new Camera(rect.width, rect.height)
+    this._camera.fitBounds(-100, -100, rect.right * 2, rect.bottom * 2, 0)
+
+    this._camera.onDidChange(() => {
+      this.requestRender()
+    })
+  }
+
+  public get camera() {
+    return this._camera
+  }
+
+  private _initRenderBackend(container: HTMLCanvasElement) {
+    const rect = container.getBoundingClientRect()
+    const dpr = window.devicePixelRatio || 1
+    this._backend.init(container, dpr)
+    this._backend.resize(rect.width, rect.height, dpr)
+  }
+
+  public requestRender() {
+    this._shouldRender = true
   }
 
   private _buildRTree() {
     this._rTree = new RBush()
   }
 
-  private _render() {
+  private _actualRender() {
     if (this._shouldRender === false) {
       return
     }
@@ -107,7 +151,7 @@ export class Renderer {
 
   private _scheduleRender() {
     requestAnimationFrame(() => {
-      this._render()
+      this._actualRender()
       this._scheduleRender()
     })
   }

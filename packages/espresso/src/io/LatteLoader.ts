@@ -22,14 +22,9 @@ export class LatteLoader {
     const idMap = new Map<string, number>()
 
     for (const node of nodes) {
-      const typeNum =
-        typeof node.type === 'string'
-          ? mapType(node.type as keyof typeof NodeType)
-          : (node.type as number)
-
-      const idx = this._graph.createNode(typeNum, node.guid)
+      const idx = this.convertNode(node)
       idMap.set(node.guid, idx)
-      this.writeNode(node, idx)
+
       const pid = node.parentIndex || {
         guid: DEFAULT_ROOT,
         position: '1',
@@ -75,6 +70,13 @@ export class LatteLoader {
         this._graph.lastChild[parentIdx] = prevIdx
       }
     }
+  }
+
+  public convertNode(node: ILatteNode): number {
+    const typeNum = mapType(node.type as keyof typeof NodeType)
+    const idx = this._graph.createNode(typeNum, node.guid)
+    this.writeNode(node, idx)
+    return idx
   }
 
   public writeNode(node: ILatteNode, index: number) {
