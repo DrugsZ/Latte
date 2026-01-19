@@ -11,7 +11,6 @@ export class IPCMessagePortProtocol implements IMessagePassingProtocol {
   onMessage(listener: (data: JsonRpcMessage) => void): IDisposable {
     this._handler = (e: MessageEvent) => listener(e.data)
     this._port.onmessage = e => {
-      console.log(e)
       this._handler!(e)
     }
 

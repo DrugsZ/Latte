@@ -13,7 +13,7 @@ type ISnapshot = Float32Array
 
 export class TransformSystem {
   private _cursor: NodeCursor
-  private _snapshots: Map<string, ISnapshot> = new Map()
+  private _snapshots: Map<IDType, ISnapshot> = new Map()
   constructor(private _scene: SceneGraph) {
     this._cursor = new NodeCursor(this._scene, 0)
   }
@@ -25,7 +25,7 @@ export class TransformSystem {
     this._snapshots.set(id, snapshot)
   }
 
-  private _createSnapshots(ids: string[]) {
+  private _createSnapshots(ids: IDType[]) {
     this._snapshots.clear()
     ids.forEach(id => {
       const index = this._scene.getIndex(id)
@@ -33,7 +33,7 @@ export class TransformSystem {
     })
   }
 
-  public startSession(ids: string[]) {
+  public startSession(ids: IDType[]) {
     this._snapshots.clear()
     this._createSnapshots(ids)
   }

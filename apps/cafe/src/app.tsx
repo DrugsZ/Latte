@@ -5,10 +5,8 @@ import { editor } from '@latte-js/syrup'
 const CanvasArea = () => {
   const containerRef = useRef<HTMLCanvasElement>(null)
 
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    editor.startup(containerRef.current)
+  const startup = async (container: HTMLCanvasElement) => {
+    await editor.startup(container)
 
     const nodeService = editor.baristaClient.getService(Channels.Node)
     nodeService?.onCreate(ids => {
@@ -33,17 +31,34 @@ const CanvasArea = () => {
     // @ts-expect-error test is not defined on window
     window.test = () => editor.renderer.requestRender()
 
+    let animationId: number | null = null
     // @ts-expect-error testRender is not defined on window
     window.testRender = () => {
-      transformService
-        ?.moveTo(['test:1'], [Math.random() * 400, Math.random() * 400])
-        .then(() => {
-          editor.renderer.requestRender()
-        })
-    }
+      // 如果动画已经在运行，停止它
+      if (animationId !== null) {
+        cancelAnimationFrame(animationId)
+      }
 
-    // const rect = containerRef.current.getBoundingClientRect()
-    // const dpr = window.devicePixelRatio || 1
+      let position = 0
+      let direction = 1
+
+      const animate = () => {
+        position += direction * 2
+        if (position >= 400 || position <= 0) {
+          direction *= -1
+        }
+        transformService?.moveTo(['test:1'], [position, 200])
+        animationId = requestAnimationFrame(animate)
+      }
+
+      animate()
+    }
+  }
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    startup(containerRef.current)
 
     return () => {
       editor.renderer.dispose()

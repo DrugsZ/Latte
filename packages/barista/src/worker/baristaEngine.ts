@@ -34,7 +34,7 @@ export class BaristaEngine {
       return
     }
     this._channelServer = new ChannelServer(this._protocol)
-    this._channelServer.onMessage(this.scheduleTick)
+    this._channelServer.onMessage(this.scheduleTick, this)
     const services = createServices(this._sceneGraph)
 
     Object.entries(services).forEach(([name, factory]) => {

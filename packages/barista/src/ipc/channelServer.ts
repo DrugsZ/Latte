@@ -21,7 +21,7 @@ import type { IMessagePassingProtocol } from './protocol/protocol'
 export class ChannelServer implements IChannelServer {
   private _channels = new Map<string, IServerChannel>()
   private _activeListeners = new Map<JsonRpcId, IDisposable>()
-  private _onMessage = new Emitter()
+  private _onMessage = new Emitter<void>()
   public readonly onMessage = this._onMessage.event
 
   constructor(private _protocol: IMessagePassingProtocol) {
@@ -32,16 +32,24 @@ export class ChannelServer implements IChannelServer {
     this._channels.set(name, channel)
   }
 
+  private async _runWithOnMessage(fn: () => any): Promise<any> {
+    const data = await fn()
+    this._onMessage.fire()
+    return data
+  }
+
   public async handleMessage(msg: JsonRpcMessage) {
-    switch (msg.type) {
-      case JsonRpcMessageType.Request:
-      case JsonRpcMessageType.Notification:
-        return this._handleCall(msg)
-      case JsonRpcMessageType.Listen:
-        return this._handleListen(msg)
-      case JsonRpcMessageType.Unlisten:
-        return this._handleUnlisten(msg)
-    }
+    this._runWithOnMessage(() => {
+      switch (msg.type) {
+        case JsonRpcMessageType.Request:
+        case JsonRpcMessageType.Notification:
+          return this._handleCall(msg)
+        case JsonRpcMessageType.Listen:
+          return this._handleListen(msg)
+        case JsonRpcMessageType.Unlisten:
+          return this._handleUnlisten(msg)
+      }
+    })
   }
 
   private async _handleCall(msg: JsonRpcRequest | JsonRpcNotification) {
