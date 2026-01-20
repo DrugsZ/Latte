@@ -1,13 +1,6 @@
-import { Channels, type ServiceMapConstructor } from '@latte-js/bean'
-import { NodeService } from './node'
-import { TransformService } from './transform'
-import type { SceneGraph } from '@latte-js/espresso'
-import type { AccessSystem } from '../systems/systems'
-
-export const createServices = (
-  sceneGraph: SceneGraph,
-  accessSystem?: AccessSystem
-): ServiceMapConstructor => ({
-  [Channels.Node]: NodeService,
-  [Channels.Transform]: TransformService,
-})
+export { NodeService } from './node'
+export { TransformService } from './transform'
+export { QueryService } from './query'
+export { DocumentService } from './document'
+export { ServiceManager } from './serviceManager'
+export { ServiceBase, type IContext } from './serviceBase'

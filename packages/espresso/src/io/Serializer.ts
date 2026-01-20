@@ -17,8 +17,6 @@ import { NULL_INDEX } from '../data/config'
 import { NodeCursor } from '../data/nodeCursor'
 import type { SceneGraph } from '../data/sceneGraph'
 
-const DEFAULT_ROOT = 'root:parent'
-
 export class Serializer {
   private _node: NodeCursor
 
@@ -49,7 +47,7 @@ export class Serializer {
     const guid = this._node.id as IDType
 
     const parent = this._node.parent
-    let parentIndex: IParentIndex
+    let parentIndex: IParentIndex | undefined
 
     if (parent) {
       // Find position among siblings
@@ -68,11 +66,6 @@ export class Serializer {
       parentIndex = {
         guid: parent.id as IDType,
         position,
-      }
-    } else {
-      parentIndex = {
-        guid: DEFAULT_ROOT,
-        position: '1',
       }
     }
 
@@ -93,7 +86,7 @@ export class Serializer {
       strokeJoin: this._node.strokeJoin,
       strokeStyle: this._node.strokeStyle,
       dashCap: this._node.dashCap,
-      parentIndex,
+      ...(parentIndex ? { parentIndex } : {}),
     } as unknown as ILatteNode
 
     const fills = this._node.fills

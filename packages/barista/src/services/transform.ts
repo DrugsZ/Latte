@@ -1,43 +1,50 @@
-import type { ITransformService, IDType, vec2, mat2d } from '@latte-js/bean'
-import { type SceneGraph } from '@latte-js/espresso'
+import {
+  Channels,
+  type ITransformService,
+  type IDType,
+  type vec2,
+  type mat2d,
+} from '@latte-js/bean'
+import { ServiceBase, type IContext, service } from './serviceBase'
 import type { TransformSystem } from '../systems/transformSystem'
-import type { AccessSystem } from '../systems/systems'
 
-export class TransformService implements ITransformService {
-  private _system: TransformSystem
-  constructor(
-    private _sceneGraph: SceneGraph,
-    accessSystem: AccessSystem
-  ) {
-    this._system = accessSystem('transform')!
+@service()
+export class TransformService
+  extends ServiceBase<TransformSystem>
+  implements ITransformService
+{
+  readonly channelName = Channels.Transform
+
+  constructor(ctx: IContext) {
+    super(ctx)
   }
 
   public async startSession(ids: IDType[]) {
-    return this._system.startSession(ids)
+    return this.system.startSession(ids)
   }
 
   public async endSession() {
-    return this._system.endSession()
+    return this.system.endSession()
   }
 
   public async abortSession() {
-    return this._system.endSession()
+    return this.system.endSession()
   }
 
   public async moveTo(ids: IDType[], delta: vec2) {
-    return this._system.moveTo(ids, delta)
+    return this.system.moveTo(ids, delta)
   }
 
   public async moveTo$(ids: IDType[], delta: vec2) {
-    return this._system.moveTo(ids, delta)
+    return this.system.moveTo(ids, delta)
   }
 
   public async moveBy(ids: IDType[], delta: vec2) {
-    return this._system.moveBy(ids, delta)
+    return this.system.moveBy(ids, delta)
   }
 
   public async moveBy$(ids: IDType[], delta: vec2) {
-    return this._system.moveBy(ids, delta)
+    return this.system.moveBy(ids, delta)
   }
 
   public async transformAround(
@@ -45,7 +52,7 @@ export class TransformService implements ITransformService {
     matrixPayload: mat2d,
     pivot: vec2
   ) {
-    return this._system.transformAround(ids, matrixPayload, pivot)
+    return this.system.transformAround(ids, matrixPayload, pivot)
   }
 
   public async transformAround$(
@@ -53,6 +60,6 @@ export class TransformService implements ITransformService {
     matrixPayload: mat2d,
     pivot: vec2
   ) {
-    return this._system.transformAround(ids, matrixPayload, pivot)
+    return this.system.transformAround(ids, matrixPayload, pivot)
   }
 }

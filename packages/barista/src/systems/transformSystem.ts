@@ -8,9 +8,11 @@ import {
   NULL_INDEX,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
+import { system } from './systems'
 
 type ISnapshot = Float32Array
 
+@system('transform')
 export class TransformSystem {
   private _cursor: NodeCursor
   private _snapshots: Map<IDType, ISnapshot> = new Map()

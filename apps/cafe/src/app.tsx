@@ -1,12 +1,24 @@
 import { useEffect, useRef } from 'react'
 import { Channels } from '@latte-js/bean'
 import { editor } from '@latte-js/syrup'
+import data from './assets/sample.json'
 
 const CanvasArea = () => {
   const containerRef = useRef<HTMLCanvasElement>(null)
 
+  const loadFile = async () => {
+    const documentService = editor.baristaClient.getService(Channels.Document)
+    if (documentService) {
+      // const response = await fetch('/sample.latte')
+      // const data = await response.json()
+      await documentService.load(data)
+    }
+  }
+
   const startup = async (container: HTMLCanvasElement) => {
     await editor.startup(container)
+
+    await loadFile()
 
     const nodeService = editor.baristaClient.getService(Channels.Node)
     nodeService?.onCreate(ids => {

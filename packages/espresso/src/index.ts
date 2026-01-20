@@ -13,3 +13,4 @@ export {
 } from './data/config'
 export { applyStretchToMatrix } from './math/transform'
 export { TransformOps } from './data/ops/transformOps'
+export { walkTree } from './query/treeWalker'

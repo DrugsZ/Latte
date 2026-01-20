@@ -1,7 +1,9 @@
 import type { IDType, NodeType } from '@latte-js/bean'
 import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
+import { system } from './systems'
 
+@system('node')
 export class NodeSystem {
   private _nodeCursor: NodeCursor
   private _onCreate = new Emitter<[id: IDType, index: number][]>()
@@ -19,7 +21,7 @@ export class NodeSystem {
     type: NodeType,
     x: number,
     y: number
-  ): Promise<string> {
+  ): Promise<IDType> {
     const index = this._sceneGraph.createNode(type, id)
     this._nodeCursor.to(index)
     this._nodeCursor.x = x

@@ -1,19 +1,23 @@
 import type { INodeService } from './node'
 import type { ISceneService } from './scene'
 import type { ITransformService } from './transform'
+import type { IDocumentService } from './document'
+import type { IQueryService } from './query'
 
-export const Channels = {
-  Node: 'node',
-  Transform: 'transform',
-  Scene: 'scene',
-} as const
-
-export type ChannelID = (typeof Channels)[keyof typeof Channels]
+export enum Channels {
+  Node = 'node',
+  Transform = 'transform',
+  Scene = 'scene',
+  Document = 'document',
+  Query = 'query',
+}
 
 export interface IServiceMap {
   [Channels.Node]?: INodeService
   [Channels.Transform]?: ITransformService
   [Channels.Scene]?: ISceneService
+  [Channels.Document]?: IDocumentService
+  [Channels.Query]?: IQueryService
 }
 
 export type ServiceMapConstructor = {

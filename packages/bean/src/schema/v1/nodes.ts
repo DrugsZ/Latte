@@ -28,7 +28,7 @@ export interface IBaseNodeSchema extends IStrokeSchema {
 }
 
 export interface IBaseChildNodeSchema extends IBaseNodeSchema {
-  parentIndex: IParentIndex
+  parentIndex?: IParentIndex
 }
 
 export interface IBaseSizeAbleNodeSchema extends IBaseChildNodeSchema {

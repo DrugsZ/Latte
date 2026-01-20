@@ -3,11 +3,12 @@ import { NULL_INDEX } from '../data/config'
 import type { SceneGraph } from '../data/sceneGraph'
 import { NodeType, type ILatteNode, type ILatteFile } from '@latte-js/bean'
 
-const mapType = (typeStr: keyof typeof NodeType): number => {
-  return NodeType[typeStr as keyof typeof NodeType] ?? NodeType.GROUP
+const mapType = (type: string | number): number => {
+  if (typeof type === 'number') {
+    return type
+  }
+  return NodeType[type as keyof typeof NodeType] ?? NodeType.GROUP
 }
-
-const DEFAULT_ROOT = 'root:parent'
 
 export class LatteLoader {
   private _node: NodeCursor
@@ -25,23 +26,21 @@ export class LatteLoader {
       const idx = this.convertNode(node)
       idMap.set(node.guid, idx)
 
-      const pid = node.parentIndex || {
-        guid: DEFAULT_ROOT,
-        position: '1',
+      if (node.parentIndex) {
+        const pid = node.parentIndex.guid
+        if (!groups.has(pid)) {
+          groups.set(pid, [])
+        }
+        groups.get(pid)!.push(node)
       }
-      if (!groups.has(pid.guid)) {
-        groups.set(pid.guid, [])
-      }
-      groups.get(pid.guid)!.push(node)
     }
 
     for (const [parentIdStr, childrenNodes] of groups) {
-      if (!idMap.has(parentIdStr) && parentIdStr !== DEFAULT_ROOT) continue
-
       const parentIdx = idMap.get(parentIdStr) ?? NULL_INDEX
+      if (parentIdx === NULL_INDEX) continue
 
       childrenNodes.sort((a, b) => {
-        return Number(a.parentIndex.position) - Number(b.parentIndex.position)
+        return Number(a.parentIndex!.position) - Number(b.parentIndex!.position)
       })
 
       let prevIdx = NULL_INDEX
@@ -50,14 +49,10 @@ export class LatteLoader {
         const childNode = childrenNodes[i]
         const childIdx = idMap.get(childNode.guid)!
 
-        if (parentIdx !== NULL_INDEX) {
-          this._graph.parent[childIdx] = parentIdx
-        }
+        this._graph.parent[childIdx] = parentIdx
 
         if (i === 0) {
-          if (parentIdx !== NULL_INDEX) {
-            this._graph.firstChild[parentIdx] = childIdx
-          }
+          this._graph.firstChild[parentIdx] = childIdx
         } else {
           this._graph.nextSibling[prevIdx] = childIdx
           this._graph.prevSibling[childIdx] = prevIdx // 双向
@@ -66,7 +61,7 @@ export class LatteLoader {
         prevIdx = childIdx
       }
 
-      if (parentIdx !== NULL_INDEX && prevIdx !== NULL_INDEX) {
+      if (prevIdx !== NULL_INDEX) {
         this._graph.lastChild[parentIdx] = prevIdx
       }
     }

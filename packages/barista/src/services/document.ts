@@ -1,0 +1,34 @@
+import {
+  Channels,
+  type IDocumentService,
+  type ILatteFile,
+} from '@latte-js/bean'
+import { Emitter } from '@latte-js/kit'
+import { LatteLoader, Serializer } from '@latte-js/espresso'
+import { ServiceBase, type IContext, service } from './serviceBase'
+
+@service()
+export class DocumentService extends ServiceBase implements IDocumentService {
+  readonly channelName = Channels.Document
+
+  private _onLoad = new Emitter<void>()
+  public readonly onLoad = this._onLoad.event
+  private _onSave = new Emitter<void>()
+  public readonly onSave = this._onSave.event
+
+  constructor(ctx: IContext) {
+    super(ctx)
+  }
+
+  async load(data: ILatteFile): Promise<void> {
+    const loader = new LatteLoader(this.sceneGraph)
+    await loader.load(data)
+    this._onLoad.fire()
+  }
+
+  async save(): Promise<ILatteFile> {
+    const serializer = new Serializer(this.sceneGraph)
+    this._onSave.fire()
+    return serializer.serialize()
+  }
+}

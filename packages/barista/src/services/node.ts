@@ -1,16 +1,21 @@
-import type { INodeService, NodeType, IDType } from '@latte-js/bean'
-import { type SceneGraph } from '@latte-js/espresso'
-import type { AccessSystem } from '../systems/systems'
+import {
+  Channels,
+  type INodeService,
+  type NodeType,
+  type IDType,
+} from '@latte-js/bean'
+import { ServiceBase, type IContext, service } from './serviceBase'
 import type { NodeSystem } from '../systems/nodeSystem'
 
-export class NodeService implements INodeService {
-  private _system: NodeSystem
+@service()
+export class NodeService
+  extends ServiceBase<NodeSystem>
+  implements INodeService
+{
+  readonly channelName = Channels.Node
 
-  constructor(
-    private _sceneGraph: SceneGraph,
-    accessSystem: AccessSystem
-  ) {
-    this._system = accessSystem('node')!
+  constructor(ctx: IContext) {
+    super(ctx)
   }
 
   async create(
@@ -18,15 +23,15 @@ export class NodeService implements INodeService {
     type: NodeType,
     x: number,
     y: number
-  ): Promise<string> {
-    return this._system.create(id, type, x, y)
+  ): Promise<IDType> {
+    return this.system.create(id, type, x, y)
   }
   async remove(id: IDType): Promise<void> {
-    return this._system.remove(id)
+    return this.system.remove(id)
   }
 
   async removeChild(child: IDType): Promise<void> {
-    return this._system.removeChild(child)
+    return this.system.removeChild(child)
   }
 
   async insertAfter(
@@ -34,14 +39,14 @@ export class NodeService implements INodeService {
     child: IDType,
     ref?: IDType
   ): Promise<void> {
-    return this._system.insertAfter(parent, child, ref)
+    return this.system.insertAfter(parent, child, ref)
   }
 
   onCreate(callback: (nodes: [id: IDType, index: number][]) => void) {
-    return this._system.onCreate(callback)
+    return this.system.onCreate(callback)
   }
 
   onDelete(callback: (nodes: [id: IDType, index: number][]) => void) {
-    return this._system.onDelete(callback)
+    return this.system.onDelete(callback)
   }
 }

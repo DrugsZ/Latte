@@ -1,15 +1,15 @@
 import { SceneGraph } from '@latte-js/espresso'
 import { ChannelServer, fromService } from '../ipc'
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
-import { createServices } from '../services'
-import { BaristaSystem, TransformSystem, NodeSystem } from '../systems'
-import { createJsonRpcNotification } from 'src/ipc/ipc'
+import { ServiceManager } from '../services'
+import { BaristaSystem } from '../systems'
+import { createJsonRpcNotification } from '../ipc/ipc'
 import type { IDType } from '@latte-js/bean'
 
 export class BaristaEngine {
   private _sceneGraph: SceneGraph
   private _channelServer: ChannelServer | null = null
-  private _systems: BaristaSystem | null = new BaristaSystem()
+  private _systems: BaristaSystem | null = null
   private _isTickScheduled = false
 
   constructor(
@@ -30,18 +30,16 @@ export class BaristaEngine {
   }
 
   private _initChannelServer = () => {
-    if (!this._sceneGraph) {
+    if (!this._sceneGraph || !this._systems) {
       return
     }
     this._channelServer = new ChannelServer(this._protocol)
     this._channelServer.onMessage(this.scheduleTick, this)
-    const services = createServices(this._sceneGraph)
 
-    Object.entries(services).forEach(([name, factory]) => {
-      const serviceInstance = new factory(this._sceneGraph, name => {
-        return this._systems!.getSystem(name)
-      })
-      this._channelServer!.registerChannel(name, fromService(serviceInstance!))
+    const serviceManager = new ServiceManager(this._sceneGraph, this._systems!)
+
+    serviceManager.forEachService((service, name) => {
+      this._channelServer!.registerChannel(name, fromService(service))
     })
   }
 
@@ -49,11 +47,7 @@ export class BaristaEngine {
     if (!this._sceneGraph) {
       return
     }
-    this._systems!.registerSystem(
-      'transform',
-      new TransformSystem(this._sceneGraph)
-    )
-    this._systems!.registerSystem('node', new NodeSystem(this._sceneGraph))
+    this._systems = new BaristaSystem(this._sceneGraph)
   }
 
   public scheduleTick() {
