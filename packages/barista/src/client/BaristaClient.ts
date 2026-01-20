@@ -1,9 +1,4 @@
-import {
-  type IServiceMap,
-  type ChannelID,
-  Channels,
-  NodeType,
-} from '@latte-js/bean'
+import { type IServiceMap, Channels, NodeType } from '@latte-js/bean'
 import { ChannelClient } from '../ipc/channelClient'
 import { toService } from '../ipc'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
@@ -18,7 +13,7 @@ export class BaristaClient {
     this._worker = worker
   }
 
-  public getService<T extends ChannelID>(channelId: T): IServiceMap[T] {
+  public getService<T extends Channels>(channelId: T): IServiceMap[T] {
     return toService(
       this._channelClient.getChannel(channelId)
     ) as IServiceMap[T]

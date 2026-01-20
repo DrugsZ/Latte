@@ -1,4 +1,4 @@
-import { type Channels } from '@latte-js/bean'
+import { type Channels, type IServiceMap } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
 import type { BaristaSystem } from '../systems/systems'
 import type { IContext } from './types'
@@ -21,8 +21,8 @@ export class ServiceManager implements IContext {
     })
   }
 
-  public getService<T>(name: Channels): T | undefined {
-    return this._services.get(name) as T | undefined
+  public getService<T extends Channels>(name: T): IServiceMap[T] {
+    return this._services.get(name) as unknown as IServiceMap[T]
   }
 
   public forEachService(

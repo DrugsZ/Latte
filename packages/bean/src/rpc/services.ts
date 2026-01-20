@@ -12,12 +12,14 @@ export enum Channels {
   Query = 'query',
 }
 
+export type ChannelID = `${Channels}`
+
 export interface IServiceMap {
-  [Channels.Node]?: INodeService
-  [Channels.Transform]?: ITransformService
-  [Channels.Scene]?: ISceneService
-  [Channels.Document]?: IDocumentService
-  [Channels.Query]?: IQueryService
+  [Channels.Node]: INodeService
+  [Channels.Transform]: ITransformService
+  [Channels.Scene]: ISceneService
+  [Channels.Document]: IDocumentService
+  [Channels.Query]: IQueryService
 }
 
 export type ServiceMapConstructor = {
