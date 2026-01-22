@@ -90,15 +90,47 @@ export const TransformOps = {
     graph.matrix[ptr + MAT_D] = 1
   },
 
-  getTransform: (graph: SceneGraph, index: number): Float32Array => {
+  getWorldMatrix: (
+    graph: SceneGraph,
+    index: number,
+    out: mat2d = TEMP_MATRIX
+  ): mat2d => {
     const ptr = index * MAT_SIZE
-    return graph.matrix.subarray(ptr, ptr + 6)
+    out[0] = graph.worldMatrix[ptr + 0]
+    out[1] = graph.worldMatrix[ptr + 1]
+    out[2] = graph.worldMatrix[ptr + 2]
+    out[3] = graph.worldMatrix[ptr + 3]
+    out[4] = graph.worldMatrix[ptr + 4]
+    out[5] = graph.worldMatrix[ptr + 5]
+    return out
   },
 
-  setTransform: (graph: SceneGraph, index: number, transform: number[]) => {
+  setWorldMatrix: (graph: SceneGraph, index: number, matrix: mat2d) => {
     const ptr = index * MAT_SIZE
-    for (let i = 0; i < 6; i++) {
-      graph.matrix[ptr + i] = transform[i]
-    }
+    graph.worldMatrix[ptr + 0] = matrix[0]
+    graph.worldMatrix[ptr + 1] = matrix[1]
+    graph.worldMatrix[ptr + 2] = matrix[2]
+    graph.worldMatrix[ptr + 3] = matrix[3]
+    graph.worldMatrix[ptr + 4] = matrix[4]
+    graph.worldMatrix[ptr + 5] = matrix[5]
   },
+
+  identityWorldMatrix(graph: SceneGraph, index: number) {
+    const ptr = index * MAT_SIZE
+    graph.worldMatrix.fill(0, ptr, ptr + 6)
+    graph.worldMatrix[ptr + MAT_A] = 1
+    graph.worldMatrix[ptr + MAT_D] = 1
+  },
+
+  // getTransform: (graph: SceneGraph, index: number): Float32Array => {
+  //   const ptr = index * MAT_SIZE
+  //   return graph.matrix.subarray(ptr, ptr + 6)
+  // },
+
+  // setTransform: (graph: SceneGraph, index: number, transform: number[]) => {
+  //   const ptr = index * MAT_SIZE
+  //   for (let i = 0; i < 6; i++) {
+  //     graph.matrix[ptr + i] = transform[i]
+  //   }
+  // },
 }

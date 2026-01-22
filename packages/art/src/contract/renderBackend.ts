@@ -108,11 +108,6 @@ export interface CanvasLike {
   convertToBlob?(options?: { type?: string; quality?: number }): Promise<Blob>
 }
 
-interface IRenderBackendInitOption {
-  canvas: CanvasLike
-  dpr?: string
-}
-
 export interface IRenderBackend {
   // ==========================================
   // 1. Lifecycle
@@ -163,22 +158,6 @@ export interface IRenderBackend {
   // ==========================================
   // 3. State Management
   // ==========================================
-
-  /**
-   * Push transform matrix onto the stack
-   * @param matrix Affine transform matrix [a, b, c, d, tx, ty]
-   *
-   * Note:
-   * 1. Uses Float32Array for direct SharedArrayBuffer compatibility.
-   * 2. Stack-based management suits recursive SceneGraph traversal.
-   *    Canvas2D supports this natively (save/restore); WebGL requires manual CPU stack.
-   */
-  pushTransform(matrix: Float32Array): void
-
-  /**
-   * Pop transform matrix from the stack
-   */
-  popTransform(): void
 
   /**
    * Set absolute transform matrix

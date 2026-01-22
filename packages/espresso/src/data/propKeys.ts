@@ -5,6 +5,7 @@ export enum PropId {
   HEIGHT = 'height',
   NAME = 'name',
   TRANSFORM = 'transform',
+  WORLD_TRANSFORM = 'worldTransform',
 
   VISIBLE = 'visible',
   OPACITY = 'opacity',

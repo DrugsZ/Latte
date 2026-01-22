@@ -4,6 +4,7 @@ import type {
   StrokeStyleKey,
   DashCapKey,
   IPaint,
+  IDType,
 } from '@latte-js/bean'
 
 import type { mat2d } from 'gl-matrix'
@@ -55,11 +56,19 @@ export class NodeCursor {
     return this
   }
 
+  public toID(id: IDType): this {
+    const index = this._graph.getIndex(id)
+    if (index === -1) throw new Error(`Node not found: ${id}`)
+
+    this.to(index)
+    return this
+  }
+
   private _mutate(prop: PropId, dirtyFlag: number, executor: () => void) {
     const oldVal = this[prop]
     executor()
     const newValue = this[prop]
-    this._graph.notifyObservers(this.id, prop, oldVal, newValue)
+    this._graph.notifyObservers(this.id!, prop, oldVal, newValue)
 
     this._graph.markDirty(this.index, dirtyFlag)
   }
@@ -167,6 +176,19 @@ export class NodeCursor {
     })
   }
 
+  get worldTransform() {
+    this._checkAlive()
+    const out = TransformOps.getWorldMatrix(this._graph, this._index)
+    return out
+  }
+
+  set worldTransform(mat: mat2d) {
+    this._checkAlive()
+    this._mutate(PropId.WORLD_TRANSFORM, DIRTY_TRANSFORM, () => {
+      TransformOps.setWorldMatrix(this._graph, this._index, mat)
+    })
+  }
+
   resetTransform() {
     TransformOps.identityMatrix(this._graph, this._index)
   }
@@ -222,7 +244,7 @@ export class NodeCursor {
     const oldParent = child.parent.id
     HierarchyOps.appendChild(this._graph, this._index, child.index)
     const newParent = child.parent.id
-    this._graph.notifyObservers(child.id, PropId.PARENT, oldParent, newParent)
+    this._graph.notifyObservers(child.id!, PropId.PARENT, oldParent, newParent)
     this._graph.markDirty(child.index, DIRTY_TRANSFORM)
     this._graph.markDirty(this._index, DIRTY_STRUCTURE)
   }
@@ -233,7 +255,7 @@ export class NodeCursor {
     }
     this._checkAlive()
     HierarchyOps.detach(this._graph, child.index)
-    this._graph.notifyObservers(child.id, PropId.PARENT, this.id, null)
+    this._graph.notifyObservers(child.id!, PropId.PARENT, this.id, null)
     this._graph.markDirty(this._index, DIRTY_STRUCTURE)
     return child
   }
@@ -244,7 +266,7 @@ export class NodeCursor {
     HierarchyOps.remove(this._graph, this._index)
     //FIXME：json serialization
     const nodeJSON = ''
-    this._graph.notifyObservers(this.id, PropId.REMOVE_SELF, nodeJSON, null)
+    this._graph.notifyObservers(this.id!, PropId.REMOVE_SELF, nodeJSON, null)
     this._graph.markDirty(parentId, DIRTY_STRUCTURE)
   }
 

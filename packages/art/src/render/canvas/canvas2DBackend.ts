@@ -24,7 +24,6 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   private _dpr: number = 1
 
   // CPU state stack
-  private _matrixStack: Float32Array[] = [new Float32Array([1, 0, 0, 1, 0, 0])]
   private _currentMatrix: Float32Array = new Float32Array([1, 0, 0, 1, 0, 0])
   private _clipStackDepth: number = 0
   private _globalAlpha: number = 1
@@ -116,7 +115,6 @@ export class Canvas2DRenderBackend implements IRenderBackend {
 
     this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height)
 
-    this._matrixStack = [new Float32Array([1, 0, 0, 1, 0, 0])]
     this._currentMatrix = new Float32Array([1, 0, 0, 1, 0, 0])
     this._clipStackDepth = 0
     this._globalAlpha = 1
@@ -126,7 +124,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   }
 
   endFrame(): void {
-    if (this._matrixStack.length > 1 || this._clipStackDepth > 0) {
+    if (this._clipStackDepth > 0) {
       console.warn('Backend stack imbalance detected at endFrame')
     }
   }
@@ -135,53 +133,13 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   // 3. State Management
   // ==========================================
 
-  pushTransform(matrix: Float32Array): void {
-    if (!this._ctx) return
-
-    const a1 = this._currentMatrix[0],
-      b1 = this._currentMatrix[1],
-      c1 = this._currentMatrix[2],
-      d1 = this._currentMatrix[3],
-      tx1 = this._currentMatrix[4],
-      ty1 = this._currentMatrix[5]
-    const a2 = matrix[0],
-      b2 = matrix[1],
-      c2 = matrix[2],
-      d2 = matrix[3],
-      tx2 = matrix[4],
-      ty2 = matrix[5]
-
-    const nextMatrix = new Float32Array([
-      a1 * a2 + c1 * b2,
-      b1 * a2 + d1 * b2,
-      a1 * c2 + c1 * d2,
-      b1 * c2 + d1 * d2,
-      a1 * tx2 + c1 * ty2 + tx1,
-      b1 * tx2 + d1 * ty2 + ty1,
-    ])
-
-    this._matrixStack.push(nextMatrix)
-    this._currentMatrix = nextMatrix
-    this._syncTransform()
-  }
-
-  popTransform(): void {
-    if (this._matrixStack.length <= 1) return
-
-    this._matrixStack.pop()
-    this._currentMatrix = this._matrixStack[this._matrixStack.length - 1]
-    this._syncTransform()
-  }
-
   setTransform(matrix: Float32Array): void {
     this._currentMatrix = new Float32Array(matrix)
-    this._matrixStack[this._matrixStack.length - 1] = this._currentMatrix
     this._syncTransform()
   }
 
   resetTransform(): void {
     this._currentMatrix = new Float32Array([1, 0, 0, 1, 0, 0])
-    this._matrixStack = [this._currentMatrix]
     this._syncTransform()
   }
 
