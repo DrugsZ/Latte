@@ -107,7 +107,7 @@ describe('TransformOps', () => {
     const m = mat2d.fromValues(1, 2, 3, 4, 5, 6)
     TransformOps.setMatrix(graph, idx, m)
 
-    const transform = TransformOps.getTransform(graph, idx)
+    const transform = TransformOps.getMatrix(graph, idx)
     expect(Array.from(transform)).toEqual([1, 2, 3, 4, 5, 6])
   })
 
@@ -116,7 +116,7 @@ describe('TransformOps', () => {
     const idx = graph.createNode(NodeType.FRAME, 'test:n')
     const m = [1, 2, 3, 4, 5, 6]
 
-    TransformOps.setTransform(graph, idx, m)
+    TransformOps.setMatrix(graph, idx, m)
 
     const out = mat2d.create()
     TransformOps.getMatrix(graph, idx, out)

@@ -114,7 +114,7 @@ export class SceneGraph {
   }
 
   public notifyObservers<T>(
-    id: string,
+    id: IDType,
     prop: PropId,
     oldValue: T,
     newValue: T
