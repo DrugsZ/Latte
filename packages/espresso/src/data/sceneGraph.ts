@@ -138,6 +138,19 @@ export class SceneGraph {
     this._indexToUuid.delete(index)
   }
 
+  public getUUIDMap() {
+    return this._uuidToIndex
+  }
+
+  public resetUUIDMap(map: Map<IDType, number>) {
+    this._uuidToIndex.clear()
+    this._indexToUuid.clear()
+    for (const [k, v] of map) {
+      this._uuidToIndex.set(k, v)
+      this._indexToUuid.set(v, k)
+    }
+  }
+
   public createNode(type: NodeType, uuid: IDType): number {
     const { index } = this.allocator.alloc()
 

@@ -1,8 +1,10 @@
 import {
+  type IDType,
   Channels,
   type IDocumentService,
   type ILatteFile,
 } from '@latte-js/bean'
+
 import { Emitter } from '@latte-js/kit'
 import { LatteLoader, Serializer } from '@latte-js/espresso'
 import { ServiceBase, type IContext, service } from './serviceBase'
@@ -11,7 +13,7 @@ import { ServiceBase, type IContext, service } from './serviceBase'
 export class DocumentService extends ServiceBase implements IDocumentService {
   readonly channelName = Channels.Document
 
-  private _onLoad = new Emitter<void>()
+  private _onLoad = new Emitter<Map<IDType, number>>()
   public readonly onLoad = this._onLoad.event
   private _onSave = new Emitter<void>()
   public readonly onSave = this._onSave.event
@@ -23,7 +25,7 @@ export class DocumentService extends ServiceBase implements IDocumentService {
   async load(data: ILatteFile): Promise<void> {
     const loader = new LatteLoader(this.sceneGraph)
     await loader.load(data)
-    this._onLoad.fire()
+    this._onLoad.fire(this.sceneGraph.getUUIDMap())
   }
 
   async save(): Promise<ILatteFile> {

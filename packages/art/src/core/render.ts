@@ -101,10 +101,14 @@ export class Renderer {
     return visibleNodes
   }
 
-  private _actualRender() {
+  private _render() {
     if (this._shouldRender === false || !this._activeRootId) {
       return
     }
+    this._actualRender()
+  }
+
+  private _actualRender() {
     this._clearRect()
 
     this._backend.beginFrame()
@@ -174,7 +178,7 @@ export class Renderer {
 
   private _scheduleRender() {
     requestAnimationFrame(() => {
-      this._actualRender()
+      this._render()
       this._scheduleRender()
     })
   }
