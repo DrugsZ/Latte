@@ -6,14 +6,14 @@ import {
   type mat2d,
 } from '@latte-js/bean'
 import { ServiceBase, type IContext, service } from './serviceBase'
-import type { TransformSystem } from '../systems/transformSystem'
+import type { TransformSystem } from '../systems/transform'
 
-@service()
+@service
 export class TransformService
   extends ServiceBase<TransformSystem>
   implements ITransformService
 {
-  readonly channelName = Channels.Transform
+  public static readonly name = Channels.Transform
 
   constructor(ctx: IContext) {
     super(ctx)

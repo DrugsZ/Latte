@@ -9,9 +9,9 @@ import { Emitter } from '@latte-js/kit'
 import { LatteLoader, Serializer } from '@latte-js/espresso'
 import { ServiceBase, type IContext, service } from './serviceBase'
 
-@service()
+@service
 export class DocumentService extends ServiceBase implements IDocumentService {
-  readonly channelName = Channels.Document
+  public static readonly name = Channels.Document
 
   private _onLoad = new Emitter<Map<IDType, number>>()
   public readonly onLoad = this._onLoad.event

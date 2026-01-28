@@ -8,21 +8,25 @@ import {
   NULL_INDEX,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
-import { system } from './systems'
+import { system, Systems, SystemBase } from './systems'
 
 type ISnapshot = Float32Array
 
-@system('transform')
-export class TransformSystem {
+@system
+export class TransformSystem extends SystemBase {
+  public static readonly name = Systems.Transform
   private _cursor: NodeCursor
   private _snapshots: Map<IDType, ISnapshot> = new Map()
-  constructor(private _scene: SceneGraph) {
-    this._cursor = new NodeCursor(this._scene, 0)
+
+  constructor(sceneGraph: SceneGraph) {
+    super(sceneGraph)
+    this._cursor = new NodeCursor(this._sceneGraph, 0)
   }
 
   private _createSnapshot(index: number) {
     this._cursor.to(index)
     const { x, y, width, height, transform, id } = this._cursor
+    if (id === null) return
     const snapshot = new Float32Array([x, y, width, height, ...transform])
     this._snapshots.set(id, snapshot)
   }
@@ -30,7 +34,7 @@ export class TransformSystem {
   private _createSnapshots(ids: IDType[]) {
     this._snapshots.clear()
     ids.forEach(id => {
-      const index = this._scene.getIndex(id)
+      const index = this._sceneGraph.getIndex(id)
       this._createSnapshot(index)
     })
   }
@@ -45,11 +49,11 @@ export class TransformSystem {
   }
 
   private _moveTo(id: IDType, delta: vec2) {
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
     this._cursor.x = delta[0]
     this._cursor.y = delta[1]
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public moveTo(ids: IDType[], delta: vec2) {
@@ -58,7 +62,7 @@ export class TransformSystem {
 
   private _moveBy(id: IDType, point: vec2) {
     const snapData = this._snapshots.get(id)
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
     const base = snapData
       ? [snapData[7], snapData[8]]
@@ -66,7 +70,7 @@ export class TransformSystem {
     vec2.add(base, base, point)
     this._cursor.x = base[0]
     this._cursor.y = base[1]
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public moveBy(ids: IDType[], point: vec2) {
@@ -74,7 +78,7 @@ export class TransformSystem {
   }
 
   private _transformAround(id: IDType, matrixPayload: mat2d, pivot: vec2) {
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
     const localMat = this._cursor.transform
 
@@ -86,7 +90,7 @@ export class TransformSystem {
     mat2d.multiply(localMat, transformStep, localMat)
     this._cursor.transform = localMat
 
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public transformAround(ids: IDType[], matrixPayload: mat2d, pivot: vec2) {
@@ -94,7 +98,7 @@ export class TransformSystem {
   }
 
   private _resize(id: IDType, width: number, height: number) {
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     const snapData = this._snapshots.get(id)
     this._resizeByIndex(index, width, height, snapData)
   }
@@ -113,7 +117,7 @@ export class TransformSystem {
     if (oldWidth === 0 || oldHeight === 0) {
       this._cursor.width = width
       this._cursor.height = height
-      this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+      this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
     }
 
     const scaleX = width / oldWidth
@@ -128,7 +132,7 @@ export class TransformSystem {
       scaleY
     )
 
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public resize(ids: IDType[], width: number, height: number) {

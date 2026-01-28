@@ -82,6 +82,8 @@ export class SceneGraph {
     }
 
     this.blobs = new BlobManager(this.heap)
+
+    this.tracker.setParentArray(this.parent)
   }
 
   private _initMemory() {

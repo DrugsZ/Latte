@@ -1,54 +1,52 @@
-import type { TransformSystem } from './transformSystem'
-import type { NodeSystem } from './nodeSystem'
-import type { QuerySystem } from './querySystem'
 import type { SceneGraph } from '@latte-js/espresso'
 
-export interface IBaristaSystemMap {
-  transform: TransformSystem
-  node: NodeSystem
-  query: QuerySystem
+export enum Systems {
+  Transform = 'transform',
+  Node = 'node',
+  Query = 'query',
+  Matrix = 'matrix',
+  AABB = 'aabb',
 }
 
-export type AccessSystem = <K extends keyof IBaristaSystemMap>(
-  name: K
-) => IBaristaSystemMap[K]
+export abstract class SystemBase {
+  static readonly name: Systems
 
-export type SystemConstructor = new (sceneGraph: SceneGraph) => any
+  constructor(protected _sceneGraph: SceneGraph) {}
 
-const systemRegistry: {
-  name: keyof IBaristaSystemMap
-  ctor: SystemConstructor
-}[] = []
+  process?(dirtyMap: Map<number, number>): void
+}
 
-export function system(name: keyof IBaristaSystemMap) {
-  return (ctor: SystemConstructor) => {
-    systemRegistry.push({ name, ctor })
-  }
+export type SystemConstructor = (new (sceneGraph: SceneGraph) => SystemBase) & {
+  readonly name: Systems
+}
+
+export type AccessSystem = <T extends SystemBase>(name: Systems) => T
+
+const systemRegistry: SystemConstructor[] = []
+
+export function system(ctor: SystemConstructor) {
+  systemRegistry.push(ctor)
 }
 
 export class BaristaSystem {
-  private _systems: Partial<IBaristaSystemMap> = {}
+  private _systems = new Map<Systems, SystemBase>()
 
   constructor(private _sceneGraph: SceneGraph) {
     this._init()
   }
 
   private _init() {
-    systemRegistry.forEach(({ name, ctor }) => {
-      this.registerSystem(name, new ctor(this._sceneGraph))
+    systemRegistry.forEach(ctor => {
+      const instance = new ctor(this._sceneGraph)
+      this._systems.set(ctor.name, instance)
     })
   }
 
-  public registerSystem<T extends keyof IBaristaSystemMap>(
-    name: T,
-    system: IBaristaSystemMap[T]
-  ) {
-    this._systems[name] = system
+  public registerSystem(ctor: SystemConstructor, system: SystemBase) {
+    this._systems.set(ctor.name, system)
   }
 
-  public getSystem<T extends keyof IBaristaSystemMap>(
-    name: T
-  ): IBaristaSystemMap[T] {
-    return this._systems[name]!
+  public getSystem<T extends SystemBase>(name: Systems): T {
+    return this._systems.get(name) as T
   }
 }

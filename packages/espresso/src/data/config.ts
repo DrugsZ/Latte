@@ -30,6 +30,7 @@ export const DIRTY_STRUCTURE = 1 << 2 // add, remove
 export const DIRTY_AABB = 1 << 3 // DIRTY_AABB
 export const DIRTY_TEXT = 1 << 4 // test  content
 export const DIRTY_NOT_EFFECT = 1 << 5 // not effect on layout
+export const DIRTY_SUBTREE = 1 << 6 // subtree contains dirty nodes, used for pruning
 
 export const BIT_IS_CONTAINER = 0b10000000
 

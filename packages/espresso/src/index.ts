@@ -8,6 +8,7 @@ export {
   DIRTY_STYLE,
   DIRTY_STRUCTURE,
   DIRTY_AABB,
+  DIRTY_SUBTREE,
   NULL_INDEX,
   MAX_NODES,
 } from './data/config'

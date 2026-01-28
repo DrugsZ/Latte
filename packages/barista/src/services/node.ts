@@ -5,14 +5,14 @@ import {
   type IDType,
 } from '@latte-js/bean'
 import { ServiceBase, type IContext, service } from './serviceBase'
-import type { NodeSystem } from '../systems/nodeSystem'
+import type { NodeSystem } from '../systems/node'
 
-@service()
+@service
 export class NodeService
   extends ServiceBase<NodeSystem>
   implements INodeService
 {
-  readonly channelName = Channels.Node
+  public static readonly name = Channels.Node
 
   constructor(ctx: IContext) {
     super(ctx)

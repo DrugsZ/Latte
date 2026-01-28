@@ -34,7 +34,7 @@ export class ChannelServer implements IChannelServer {
 
   private async _runWithOnMessage(fn: () => any): Promise<any> {
     const data = await fn()
-    this._onMessage.fire()
+    await this._onMessage.fire()
     return data
   }
 
