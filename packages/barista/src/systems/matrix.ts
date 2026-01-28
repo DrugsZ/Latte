@@ -1,16 +1,16 @@
 import {
   type SceneGraph,
   DIRTY_TRANSFORM,
-  DIRTY_SUBTREE,
+  DIRTY_SUBTREE_MATRIX,
   NodeCursor,
 } from '@latte-js/espresso'
 import { mat2d } from 'gl-matrix'
 import { system, Systems, SystemBase } from './systems'
 
 /**
- * MatrixSystem - Computes world transform matrices using DIRTY_SUBTREE pruning.
+ * MatrixSystem - Computes world transform matrices using DIRTY_SUBTREE_MATRIX pruning.
  *
- * Traverses top-down (pre-order), skipping clean subtrees for O(dirty nodes × depth) complexity.
+ * Traverses top-down (pre-order), skipping subtrees without transform changes.
  */
 @system
 export class MatrixSystem extends SystemBase {
@@ -35,7 +35,7 @@ export class MatrixSystem extends SystemBase {
   ) {
     const flags = dirtyMap.get(index) || 0
     const hasDirtyTransform = (flags & DIRTY_TRANSFORM) !== 0
-    const hasDirtySubtree = (flags & DIRTY_SUBTREE) !== 0
+    const hasDirtySubtree = (flags & DIRTY_SUBTREE_MATRIX) !== 0
 
     if (!parentDirty && !hasDirtyTransform && !hasDirtySubtree) {
       return

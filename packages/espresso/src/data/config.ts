@@ -28,9 +28,17 @@ export const DIRTY_TRANSFORM = 1 << 0 // x, y, w, h, rotation
 export const DIRTY_STYLE = 1 << 1 // color, stroke
 export const DIRTY_STRUCTURE = 1 << 2 // add, remove
 export const DIRTY_AABB = 1 << 3 // DIRTY_AABB
-export const DIRTY_TEXT = 1 << 4 // test  content
+export const DIRTY_TEXT = 1 << 4 // text content
 export const DIRTY_NOT_EFFECT = 1 << 5 // not effect on layout
-export const DIRTY_SUBTREE = 1 << 6 // subtree contains dirty nodes, used for pruning
+export const DIRTY_SUBTREE_MATRIX = 1 << 6 // subtree has transform changes
+export const DIRTY_SUBTREE_BOUNDS = 1 << 7 // subtree has bounds changes
+
+// Flags that affect world transform calculation
+export const MATRIX_AFFECTING_FLAGS = DIRTY_TRANSFORM | DIRTY_STRUCTURE
+
+// Flags that affect bounds/AABB calculation (superset of matrix flags)
+export const BOUNDS_AFFECTING_FLAGS =
+  DIRTY_TRANSFORM | DIRTY_STRUCTURE | DIRTY_STYLE | DIRTY_TEXT | DIRTY_AABB
 
 export const BIT_IS_CONTAINER = 0b10000000
 

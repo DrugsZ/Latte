@@ -1,8 +1,8 @@
 import { NodeType, type AABB } from '@latte-js/bean'
 import {
   type SceneGraph,
-  DIRTY_TRANSFORM,
-  DIRTY_SUBTREE,
+  BOUNDS_AFFECTING_FLAGS,
+  DIRTY_SUBTREE_BOUNDS,
   NodeCursor,
   TransformOps,
 } from '@latte-js/espresso'
@@ -11,7 +11,7 @@ import { system, Systems, SystemBase } from './systems'
 /**
  * AABBSystem - Computes hierarchy AABB (self ∪ all children) using post-order traversal.
  *
- * Uses DIRTY_SUBTREE pruning for O(dirty nodes × depth) complexity.
+ * Uses DIRTY_SUBTREE_BOUNDS pruning for O(dirty nodes × depth) complexity.
  */
 @system
 export class AABBSystem extends SystemBase {
@@ -36,16 +36,16 @@ export class AABBSystem extends SystemBase {
     dirtyMap: Map<number, number>
   ): boolean {
     const flags = dirtyMap.get(index) || 0
-    const hasDirtyTransform = (flags & DIRTY_TRANSFORM) !== 0
-    const hasDirtySubtree = (flags & DIRTY_SUBTREE) !== 0
+    const hasBoundsDirty = (flags & BOUNDS_AFFECTING_FLAGS) !== 0
+    const hasDirtySubtree = (flags & DIRTY_SUBTREE_BOUNDS) !== 0
 
-    if (!parentDirty && !hasDirtyTransform && !hasDirtySubtree) {
+    if (!parentDirty && !hasBoundsDirty && !hasDirtySubtree) {
       return false
     }
 
     this._cursor.to(index)
 
-    const selfDirty = hasDirtyTransform || parentDirty
+    const selfDirty = hasBoundsDirty || parentDirty
 
     let childrenChanged = false
     for (const child of this._cursor.children()) {
