@@ -6,7 +6,6 @@ import {
   DIRTY_AABB,
   NULL_INDEX,
   computeStretchTransform,
-  applyTransform2x2ToMatrix,
   extractMat2,
 } from '@latte-js/espresso'
 import { mat2, mat2d, vec2 } from 'gl-matrix'
@@ -17,17 +16,23 @@ type ISnapshot = Float32Array
 /**
  * Recursively apply stretch to a node and all its descendants.
  *
- * Using Method B: each node computes its transform independently from the
- * accumulated matrix (from the top-level node to the current node).
+ * Algorithm (Accumulated Matrix Approach):
+ * - Accumulate rotation matrices from Root to current node
+ * - Position: transform using M^(-1) * S * M where M is parent's accumulated rotation
+ * - Size: scale using the stretch factors in the node's local coordinate system
+ * - Transform: keep original rotation unchanged (no shear added)
+ *
+ * This ensures all nodes' world positions scale correctly by (scaleX, scaleY)
+ * while preserving their rotation and keeping them as rectangles (no shear).
  *
  * @param graph Scene graph
  * @param cursor Node cursor
  * @param index Current node index
  * @param scaleX Top-level node X scale factor
  * @param scaleY Top-level node Y scale factor
- * @param accumulatedMatrix Accumulated transform matrix from the top node to the current node
+ * @param accumulatedMatrix Accumulated rotation from Root to parent (exclusive of current node)
  */
-function applyStretchWithAccumulatedMatrix(
+function applyStretchToDescendants(
   graph: SceneGraph,
   cursor: NodeCursor,
   index: number,
@@ -37,49 +42,69 @@ function applyStretchWithAccumulatedMatrix(
 ) {
   cursor.to(index)
 
-  const nodeTransform = computeStretchTransform(
+  // Get the current node's local rotation (pure rotation, no shear)
+  const nodeLocalMatrix = extractMat2(cursor.transform)
+
+  // Accumulated rotation from Root to this node
+  const nodeAccumulatedMatrix = mat2.multiply(
+    mat2.create(),
+    accumulatedMatrix,
+    nodeLocalMatrix
+  )
+
+  // Position transform: M^(-1) * S * M where M is parent's accumulated rotation
+  // This transforms position from parent coords to Root coords, scales, then back
+  const positionStretchTransform = computeStretchTransform(
     accumulatedMatrix,
     scaleX,
     scaleY
   )
 
-  const transform = mat2d.clone(cursor.transform)
-  const size = { width: cursor.width, height: cursor.height }
-
-  applyTransform2x2ToMatrix(transform, size, nodeTransform)
-
-  cursor.transform = transform
-  cursor.width = size.width
-  cursor.height = size.height
-
-  // Transform position (using the same transform)
   const oldX = cursor.x
   const oldY = cursor.y
-  // mat2 layout: [m00, m01, m10, m11] (column-major)
-  cursor.x = nodeTransform[0] * oldX + nodeTransform[2] * oldY
-  cursor.y = nodeTransform[1] * oldX + nodeTransform[3] * oldY
+  cursor.x =
+    positionStretchTransform[0] * oldX + positionStretchTransform[2] * oldY
+  cursor.y =
+    positionStretchTransform[1] * oldX + positionStretchTransform[3] * oldY
+
+  // Size transform: compute how much the local axes scale
+  // The stretch in node's local coordinate system
+  const sizeStretchTransform = computeStretchTransform(
+    nodeAccumulatedMatrix,
+    scaleX,
+    scaleY
+  )
+
+  // Extract scale factors for width and height
+  // width scales by |sizeStretch * (1, 0)|, height scales by |sizeStretch * (0, 1)|
+  const widthScale = Math.sqrt(
+    sizeStretchTransform[0] * sizeStretchTransform[0] +
+      sizeStretchTransform[1] * sizeStretchTransform[1]
+  )
+  const heightScale = Math.sqrt(
+    sizeStretchTransform[2] * sizeStretchTransform[2] +
+      sizeStretchTransform[3] * sizeStretchTransform[3]
+  )
+
+  cursor.width = cursor.width * widthScale
+  cursor.height = cursor.height * heightScale
+
+  // Transform: keep original rotation, do not add shear
+  // (cursor.transform remains unchanged)
 
   graph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
 
-  // Recurse into children and update the accumulated matrix
+  // Recursively apply to children using ORIGINAL node's rotation for accumulation
+  // This is critical: we use the original rotation, not modified transform
   let child = graph.firstChild[index]
   while (child !== NULL_INDEX) {
-    cursor.to(child)
-    const childLocalMatrix = extractMat2(cursor.transform)
-    // accumulatedMatrix = accumulatedMatrix * childLocalMatrix
-    const childAccumulated = mat2.multiply(
-      mat2.create(),
-      accumulatedMatrix,
-      childLocalMatrix
-    )
-
-    applyStretchWithAccumulatedMatrix(
+    applyStretchToDescendants(
       graph,
       cursor,
       child,
       scaleX,
       scaleY,
-      childAccumulated
+      nodeAccumulatedMatrix
     )
     child = graph.nextSibling[child]
   }
@@ -206,19 +231,18 @@ export class TransformSystem extends SystemBase {
     this._cursor.height = height
     this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
 
-    // Recursively apply stretch to all children using Method B (accumulated matrix)
+    // Recursively apply stretch to all children
+    // For direct children of root, parentToRootMatrix = Identity (their position is already in Root coords)
+    const identityMat2 = mat2.create()
     let child = this._sceneGraph.firstChild[index]
     while (child !== NULL_INDEX) {
-      this._cursor.to(child)
-      const childLocalMatrix = extractMat2(this._cursor.transform)
-      // A child's accumulated matrix is its own local matrix (relative to the top-level parent)
-      applyStretchWithAccumulatedMatrix(
+      applyStretchToDescendants(
         this._sceneGraph,
         this._cursor,
         child,
         scaleX,
         scaleY,
-        childLocalMatrix
+        identityMat2
       )
       child = this._sceneGraph.nextSibling[child]
     }

@@ -3,7 +3,6 @@ import { mat2, type mat2d } from 'gl-matrix'
 /**
  * Apply stretch (scale) to matrix and size, baking the result.
  *
- * In Figma-like behavior:
  * - When resizing horizontally (scaleX), the X-axis vector (u) is scaled
  * - When resizing vertically (scaleY), the Y-axis vector (v) is scaled
  * - The matrix columns remain as direction vectors (normalized)
@@ -58,13 +57,6 @@ export function applyStretchToMatrix(
   }
 }
 
-/**
- * 计算 M^(-1) * S * M，其中 S 为对角缩放矩阵
- * @param accumulatedMatrix 累积变换的 2x2 部分 (mat2)
- * @param scaleX X 缩放因子
- * @param scaleY Y 缩放因子
- * @returns 结果 mat2
- */
 export function computeStretchTransform(
   accumulatedMatrix: mat2,
   scaleX: number,
@@ -76,9 +68,6 @@ export function computeStretchTransform(
   return mat2.multiply(mat2.create(), temp, accumulatedMatrix)
 }
 
-/**
- * 将 mat2 变换应用到矩阵（保持列向量为方向，宽高记入 size）
- */
 export function applyTransform2x2ToMatrix(
   matrix: mat2d,
   size: { width: number; height: number },
@@ -115,9 +104,6 @@ export function applyTransform2x2ToMatrix(
   }
 }
 
-/**
- * 从 mat2d 提取 2x2 部分为 mat2
- */
 export function extractMat2(m: mat2d): mat2 {
   return mat2.fromValues(m[0], m[1], m[2], m[3])
 }
