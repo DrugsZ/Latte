@@ -14,98 +14,75 @@ import { system, Systems, SystemBase } from './systems'
 type ISnapshot = Float32Array
 
 /**
- * Recursively apply stretch to a node and all its descendants.
+ * Recursively apply deformation (stretch/scale) to a node and all its descendants.
  *
- * Algorithm (Accumulated Matrix Approach):
- * - Accumulate rotation matrices from Root to current node
- * - Position: transform using M^(-1) * S * M where M is parent's accumulated rotation
- * - Size: scale using the stretch factors in the node's local coordinate system
- * - Transform: keep original rotation unchanged (no shear added)
+ * Algorithm (Deformation Tensor Propagation):
+ * - Instead of accumulating rotations from root, we propagate the "Deformation Tensor" (D).
+ * - D represents how the coordinate space is stretched at the current node's parent frame.
  *
- * This ensures all nodes' world positions scale correctly by (scaleX, scaleY)
- * while preserving their rotation and keeping them as rectangles (no shear).
+ * For a node C with parent P:
+ * 1. Receive D_parent (Deformation in Parent's frame).
+ * 2. Update Position: P_new = D_parent * P_old.
+ *    (The position is a vector in Parent's frame, so it transforms by D_parent).
+ * 3. Compute Local Deformation D_local:
+ *    D_local = R^T * D_parent * R
+ *    (Project the parent's deformation into the local aligned frame).
+ * 4. Update Size:
+ *    The local axes (1,0) and (0,1) are deformed by D_local.
+ *    New Width Scale = |D_local * (1,0)|
+ *    New Height Scale = |D_local * (0,1)|
+ * 5. Recurse with D_local.
  *
- * @param graph Scene graph
- * @param cursor Node cursor
- * @param index Current node index
- * @param scaleX Top-level node X scale factor
- * @param scaleY Top-level node Y scale factor
- * @param accumulatedMatrix Accumulated rotation from Root to parent (exclusive of current node)
+ * This is mathematically equivalent to the Accumulated Matrix approach but simpler (O(1) state).
+ * It correctly handles deep nesting by maintaining the local deformation state.
  */
-function applyStretchToDescendants(
+function applyDeformationToDescendants(
   graph: SceneGraph,
   cursor: NodeCursor,
   index: number,
-  scaleX: number,
-  scaleY: number,
-  accumulatedMatrix: mat2
+  parentDeformation: mat2
 ) {
   cursor.to(index)
 
-  // Get the current node's local rotation (pure rotation, no shear)
-  const nodeLocalMatrix = extractMat2(cursor.transform)
-
-  // Accumulated rotation from Root to this node
-  const nodeAccumulatedMatrix = mat2.multiply(
-    mat2.create(),
-    accumulatedMatrix,
-    nodeLocalMatrix
-  )
-
-  // Position transform: M^(-1) * S * M where M is parent's accumulated rotation
-  // This transforms position from parent coords to Root coords, scales, then back
-  const positionStretchTransform = computeStretchTransform(
-    accumulatedMatrix,
-    scaleX,
-    scaleY
-  )
-
+  // 1. Update Position
+  // P_new = D_parent * P_old
   const oldX = cursor.x
   const oldY = cursor.y
-  cursor.x =
-    positionStretchTransform[0] * oldX + positionStretchTransform[2] * oldY
-  cursor.y =
-    positionStretchTransform[1] * oldX + positionStretchTransform[3] * oldY
+  cursor.x = parentDeformation[0] * oldX + parentDeformation[2] * oldY
+  cursor.y = parentDeformation[1] * oldX + parentDeformation[3] * oldY
 
-  // Size transform: compute how much the local axes scale
-  // The stretch in node's local coordinate system
-  const sizeStretchTransform = computeStretchTransform(
-    nodeAccumulatedMatrix,
-    scaleX,
-    scaleY
-  )
+  // 2. Compute Local Deformation
+  // D_local = R^T * D_parent * R
+  const rotation = extractMat2(cursor.transform) // R
+  const rotationInv = mat2.transpose(mat2.create(), rotation) // R^T
 
-  // Extract scale factors for width and height
-  // width scales by |sizeStretch * (1, 0)|, height scales by |sizeStretch * (0, 1)|
+  // temp = D_parent * R
+  const temp = mat2.multiply(mat2.create(), parentDeformation, rotation)
+  // D_local = R^T * temp
+  const localDeformation = mat2.multiply(mat2.create(), rotationInv, temp)
+
+  // 3. Update Size
+  // Extract scale factors from the deformed axes
+  // col0 = D_local * (1, 0) = [m00, m01]
+  // col1 = D_local * (0, 1) = [m10, m11]
   const widthScale = Math.sqrt(
-    sizeStretchTransform[0] * sizeStretchTransform[0] +
-      sizeStretchTransform[1] * sizeStretchTransform[1]
+    localDeformation[0] * localDeformation[0] +
+      localDeformation[1] * localDeformation[1]
   )
   const heightScale = Math.sqrt(
-    sizeStretchTransform[2] * sizeStretchTransform[2] +
-      sizeStretchTransform[3] * sizeStretchTransform[3]
+    localDeformation[2] * localDeformation[2] +
+      localDeformation[3] * localDeformation[3]
   )
 
-  cursor.width = cursor.width * widthScale
-  cursor.height = cursor.height * heightScale
-
-  // Transform: keep original rotation, do not add shear
-  // (cursor.transform remains unchanged)
+  cursor.width *= widthScale
+  cursor.height *= heightScale
 
   graph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
 
-  // Recursively apply to children using ORIGINAL node's rotation for accumulation
-  // This is critical: we use the original rotation, not modified transform
+  // 4. Recurse
   let child = graph.firstChild[index]
   while (child !== NULL_INDEX) {
-    applyStretchToDescendants(
-      graph,
-      cursor,
-      child,
-      scaleX,
-      scaleY,
-      nodeAccumulatedMatrix
-    )
+    applyDeformationToDescendants(graph, cursor, child, localDeformation)
     child = graph.nextSibling[child]
   }
 }
@@ -232,17 +209,15 @@ export class TransformSystem extends SystemBase {
     this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
 
     // Recursively apply stretch to all children
-    // For direct children of root, parentToRootMatrix = Identity (their position is already in Root coords)
-    const identityMat2 = mat2.create()
+    // The parent's local space is deformed by (scaleX, scaleY)
+    const deformation = mat2.fromValues(scaleX, 0, 0, scaleY)
     let child = this._sceneGraph.firstChild[index]
     while (child !== NULL_INDEX) {
-      applyStretchToDescendants(
+      applyDeformationToDescendants(
         this._sceneGraph,
         this._cursor,
         child,
-        scaleX,
-        scaleY,
-        identityMat2
+        deformation
       )
       child = this._sceneGraph.nextSibling[child]
     }
