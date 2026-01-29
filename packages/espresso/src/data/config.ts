@@ -31,12 +31,11 @@ export const DIRTY_AABB = 1 << 3 // DIRTY_AABB
 export const DIRTY_TEXT = 1 << 4 // text content
 export const DIRTY_NOT_EFFECT = 1 << 5 // not effect on layout
 export const DIRTY_SUBTREE_MATRIX = 1 << 6 // subtree has transform changes
-export const DIRTY_SUBTREE_BOUNDS = 1 << 7 // subtree has bounds changes
 
 // Flags that affect world transform calculation
 export const MATRIX_AFFECTING_FLAGS = DIRTY_TRANSFORM | DIRTY_STRUCTURE
 
-// Flags that affect bounds/AABB calculation (superset of matrix flags)
+// Flags that affect bounds/AABB calculation
 export const BOUNDS_AFFECTING_FLAGS =
   DIRTY_TRANSFORM | DIRTY_STRUCTURE | DIRTY_STYLE | DIRTY_TEXT | DIRTY_AABB
 

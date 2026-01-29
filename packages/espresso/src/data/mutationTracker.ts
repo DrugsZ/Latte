@@ -1,9 +1,6 @@
 import {
   DIRTY_SUBTREE_MATRIX,
-  DIRTY_SUBTREE_BOUNDS,
   MATRIX_AFFECTING_FLAGS,
-  BOUNDS_AFFECTING_FLAGS,
-  DIRTY_NOT_EFFECT,
   NULL_INDEX,
 } from './config'
 
@@ -33,39 +30,25 @@ export class MutationTracker {
     const currentFlags = this._dirtyNodes.get(index) || 0
     this._dirtyNodes.set(index, currentFlags | flag)
 
-    // Skip bubbling for flags that don't affect layout
-    if (flag & DIRTY_NOT_EFFECT) {
-      return
-    }
-
-    // Determine which subtree flags to bubble
-    let subtreeFlags = 0
+    // Only matrix-affecting flags need subtree bubbling
     if (flag & MATRIX_AFFECTING_FLAGS) {
-      subtreeFlags |= DIRTY_SUBTREE_MATRIX | DIRTY_SUBTREE_BOUNDS
-    } else if (flag & BOUNDS_AFFECTING_FLAGS) {
-      subtreeFlags |= DIRTY_SUBTREE_BOUNDS
-    }
-
-    if (subtreeFlags !== 0) {
-      this._bubbleUpDirtySubtree(index, subtreeFlags)
+      this._bubbleUpDirtySubtree(index)
     }
   }
 
-  private _bubbleUpDirtySubtree(index: number, subtreeFlags: number) {
+  private _bubbleUpDirtySubtree(index: number) {
     if (!this._parentArray) return
 
     let parentIndex = this._parentArray[index]
 
     while (parentIndex !== NULL_INDEX) {
       const parentFlags = this._dirtyNodes.get(parentIndex) || 0
-      const missingFlags = subtreeFlags & ~parentFlags
 
-      if (missingFlags === 0) {
-        // All required subtree flags already set, stop bubbling
+      if (parentFlags & DIRTY_SUBTREE_MATRIX) {
         break
       }
 
-      this._dirtyNodes.set(parentIndex, parentFlags | missingFlags)
+      this._dirtyNodes.set(parentIndex, parentFlags | DIRTY_SUBTREE_MATRIX)
 
       parentIndex = this._parentArray[parentIndex]
     }

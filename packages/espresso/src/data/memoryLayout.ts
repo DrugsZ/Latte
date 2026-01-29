@@ -22,8 +22,10 @@ export const LAYOUT_DEF = [
   { name: 'strokeAlign', type: Uint8Array, size: MAX_NODES },
   { name: 'strokeJoin', type: Uint8Array, size: MAX_NODES },
   { name: 'strokeStyle', type: Uint8Array, size: MAX_NODES },
-
   { name: 'dashCap', type: Uint8Array, size: MAX_NODES },
+
+  // Corner radius: [topLeft, topRight, bottomRight, bottomLeft] per node
+  { name: 'cornerRadius', type: Float32Array, size: MAX_NODES * 4 },
 ] as const
 
 export const TOTAL_MEMORY_BYTES = LAYOUT_DEF.reduce((acc, item) => {

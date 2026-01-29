@@ -1,6 +1,7 @@
 import {
   type SceneGraph,
   DIRTY_TRANSFORM,
+  DIRTY_AABB,
   DIRTY_SUBTREE_MATRIX,
   NodeCursor,
 } from '@latte-js/espresso'
@@ -11,6 +12,7 @@ import { system, Systems, SystemBase } from './systems'
  * MatrixSystem - Computes world transform matrices using DIRTY_SUBTREE_MATRIX pruning.
  *
  * Traverses top-down (pre-order), skipping subtrees without transform changes.
+ * Marks updated nodes with DIRTY_AABB for AABBSystem to process.
  */
 @system
 export class MatrixSystem extends SystemBase {
@@ -47,6 +49,9 @@ export class MatrixSystem extends SystemBase {
 
     if (mustUpdate) {
       this._updateWorldTransform()
+      // Mark for AABB recalculation
+      const currentFlags = dirtyMap.get(index) || 0
+      dirtyMap.set(index, currentFlags | DIRTY_AABB)
     }
 
     for (const child of this._cursor.children()) {

@@ -41,9 +41,11 @@ export class SceneGraph {
   public readonly strokeJoin!: Uint8Array
   public readonly strokeStyle!: Uint8Array
   public readonly dashCap!: Uint8Array
+  public readonly cornerRadius!: Float32Array
 
   public readonly blobs: BlobManager
   public readonly blobIndexToPtr = new Map<number, number>()
+  public readonly strokeBlobIndexToPtr = new Map<number, number>()
   public readonly heap: HeapManager = new HeapManager()
 
   private _uuidToIndex = new Map<IDType, number>()

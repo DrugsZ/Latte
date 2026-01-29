@@ -2,16 +2,22 @@ import { NodeType, type AABB } from '@latte-js/bean'
 import {
   type SceneGraph,
   BOUNDS_AFFECTING_FLAGS,
-  DIRTY_SUBTREE_BOUNDS,
+  NULL_INDEX,
   NodeCursor,
   TransformOps,
 } from '@latte-js/espresso'
 import { system, Systems, SystemBase } from './systems'
 
+interface DirtyNode {
+  index: number
+  depth: number
+}
+
 /**
- * AABBSystem - Computes hierarchy AABB (self ∪ all children) using post-order traversal.
+ * AABBSystem - Computes hierarchy AABB (self ∪ all children) using bottom-up approach.
  *
- * Uses DIRTY_SUBTREE_BOUNDS pruning for O(dirty nodes × depth) complexity.
+ * Collects all bounds-dirty nodes, sorts by depth (deepest first), then updates upward.
+ * O(dirty nodes × depth) complexity without needing DIRTY_SUBTREE_BOUNDS.
  */
 @system
 export class AABBSystem extends SystemBase {
@@ -27,39 +33,61 @@ export class AABBSystem extends SystemBase {
 
   public process(dirtyMap: Map<number, number>) {
     if (dirtyMap.size === 0) return
-    this._processSubtree(0, false, dirtyMap)
+
+    // Step 1: Collect all bounds-dirty nodes with their depths
+    const dirtyNodes = this._collectDirtyNodes(dirtyMap)
+
+    if (dirtyNodes.length === 0) return
+
+    // Step 2: Sort by depth descending (deepest first)
+    dirtyNodes.sort((a, b) => b.depth - a.depth)
+
+    // Step 3: Update from bottom to top, tracking already updated nodes
+    const updated = new Set<number>()
+    for (const { index } of dirtyNodes) {
+      this._updateBottomUp(index, updated)
+    }
   }
 
-  private _processSubtree(
-    index: number,
-    parentDirty: boolean,
-    dirtyMap: Map<number, number>
-  ): boolean {
-    const flags = dirtyMap.get(index) || 0
-    const hasBoundsDirty = (flags & BOUNDS_AFFECTING_FLAGS) !== 0
-    const hasDirtySubtree = (flags & DIRTY_SUBTREE_BOUNDS) !== 0
+  private _collectDirtyNodes(dirtyMap: Map<number, number>): DirtyNode[] {
+    const result: DirtyNode[] = []
 
-    if (!parentDirty && !hasBoundsDirty && !hasDirtySubtree) {
-      return false
-    }
-
-    this._cursor.to(index)
-
-    const selfDirty = hasBoundsDirty || parentDirty
-
-    let childrenChanged = false
-    for (const child of this._cursor.children()) {
-      if (this._processSubtree(child.index, selfDirty, dirtyMap)) {
-        childrenChanged = true
+    for (const [index, flags] of dirtyMap) {
+      if (flags & BOUNDS_AFFECTING_FLAGS) {
+        result.push({ index, depth: this._getDepth(index) })
       }
     }
 
-    if (selfDirty || childrenChanged) {
-      this._updateHierarchyAABB()
-      return true
-    }
+    return result
+  }
 
-    return false
+  private _getDepth(index: number): number {
+    let depth = 0
+    this._cursor.to(index)
+    let parent = this._cursor.parent
+    while (parent !== null) {
+      depth++
+      parent = parent.parent
+    }
+    return depth
+  }
+
+  private _updateBottomUp(index: number, updated: Set<number>) {
+    let current = index
+
+    while (current !== NULL_INDEX) {
+      if (updated.has(current)) {
+        // Already updated, ancestors are also updated
+        break
+      }
+
+      this._cursor.to(current)
+      this._updateHierarchyAABB()
+      updated.add(current)
+
+      const parent = this._cursor.parent
+      current = parent !== null ? parent.index : NULL_INDEX
+    }
   }
 
   private _updateHierarchyAABB() {

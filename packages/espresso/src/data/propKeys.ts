@@ -16,6 +16,7 @@ export enum PropId {
   STROKE_STYLE = 'strokeStyle',
   STROKE_JOIN = 'strokeJoin',
   DASH_CAP = 'dashCap',
+  CORNER_RADIUS = 'cornerRadius',
 
   PARENT = 'parent',
 
