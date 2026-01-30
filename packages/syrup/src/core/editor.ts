@@ -2,11 +2,13 @@ import { SceneGraph, TOTAL_MEMORY_BYTES, MAX_NODES } from '@latte-js/espresso'
 import { BaristaClient } from '@latte-js/barista'
 import { Canvas2DRender, Renderer } from '@latte-js/art'
 import BaristaWorker from '@latte-js/barista/worker?worker'
+import { InputService } from '../services/InputService'
 
 export class Editor {
   public readonly graph: SceneGraph
   public _renderer: Renderer
   public worker: Worker
+  public inputService: InputService
   private _baristaClient: BaristaClient
 
   constructor() {
@@ -39,6 +41,7 @@ export class Editor {
 
   private _initRenderer(canvas: HTMLCanvasElement) {
     this._renderer = new Renderer(this.graph, new Canvas2DRender(), canvas)
+    this.inputService = new InputService(this._renderer, this.graph)
   }
 }
 

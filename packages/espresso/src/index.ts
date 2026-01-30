@@ -19,6 +19,7 @@ export {
   computeStretchTransform,
   applyTransform2x2ToMatrix,
   extractMat2,
+  applyDistributiveScale,
 } from './math/transform'
 export { TransformOps } from './data/ops/transformOps'
 export { walkTree } from './query/treeWalker'

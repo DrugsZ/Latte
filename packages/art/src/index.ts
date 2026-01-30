@@ -13,5 +13,6 @@ export {
 
 export { Renderer } from './core/render'
 export { Camera } from './core/camera'
+export { HitTester } from './interaction/HitTester'
 
 export * from './render/canvas/index'

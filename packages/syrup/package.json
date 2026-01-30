@@ -53,6 +53,7 @@
   "dependencies": {
     "@latte-js/bean": "workspace:*",
     "@latte-js/barista": "workspace:*",
+    "@latte-js/kit": "workspace:*",
     "mitt": "^3.0.0"
   },
   "devDependencies": {
