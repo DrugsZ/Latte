@@ -34,20 +34,20 @@ export class ChannelServer implements IChannelServer {
 
   private async _runWithOnMessage(fn: () => any): Promise<any> {
     const data = await fn()
-    this._onMessage.fire()
+    await this._onMessage.fire()
     return data
   }
 
   public async handleMessage(msg: JsonRpcMessage) {
-    this._runWithOnMessage(() => {
+    this._runWithOnMessage(async () => {
       switch (msg.type) {
         case JsonRpcMessageType.Request:
         case JsonRpcMessageType.Notification:
-          return this._handleCall(msg)
+          return await this._handleCall(msg)
         case JsonRpcMessageType.Listen:
-          return this._handleListen(msg)
+          return await this._handleListen(msg)
         case JsonRpcMessageType.Unlisten:
-          return this._handleUnlisten(msg)
+          return await this._handleUnlisten(msg)
       }
     })
   }

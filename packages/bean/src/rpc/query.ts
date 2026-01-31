@@ -1,9 +1,6 @@
 import type { IDType, NodeType } from '../schema'
 
 export interface IQueryService {
-  getElementByTagName(
-    tag: keyof typeof NodeType,
-    parentID?: IDType
-  ): Promise<number[]>
-  getElementByName(name: string, parentID?: IDType): Promise<number[]>
+  getElementByTagName(tag: NodeType, parentID?: IDType): Promise<IDType[]>
+  getElementByName(name: string, parentID?: IDType): Promise<IDType[]>
 }

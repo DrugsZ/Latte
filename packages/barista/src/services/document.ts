@@ -22,10 +22,12 @@ export class DocumentService extends ServiceBase implements IDocumentService {
     super(ctx)
   }
 
-  async load(data: ILatteFile): Promise<void> {
+  async load(data: ILatteFile) {
     const loader = new LatteLoader(this.sceneGraph)
     await loader.load(data)
-    this._onLoad.fire(this.sceneGraph.getUUIDMap())
+    const map = this.sceneGraph.getUUIDMap()
+    this._onLoad.fire(map)
+    return map
   }
 
   async save(): Promise<ILatteFile> {

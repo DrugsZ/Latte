@@ -19,19 +19,19 @@ export class QueryService
   }
 
   public async getElementByTagName(
-    tag: keyof typeof NodeType,
+    tag: NodeType,
     parentID?: IDType
-  ): Promise<number[]> {
+  ): Promise<IDType[]> {
     const parentNumber = parentID
       ? this.sceneGraph.getIndex(parentID)
       : undefined
-    return this.system.getElementByTagName(tag as any, parentNumber)
+    return this.system.getElementByTagName(tag, parentNumber)
   }
 
   public async getElementByName(
     name: string,
     parentID?: IDType
-  ): Promise<number[]> {
+  ): Promise<IDType[]> {
     const parentNumber = parentID
       ? this.sceneGraph.getIndex(parentID)
       : undefined

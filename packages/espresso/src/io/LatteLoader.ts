@@ -2,6 +2,8 @@ import { NodeCursor } from '../data/nodeCursor'
 import { NULL_INDEX } from '../data/config'
 import type { SceneGraph } from '../data/sceneGraph'
 import { NodeType, type ILatteNode, type ILatteFile } from '@latte-js/bean'
+import { mat2d } from 'gl-matrix'
+import { TransformOps } from '../data/ops'
 
 const mapType = (type: string | number): number => {
   if (typeof type === 'number') {
@@ -63,6 +65,42 @@ export class LatteLoader {
 
       if (prevIdx !== NULL_INDEX) {
         this._graph.lastChild[parentIdx] = prevIdx
+      }
+    }
+
+    // this._updateWorldTransforms(idMap)
+
+    return this._graph.getUUIDMap()
+  }
+
+  private _updateWorldTransforms(idMap: Map<string, number>) {
+    const tempMatrix = mat2d.create()
+
+    const updateNode = (index: number) => {
+      const parentIdx = this._graph.parent[index]
+      if (parentIdx === NULL_INDEX) {
+        const localMat = TransformOps.getMatrix(this._graph, index)
+        TransformOps.setWorldMatrix(this._graph, index, localMat)
+      } else {
+        const parentWorldMat = TransformOps.getWorldMatrix(
+          this._graph,
+          parentIdx
+        )
+        const localMat = TransformOps.getMatrix(this._graph, index)
+        mat2d.multiply(tempMatrix, parentWorldMat, localMat)
+        TransformOps.setWorldMatrix(this._graph, index, tempMatrix)
+      }
+
+      let childIdx = this._graph.firstChild[index]
+      while (childIdx !== NULL_INDEX) {
+        updateNode(childIdx)
+        childIdx = this._graph.nextSibling[childIdx]
+      }
+    }
+
+    for (const [, index] of idMap) {
+      if (this._graph.parent[index] === NULL_INDEX) {
+        updateNode(index)
       }
     }
   }

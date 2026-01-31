@@ -1,4 +1,4 @@
-import type { NodeType } from '@latte-js/bean'
+import type { NodeType, IDType } from '@latte-js/bean'
 import { walkTree, type SceneGraph } from '@latte-js/espresso'
 import { system } from './systems'
 
@@ -12,26 +12,29 @@ export class QuerySystem {
   public query(
     predicate: (index: number) => boolean,
     parentId?: number
-  ): number[] {
-    const results: number[] = []
+  ): IDType[] {
+    const results: IDType[] = []
 
     for (const idx of walkTree(this._sceneGraph, parentId)) {
       if (predicate(idx)) {
-        results.push(idx)
+        const ID = this._sceneGraph.getUUID(idx)
+        if (ID) {
+          results.push(ID)
+        }
       }
     }
 
     return results
   }
 
-  public getElementByTagName(tag: NodeType, parentId?: number): number[] {
+  public getElementByTagName(tag: NodeType, parentId?: number): IDType[] {
     return this.query(idx => {
       const nodeType = this._sceneGraph.type[idx]
       return nodeType === tag
     }, parentId)
   }
 
-  public getElementByName(name: string, parentId?: number): number[] {
+  public getElementByName(name: string, parentId?: number): IDType[] {
     return this.query(idx => {
       const n = this._sceneGraph.nameMap.get(idx)
       return n === name
