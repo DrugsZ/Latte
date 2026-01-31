@@ -1,10 +1,11 @@
 import type { IDType, NodeType } from '@latte-js/bean'
 import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
-import { system } from './systems'
+import { system, Systems, SystemBase } from './systems'
 
-@system('node')
-export class NodeSystem {
+@system
+export class NodeSystem extends SystemBase {
+  public static readonly name = Systems.Node
   private _nodeCursor: NodeCursor
   private _onCreate = new Emitter<[id: IDType, index: number][]>()
   public readonly onCreate = this._onCreate.event
@@ -12,7 +13,8 @@ export class NodeSystem {
   private _onDelete = new Emitter<[id: IDType, index: number][]>()
   public readonly onDelete = this._onDelete.event
 
-  constructor(private _sceneGraph: SceneGraph) {
+  constructor(sceneGraph: SceneGraph) {
+    super(sceneGraph)
     this._nodeCursor = new NodeCursor(this._sceneGraph, 0)
   }
 

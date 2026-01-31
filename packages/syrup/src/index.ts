@@ -1,1 +1,6 @@
 export { editor } from './core/editor'
+export * from './services'
+export * from './dom/keyboardEvent'
+export * from './dom/mouseEvent'
+export * from './dom/mouseDownState'
+export * from './core/actions'

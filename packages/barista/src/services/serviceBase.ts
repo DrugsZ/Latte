@@ -3,7 +3,7 @@ import type { SceneGraph } from '@latte-js/espresso'
 import type { IContext } from './types'
 
 export abstract class ServiceBase<T = any> {
-  abstract readonly channelName: Channels
+  static readonly name: Channels
 
   constructor(protected readonly context: IContext) {}
 
@@ -12,23 +12,24 @@ export abstract class ServiceBase<T = any> {
   }
 
   protected get system(): T {
-    return this.context.accessSystem.getSystem(this.channelName as any) as T
+    return this.context.accessSystem.getSystem(
+      (this.constructor as ServiceConstructor).name as any
+    ) as T
   }
 }
 
-const registeredServices: Array<new (context: IContext) => ServiceBase> = []
+export type ServiceConstructor = (new (context: IContext) => ServiceBase) & {
+  readonly name: Channels
+}
+
+const registeredServices: ServiceConstructor[] = []
 
 export function getRegisteredServices() {
   return registeredServices
 }
 
-export function service() {
-  return function <T extends new (context: IContext) => ServiceBase>(
-    constructor: T
-  ) {
-    registeredServices.push(constructor)
-    return constructor
-  }
+export function service(constructor: ServiceConstructor) {
+  registeredServices.push(constructor)
 }
 
 export type { IContext }

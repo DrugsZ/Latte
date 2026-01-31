@@ -141,8 +141,34 @@ export class LatteLoader {
     this._node.strokeJoin = strokeJoin
     this._node.strokeStyle = strokeStyle
     this._node.dashCap = dashCap
+
+    // Load fill paints
     if ('fillPaints' in node && node.fillPaints) {
       this._node.fills = node.fillPaints
+    }
+
+    // Load stroke paints
+    if ('strokePaints' in node && node.strokePaints) {
+      this._node.strokes = node.strokePaints
+    }
+
+    // Load corner radius
+    if ('cornerRadius' in node) {
+      const cr = (node as any).cornerRadius
+      if (typeof cr === 'number') {
+        this._node.cornerRadius = [cr, cr, cr, cr]
+      }
+    }
+
+    // Load per-corner radius (Rectangle specific)
+    if ('topLeftRadius' in node) {
+      const rectNode = node as any
+      this._node.cornerRadius = [
+        rectNode.topLeftRadius ?? 0,
+        rectNode.topRightRadius ?? 0,
+        rectNode.bottomRightRadius ?? 0,
+        rectNode.bottomLeftRadius ?? 0,
+      ]
     }
   }
 }

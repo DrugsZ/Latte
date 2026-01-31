@@ -25,6 +25,14 @@ export class Renderer {
     this.start()
   }
 
+  public get rTree() {
+    return this._rTree
+  }
+
+  public get canvas() {
+    return this._container
+  }
+
   public setActiveRootId(rootId: IDType) {
     this._activeRootId = rootId
     this.requestRender()
@@ -117,10 +125,26 @@ export class Renderer {
 
     const matrix = this._camera.getMatrix()
     const node = new NodeCursor(this._sceneGraph, -1)
+    this._rTree.clear()
+    const rTreeItems: {
+      minX: number
+      minY: number
+      maxX: number
+      maxY: number
+      id: number
+    }[] = []
     for (const id of visibleNodeIds) {
       node.to(id)
       mat2d.multiply(this._tempMatrix, matrix, node.worldTransform)
       this._backend.setTransform(new Float32Array(this._tempMatrix))
+      const aabbPtr = id * 4
+      rTreeItems.push({
+        minX: this._sceneGraph.aabb[aabbPtr],
+        minY: this._sceneGraph.aabb[aabbPtr + 1],
+        maxX: this._sceneGraph.aabb[aabbPtr + 2],
+        maxY: this._sceneGraph.aabb[aabbPtr + 3],
+        id,
+      })
 
       const renderer = getRenderer(node.type)
       if (renderer) {

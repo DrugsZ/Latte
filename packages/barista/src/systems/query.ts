@@ -1,10 +1,14 @@
 import type { NodeType, IDType } from '@latte-js/bean'
 import { walkTree, type SceneGraph } from '@latte-js/espresso'
-import { system } from './systems'
+import { system, Systems, SystemBase } from './systems'
 
-@system('query')
-export class QuerySystem {
-  constructor(private _sceneGraph: SceneGraph) {}
+@system
+export class QuerySystem extends SystemBase {
+  public static readonly name = Systems.Query
+
+  constructor(sceneGraph: SceneGraph) {
+    super(sceneGraph)
+  }
 
   /**
    * @param predicate (index) => boolean

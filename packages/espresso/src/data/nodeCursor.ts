@@ -276,8 +276,36 @@ export class NodeCursor {
 
   set fills(style: IPaint[]) {
     this._mutate(PropId.FILLS, DIRTY_NOT_EFFECT, () => {
-      StyleOps.setStyle(this._graph, this._index, style)
+      StyleOps.setFills(this._graph, this._index, style)
     })
+  }
+
+  get strokes() {
+    return StyleOps.getStrokes(this._graph, this._index)
+  }
+
+  set strokes(style: IPaint[]) {
+    this._mutate(PropId.STROKES, DIRTY_NOT_EFFECT, () => {
+      StyleOps.setStrokes(this._graph, this._index, style)
+    })
+  }
+
+  get cornerRadius(): [number, number, number, number] {
+    this._checkAlive()
+    return StyleOps.getCornerRadius(this._graph, this._index)
+  }
+
+  set cornerRadius(v: [number, number, number, number]) {
+    this._checkAlive()
+    this._mutate(PropId.CORNER_RADIUS, DIRTY_AABB, () => {
+      StyleOps.setCornerRadius(this._graph, this._index, v)
+    })
+  }
+
+  // Zero-alloc version - writes into provided buffer
+  getCornerRadiusInto(out: Float32Array): Float32Array {
+    this._checkAlive()
+    return StyleOps.getCornerRadiusInto(this._graph, this._index, out)
   }
 
   get strokeWeight() {

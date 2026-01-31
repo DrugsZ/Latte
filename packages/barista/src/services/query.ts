@@ -5,14 +5,14 @@ import {
   type NodeType,
 } from '@latte-js/bean'
 import { ServiceBase, type IContext, service } from './serviceBase'
-import type { QuerySystem } from '../systems/querySystem'
+import type { QuerySystem } from '../systems/query'
 
-@service()
+@service
 export class QueryService
   extends ServiceBase<QuerySystem>
   implements IQueryService
 {
-  readonly channelName = Channels.Query
+  public static readonly name = Channels.Query
 
   constructor(ctx: IContext) {
     super(ctx)

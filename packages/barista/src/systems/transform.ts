@@ -2,27 +2,31 @@ import type { IDType } from '@latte-js/bean'
 import {
   type SceneGraph,
   NodeCursor,
-  applyStretchToMatrix,
   DIRTY_TRANSFORM,
   DIRTY_AABB,
   NULL_INDEX,
+  applyDistributiveScale,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
-import { system } from './systems'
+import { system, Systems, SystemBase } from './systems'
 
 type ISnapshot = Float32Array
 
-@system('transform')
-export class TransformSystem {
+@system
+export class TransformSystem extends SystemBase {
+  public static readonly name = Systems.Transform
   private _cursor: NodeCursor
   private _snapshots: Map<IDType, ISnapshot> = new Map()
-  constructor(private _scene: SceneGraph) {
-    this._cursor = new NodeCursor(this._scene, 0)
+
+  constructor(sceneGraph: SceneGraph) {
+    super(sceneGraph)
+    this._cursor = new NodeCursor(this._sceneGraph, 0)
   }
 
   private _createSnapshot(index: number) {
     this._cursor.to(index)
     const { x, y, width, height, transform, id } = this._cursor
+    if (id === null) return
     const snapshot = new Float32Array([x, y, width, height, ...transform])
     this._snapshots.set(id, snapshot)
   }
@@ -30,7 +34,7 @@ export class TransformSystem {
   private _createSnapshots(ids: IDType[]) {
     this._snapshots.clear()
     ids.forEach(id => {
-      const index = this._scene.getIndex(id)
+      const index = this._sceneGraph.getIndex(id)
       this._createSnapshot(index)
     })
   }
@@ -45,11 +49,11 @@ export class TransformSystem {
   }
 
   private _moveTo(id: IDType, delta: vec2) {
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
     this._cursor.x = delta[0]
     this._cursor.y = delta[1]
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public moveTo(ids: IDType[], delta: vec2) {
@@ -58,7 +62,7 @@ export class TransformSystem {
 
   private _moveBy(id: IDType, point: vec2) {
     const snapData = this._snapshots.get(id)
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
     const base = snapData
       ? [snapData[7], snapData[8]]
@@ -66,7 +70,7 @@ export class TransformSystem {
     vec2.add(base, base, point)
     this._cursor.x = base[0]
     this._cursor.y = base[1]
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public moveBy(ids: IDType[], point: vec2) {
@@ -74,7 +78,7 @@ export class TransformSystem {
   }
 
   private _transformAround(id: IDType, matrixPayload: mat2d, pivot: vec2) {
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
     const localMat = this._cursor.transform
 
@@ -86,7 +90,7 @@ export class TransformSystem {
     mat2d.multiply(localMat, transformStep, localMat)
     this._cursor.transform = localMat
 
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
   public transformAround(ids: IDType[], matrixPayload: mat2d, pivot: vec2) {
@@ -94,7 +98,7 @@ export class TransformSystem {
   }
 
   private _resize(id: IDType, width: number, height: number) {
-    const index = this._scene.getIndex(id)
+    const index = this._sceneGraph.getIndex(id)
     const snapData = this._snapshots.get(id)
     this._resizeByIndex(index, width, height, snapData)
   }
@@ -110,25 +114,47 @@ export class TransformSystem {
     const oldWidth = snapData ? snapData[2] : this._cursor.width
     const oldHeight = snapData ? snapData[3] : this._cursor.height
 
+    // Handle zero-size case: just set new size directly
     if (oldWidth === 0 || oldHeight === 0) {
       this._cursor.width = width
       this._cursor.height = height
-      this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+      this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+      return
     }
 
+    // Calculate scale factors at the top level
     const scaleX = width / oldWidth
     const scaleY = height / oldHeight
 
+    // For the root node being resized, we don't apply stretch to its own transform
+    // (the root node's rotation should be preserved, only its size changes)
+    // But we do need to update the root's size directly
     this._cursor.width = width
     this._cursor.height = height
-    applyStretchToMatrix(
-      this._cursor.transform,
-      { width, height },
-      scaleX,
-      scaleY
-    )
+    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
 
-    this._scene.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    // Recursively apply stretch to all children
+    // The parent's local space is deformed by (scaleX, scaleY)
+    // We use the "World Space Mutation" algorithm.
+    // Parent Old World = Identity (relative to itself)
+    // Parent New World = Identity (relative to itself, because we kept its transform normalized)
+    // Root Scale = The deformation we want to apply
+    const parentOldWorld = mat2d.create() // Identity
+    const parentNewWorld = mat2d.create() // Identity
+    const rootScale = mat2d.fromScaling(mat2d.create(), [scaleX, scaleY])
+
+    let child = this._sceneGraph.firstChild[index]
+    while (child !== NULL_INDEX) {
+      applyDistributiveScale(
+        this._sceneGraph,
+        this._cursor,
+        child,
+        parentOldWorld,
+        parentNewWorld,
+        rootScale
+      )
+      child = this._sceneGraph.nextSibling[child]
+    }
   }
 
   public resize(ids: IDType[], width: number, height: number) {

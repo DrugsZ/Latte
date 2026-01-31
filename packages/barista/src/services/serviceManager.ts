@@ -2,10 +2,14 @@ import { type Channels, type IServiceMap } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
 import type { BaristaSystem } from '../systems/systems'
 import type { IContext } from './types'
-import { getRegisteredServices, type ServiceBase } from './serviceBase'
+import {
+  type ServiceBase,
+  getRegisteredServices,
+  type ServiceConstructor,
+} from './serviceBase'
 
 export class ServiceManager implements IContext {
-  private _services: Map<Channels, ServiceBase> = new Map()
+  private _services = new Map<Channels, ServiceBase>()
 
   constructor(
     public readonly sceneGraph: SceneGraph,
@@ -17,7 +21,8 @@ export class ServiceManager implements IContext {
   private _initServices() {
     const services = getRegisteredServices()
     services.forEach(Ctor => {
-      this.register(new Ctor(this))
+      const instance = new Ctor(this)
+      this._services.set(Ctor.name, instance)
     })
   }
 
@@ -33,11 +38,7 @@ export class ServiceManager implements IContext {
     })
   }
 
-  registerService(name: Channels, service: ServiceBase): void {
-    this._services.set(name, service)
-  }
-
-  register(service: ServiceBase): void {
-    this.registerService(service.channelName, service)
+  public registerService(ctor: ServiceConstructor, service: ServiceBase): void {
+    this._services.set(ctor.name, service)
   }
 }

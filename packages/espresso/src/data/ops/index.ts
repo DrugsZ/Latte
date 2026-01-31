@@ -1,3 +1,3 @@
 export { TransformOps } from './transformOps'
 export { HierarchyOps } from './hierarchyOps'
-export { StyleOps } from './styleOps'
+export { StyleOps, type CornerRadius } from './styleOps'

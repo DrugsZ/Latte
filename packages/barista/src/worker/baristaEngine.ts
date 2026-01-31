@@ -2,9 +2,11 @@ import { SceneGraph } from '@latte-js/espresso'
 import { ChannelServer, fromService } from '../ipc'
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
 import { ServiceManager } from '../services'
-import { BaristaSystem } from '../systems'
+import { BaristaSystem, Systems } from '../systems'
 import { createJsonRpcNotification } from '../ipc/ipc'
 import type { IDType } from '@latte-js/bean'
+
+const PIPELINE_SYSTEMS: Systems[] = [Systems.Matrix, Systems.AABB]
 
 export class BaristaEngine {
   private _sceneGraph: SceneGraph
@@ -62,16 +64,25 @@ export class BaristaEngine {
   }
 
   public tick() {
-    const dirtyIds = this._sceneGraph.tracker.flush()
+    const dirtyMap = this._sceneGraph.tracker.flush()
 
-    if (dirtyIds.size > 0) {
+    this._runPipeline(dirtyMap)
+
+    if (dirtyMap.size > 0) {
       this._sendRenderNotification(
-        dirtyIds
+        dirtyMap
           .keys()
           .map(item => this._sceneGraph.getUUID(item))
           .toArray()
           .filter(item => !!item)
       )
+    }
+  }
+
+  private _runPipeline(dirtyMap: Map<number, number>) {
+    for (const name of PIPELINE_SYSTEMS) {
+      const system = this._systems!.getSystem(name)
+      system?.process?.(dirtyMap)
     }
   }
 
