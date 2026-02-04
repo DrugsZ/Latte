@@ -1,4 +1,5 @@
 export { editor } from './core/editor'
+export type { Editor } from './core/editor'
 export * from './services'
 export * from './dom/keyboardEvent'
 export * from './dom/mouseEvent'

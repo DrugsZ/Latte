@@ -5,9 +5,8 @@ import type {
   IMenuChangeEvent,
   MenuItemGroup,
 } from './menuRegistry'
-import { Disposable } from '@latte-js/kit'
+import { Disposable, Emitter } from '@latte-js/kit'
 import type { Event } from '@latte-js/kit'
-import { Emitter } from '@latte-js/kit'
 import MenuItemAction from './menuAction'
 
 interface IMenuService {

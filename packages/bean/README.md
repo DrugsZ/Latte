@@ -1,4 +1,4 @@
-# @latte/bean (Coffee Beans)
+# @latte-js/bean (Coffee Beans)
 
 **The Origin of Everything.**
 The pure type definition library for the Latte Engine. Contains zero runtime logic.

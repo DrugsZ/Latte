@@ -1,4 +1,4 @@
-# @latte/barista (The Barista)
+# @latte-js/barista (The Barista)
 
 **The Brain: Time & Process Management.**
 Responsible for heavy computations, auto-layout, and Web Worker management.

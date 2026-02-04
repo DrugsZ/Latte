@@ -22,7 +22,7 @@ export class Editor {
     return this._baristaClient
   }
 
-  public async startup(canvas: HTMLCanvasElement) {
+  public async startup(container: HTMLDivElement) {
     this.worker = new BaristaWorker()
     this._baristaClient = new BaristaClient(this.worker)
     const initResult = await this._baristaClient.init(
@@ -30,7 +30,7 @@ export class Editor {
       this.graph.allocator.buffer
     )
 
-    await this._initRenderer(canvas)
+    await this._initRenderer(container)
 
     return initResult
   }
@@ -39,8 +39,8 @@ export class Editor {
     return this._renderer
   }
 
-  private _initRenderer(canvas: HTMLCanvasElement) {
-    this._renderer = new Renderer(this.graph, new Canvas2DRender(), canvas)
+  private _initRenderer(container: HTMLDivElement) {
+    this._renderer = new Renderer(this.graph, new Canvas2DRender(), container)
     this.inputService = new InputService(this._renderer, this.graph)
   }
 }

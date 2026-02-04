@@ -1,4 +1,4 @@
-# @latte/syrup (Flavor Syrup)
+# @latte-js/syrup (Flavor Syrup)
 
 **The Microkernel & Plugin Base.**
 Similar to VSCode's core service layer, managing commands, keybindings, and lifecycles.
