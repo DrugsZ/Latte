@@ -1,22 +1,7 @@
 import { type IPoint } from '@latte-js/kit'
+import type { IMouseEvent, IMouseWheelEvent } from '@latte-js/bean'
 
 export { type IPoint }
-
-export interface IMouseEvent {
-  readonly browserEvent: MouseEvent
-  readonly leftButton: boolean
-  readonly middleButton: boolean
-  readonly rightButton: boolean
-  readonly buttons: number
-  readonly detail: number
-  readonly offsetX: number
-  readonly offsetY: number
-  readonly ctrlKey: boolean
-  readonly shiftKey: boolean
-  readonly altKey: boolean
-  readonly metaKey: boolean
-  readonly timestamp: number
-}
 
 export class StandardMouseEvent implements IMouseEvent {
   public readonly browserEvent: MouseEvent
@@ -66,12 +51,12 @@ export class DropMouseEvent extends StandardMouseEvent {
   }
 }
 
-export interface IMouseWheelEvent extends MouseEvent {
-  readonly deltaX: number
-  readonly deltaY: number
-  readonly deltaZ: number
-  readonly deltaMode: number
-}
+// export interface IMouseWheelEvent extends MouseEvent {
+//   readonly deltaX: number
+//   readonly deltaY: number
+//   readonly deltaZ: number
+//   readonly deltaMode: number
+// }
 
 export class StandardWheelEvent {
   public readonly browserEvent: IMouseWheelEvent | null

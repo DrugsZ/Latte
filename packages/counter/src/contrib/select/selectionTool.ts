@@ -1,6 +1,7 @@
 import type { IInputMouseHandler, InputWheelEvent } from '@latte-js/syrup'
 import { EventResult, InputMouseEvent } from '@latte-js/syrup'
-import type { SelectionService } from '../services/selection/selectionService'
+import type { ITool } from '@latte-js/bean'
+import type { SelectionService } from '../../services/selection/selectionService'
 
 export class SelectionTool implements IInputMouseHandler {
   public readonly id = 'selection-tool'

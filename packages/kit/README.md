@@ -9,4 +9,3 @@ General-purpose runtime infrastructure library underpins the entire Latte Engine
 - **Lifecycle**: `Disposable` pattern and `DisposableStore` for automatic resource cleanup and memory leak prevention.
 - **Data Structures**: Specialized high-performance structures like `LinkedList` used in critical paths.
 - **Platform**: Environment detection (`isMacintosh`, `isWeb`) and standardized `KeyCode` definitions.
-

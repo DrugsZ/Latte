@@ -1,12 +1,11 @@
 import type { Renderer } from '@latte-js/art'
 import { HitTester } from '@latte-js/art'
-import type { HitResult } from '@latte-js/bean'
+import type { HitResult, IMouseWheelEvent } from '@latte-js/bean'
 import { Emitter, Disposable, type Event } from '@latte-js/kit'
 import { type SceneGraph, NULL_INDEX } from '@latte-js/espresso'
 import {
   StandardMouseEvent,
   StandardWheelEvent,
-  type IMouseWheelEvent,
   type IPoint,
 } from '../dom/mouseEvent'
 

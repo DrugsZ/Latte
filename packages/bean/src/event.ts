@@ -5,22 +5,25 @@ export interface HitResult {
   nodeIndex?: number
 }
 
-export interface LatteEvent {
-  // Original event (for preventDefault, etc.)
-  originalEvent: PointerEvent | WheelEvent | KeyboardEvent
+export interface IMouseEvent {
+  readonly browserEvent: MouseEvent
+  readonly leftButton: boolean
+  readonly middleButton: boolean
+  readonly rightButton: boolean
+  readonly buttons: number
+  readonly detail: number
+  readonly offsetX: number
+  readonly offsetY: number
+  readonly ctrlKey: boolean
+  readonly shiftKey: boolean
+  readonly altKey: boolean
+  readonly metaKey: boolean
+  readonly timestamp: number
+}
 
-  // Core: Transformed world coordinates
-  x: number
-  y: number
-
-  // Auxiliary info
-  deltaX?: number
-  deltaY?: number
-  altKey: boolean
-  shiftKey: boolean
-  ctrlKey: boolean
-  metaKey: boolean
-
-  // Hit result (calculated by Art)
-  hitResult?: HitResult
+export interface IMouseWheelEvent extends MouseEvent {
+  readonly deltaX: number
+  readonly deltaY: number
+  readonly deltaZ: number
+  readonly deltaMode: number
 }
