@@ -27,7 +27,7 @@ export interface ICommandService {
 
 export interface ICommandRegistry {
   onDidRegisterCommand: Event<string>
-  registerCommand(id: string, command: ICommandHandler): void
+  registerCommand(id: string, command: ICommandHandler): () => void
   getCommand(id: string): ICommand | undefined
   getCommands(): ICommandsMap
 }

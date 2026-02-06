@@ -61,6 +61,6 @@ describe('Allocator', () => {
     for (let i = 1; i < 100; i++) {
       allocator.alloc()
     }
-    expect(() => allocator.alloc()).toThrow('Out of memory')
+    expect(() => allocator.alloc()).toThrow('OOM')
   })
 })

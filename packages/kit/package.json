@@ -16,6 +16,7 @@
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "lint": "eslint src/",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "clean": "rm -rf dist .turbo node_modules"
   },
   "publishConfig": {
@@ -32,8 +33,9 @@
     }
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.16",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
+    "vitest": "^4.0.16"
   }
 }
