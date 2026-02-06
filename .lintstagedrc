@@ -1,3 +1,7 @@
 {
-  "src/**/*.{ts,js}": ["prettier --write", "eslint --fix --max-warnings 0"]
+  "**/*.{ts,tsx,js,jsx}": [
+    "prettier --write",
+    "eslint --fix --max-warnings 0",
+    "vitest related --run"
+  ]
 }
