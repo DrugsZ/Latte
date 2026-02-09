@@ -88,21 +88,36 @@ export class Renderer {
   private _getAllVisibleNodeIds() {
     const visibleNodes: number[] = []
     const stack: number[] = []
-    const rootIndex = this._sceneGraph.getIndex(this._activeRootId!)
+    if (!this._activeRootId) return visibleNodes
+
+    const rootIndex = this._sceneGraph.getIndex(this._activeRootId)
+    if (rootIndex === NULL_INDEX) return visibleNodes
+
     stack.push(rootIndex)
+    const visited = new Set<number>()
     let current
 
     while (stack.length) {
       current = stack.pop()!
+      if (visited.has(current)) continue
+      visited.add(current)
+
       visibleNodes.push(current)
-      current = this._sceneGraph.firstChild[current]
-      const child: number[] = []
-      while (current !== NULL_INDEX) {
-        child.push(current)
-        current = this._sceneGraph.nextSibling[current]
+
+      let childIdx = this._sceneGraph.firstChild[current]
+      const children: number[] = []
+      const childVisited = new Set<number>()
+      while (
+        childIdx !== NULL_INDEX &&
+        childIdx !== undefined &&
+        !childVisited.has(childIdx)
+      ) {
+        childVisited.add(childIdx)
+        children.push(childIdx)
+        childIdx = this._sceneGraph.nextSibling[childIdx]
       }
-      if (child.length) {
-        stack.push(...child.reverse())
+      if (children.length) {
+        stack.push(...children.reverse())
       }
     }
 
@@ -150,6 +165,10 @@ export class Renderer {
       if (renderer) {
         renderer.render(this._backend, node)
       }
+    }
+
+    if (rTreeItems.length > 0) {
+      this._rTree.load(rTreeItems)
     }
 
     // this._backend.drawRect(

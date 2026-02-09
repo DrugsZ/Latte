@@ -75,18 +75,17 @@ export class LatteLoader {
 
   private _updateWorldTransforms(idMap: Map<string, number>) {
     const tempMatrix = mat2d.create()
+    const parentWorldMat = mat2d.create()
+    const localMat = mat2d.create()
 
     const updateNode = (index: number) => {
       const parentIdx = this._graph.parent[index]
       if (parentIdx === NULL_INDEX) {
-        const localMat = TransformOps.getMatrix(this._graph, index)
+        TransformOps.getMatrix(this._graph, index, localMat)
         TransformOps.setWorldMatrix(this._graph, index, localMat)
       } else {
-        const parentWorldMat = TransformOps.getWorldMatrix(
-          this._graph,
-          parentIdx
-        )
-        const localMat = TransformOps.getMatrix(this._graph, index)
+        TransformOps.getWorldMatrix(this._graph, parentIdx, parentWorldMat)
+        TransformOps.getMatrix(this._graph, index, localMat)
         mat2d.multiply(tempMatrix, parentWorldMat, localMat)
         TransformOps.setWorldMatrix(this._graph, index, tempMatrix)
       }

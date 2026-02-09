@@ -43,20 +43,27 @@ export class HitTester {
       return NULL_INDEX
     }
 
-    // 1. AABB Pruning
-    const aabbPtr = index * 4
-    const minX = this._sceneGraph.aabb[aabbPtr]
-    const minY = this._sceneGraph.aabb[aabbPtr + 1]
-    const maxX = this._sceneGraph.aabb[aabbPtr + 2]
-    const maxY = this._sceneGraph.aabb[aabbPtr + 3]
+    const type = this._sceneGraph.type[index]
+    const isInfiniteContainer =
+      type === NodeType.DOCUMENT || type === NodeType.CANVAS
 
-    if (
-      point[0] < minX ||
-      point[0] > maxX ||
-      point[1] < minY ||
-      point[1] > maxY
-    ) {
-      return NULL_INDEX
+    // 1. AABB Pruning
+    if (!isInfiniteContainer) {
+      const aabbPtr = index * 4
+      const minX = this._sceneGraph.aabb[aabbPtr]
+      const minY = this._sceneGraph.aabb[aabbPtr + 1]
+      const maxX = this._sceneGraph.aabb[aabbPtr + 2]
+      const maxY = this._sceneGraph.aabb[aabbPtr + 3]
+
+      const eps = 0.001
+      if (
+        point[0] < minX - eps ||
+        point[0] > maxX + eps ||
+        point[1] < minY - eps ||
+        point[1] > maxY + eps
+      ) {
+        return NULL_INDEX
+      }
     }
 
     // 2. Children Traversal (Reverse Order)
@@ -70,7 +77,7 @@ export class HitTester {
     }
 
     // 3. Self Check (Exact Hit)
-    if (this._isPointInNode(index, point)) {
+    if (isCandidate && this._isPointInNode(index, point)) {
       return index
     }
 
@@ -78,6 +85,16 @@ export class HitTester {
   }
 
   private _isPointInNode(index: number, point: vec2): boolean {
+    const type = this._sceneGraph.type[index]
+
+    // Groups are transparent containers, but Canvas/Document are interactive infinite backgrounds
+    if (type === NodeType.GROUP) {
+      return false
+    }
+    if (type === NodeType.CANVAS || type === NodeType.DOCUMENT) {
+      return true
+    }
+
     // Transform point to local space
     // Node's world matrix transforms local -> world
     // We need world -> local, so we use inverse world matrix
@@ -96,7 +113,6 @@ export class HitTester {
 
     vec2.transformMat2d(this._tempVec, point, this._tempMat)
 
-    const type = this._sceneGraph.type[index]
     if (
       type === NodeType.POLYGON ||
       type === NodeType.STAR ||
@@ -109,6 +125,16 @@ export class HitTester {
     // For now, simple rect check (0,0 to width,height)
     const width = this._sceneGraph.size[index * 2]
     const height = this._sceneGraph.size[index * 2 + 1]
+
+    if (type === NodeType.ELLIPSE) {
+      const rx = width / 2
+      const ry = height / 2
+      const cx = rx
+      const cy = ry
+      const dx = this._tempVec[0] - cx
+      const dy = this._tempVec[1] - cy
+      return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1
+    }
 
     return (
       this._tempVec[0] >= 0 &&

@@ -110,18 +110,18 @@ export const RectRenderer: INodeRenderer = {
       case 'none':
       default:
         // No fill, just stroke if present
-        if (strokeColor !== undefined && actualStrokeWidth > 0) {
-          backend.drawRect(
-            x,
-            y,
-            w,
-            h,
-            cornerRadius,
-            undefined,
-            strokeColor,
-            actualStrokeWidth
-          )
-        }
+        // if (strokeColor !== undefined && actualStrokeWidth > 0) {
+        backend.drawRect(
+          x,
+          y,
+          w,
+          h,
+          cornerRadius,
+          0xffffffff,
+          strokeColor,
+          actualStrokeWidth
+        )
+        // }
         break
     }
   },

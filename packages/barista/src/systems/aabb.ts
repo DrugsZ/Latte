@@ -93,9 +93,24 @@ export class AABBSystem extends SystemBase {
   private _updateHierarchyAABB() {
     this._computeSelfAABB()
 
+    let hasValidChild = false
     for (const child of this._cursor.children()) {
       TransformOps.getAABB(this._sceneGraph, child.index, this._childAABB)
-      this._mergeAABB(this._tempAABB, this._childAABB)
+      if (
+        this._childAABB[0] <= this._childAABB[2] &&
+        this._childAABB[1] <= this._childAABB[3]
+      ) {
+        this._mergeAABB(this._tempAABB, this._childAABB)
+        hasValidChild = true
+      }
+    }
+
+    // If it's a group and has no children (or no valid children), reset to a point AABB [0,0,0,0]
+    if (this._cursor.type === NodeType.GROUP && !hasValidChild) {
+      this._tempAABB[0] = 0
+      this._tempAABB[1] = 0
+      this._tempAABB[2] = 0
+      this._tempAABB[3] = 0
     }
 
     TransformOps.setAABB(this._sceneGraph, this._cursor.index, this._tempAABB)
@@ -104,11 +119,21 @@ export class AABBSystem extends SystemBase {
   private _computeSelfAABB() {
     const type = this._cursor.type
 
-    if (type & NodeType.DOCUMENT) {
-      this._tempAABB[0] = Infinity
-      this._tempAABB[1] = Infinity
-      this._tempAABB[2] = -Infinity
-      this._tempAABB[3] = -Infinity
+    if (type === NodeType.DOCUMENT || type === NodeType.CANVAS) {
+      // Pages are theoretically infinite
+      this._tempAABB[0] = -1e10
+      this._tempAABB[1] = -1e10
+      this._tempAABB[2] = 1e10
+      this._tempAABB[3] = 1e10
+      return
+    }
+
+    if (type === NodeType.GROUP) {
+      // Strictly follow children (starts as an empty/invalid AABB)
+      this._tempAABB[0] = 1e10
+      this._tempAABB[1] = 1e10
+      this._tempAABB[2] = -1e10
+      this._tempAABB[3] = -1e10
       return
     }
 
@@ -121,10 +146,10 @@ export class AABBSystem extends SystemBase {
       [0, height],
     ]
 
-    let minX = Infinity,
-      minY = Infinity
-    let maxX = -Infinity,
-      maxY = -Infinity
+    let minX = 1e10,
+      minY = 1e10
+    let maxX = -1e10,
+      maxY = -1e10
 
     for (const [cx, cy] of corners) {
       const tx =
