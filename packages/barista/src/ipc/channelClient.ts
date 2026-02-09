@@ -20,23 +20,51 @@ export class ChannelClient implements IChannelClient {
     JsonRpcId,
     { resolve: (value: any) => void; reject: (reason?: any) => void }
   >()
-  private _listeners = new Map<string, Map<number, (msg: JsonRpcMessage) => void>>()
+  private _listeners = new Map<
+    string,
+    Map<number, (msg: JsonRpcMessage) => void>
+  >()
   private _nextId = 0
+  private _targetSessionId: string | null = null
 
   constructor(private _protocol: IMessagePassingProtocol) {
     this._protocol.onMessage(this._handleMessage.bind(this))
   }
 
+  public setTargetSession(sessionId: string | null) {
+    this._targetSessionId = sessionId
+  }
+
+  public send(message: {
+    documentId?: string | null
+    channel: string
+    method: string
+    args: any[]
+  }): Promise<any> {
+    return this._request(
+      message.channel,
+      message.method,
+      message.args,
+      message.documentId ?? undefined
+    )
+  }
+
   private _request<T>(
     channelName: string,
     method: string,
-    args: any[]
+    args: any[],
+    sessionId?: string
   ): Promise<T> {
     const id = this._nextId++
     return new Promise((resolve, reject) => {
       this._pendingRequests.set(id, { resolve, reject })
       this._protocol.send(
-        createJsonRpcRequest(`${channelName}.${method}`, id, args)
+        createJsonRpcRequest(
+          `${channelName}.${method}`,
+          id,
+          args,
+          sessionId || this._targetSessionId || undefined
+        )
       )
     })
   }
@@ -53,7 +81,14 @@ export class ChannelClient implements IChannelClient {
     }
     this._listeners.get(eventId)!.set(id, listener)
 
-    this._protocol.send(createJsonRpcListenMessage(eventId, id))
+    this._protocol.send(
+      createJsonRpcListenMessage(
+        eventId,
+        id,
+        undefined,
+        this._targetSessionId || undefined
+      )
+    )
 
     return {
       dispose: () => {
@@ -64,7 +99,9 @@ export class ChannelClient implements IChannelClient {
             this._listeners.delete(eventId)
           }
         }
-        this._protocol.send(createJsonRpcUnlistenMessage(id))
+        this._protocol.send(
+          createJsonRpcUnlistenMessage(id, this._targetSessionId || undefined)
+        )
       },
     }
   }
@@ -80,7 +117,12 @@ export class ChannelClient implements IChannelClient {
         if (isNotification) {
           const id = that._nextId++
           that._protocol.send(
-            createJsonRpcNotification(`${channelName}.${method}`, id, args)
+            createJsonRpcNotification(
+              `${channelName}.${method}`,
+              id,
+              args,
+              that._targetSessionId || undefined
+            )
           )
           return
         }

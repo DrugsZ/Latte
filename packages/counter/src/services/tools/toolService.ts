@@ -4,6 +4,7 @@ import {
   EventResult,
   CommandsRegistry,
   type IInputMouseHandler,
+  IEditorService,
 } from '@latte-js/syrup'
 import type { ITool } from '@latte-js/bean'
 
@@ -14,7 +15,7 @@ export class ToolService implements IInputMouseHandler {
   private _tools: Map<string, ITool> = new Map()
   private _activeTool: ITool | null = null
 
-  constructor() {
+  constructor(@IEditorService private readonly _editorService: IEditorService) {
     CommandsRegistry.registerCommand(
       'editor.tool.active',
       this._handleActivateToolCommand.bind(this)
@@ -26,7 +27,26 @@ export class ToolService implements IInputMouseHandler {
   }
 
   public onEvent(e: InputMouseEvent | InputWheelEvent): EventResult {
-    return EventResult.IGNORED
+    const tool = this._activeTool
+    if (!tool) {
+      return EventResult.IGNORED
+    }
+    const { activeEditor } = this._editorService
+    if (!activeEditor) {
+      return EventResult.IGNORED
+    }
+    ;(e as any).editor = activeEditor
+    const type = e.browserEvent?.type
+    if (type === 'mousedown') {
+      tool.onPointerDown?.(e as any)
+    } else if (type === 'mousemove') {
+      tool.onPointerMove?.(e as any)
+    } else if (type === 'mouseup') {
+      tool.onPointerUp?.(e as any)
+    } else if (type === 'dblclick') {
+      tool.onDoubleTap?.(e as any)
+    }
+    return EventResult.CONSUMED
   }
 
   private async _handleActivateToolCommand(toolId: string): Promise<void> {

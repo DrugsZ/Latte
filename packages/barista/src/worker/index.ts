@@ -24,7 +24,27 @@ self.onmessage = e => {
       self.postMessage({
         type: Lifecycle.InitKernelError,
         resId: e.data.requestId,
-        error: error,
+        error: (error as any).message || error,
+      })
+    }
+  } else if (e.data.type === Lifecycle.InitSession) {
+    try {
+      const { sessionId, buffer, allocBuffer, requestId } = e.data
+      if (!engine) {
+        throw new Error('Engine not initialized')
+      }
+
+      engine.initSession(sessionId, buffer, allocBuffer)
+
+      self.postMessage({
+        type: Lifecycle.InitSessionSuccess,
+        resId: requestId,
+      })
+    } catch (error) {
+      self.postMessage({
+        type: Lifecycle.InitSessionError,
+        resId: e.data.requestId,
+        error: (error as any).message || error,
       })
     }
   }

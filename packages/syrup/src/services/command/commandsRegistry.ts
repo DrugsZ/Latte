@@ -1,4 +1,7 @@
 import { type Event, Emitter, LinkedList } from '@latte-js/kit'
+import { createDecorator } from '../../instantiation/instantiation'
+
+export const ICommandService = createDecorator('commandService')
 
 export interface ICommandHandler {
   (...args: any[]): void

@@ -1,6 +1,6 @@
 import type { Renderer } from '@latte-js/art'
 import { HitTester } from '@latte-js/art'
-import type { HitResult, IMouseWheelEvent } from '@latte-js/bean'
+import type { HitResult, IMouseWheelEvent, ILatteEvent } from '@latte-js/bean'
 import { Emitter, Disposable, type Event } from '@latte-js/kit'
 import { type SceneGraph, NULL_INDEX } from '@latte-js/espresso'
 import {
@@ -19,7 +19,7 @@ export interface IInputService {
   readonly onKeyUp: Event<KeyboardEvent>
 }
 
-export class InputMouseEvent extends StandardMouseEvent {
+export class InputMouseEvent extends StandardMouseEvent implements ILatteEvent {
   constructor(
     browserEvent: MouseEvent,
     public readonly hitResult: HitResult | undefined,
@@ -68,6 +68,11 @@ export class InputService extends Disposable implements IInputService {
     canvas.addEventListener('wheel', this._handleRaw, { passive: false })
     window.addEventListener('keydown', this._handleKeyDown)
     window.addEventListener('keyup', this._handleKeyUp)
+  }
+
+  public setGraph(graph: SceneGraph) {
+    this._sceneGraph = graph
+    this._hitTester.setGraph(graph)
   }
 
   public registerHandler(handler: IInputMouseHandler) {

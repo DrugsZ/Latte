@@ -21,6 +21,10 @@ export interface IMouseEvent {
   readonly timestamp: number
 }
 
+export interface ILatteEvent extends IMouseEvent {
+  readonly hitResult?: HitResult
+}
+
 export interface IMouseWheelEvent extends MouseEvent {
   readonly deltaX: number
   readonly deltaY: number

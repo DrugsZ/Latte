@@ -43,13 +43,15 @@ export interface IDisposable {
 export const createJsonRpcRequest = (
   method: string,
   id: JsonRpcId,
-  params?: any
+  params?: any,
+  sessionId?: string
 ): JsonRpcRequest => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Request,
   method,
   params,
   id,
+  sessionId,
 })
 
 /**
@@ -61,13 +63,15 @@ export const createJsonRpcRequest = (
 export const createJsonRpcNotification = (
   method: string,
   id: JsonRpcId,
-  params?: any
+  params?: any,
+  sessionId?: string
 ): JsonRpcNotification => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Notification,
   method,
   params,
   id,
+  sessionId,
 })
 
 /**
@@ -79,13 +83,15 @@ export const createJsonRpcNotification = (
 export const createJsonRpcListenMessage = (
   method: string,
   id: JsonRpcId,
-  params?: any
+  params?: any,
+  sessionId?: string
 ): JsonRpcListenMessage => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Listen,
   method,
   params,
   id,
+  sessionId,
 })
 
 /**
@@ -93,11 +99,13 @@ export const createJsonRpcListenMessage = (
  * @param id The identifier of the listener to be removed.
  */
 export const createJsonRpcUnlistenMessage = (
-  id: JsonRpcId
+  id: JsonRpcId,
+  sessionId?: string
 ): JsonRpcUnlistenMessage => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Unlisten,
   id,
+  sessionId,
 })
 
 /**
@@ -107,12 +115,14 @@ export const createJsonRpcUnlistenMessage = (
  */
 export const createJsonRpcSuccessResponse = (
   id: JsonRpcId,
-  result: any
+  result: any,
+  sessionId?: string
 ): JsonRpcSuccessResponse => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.ResponseSuccess,
   result,
   id,
+  sessionId,
 })
 
 /**
@@ -126,7 +136,8 @@ export const createJsonRpcErrorResponse = (
   id: JsonRpcId,
   code: number,
   message: string,
-  data?: any
+  data?: any,
+  sessionId?: string
 ): JsonRpcErrorResponse => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.ResponseError,
@@ -136,4 +147,5 @@ export const createJsonRpcErrorResponse = (
     data,
   },
   id,
+  sessionId,
 })

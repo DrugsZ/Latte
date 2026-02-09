@@ -1,10 +1,15 @@
-import { type IServiceMap, Channels, NodeType } from '@latte-js/bean'
+import {
+  type IServiceMap,
+  Channels,
+  NodeType,
+  type IRpcService,
+} from '@latte-js/bean'
 import { ChannelClient } from '../ipc/channelClient'
 import { toService } from '../ipc'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
 import { Lifecycle } from '../lifecycle/lifecycle'
 
-export class BaristaClient {
+export class BaristaClient implements IRpcService {
   private _worker: Worker
   private _channelClient: ChannelClient
   private _messageChannel: MessageChannel
@@ -13,10 +18,52 @@ export class BaristaClient {
     this._worker = worker
   }
 
+  public send(message: {
+    documentId?: string | null
+    channel: string
+    method: string
+    args: any[]
+  }): Promise<any> {
+    return this._channelClient.send(message)
+  }
+
   public getService<T extends Channels>(channelId: T): IServiceMap[T] {
     return toService(
       this._channelClient.getChannel(channelId)
     ) as IServiceMap[T]
+  }
+
+  public setTargetSession(sessionId: string | null) {
+    this._channelClient.setTargetSession(sessionId)
+  }
+
+  public async initSession(
+    sessionId: string,
+    sharedBuffer: SharedArrayBuffer,
+    allocBuffer: SharedArrayBuffer
+  ) {
+    const requestId = Math.random().toString(36).substring(2)
+    this._worker.postMessage({
+      type: Lifecycle.InitSession,
+      sessionId,
+      buffer: sharedBuffer,
+      allocBuffer,
+      requestId,
+    })
+    return new Promise((resolve, reject) => {
+      const handler = (e: MessageEvent) => {
+        const { type, resId } = e.data
+        if (resId === requestId) {
+          this._worker.removeEventListener('message', handler)
+          if (type === Lifecycle.InitSessionSuccess) {
+            resolve(true)
+          } else {
+            reject(new Error('Init session failed'))
+          }
+        }
+      }
+      this._worker.addEventListener('message', handler)
+    })
   }
 
   private async _initIPC(port: MessagePort) {

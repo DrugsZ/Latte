@@ -49,6 +49,12 @@ export class Renderer {
     this.requestRender()
   }
 
+  public setGraph(graph: SceneGraph) {
+    this._sceneGraph = graph
+    this._buildRTree()
+    this.requestRender()
+  }
+
   get activeRootId() {
     return this._activeRootId
   }
