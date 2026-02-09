@@ -1,11 +1,11 @@
 import type { Renderer } from '@latte-js/art'
 import { HitTester } from '@latte-js/art'
-import type { HitResult } from '@latte-js/bean'
+import type { HitResult, IMouseWheelEvent, ILatteEvent } from '@latte-js/bean'
+import { Emitter, Disposable, type Event } from '@latte-js/kit'
 import { type SceneGraph, NULL_INDEX } from '@latte-js/espresso'
 import {
   StandardMouseEvent,
   StandardWheelEvent,
-  type IMouseWheelEvent,
   type IPoint,
 } from '../dom/mouseEvent'
 
@@ -14,7 +14,12 @@ export enum EventResult {
   CONSUMED = 1,
 }
 
-export class InputMouseEvent extends StandardMouseEvent {
+export interface IInputService {
+  readonly onKeyDown: Event<KeyboardEvent>
+  readonly onKeyUp: Event<KeyboardEvent>
+}
+
+export class InputMouseEvent extends StandardMouseEvent implements ILatteEvent {
   constructor(
     browserEvent: MouseEvent,
     public readonly hitResult: HitResult | undefined,
@@ -34,35 +39,63 @@ export class InputWheelEvent extends StandardWheelEvent {
   }
 }
 
-export interface IInputHandler {
+export interface IInputMouseHandler {
   id: string
   priority: number // Higher priority first
   onEvent(e: InputMouseEvent | InputWheelEvent): EventResult
 }
 
-export class InputService {
-  private _handlers: IInputHandler[] = []
+export class InputService extends Disposable implements IInputService {
+  private _handlers: IInputMouseHandler[] = []
   private _hitTester: HitTester
+
+  private readonly _onKeyDown = this._register(new Emitter<KeyboardEvent>())
+  public readonly onKeyDown = this._onKeyDown.event
+
+  private readonly _onKeyUp = this._register(new Emitter<KeyboardEvent>())
+  public readonly onKeyUp = this._onKeyUp.event
 
   constructor(
     private _renderer: Renderer,
     private _sceneGraph: SceneGraph
   ) {
+    super()
     this._hitTester = new HitTester(this._sceneGraph, this._renderer.camera)
     const canvas = this._renderer.canvas
     canvas.addEventListener('pointerdown', this._handleRaw)
     canvas.addEventListener('pointermove', this._handleRaw)
     canvas.addEventListener('pointerup', this._handleRaw)
     canvas.addEventListener('wheel', this._handleRaw, { passive: false })
+    window.addEventListener('keydown', this._handleKeyDown)
+    window.addEventListener('keyup', this._handleKeyUp)
   }
 
-  public registerHandler(handler: IInputHandler) {
+  public setGraph(graph: SceneGraph) {
+    this._sceneGraph = graph
+    this._hitTester.setGraph(graph)
+  }
+
+  public registerHandler(handler: IInputMouseHandler) {
     this._handlers.push(handler)
     this._handlers.sort((a, b) => b.priority - a.priority)
   }
 
   public removeHandler(id: string) {
     this._handlers = this._handlers.filter(h => h.id !== id)
+  }
+
+  public override dispose() {
+    window.removeEventListener('keydown', this._handleKeyDown)
+    window.removeEventListener('keyup', this._handleKeyUp)
+    super.dispose()
+  }
+
+  private _handleKeyDown = (e: KeyboardEvent) => {
+    this._onKeyDown.fire(e)
+  }
+
+  private _handleKeyUp = (e: KeyboardEvent) => {
+    this._onKeyUp.fire(e)
   }
 
   private _handleRaw = (rawEvent: PointerEvent | WheelEvent) => {

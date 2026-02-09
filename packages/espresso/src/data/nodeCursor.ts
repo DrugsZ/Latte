@@ -241,9 +241,9 @@ export class NodeCursor {
 
   public appendChild(child: NodeCursor) {
     this._checkAlive()
-    const oldParent = child.parent.id
+    const oldParent = child.parent?.id ?? null
     HierarchyOps.appendChild(this._graph, this._index, child.index)
-    const newParent = child.parent.id
+    const newParent = child.parent?.id ?? null
     this._graph.notifyObservers(child.id!, PropId.PARENT, oldParent, newParent)
     this._graph.markDirty(child.index, DIRTY_TRANSFORM)
     this._graph.markDirty(this._index, DIRTY_STRUCTURE)
@@ -262,12 +262,15 @@ export class NodeCursor {
 
   public delete() {
     this._checkAlive()
-    const parentId = this.parent?.id
+    const myId = this.id
+    const parent = this.parent
     HierarchyOps.remove(this._graph, this._index)
     //FIXME：json serialization
     const nodeJSON = ''
-    this._graph.notifyObservers(this.id!, PropId.REMOVE_SELF, nodeJSON, null)
-    this._graph.markDirty(parentId, DIRTY_STRUCTURE)
+    this._graph.notifyObservers(myId!, PropId.REMOVE_SELF, nodeJSON, null)
+    if (parent) {
+      this._graph.markDirty(parent.index, DIRTY_STRUCTURE)
+    }
   }
 
   get fills() {

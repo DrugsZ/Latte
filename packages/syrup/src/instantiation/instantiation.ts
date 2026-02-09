@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-const DI_TARGET = Symbol('DI_TARGET')
-const DI_DEPENDENCIES = Symbol('DI_DEPENDENCIES')
+export const DI_TARGET = Symbol('DI_TARGET')
+export const DI_DEPENDENCIES = Symbol('DI_DEPENDENCIES')
 
 const storeServiceDependency = (
   id: string,
@@ -16,15 +14,54 @@ const storeServiceDependency = (
   }
 }
 
-const serviceCollection = new Map<string, Function>()
+const serviceCollection = new Map<string, any>()
 
-export const createDecorator = (serviceId: string) => {
+export interface ServiceIdentifier<T> {
+  (...args: any[]): void
+  type: T
+}
+
+export const createDecorator = <T>(serviceId: string): ServiceIdentifier<T> => {
   if (serviceCollection.has(serviceId)) {
     return serviceCollection.get(serviceId)
   }
-  const decorator = (target: Function, key: string, paramIndex: number) => {
+  const decorator = ((target: Function, key: string, paramIndex: number) => {
     storeServiceDependency(serviceId, target, paramIndex)
-  }
+  }) as ServiceIdentifier<T>
+  decorator.toString = () => serviceId
   serviceCollection.set(serviceId, decorator)
   return decorator
 }
+
+const _registry: [ServiceIdentifier<any>, any][] = []
+
+export function registerSingleton<T>(
+  id: ServiceIdentifier<T>,
+  ctor: any
+): void {
+  _registry.push([id, ctor])
+}
+
+export function getSingletonServiceDescriptors(): [
+  ServiceIdentifier<any>,
+  any,
+][] {
+  return _registry
+}
+
+export type BrandedService = { _serviceBrand: undefined }
+
+export interface IInstantiationService {
+  readonly _serviceBrand: undefined
+  createInstance<T>(ctor: any, ...args: any[]): T
+  invokeFunction<R, TS extends any[] = []>(
+    fn: (accessor: ServicesAccessor, ...args: TS) => R,
+    ...args: TS
+  ): R
+}
+
+export interface ServicesAccessor {
+  get<T>(id: Function): T
+}
+
+export const IInstantiationService = createDecorator('instantiationService')

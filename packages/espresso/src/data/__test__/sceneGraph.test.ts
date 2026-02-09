@@ -4,6 +4,7 @@ import { NodeType, StrokeAlign } from '@latte-js/bean'
 import { type IGraphObserver } from '../../typing'
 import { SceneGraph } from '../sceneGraph'
 import { NULL_INDEX, MAT_SIZE, MAT_A, MAT_D } from '../config'
+import { PropId } from '../propKeys'
 
 describe('SceneGraph', () => {
   let sceneGraph: SceneGraph
@@ -51,7 +52,7 @@ describe('SceneGraph', () => {
       const secondGraph = new SceneGraph(originalGraph.buffer)
       expect(secondGraph.type[idx]).toBe(NodeType.RECTANGLE)
       // UUIDs are not stored in buffer, so this is expectedly empty unless re-registered
-      expect(secondGraph.getUUID(idx)).toBe('')
+      expect(secondGraph.getUUID(idx)).toBe(null)
     })
 
     it('should detach child when appending to a new parent', () => {
@@ -116,8 +117,8 @@ describe('SceneGraph', () => {
       expect(sceneGraph.getIndex('test:frame-1')).toBe(idx2)
     })
 
-    it('should delete node without UUID', () => {
-      const idx = sceneGraph.createNode(NodeType.RECTANGLE, '' as IDType)
+    it('should delete node with specific UUID', () => {
+      const idx = sceneGraph.createNode(NodeType.RECTANGLE, 'test:empty')
       expect(() => sceneGraph.deleteNode(idx)).not.toThrow()
     })
 
@@ -189,11 +190,11 @@ describe('SceneGraph', () => {
       }
       sceneGraph.setObserver(observer)
 
-      sceneGraph.notifyObservers('uuid-1', 'name', 'old', 'new')
+      sceneGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
 
       expect(observer.update).toHaveBeenCalledWith(
-        'uuid-1',
-        'name',
+        'test:uuid-1',
+        PropId.NAME,
         'old',
         'new'
       )
@@ -202,7 +203,7 @@ describe('SceneGraph', () => {
     it('should handle notification without observers', () => {
       const emptyGraph = new SceneGraph()
       expect(() =>
-        emptyGraph.notifyObservers('uuid-1', 'name', 'old', 'new')
+        emptyGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
       ).not.toThrow()
     })
 
@@ -212,7 +213,7 @@ describe('SceneGraph', () => {
       sceneGraph.setObserver(obs1)
       sceneGraph.setObserver(obs2)
 
-      sceneGraph.notifyObservers('uuid-1', 'prop', 'v1', 'v2')
+      sceneGraph.notifyObservers('test:uuid-1', PropId.X, 'v1', 'v2')
       expect(obs1.update).toHaveBeenCalledTimes(1)
       expect(obs2.update).toHaveBeenCalledTimes(1)
     })
@@ -231,11 +232,11 @@ describe('SceneGraph', () => {
 
   describe('UUID and Index mapping', () => {
     it('should return NULL_INDEX for non-existent UUID', () => {
-      expect(sceneGraph.getIndex('non-existent')).toBe(NULL_INDEX)
+      expect(sceneGraph.getIndex('test:non-existent')).toBe(NULL_INDEX)
     })
 
-    it('should return empty string for non-existent index', () => {
-      expect(sceneGraph.getUUID(999)).toBe('')
+    it('should return null for non-existent index', () => {
+      expect(sceneGraph.getUUID(999)).toBe(null)
     })
 
     it('should handle re-registering or updating mapping if needed', () => {

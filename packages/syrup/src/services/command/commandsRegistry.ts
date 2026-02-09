@@ -1,4 +1,7 @@
 import { type Event, Emitter, LinkedList } from '@latte-js/kit'
+import { createDecorator } from '../../instantiation/instantiation'
+
+export const ICommandService = createDecorator('commandService')
 
 export interface ICommandHandler {
   (...args: any[]): void
@@ -27,7 +30,7 @@ export interface ICommandService {
 
 export interface ICommandRegistry {
   onDidRegisterCommand: Event<string>
-  registerCommand(id: string, command: ICommandHandler): void
+  registerCommand(id: string, command: ICommandHandler): () => void
   getCommand(id: string): ICommand | undefined
   getCommands(): ICommandsMap
 }

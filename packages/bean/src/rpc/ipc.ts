@@ -13,6 +13,7 @@ export interface JsonRpcBaseMessage {
   jsonrpc: '2.0'
   type: JsonRpcMessageType
   id: JsonRpcId
+  sessionId?: string
 }
 
 export interface JsonRpcRequest<T = any> extends JsonRpcBaseMessage {

@@ -1,4 +1,4 @@
-# @latte/counter (The Counter)
+# @latte-js/counter (The Counter)
 
 **The Business Logic Workbench.**
 Contains all built-in features of the editor, existing as "Internal Extensions".

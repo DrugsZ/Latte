@@ -1,4 +1,4 @@
-# @latte/milk (Steamed Milk)
+# @latte-js/milk (Steamed Milk)
 
 **The User Interface.**
 Provides all React UI components and Hooks for the editor.

@@ -9,7 +9,7 @@ describe('MutationTracker', () => {
     tracker.mark(2, 4)
 
     expect(tracker.hasChanges).toBe(true)
-    const snapshot = tracker.popAll()
+    const snapshot = tracker.flush()
     expect(snapshot.get(1)).toBe(3)
     expect(snapshot.get(2)).toBe(4)
     expect(tracker.hasChanges).toBe(false)
@@ -18,8 +18,8 @@ describe('MutationTracker', () => {
   it('should clear dirty nodes after popAll', () => {
     const tracker = new MutationTracker()
     tracker.mark(1, 1)
-    tracker.popAll()
+    tracker.flush()
     expect(tracker.hasChanges).toBe(false)
-    expect(tracker.popAll().size).toBe(0)
+    expect(tracker.flush().size).toBe(0)
   })
 })

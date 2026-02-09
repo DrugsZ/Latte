@@ -17,13 +17,20 @@ class Listener<T> {
   }
 }
 
-export class Emitter<T> {
+export class Emitter<T> implements IDisposable {
   private _event?: Event<T>
   protected _listeners?: LinkedList<Listener<T>>
   // private _deliveryQueue: {
   // 	listener: Listener<T>
   // 	event: T
   // }[]
+
+  dispose(): void {
+    if (this._listeners) {
+      this._listeners.clear()
+      this._listeners = undefined
+    }
+  }
 
   get event(): Event<T> {
     if (!this._event) {

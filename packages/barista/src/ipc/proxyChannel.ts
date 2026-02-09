@@ -30,7 +30,7 @@ export function toService(channel: IChannel) {
 
 export const fromService = (service: object) => {
   return new (class implements IServerChannel {
-    listen(_: unknown, event: string) {
+    listen(_sessionId: string, event: string) {
       if (event.startsWith('on')) {
         const target = (service as any)[event]
         if (typeof target === 'function') {
@@ -43,7 +43,7 @@ export const fromService = (service: object) => {
       throw new Error(`Event not found: ${event}`)
     }
 
-    call(_: unknown, command: string, ...args: any[]): Promise<any> {
+    call(_sessionId: string, command: string, ...args: any[]): Promise<any> {
       const target = (service as any)[command]
       if (typeof target === 'function') {
         return target.apply(service, args)

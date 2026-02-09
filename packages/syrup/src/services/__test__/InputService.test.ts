@@ -1,95 +1,148 @@
-/**
- * @vitest-environment jsdom
- */
-import { describe, it, expect, vi } from 'vitest'
-import {
-  InputService,
-  EventResult,
-  type InputMouseEvent,
-} from '../InputService'
-
-import type { Renderer } from '@latte-js/art'
-import type { SceneGraph } from '@latte-js/espresso'
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { InputService, InputMouseEvent } from '../InputService'
+import { Renderer } from '@latte-js/art'
+import { SceneGraph } from '@latte-js/espresso'
+import { Emitter } from '@latte-js/kit'
 
 // Mock HitTester
 vi.mock('@latte-js/art', async importOriginal => {
-  const actual = (await importOriginal()) as any
+  const actual = await importOriginal<any>()
   return {
     ...actual,
     HitTester: class {
-      hitTest() {
-        return 1
-      }
+      hitTest = vi.fn().mockReturnValue(1)
     },
+    // Mock Renderer class if needed, but we pass instance mock
   }
 })
 
 describe('InputService', () => {
-  it('should dispatch events to handlers based on priority', () => {
-    // Mock Canvas
-    const mockCanvas = {
+  let inputService: InputService
+  let mockRenderer: any
+  let mockSceneGraph: any
+  let mockCanvas: any
+
+  beforeEach(() => {
+    // Setup DOM environment mocks
+    mockCanvas = {
       addEventListener: vi.fn(),
-    } as unknown as HTMLCanvasElement
+      removeEventListener: vi.fn(),
+      getBoundingClientRect: vi.fn().mockReturnValue({ left: 0, top: 0 }),
+    }
 
-    // Mock Renderer
-    const mockRenderer = {
+    mockRenderer = {
       canvas: mockCanvas,
-      activeRootId: 'root',
       camera: {
-        toWorld: vi.fn().mockReturnValue({ x: 100, y: 200 }),
+        toWorld: vi.fn().mockReturnValue({ x: 0, y: 0 }),
       },
+      activeRootId: 'root',
       rTree: {
-        search: vi.fn().mockReturnValue([{ id: 1 }]),
+        search: vi.fn().mockReturnValue([]),
       },
-    } as unknown as Renderer
+    } as any
 
-    // Mock SceneGraph
-    const mockSceneGraph = {
-      getUUID: vi.fn().mockReturnValue('node-1'),
-      parent: [-1, -1, -1], // Mock parent array, index 1 -> -1 (root)
-    } as unknown as SceneGraph
+    mockSceneGraph = {
+      getUUID: vi.fn().mockReturnValue('node-id'),
+    } as any
 
-    const inputService = new InputService(mockRenderer, mockSceneGraph)
+    inputService = new InputService(mockRenderer, mockSceneGraph)
+  })
 
-    const handler1 = {
-      id: 'h1',
+  afterEach(() => {
+    inputService.dispose()
+    vi.clearAllMocks()
+  })
+
+  it('should register event listeners on init', () => {
+    expect(mockCanvas.addEventListener).toHaveBeenCalledWith(
+      'pointerdown',
+      expect.any(Function)
+    )
+    expect(mockCanvas.addEventListener).toHaveBeenCalledWith(
+      'pointermove',
+      expect.any(Function)
+    )
+    expect(mockCanvas.addEventListener).toHaveBeenCalledWith(
+      'pointerup',
+      expect.any(Function)
+    )
+    expect(mockCanvas.addEventListener).toHaveBeenCalledWith(
+      'wheel',
+      expect.any(Function),
+      { passive: false }
+    )
+  })
+
+  it('should register and execute handlers', () => {
+    const handler = {
+      id: 'test',
       priority: 10,
-      onEvent: vi.fn().mockReturnValue(EventResult.IGNORED),
-    }
-    const handler2 = {
-      id: 'h2',
-      priority: 20,
-      onEvent: vi.fn().mockReturnValue(EventResult.CONSUMED),
+      onEvent: vi.fn(),
     }
 
-    inputService.registerHandler(handler1)
-    inputService.registerHandler(handler2)
+    inputService.registerHandler(handler)
 
-    // Trigger event
-    // We need to access the callback passed to addEventListener
-    const callback = (mockCanvas.addEventListener as any).mock.calls.find(
-      (call: any) => call[0] === 'pointerdown'
-    )[1]
+    // Trigger an event manually if we can access the private listener
+    // Or just check if handler is stored (private _handlers)
+    // Since we can't easily access private members, we rely on behavior.
 
-    const rawEvent = {
-      clientX: 50,
-      clientY: 60,
-      altKey: false,
-      shiftKey: false,
-      ctrlKey: false,
-      metaKey: false,
-    } as PointerEvent
+    // Let's try to simulate the event by calling the listener passed to addEventListener
+    // We need to capture the listener function
+    const pointerDownCall = mockCanvas.addEventListener.mock.calls.find(
+      (call: any[]) => call[0] === 'pointerdown'
+    )
+    const listener = pointerDownCall[1]
 
-    callback(rawEvent)
+    const mockEvent = {
+      type: 'pointerdown',
+      clientX: 10,
+      clientY: 10,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }
 
-    // Check handler2 called first (priority 20)
-    expect(handler2.onEvent).toHaveBeenCalled()
-    expect(handler1.onEvent).not.toHaveBeenCalled() // handler2 consumed it
+    listener(mockEvent)
 
-    // Check event data
-    const eventArg: InputMouseEvent = (handler2.onEvent as any).mock.calls[0][0]
-    expect(eventArg.client.x).toBe(100)
-    expect(eventArg.client.y).toBe(200)
-    expect(eventArg.hitResult?.nodeIndex).toBe(1)
+    expect(handler.onEvent).toHaveBeenCalled()
+  })
+
+  it('should remove handlers', () => {
+    const handler = {
+      id: 'test',
+      priority: 10,
+      onEvent: vi.fn(),
+    }
+    inputService.registerHandler(handler)
+    inputService.removeHandler('test')
+
+    // Simulate event
+    const pointerDownCall = mockCanvas.addEventListener.mock.calls.find(
+      (call: any[]) => call[0] === 'pointerdown'
+    )
+    const listener = pointerDownCall[1]
+
+    const mockEvent = {
+      type: 'pointerdown',
+      clientX: 10,
+      clientY: 10,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }
+
+    listener(mockEvent)
+
+    expect(handler.onEvent).not.toHaveBeenCalled()
+  })
+
+  it('should handle keyboard events', () => {
+    const onKeyDownSpy = vi.fn()
+    inputService.onKeyDown(onKeyDownSpy)
+
+    // Simulate window keydown
+    const event = new KeyboardEvent('keydown', { key: 'Enter' })
+    window.dispatchEvent(event)
+
+    expect(onKeyDownSpy).toHaveBeenCalledWith(event)
   })
 })

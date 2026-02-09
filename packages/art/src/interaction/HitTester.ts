@@ -13,6 +13,10 @@ export class HitTester {
     private _camera: Camera
   ) {}
 
+  public setGraph(graph: SceneGraph) {
+    this._sceneGraph = graph
+  }
+
   public hitTest(
     screenX: number,
     screenY: number,
@@ -77,7 +81,7 @@ export class HitTester {
     }
 
     // 3. Self Check (Exact Hit)
-    if (isCandidate && this._isPointInNode(index, point)) {
+    if (this._isPointInNode(index, point)) {
       return index
     }
 

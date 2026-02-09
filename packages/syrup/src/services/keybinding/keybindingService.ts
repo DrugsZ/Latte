@@ -4,18 +4,15 @@ import {
   ResolvedKeybinding,
   ResolvedKeybindingItem,
   toEmptyArrayIfContainsNull,
+  Disposable,
 } from '@latte-js/kit'
 import type { CommandService } from '../command/commandService'
-import * as dom from '@latte-js/kit'
+import type { IInputService } from '../InputService'
 import type { IKeyboardEvent } from '../../dom/keyboardEvent'
 import { StandardKeyboardEvent } from '../../dom/keyboardEvent'
-import {
-  KeybindingResolver,
-  ResultKind,
-} from './keybindingResolver'
+import { KeybindingResolver, ResultKind } from './keybindingResolver'
 import type { IKeybindingItem } from './keybindingsRegistry'
 import { KeybindingsRegistry } from './keybindingsRegistry'
-import { Disposable } from '@latte-js/kit'
 
 interface CurrentChord {
   keypress: string
@@ -31,7 +28,10 @@ export class KeybindingService extends Disposable {
     return this._currentChords.length > 0
   }
 
-  constructor(private _commandService: CommandService) {
+  constructor(
+    private _commandService: CommandService,
+    private _inputService: IInputService
+  ) {
     super()
     this._registerKeyListeners()
     this._currentlyDispatchingCommandId = null
@@ -43,7 +43,7 @@ export class KeybindingService extends Disposable {
   }
 
   private _registerKeyListeners() {
-    window.addEventListener(dom.EventType.KEY_DOWN, this._keyListener)
+    this._register(this._inputService.onKeyDown(this._keyListener))
   }
 
   private _dispatch(event: IKeyboardEvent) {
@@ -170,7 +170,6 @@ export class KeybindingService extends Disposable {
 
   public override dispose(): void {
     this._cacheResolver = null
-    window.removeEventListener(dom.EventType.KEY_DOWN, this._keyListener)
     super.dispose()
   }
 }

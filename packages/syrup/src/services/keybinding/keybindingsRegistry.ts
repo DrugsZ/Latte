@@ -1,7 +1,5 @@
 import type { Keybinding } from '@latte-js/kit'
-import { decodeKeybinding } from '@latte-js/kit'
-import { LinkedList } from '@latte-js/kit'
-import { OS } from '@latte-js/kit'
+import { decodeKeybinding, LinkedList, OS } from '@latte-js/kit'
 
 export interface IKeybindings {
   primary?: number

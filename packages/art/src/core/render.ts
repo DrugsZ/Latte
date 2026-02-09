@@ -11,16 +11,27 @@ export class Renderer {
   private _camera: Camera
   private _tempMatrix: mat2d = mat2d.create()
   private _rTree = new RBush()
+  private _canvas: HTMLCanvasElement
 
   constructor(
     private _sceneGraph: SceneGraph,
     private _backend: IRenderBackend,
-    private _container: HTMLCanvasElement,
+    private _container: HTMLDivElement,
     private _activeRootId?: IDType
   ) {
-    this._initCamera(this._container)
-    this._initRenderBackend(this._container)
-    this._initObserver(this._container)
+    const canvas = document.createElement('canvas')
+    canvas.style.position = 'absolute'
+    canvas.style.top = '0'
+    canvas.style.left = '0'
+    canvas.style.width = '100%'
+    canvas.style.height = '100%'
+    canvas.style.display = 'block'
+    this._container.appendChild(canvas)
+    this._canvas = canvas
+
+    this._initCamera(canvas)
+    this._initRenderBackend(canvas)
+    this._initObserver(canvas)
     this._buildRTree()
     this.start()
   }
@@ -30,11 +41,17 @@ export class Renderer {
   }
 
   public get canvas() {
-    return this._container
+    return this._canvas
   }
 
   public setActiveRootId(rootId: IDType) {
     this._activeRootId = rootId
+    this.requestRender()
+  }
+
+  public setGraph(graph: SceneGraph) {
+    this._sceneGraph = graph
+    this._buildRTree()
     this.requestRender()
   }
 
@@ -129,6 +146,10 @@ export class Renderer {
       return
     }
     this._actualRender()
+  }
+
+  private _renderOverlay() {
+    //FIXME: implement overlay render logic
   }
 
   private _actualRender() {
