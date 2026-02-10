@@ -1,4 +1,4 @@
-export * from './InputService'
+export * from './inputService'
 export * from './command/commandService'
 export * from './command/commandsRegistry'
 export * from './keybinding/keybindingService'

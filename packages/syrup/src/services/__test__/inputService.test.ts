@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { InputService } from '../InputService'
+import { InputService } from '../inputService'
 
 // Mock HitTester
 vi.mock('@latte-js/art', async importOriginal => {

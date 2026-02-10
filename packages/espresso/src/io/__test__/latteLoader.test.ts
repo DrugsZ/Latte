@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { NodeCursor } from '../../data/nodeCursor'
 import { SceneGraph } from '../../data/sceneGraph'
-import { LatteLoader } from '../LatteLoader'
+import { LatteLoader } from '../latteLoader'
 
 describe('LatteLoader', () => {
   let graph: SceneGraph

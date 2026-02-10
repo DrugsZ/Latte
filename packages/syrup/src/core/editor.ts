@@ -8,7 +8,7 @@ import {
 } from '@latte-js/bean'
 import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
 
-import { InputService } from '../services/InputService'
+import { InputService } from '../services/inputService'
 
 export class Editor {
   public static COUNT = 0

@@ -14,7 +14,7 @@ import { KeybindingsRegistry } from './keybindingsRegistry'
 import type { Keybinding } from '@latte-js/kit'
 import type { IKeyboardEvent } from '../../dom/keyboardEvent'
 import type { CommandService } from '../command/commandService'
-import type { IInputService } from '../InputService'
+import type { IInputService } from '../inputService'
 import type { IKeybindingItem } from './keybindingsRegistry'
 
 interface CurrentChord {

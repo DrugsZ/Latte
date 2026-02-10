@@ -1,7 +1,7 @@
 export { SceneGraph } from './data/sceneGraph'
 export { TOTAL_MEMORY_BYTES } from './data/memoryLayout'
-export { LatteLoader } from './io/LatteLoader'
-export { Serializer } from './io/Serializer'
+export { LatteLoader } from './io/latteLoader'
+export { Serializer } from './io/serializer'
 export { NodeCursor } from './data/nodeCursor'
 export {
   DIRTY_TRANSFORM,

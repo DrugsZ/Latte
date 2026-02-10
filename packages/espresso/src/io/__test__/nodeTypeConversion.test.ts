@@ -2,8 +2,8 @@ import { NodeType, type ILatteFile } from '@latte-js/bean'
 import { describe, expect, it } from 'vitest'
 
 import { SceneGraph } from '../../data/sceneGraph'
-import { LatteLoader } from '../LatteLoader'
-import { Serializer } from '../Serializer'
+import { LatteLoader } from '../latteLoader'
+import { Serializer } from '../serializer'
 
 describe('NodeType String Conversion', () => {
   it('should serialize numeric NodeType to string keys', () => {

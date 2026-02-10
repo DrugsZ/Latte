@@ -3,7 +3,7 @@ import { SceneGraph, NULL_INDEX } from '@latte-js/espresso'
 import { describe, it, expect, beforeEach } from 'vitest'
 
 import { Camera } from '../../core/camera'
-import { HitTester } from '../HitTester'
+import { HitTester } from '../hitTester'
 
 describe('HitTester', () => {
   let sceneGraph: SceneGraph

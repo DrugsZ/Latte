@@ -13,6 +13,6 @@ export type {
 
 export { Camera } from './core/camera'
 export { Renderer } from './core/render'
-export { HitTester } from './interaction/HitTester'
+export { HitTester } from './interaction/hitTester'
 
 export * from './render/canvas/index'

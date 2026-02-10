@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { NodeCursor } from '../../data/nodeCursor'
 import { SceneGraph } from '../../data/sceneGraph'
-import { Serializer } from '../Serializer'
+import { Serializer } from '../serializer'
 
 import type {
   IFrameNode,
