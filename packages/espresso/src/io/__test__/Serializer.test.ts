@@ -1,14 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import type {
-  IPaint,
-  IRectangleNode,
-  IFrameNode,
-  IPageNode,
-} from '@latte-js/bean'
 import { NodeType } from '@latte-js/bean'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import { NodeCursor } from '../../data/nodeCursor'
 import { SceneGraph } from '../../data/sceneGraph'
 import { Serializer } from '../Serializer'
-import { NodeCursor } from '../../data/nodeCursor'
+
+import type {
+  IFrameNode,
+  IPageNode,
+  IPaint,
+  IRectangleNode,
+} from '@latte-js/bean'
 
 describe('Serializer', () => {
   let graph: SceneGraph

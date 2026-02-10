@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import type { IPaint } from '@latte-js/bean'
-import { NodeType, BlendModeType } from '@latte-js/bean'
-import { SceneGraph } from '../sceneGraph'
+import { BlendModeType, NodeType } from '@latte-js/bean'
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import { NodeCursor } from '../nodeCursor'
+import { SceneGraph } from '../sceneGraph'
+
+import type { IPaint } from '@latte-js/bean'
 
 describe('NodeCursor', () => {
   let graph: SceneGraph

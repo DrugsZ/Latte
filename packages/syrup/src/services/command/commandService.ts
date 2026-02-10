@@ -1,7 +1,9 @@
-import type { ICommandService, ICommandEvent } from './commandsRegistry'
-import { CommandsRegistry } from './commandsRegistry'
-import type { Event } from '@latte-js/kit'
 import { Emitter } from '@latte-js/kit'
+
+import { CommandsRegistry } from './commandsRegistry'
+
+import type { Event } from '@latte-js/kit'
+import type { ICommandEvent, ICommandService } from './commandsRegistry'
 
 export class Disposable {
   protected _disposables: { dispose(): void }[] = []

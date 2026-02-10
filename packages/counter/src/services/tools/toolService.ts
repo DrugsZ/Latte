@@ -1,11 +1,12 @@
 import {
+  type IInputMouseHandler,
   type InputMouseEvent,
   type InputWheelEvent,
-  EventResult,
   CommandsRegistry,
-  type IInputMouseHandler,
+  EventResult,
   IEditorService,
 } from '@latte-js/syrup'
+
 import type { ITool } from '@latte-js/bean'
 
 export class ToolService implements IInputMouseHandler {

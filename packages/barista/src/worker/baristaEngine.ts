@@ -1,10 +1,12 @@
+import { type IDType, DEFAULT_SCENE_GRAPH_NAME } from '@latte-js/bean'
 import { SceneGraph } from '@latte-js/espresso'
+
 import { ChannelServer, fromService } from '../ipc'
-import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
+import { createJsonRpcNotification } from '../ipc/ipc'
 import { ServiceManager } from '../services'
 import { BaristaSystem, Systems } from '../systems'
-import { createJsonRpcNotification } from '../ipc/ipc'
-import { type IDType, Channels } from '@latte-js/bean'
+
+import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
 
 const PIPELINE_SYSTEMS: Systems[] = [Systems.Matrix, Systems.AABB]
 
@@ -29,9 +31,13 @@ export class BaristaEngine {
 
     this._initChannelServer()
     // Initial kernel session
-    const kernelGraph = this.initSession('kernel', buffer, allocBuffer)
+    const kernelGraph = this.initSession(
+      DEFAULT_SCENE_GRAPH_NAME,
+      buffer,
+      allocBuffer
+    )
     this._activeGraph = kernelGraph
-    this._activeSessionId = 'kernel'
+    this._activeSessionId = DEFAULT_SCENE_GRAPH_NAME
   }
 
   private _createGraphProxy(): SceneGraph {
@@ -73,7 +79,7 @@ export class BaristaEngine {
     this._channelServer = new ChannelServer(this._protocol)
     this._channelServer.onMessage(this.scheduleTick, this)
     this._channelServer.onBeforeCall(sessionId => {
-      const targetId = sessionId || 'kernel'
+      const targetId = sessionId || DEFAULT_SCENE_GRAPH_NAME
       this._activeSessionId = targetId
       this._activeGraph = this._graphs.get(targetId) || null
     })

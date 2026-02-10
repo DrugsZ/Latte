@@ -1,12 +1,13 @@
 import { NodeType, type AABB } from '@latte-js/bean'
 import {
-  type SceneGraph,
   BOUNDS_AFFECTING_FLAGS,
-  NULL_INDEX,
   NodeCursor,
+  NULL_INDEX,
   TransformOps,
+  type SceneGraph,
 } from '@latte-js/espresso'
-import { system, Systems, SystemBase } from './systems'
+
+import { system, SystemBase, Systems } from './systems'
 
 interface DirtyNode {
   index: number

@@ -1,18 +1,20 @@
 import {
-  createJsonRpcNotification,
-  createJsonRpcRequest,
-  createJsonRpcListenMessage,
-  createJsonRpcUnlistenMessage,
-  type IChannelClient,
-  type IChannel,
-  type IDisposable,
-} from './ipc'
-import {
-  type JsonRpcId,
-  type JsonRpcMessage,
   JsonRpcMessageType,
   type IServiceMap,
+  type JsonRpcId,
+  type JsonRpcMessage,
 } from '@latte-js/bean'
+
+import {
+  createJsonRpcListenMessage,
+  createJsonRpcNotification,
+  createJsonRpcRequest,
+  createJsonRpcUnlistenMessage,
+  type IChannel,
+  type IChannelClient,
+  type IDisposable,
+} from './ipc'
+
 import type { IMessagePassingProtocol } from './protocol/protocol'
 
 export class ChannelClient implements IChannelClient {

@@ -1,6 +1,6 @@
 import type { IAction } from '../../core/actions'
-import type { ICommandMenuItem } from './menuRegistry'
 import type { CommandService } from '../command/commandService'
+import type { ICommandMenuItem } from './menuRegistry'
 
 export default class MenuItemAction implements IAction {
   readonly id: string

@@ -1,11 +1,12 @@
 import {
+  DashCap,
+  type IPaint,
   StrokeAlign,
   type StrokeAlignKey,
   StrokeJoin,
   StrokeStyle,
-  DashCap,
-  type IPaint,
 } from '@latte-js/bean'
+
 import type { SceneGraph } from '../sceneGraph'
 
 const CORNER_SIZE = 4

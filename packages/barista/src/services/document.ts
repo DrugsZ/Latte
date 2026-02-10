@@ -1,13 +1,13 @@
 import {
-  type IDType,
   Channels,
   type IDocumentService,
+  type IDType,
   type ILatteFile,
 } from '@latte-js/bean'
-
-import { Emitter } from '@latte-js/kit'
 import { LatteLoader, Serializer } from '@latte-js/espresso'
-import { ServiceBase, type IContext, service } from './serviceBase'
+import { Emitter } from '@latte-js/kit'
+
+import { service, ServiceBase, type IContext } from './serviceBase'
 
 @service
 export class DocumentService extends ServiceBase implements IDocumentService {

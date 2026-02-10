@@ -1,12 +1,13 @@
 import {
   type SceneGraph,
-  DIRTY_TRANSFORM,
   DIRTY_AABB,
   DIRTY_SUBTREE_MATRIX,
+  DIRTY_TRANSFORM,
   NodeCursor,
 } from '@latte-js/espresso'
 import { mat2d } from 'gl-matrix'
-import { system, Systems, SystemBase } from './systems'
+
+import { system, SystemBase, Systems } from './systems'
 
 /**
  * MatrixSystem - Computes world transform matrices using DIRTY_SUBTREE_MATRIX pruning.

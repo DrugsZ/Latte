@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
 import { NodeType } from '@latte-js/bean'
-import { SceneGraph } from '../../sceneGraph'
+import { describe, expect, it } from 'vitest'
+
 import { NULL_INDEX } from '../../config'
+import { SceneGraph } from '../../sceneGraph'
 import { HierarchyOps } from '../hierarchyOps'
 
 describe('HierarchyOps', () => {

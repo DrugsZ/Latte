@@ -1,5 +1,5 @@
+import type { IMouseEvent } from '@latte-js/bean'
 import type { Point } from '@latte-js/kit'
-import type { IMouseEvent } from './mouseEvent'
 
 export class MouseDownState<TTarget, TController> {
   private static readonly CLEAR_MOUSE_DOWN_COUNT_TIME = 400 // ms

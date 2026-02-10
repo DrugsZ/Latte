@@ -1,6 +1,8 @@
 import { StrokeAlign } from '@latte-js/bean'
-import type { INodeRenderer } from '../typing'
+
 import { getFirstPaint, getFirstSolidColor } from './utils'
+
+import type { INodeRenderer } from '../typing'
 
 export const RectRenderer: INodeRenderer = {
   render(backend, cursor) {

@@ -1,7 +1,6 @@
-import type { Event } from '@latte-js/kit'
-import type { IDisposable } from '@latte-js/kit'
-import { LinkedList } from '@latte-js/kit'
-import { Emitter } from '@latte-js/kit'
+import { Emitter, LinkedList } from '@latte-js/kit'
+
+import type { Event, IDisposable } from '@latte-js/kit'
 import type { ICommandAction, Icon } from '../../core/actions'
 import type MenuItemAction from './menuAction'
 

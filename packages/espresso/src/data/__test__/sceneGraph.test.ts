@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import type { IDType } from '@latte-js/bean'
 import { NodeType, StrokeAlign } from '@latte-js/bean'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { type IGraphObserver } from '../../typing'
-import { SceneGraph } from '../sceneGraph'
-import { NULL_INDEX, MAT_SIZE, MAT_A, MAT_D } from '../config'
+import { MAT_A, MAT_D, MAT_SIZE, NULL_INDEX } from '../config'
 import { PropId } from '../propKeys'
+import { SceneGraph } from '../sceneGraph'
 
 describe('SceneGraph', () => {
   let sceneGraph: SceneGraph

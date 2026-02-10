@@ -1,8 +1,13 @@
-import { SceneGraph, TOTAL_MEMORY_BYTES, MAX_NODES } from '@latte-js/espresso'
-import { BaristaClient } from '@latte-js/barista'
 import { Canvas2DRender, Renderer } from '@latte-js/art'
+import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
-import { IRpcService, IContextService } from '@latte-js/bean'
+import {
+  DEFAULT_SCENE_GRAPH_NAME,
+  IContextService,
+  IRpcService,
+} from '@latte-js/bean'
+import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
+
 import { InputService } from '../services/InputService'
 
 export class Editor {
@@ -23,7 +28,9 @@ export class Editor {
     this._graph = new SceneGraph(sharedBuffer, allocBuffer)
 
     // Default context service
-    this.registerService(IContextService, { getContextId: () => 'kernel' })
+    this.registerService(IContextService, {
+      getContextId: () => DEFAULT_SCENE_GRAPH_NAME,
+    })
   }
 
   public registerService(id: string, service: any) {

@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
-import { mat2d } from 'gl-matrix'
 import { NodeType } from '@latte-js/bean'
-import { SceneGraph } from '../../sceneGraph'
+import { mat2d } from 'gl-matrix'
+import { describe, expect, it } from 'vitest'
+
 import { MAT_A, MAT_D, MAT_SIZE, MAT_TX, MAT_TY } from '../../config'
+import { SceneGraph } from '../../sceneGraph'
 import { TransformOps } from '../transformOps'
 
 describe('TransformOps', () => {

@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SelectionService } from '../selectionService'
 import { SceneGraph } from '@latte-js/espresso'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { SelectionService } from '../selectionService'
 
 describe('SelectionService', () => {
   let sceneGraph: SceneGraph

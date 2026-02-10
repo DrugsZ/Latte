@@ -1,6 +1,8 @@
-import type { ResolvedKeybindingItem } from '@latte-js/kit'
-import { describe, test, expect, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, test } from 'vitest'
+
 import { KeybindingResolver, ResultKind } from '../keybindingResolver'
+
+import type { ResolvedKeybindingItem } from '@latte-js/kit'
 
 describe('KeybindingResolver', () => {
   let resolver: KeybindingResolver

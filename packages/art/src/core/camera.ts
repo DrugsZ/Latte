@@ -1,5 +1,5 @@
-import { mat2d, vec2 } from 'gl-matrix'
 import { Emitter } from '@latte-js/kit'
+import { mat2d, vec2 } from 'gl-matrix'
 
 export class Camera {
   private _onDidChange = new Emitter<void>()

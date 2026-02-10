@@ -1,6 +1,6 @@
-import { mat2, mat2d, vec2 } from 'gl-matrix'
 import { computeStretchTransform, extractMat2 } from '@latte-js/espresso'
-import { describe, it, expect } from 'vitest'
+import { mat2, mat2d, vec2 } from 'gl-matrix'
+import { describe, expect, it } from 'vitest'
 
 function rotationMat2d(degrees: number): mat2d {
   const rad = (degrees * Math.PI) / 180

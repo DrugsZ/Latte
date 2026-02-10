@@ -1,6 +1,7 @@
-import type { IDisposable } from '@latte-js/bean'
-import { LinkedList } from '../linkedList/linkedList'
 import { toDisposable } from '../lifecycle'
+import { LinkedList } from '../linkedList/linkedList'
+
+import type { IDisposable } from '@latte-js/bean'
 
 export interface Event<T> {
   (listener: (e: T) => any, thisArgs?: any): IDisposable

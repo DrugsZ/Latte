@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { mat2, mat2d } from 'gl-matrix'
+import { describe, expect, it } from 'vitest'
+
 import { applyStretchToMatrix, computeStretchTransform } from '../transform'
-import { mat2d, mat2 } from 'gl-matrix'
 
 describe('transform utils', () => {
   describe('applyStretchToMatrix', () => {

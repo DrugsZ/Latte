@@ -1,8 +1,8 @@
 import type { Matrix } from '../../math'
-import type { NodeType } from './types'
-import type { IStrokeSchema } from './stroke'
-import type { IPaint } from './fill'
 import type { BlendModeType } from './blend'
+import type { IPaint } from './fill'
+import type { IStrokeSchema } from './stroke'
+import type { NodeType } from './types'
 
 export type IDType = `${number | string}:${number | string}`
 

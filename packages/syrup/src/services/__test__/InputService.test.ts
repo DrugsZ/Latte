@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { InputService, InputMouseEvent } from '../InputService'
-import { Renderer } from '@latte-js/art'
-import { SceneGraph } from '@latte-js/espresso'
-import { Emitter } from '@latte-js/kit'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { InputService } from '../InputService'
 
 // Mock HitTester
 vi.mock('@latte-js/art', async importOriginal => {

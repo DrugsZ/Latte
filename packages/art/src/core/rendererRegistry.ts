@@ -1,6 +1,8 @@
 import { NodeType } from '@latte-js/bean'
-import type { INodeRenderer } from '../typing'
+
 import { EllipseRenderer, RectRenderer } from '../renderers'
+
+import type { INodeRenderer } from '../typing'
 
 export const renderers = new Array<INodeRenderer>(1 << 8)
 

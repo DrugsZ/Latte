@@ -1,14 +1,16 @@
-import type { IDType } from '@latte-js/bean'
 import {
   type SceneGraph,
-  NodeCursor,
-  DIRTY_TRANSFORM,
-  DIRTY_AABB,
-  NULL_INDEX,
   applyDistributiveScale,
+  DIRTY_AABB,
+  DIRTY_TRANSFORM,
+  NodeCursor,
+  NULL_INDEX,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
-import { system, Systems, SystemBase } from './systems'
+
+import { system, SystemBase, Systems } from './systems'
+
+import type { IDType } from '@latte-js/bean'
 
 type ISnapshot = Float32Array
 

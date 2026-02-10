@@ -1,4 +1,5 @@
 import { type JsonRpcMessage } from '@latte-js/bean'
+
 import type { IDisposable } from '../ipc'
 import type { IMessagePassingProtocol } from './protocol'
 

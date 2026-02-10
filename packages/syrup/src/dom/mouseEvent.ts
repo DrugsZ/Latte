@@ -1,4 +1,5 @@
 import { type IPoint } from '@latte-js/kit'
+
 import type { IMouseEvent, IMouseWheelEvent } from '@latte-js/bean'
 
 export { type IPoint }

@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
 import { NodeType, type ILatteFile } from '@latte-js/bean'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import { NodeCursor } from '../../data/nodeCursor'
 import { SceneGraph } from '../../data/sceneGraph'
 import { LatteLoader } from '../LatteLoader'
-import { NodeCursor } from '../../data/nodeCursor'
 
 describe('LatteLoader', () => {
   let graph: SceneGraph

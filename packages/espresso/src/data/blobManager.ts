@@ -1,5 +1,6 @@
-import type { HeapManager } from './heapManager'
 import { NULL_INDEX } from './config'
+
+import type { HeapManager } from './heapManager'
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()

@@ -1,7 +1,9 @@
-import type { IDType, NodeType } from '@latte-js/bean'
 import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
-import { system, Systems, SystemBase } from './systems'
+
+import { system, SystemBase, Systems } from './systems'
+
+import type { IDType, NodeType } from '@latte-js/bean'
 
 @system
 export class NodeSystem extends SystemBase {

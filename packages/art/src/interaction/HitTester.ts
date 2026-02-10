@@ -1,8 +1,10 @@
-import { type SceneGraph, NULL_INDEX } from '@latte-js/espresso'
-import type { Camera } from '../core/camera'
-import { vec2, mat2d } from 'gl-matrix'
 import { type IDType, NodeType } from '@latte-js/bean'
+import { type SceneGraph, NULL_INDEX } from '@latte-js/espresso'
+import { mat2d, vec2 } from 'gl-matrix'
+
 import { isPointInPolygon } from '../utils/geometry'
+
+import type { Camera } from '../core/camera'
 
 export class HitTester {
   private _tempVec = vec2.create()

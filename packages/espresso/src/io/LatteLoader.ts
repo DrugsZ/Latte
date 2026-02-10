@@ -1,9 +1,11 @@
-import { NodeCursor } from '../data/nodeCursor'
-import { NULL_INDEX } from '../data/config'
-import type { SceneGraph } from '../data/sceneGraph'
-import { NodeType, type ILatteNode, type ILatteFile } from '@latte-js/bean'
+import { NodeType, type ILatteFile, type ILatteNode } from '@latte-js/bean'
 import { mat2d } from 'gl-matrix'
+
+import { NULL_INDEX } from '../data/config'
+import { NodeCursor } from '../data/nodeCursor'
 import { TransformOps } from '../data/ops'
+
+import type { SceneGraph } from '../data/sceneGraph'
 
 const mapType = (type: string | number): number => {
   if (typeof type === 'number') {

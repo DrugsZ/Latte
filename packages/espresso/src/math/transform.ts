@@ -1,7 +1,9 @@
 import { mat2, mat2d, vec2 } from 'gl-matrix'
-import { type SceneGraph } from '../data/sceneGraph'
+
 import { type NodeCursor } from 'src/data/nodeCursor'
-import { DIRTY_TRANSFORM, DIRTY_AABB, NULL_INDEX } from '../data/config'
+
+import { DIRTY_AABB, DIRTY_TRANSFORM, NULL_INDEX } from '../data/config'
+import { type SceneGraph } from '../data/sceneGraph'
 /**
  * Apply stretch (scale) to matrix and size, baking the result.
  *

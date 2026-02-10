@@ -1,5 +1,6 @@
-import type { IChannel, IServerChannel } from '../ipc'
 import { JsonRpcMessageType, type JsonRpcMessage } from '@latte-js/bean'
+
+import type { IChannel, IServerChannel } from '../ipc'
 
 export function toService(channel: IChannel) {
   return new Proxy(

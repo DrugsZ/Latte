@@ -1,18 +1,21 @@
-import type { Keybinding } from '@latte-js/kit'
 import {
+  Disposable,
   KeyCodeChord,
   ResolvedKeybinding,
   ResolvedKeybindingItem,
   toEmptyArrayIfContainsNull,
-  Disposable,
 } from '@latte-js/kit'
+
+import { StandardKeyboardEvent } from '../../dom/keyboardEvent'
+
+import { KeybindingResolver, ResultKind } from './keybindingResolver'
+import { KeybindingsRegistry } from './keybindingsRegistry'
+
+import type { Keybinding } from '@latte-js/kit'
+import type { IKeyboardEvent } from '../../dom/keyboardEvent'
 import type { CommandService } from '../command/commandService'
 import type { IInputService } from '../InputService'
-import type { IKeyboardEvent } from '../../dom/keyboardEvent'
-import { StandardKeyboardEvent } from '../../dom/keyboardEvent'
-import { KeybindingResolver, ResultKind } from './keybindingResolver'
 import type { IKeybindingItem } from './keybindingsRegistry'
-import { KeybindingsRegistry } from './keybindingsRegistry'
 
 interface CurrentChord {
   keypress: string

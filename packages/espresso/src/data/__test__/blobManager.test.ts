@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
 import { BlobManager } from '../blobManager'
-import type { HeapManager } from '../heapManager'
 import { NULL_INDEX } from '../config'
+
+import type { HeapManager } from '../heapManager'
 
 describe('BlobManager', () => {
   const mockHeap = {

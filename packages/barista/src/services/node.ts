@@ -1,10 +1,12 @@
 import {
   Channels,
+  type IDType,
   type INodeService,
   type NodeType,
-  type IDType,
 } from '@latte-js/bean'
-import { ServiceBase, type IContext, service } from './serviceBase'
+
+import { service, ServiceBase, type IContext } from './serviceBase'
+
 import type { NodeSystem } from '../systems/node'
 
 @service

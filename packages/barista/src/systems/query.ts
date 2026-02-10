@@ -1,6 +1,8 @@
-import type { NodeType, IDType } from '@latte-js/bean'
 import { walkTree, type SceneGraph } from '@latte-js/espresso'
-import { system, Systems, SystemBase } from './systems'
+
+import { system, SystemBase, Systems } from './systems'
+
+import type { IDType, NodeType } from '@latte-js/bean'
 
 @system
 export class QuerySystem extends SystemBase {

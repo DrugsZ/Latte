@@ -1,15 +1,16 @@
-import type {
-  IRenderBackend,
-  Gradient,
-  TextMetrics,
-  CanvasLike,
-} from '../../contract/renderBackend'
 import {
-  PathCmd,
   BlendMode,
+  GradientType,
   LineCap,
   LineJoin,
-  GradientType,
+  PathCmd,
+} from '../../contract/renderBackend'
+
+import type {
+  CanvasLike,
+  Gradient,
+  IRenderBackend,
+  TextMetrics,
 } from '../../contract/renderBackend'
 
 /**

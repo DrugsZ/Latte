@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest'
-import { hasTrait, isShape, isRenderAble } from '../nodeHelper'
 import {
   NodeType,
-  TRAIT_SHAPE,
-  TRAIT_RENDER_ABLE,
   TRAIT_HAS_BOUNDS,
+  TRAIT_RENDER_ABLE,
+  TRAIT_SHAPE,
 } from '@latte-js/bean'
+import { describe, expect, it } from 'vitest'
+
+import { hasTrait, isRenderAble, isShape } from '../nodeHelper'
 
 describe('NodeHelper', () => {
   describe('hasTrait', () => {

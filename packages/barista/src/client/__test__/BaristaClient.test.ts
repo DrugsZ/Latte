@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { BaristaClient } from '../BaristaClient'
-import { Lifecycle } from '../../lifecycle/lifecycle'
 import { Channels } from '@latte-js/bean'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { Lifecycle } from '../../lifecycle/lifecycle'
+import { BaristaClient } from '../BaristaClient'
 
 // Mock MessagePort
 class MockMessagePort {

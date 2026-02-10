@@ -1,6 +1,8 @@
-import type { AABB } from '@latte-js/bean'
 import { mat2d } from 'gl-matrix'
+
 import { AABB_SIZE, MAT_A, MAT_D, MAT_SIZE, MAT_TX, MAT_TY } from '../config'
+
+import type { AABB } from '@latte-js/bean'
 import type { SceneGraph } from '../sceneGraph'
 
 const TEMP_MATRIX = mat2d.create()

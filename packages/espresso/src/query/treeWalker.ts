@@ -1,5 +1,6 @@
-import type { SceneGraph } from '../data/sceneGraph'
 import { NULL_INDEX } from '../data/config'
+
+import type { SceneGraph } from '../data/sceneGraph'
 
 export function* walkTree(graph: SceneGraph, rootId: number = 0) {
   const stack = [rootId]

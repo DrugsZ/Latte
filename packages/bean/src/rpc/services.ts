@@ -1,8 +1,8 @@
+import type { IDocumentService } from './document'
 import type { INodeService } from './node'
+import type { IQueryService } from './query'
 import type { ISceneService } from './scene'
 import type { ITransformService } from './transform'
-import type { IDocumentService } from './document'
-import type { IQueryService } from './query'
 
 export enum Channels {
   Node = 'node',

@@ -1,6 +1,7 @@
-import type { Editor } from '@latte-js/syrup'
-import { SelectionService } from './services/selection/selectionService'
 import { SelectionTool } from './contrib/select/selectionTool'
+import { SelectionService } from './services/selection/selectionService'
+
+import type { Editor } from '@latte-js/syrup'
 
 export class Workbench {
   public readonly selectionService: SelectionService

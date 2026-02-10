@@ -1,24 +1,24 @@
-import type {
-  StrokeAlignKey,
-  StrokeJoinKey,
-  StrokeStyleKey,
-  DashCapKey,
-  IPaint,
-  IDType,
-} from '@latte-js/bean'
-
-import type { mat2d } from 'gl-matrix'
 import {
+  DIRTY_AABB,
+  DIRTY_NOT_EFFECT,
+  DIRTY_STRUCTURE,
   DIRTY_TRANSFORM,
   MAX_NODES,
   NULL_INDEX,
-  DIRTY_NOT_EFFECT,
-  DIRTY_AABB,
-  DIRTY_STRUCTURE,
 } from './config'
-import { HierarchyOps, TransformOps, StyleOps } from './ops'
-import type { SceneGraph } from './sceneGraph'
+import { HierarchyOps, StyleOps, TransformOps } from './ops'
 import { PropId } from './propKeys'
+
+import type {
+  DashCapKey,
+  IDType,
+  IPaint,
+  StrokeAlignKey,
+  StrokeJoinKey,
+  StrokeStyleKey,
+} from '@latte-js/bean'
+import type { mat2d } from 'gl-matrix'
+import type { SceneGraph } from './sceneGraph'
 
 export class NodeCursor {
   private _index: number

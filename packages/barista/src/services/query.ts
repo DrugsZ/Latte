@@ -4,7 +4,9 @@ import {
   type IQueryService,
   type NodeType,
 } from '@latte-js/bean'
-import { ServiceBase, type IContext, service } from './serviceBase'
+
+import { service, ServiceBase, type IContext } from './serviceBase'
+
 import type { QuerySystem } from '../systems/query'
 
 @service

@@ -1,13 +1,15 @@
+import { Disposable, Emitter } from '@latte-js/kit'
+
+import MenuItemAction from './menuAction'
 import { MenuRegistry } from './menuRegistry'
+
+import type { Event } from '@latte-js/kit'
 import type {
-  MenuId,
   IMenu,
   IMenuChangeEvent,
+  MenuId,
   MenuItemGroup,
 } from './menuRegistry'
-import { Disposable, Emitter } from '@latte-js/kit'
-import type { Event } from '@latte-js/kit'
-import MenuItemAction from './menuAction'
 
 interface IMenuService {
   createMenu(menuId: MenuId): IMenu

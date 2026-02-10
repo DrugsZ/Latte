@@ -1,21 +1,23 @@
 import {
-  createJsonRpcErrorResponse,
-  createJsonRpcSuccessResponse,
-  createJsonRpcNotification,
-  type IChannelServer,
-  type IServerChannel,
-  type IDisposable,
-} from './ipc'
-import {
-  type JsonRpcMessage,
-  type JsonRpcRequest,
-  type JsonRpcNotification,
-  type JsonRpcListenMessage,
-  type JsonRpcUnlistenMessage,
   JsonRpcMessageType,
   type JsonRpcId,
+  type JsonRpcListenMessage,
+  type JsonRpcMessage,
+  type JsonRpcNotification,
+  type JsonRpcRequest,
+  type JsonRpcUnlistenMessage,
 } from '@latte-js/bean'
 import { Emitter } from '@latte-js/kit'
+
+import {
+  createJsonRpcErrorResponse,
+  createJsonRpcNotification,
+  createJsonRpcSuccessResponse,
+  type IChannelServer,
+  type IDisposable,
+  type IServerChannel,
+} from './ipc'
+
 import type { IMessagePassingProtocol } from './protocol/protocol'
 
 export class ChannelServer implements IChannelServer {

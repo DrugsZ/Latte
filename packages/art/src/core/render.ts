@@ -1,10 +1,12 @@
-import RBush from 'rbush'
 import { type SceneGraph, NodeCursor, NULL_INDEX } from '@latte-js/espresso'
-import type { IRenderBackend } from '../contract/renderBackend'
-import { Camera } from './camera'
-import type { IDType } from '@latte-js/bean'
 import { mat2d } from 'gl-matrix'
+import RBush from 'rbush'
+
+import { Camera } from './camera'
 import { getRenderer } from './rendererRegistry'
+
+import type { IDType } from '@latte-js/bean'
+import type { IRenderBackend } from '../contract/renderBackend'
 
 export class Renderer {
   private _shouldRender = false

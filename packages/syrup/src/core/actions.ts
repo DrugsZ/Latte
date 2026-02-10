@@ -89,6 +89,5 @@ export class Separator implements IAction {
   readonly class: string = 'separator'
   readonly enabled: boolean = false
   readonly checked: boolean = false
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   async run() {}
 }

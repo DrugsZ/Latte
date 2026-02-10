@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { SceneGraph, NULL_INDEX } from '@latte-js/espresso'
 import { NodeType } from '@latte-js/bean'
-import { HitTester } from '../HitTester'
+import { SceneGraph, NULL_INDEX } from '@latte-js/espresso'
+import { describe, it, expect, beforeEach } from 'vitest'
+
 import { Camera } from '../../core/camera'
+import { HitTester } from '../HitTester'
 
 describe('HitTester', () => {
   let sceneGraph: SceneGraph

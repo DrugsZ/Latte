@@ -1,20 +1,21 @@
-import type {
-  IFrameNode,
-  ILatteNode,
-  IGroupNode,
-  IRectangleNode,
-  IPageNode,
-  ILatteDocumentNode,
-  ContainerNode,
-  IEllipseNode,
-  ICircleNode,
-  ITextNode,
-  IPathNode,
-  ILineNode,
-  IPolygonNode,
-  IStarNode,
-} from '../schema'
 import { NodeType } from '../schema'
+
+import type {
+  ContainerNode,
+  ICircleNode,
+  IEllipseNode,
+  IFrameNode,
+  IGroupNode,
+  ILatteDocumentNode,
+  ILatteNode,
+  ILineNode,
+  IPageNode,
+  IPathNode,
+  IPolygonNode,
+  IRectangleNode,
+  IStarNode,
+  ITextNode,
+} from '../schema'
 
 export function isFrame(node: ILatteNode): node is IFrameNode {
   return node.type === NodeType[NodeType.FRAME]

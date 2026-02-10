@@ -1,11 +1,12 @@
 import {
-  type IServiceMap,
   Channels,
   NodeType,
   type IRpcService,
+  type IServiceMap,
 } from '@latte-js/bean'
-import { ChannelClient } from '../ipc/channelClient'
+
 import { toService } from '../ipc'
+import { ChannelClient } from '../ipc/channelClient'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
 import { Lifecycle } from '../lifecycle/lifecycle'
 

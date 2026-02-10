@@ -1,6 +1,7 @@
-import { KeyCode, keyCodeToString, KeyMod, KeyChord } from './keyCodes'
 import { illegalArgument } from '../common/error'
 import { OperatingSystem } from '../platform/platform'
+
+import { KeyCode, keyCodeToString } from './keyCodes'
 
 const enum BinaryKeybindingsMask {
   CtrlCmd = (1 << 11) >>> 0,

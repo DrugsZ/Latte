@@ -1,7 +1,7 @@
-import { BaristaEngine } from './baristaEngine'
-
-import { Lifecycle } from '../lifecycle/lifecycle'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
+import { Lifecycle } from '../lifecycle/lifecycle'
+
+import { BaristaEngine } from './baristaEngine'
 
 let engine: BaristaEngine
 

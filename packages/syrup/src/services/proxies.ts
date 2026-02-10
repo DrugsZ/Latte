@@ -1,13 +1,14 @@
 import {
   Channels,
-  type INodeService,
-  type ITransformService,
-  type ISceneService,
+  IContextService,
   type IDocumentService,
+  type INodeService,
   type IQueryService,
   IRpcService,
-  IContextService,
+  type ISceneService,
+  type ITransformService,
 } from '@latte-js/bean'
+
 import { editor } from '../core/editor'
 
 /**

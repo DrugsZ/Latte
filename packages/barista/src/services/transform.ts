@@ -1,11 +1,13 @@
 import {
   Channels,
-  type ITransformService,
   type IDType,
-  type vec2,
+  type ITransformService,
   type mat2d,
+  type vec2,
 } from '@latte-js/bean'
-import { ServiceBase, type IContext, service } from './serviceBase'
+
+import { service, ServiceBase, type IContext } from './serviceBase'
+
 import type { TransformSystem } from '../systems/transform'
 
 @service

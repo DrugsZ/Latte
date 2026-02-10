@@ -1,12 +1,14 @@
 import { type Channels, type IServiceMap } from '@latte-js/bean'
+
+import {
+  getRegisteredServices,
+  type ServiceBase,
+  type ServiceConstructor,
+} from './serviceBase'
+
 import type { SceneGraph } from '@latte-js/espresso'
 import type { BaristaSystem } from '../systems/systems'
 import type { IContext } from './types'
-import {
-  type ServiceBase,
-  getRegisteredServices,
-  type ServiceConstructor,
-} from './serviceBase'
 
 export class ServiceManager implements IContext {
   private _services = new Map<Channels, ServiceBase>()

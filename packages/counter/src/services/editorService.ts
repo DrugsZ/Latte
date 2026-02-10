@@ -1,6 +1,6 @@
-import { editor, LatteDocument, type IDocument } from '@latte-js/syrup'
-import { Emitter } from '@latte-js/kit'
 import { IContextService } from '@latte-js/bean'
+import { Emitter } from '@latte-js/kit'
+import { editor, LatteDocument, type IDocument } from '@latte-js/syrup'
 
 export class EditorService implements IContextService {
   private _documents: IDocument[] = []

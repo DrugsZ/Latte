@@ -1,18 +1,18 @@
-export type {
-  IRenderBackend,
-  Gradient,
-  GradientStop,
-} from './contract/renderBackend'
 export {
-  PathCmd,
   BlendMode,
+  GradientType,
   LineCap,
   LineJoin,
-  GradientType,
+  PathCmd,
+} from './contract/renderBackend'
+export type {
+  Gradient,
+  GradientStop,
+  IRenderBackend,
 } from './contract/renderBackend'
 
-export { Renderer } from './core/render'
 export { Camera } from './core/camera'
+export { Renderer } from './core/render'
 export { HitTester } from './interaction/HitTester'
 
 export * from './render/canvas/index'

@@ -1,12 +1,15 @@
-import type { IDType } from '@latte-js/bean'
 import { NodeType, StrokeAlign } from '@latte-js/bean'
+
 import { type IGraphObserver } from '../typing'
+
 import { Allocator } from './allocator'
 import { BlobManager } from './blobManager'
 import { MAT_A, MAT_D, MAT_SIZE, MAX_NODES, NULL_INDEX } from './config'
 import { HeapManager } from './heapManager'
 import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
 import { MutationTracker } from './mutationTracker'
+
+import type { IDType } from '@latte-js/bean'
 import type { PropId } from './propKeys'
 
 export class SceneGraph {

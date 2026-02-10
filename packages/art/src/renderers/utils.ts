@@ -1,19 +1,20 @@
 import {
-  FillType,
-  type IPaint,
   type FillColor,
-  type ISolidColorPaint,
-  type IGradientLinearPaint,
-  type IGradientRadialPaint,
+  FillType,
   type IGradientAngularPaint,
   type IGradientDiamondPaint,
+  type IGradientLinearPaint,
+  type IGradientRadialPaint,
   type IImagePaint,
+  type IPaint,
+  type ISolidColorPaint,
 } from '@latte-js/bean'
+
 import {
-  type IRenderBackend,
   type Gradient,
   type GradientStop,
   GradientType,
+  type IRenderBackend,
 } from '../contract/renderBackend'
 
 /**

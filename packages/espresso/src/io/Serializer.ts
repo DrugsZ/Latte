@@ -1,12 +1,12 @@
 import {
-  NodeType,
-  type ILatteNode,
-  type ILatteFile,
-  type IDType,
-  type IParentIndex,
-  isPage,
   isFrame,
+  isPage,
   isRect,
+  NodeType,
+  type IDType,
+  type ILatteFile,
+  type ILatteNode,
+  type IParentIndex,
 } from '@latte-js/bean'
 
 const nodeTypeToKey = (type: number): string => {
@@ -15,6 +15,7 @@ const nodeTypeToKey = (type: number): string => {
 
 import { NULL_INDEX } from '../data/config'
 import { NodeCursor } from '../data/nodeCursor'
+
 import type { SceneGraph } from '../data/sceneGraph'
 
 export class Serializer {
