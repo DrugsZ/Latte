@@ -6,7 +6,7 @@ import {
   StandardMouseEvent,
   StandardWheelEvent,
   type IPoint,
-} from '../dom/mouseEvent'
+} from '../../dom/mouseEvent'
 
 import type { Renderer } from '@latte-js/art'
 import type { HitResult, ILatteEvent, IMouseWheelEvent } from '@latte-js/bean'

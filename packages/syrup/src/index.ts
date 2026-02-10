@@ -8,3 +8,5 @@ export * from './dom/mouseDownState'
 export * from './core/actions'
 export * from './services/instantiation/instantiation'
 export * from './services/instantiation/instantiationService'
+
+export * from './services/proxies/proxies'

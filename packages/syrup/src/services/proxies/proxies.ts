@@ -7,7 +7,7 @@ import {
   type ITransformService,
 } from '@latte-js/bean'
 
-import { editor } from '../core/editor'
+import { editor } from '../../core/editor'
 
 /**
  *

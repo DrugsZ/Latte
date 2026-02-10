@@ -4,7 +4,7 @@ import BaristaWorker from '@latte-js/barista/worker?worker'
 import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
 
-import { InputService } from '../services/inputService'
+import { InputService } from '../services/input/inputService'
 import { LatteDocument, type IDocument } from './document'
 
 export class Editor {
