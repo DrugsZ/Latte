@@ -1,10 +1,8 @@
 import {
   Channels,
-  IContextService,
   type IDocumentService,
   type INodeService,
   type IQueryService,
-  IRpcService,
   type ISceneService,
   type ITransformService,
 } from '@latte-js/bean'
@@ -19,20 +17,7 @@ import { editor } from '../core/editor'
 export function createServiceProxy<T extends object>(channel: string): T {
   return new Proxy({} as T, {
     get: (_target, prop) => {
-      return (...args: any[]) => {
-        const rpc = editor.getService<IRpcService>(IRpcService)
-
-        const contextService =
-          editor.getService<IContextService>(IContextService)
-        const contextId = contextService.getContextId()
-
-        return rpc.send({
-          documentId: contextId ?? undefined,
-          channel: channel,
-          method: String(prop),
-          args: args,
-        })
-      }
+      return editor.getService(channel)
     },
   })
 }

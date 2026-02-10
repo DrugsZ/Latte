@@ -1,31 +1,17 @@
-import {
-  Channels,
-  NodeType,
-  type IRpcService,
-  type IServiceMap,
-} from '@latte-js/bean'
+import { Channels, NodeType, type IServiceMap } from '@latte-js/bean'
 
 import { toService } from '../ipc'
 import { ChannelClient } from '../ipc/channelClient'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
 import { Lifecycle } from '../lifecycle/lifecycle'
 
-export class BaristaClient implements IRpcService {
+export class BaristaClient {
   private _worker: Worker
   private _channelClient: ChannelClient
   private _messageChannel: MessageChannel
 
   constructor(worker: Worker) {
     this._worker = worker
-  }
-
-  public send(message: {
-    documentId?: string | null
-    channel: string
-    method: string
-    args: any[]
-  }): Promise<any> {
-    return this._channelClient.send(message)
   }
 
   public getService<T extends Channels>(channelId: T): IServiceMap[T] {

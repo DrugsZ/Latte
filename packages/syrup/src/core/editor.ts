@@ -1,14 +1,11 @@
 import { Canvas2DRender, Renderer } from '@latte-js/art'
 import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
-import {
-  DEFAULT_SCENE_GRAPH_NAME,
-  IContextService,
-  IRpcService,
-} from '@latte-js/bean'
 import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
+import { Emitter } from '@latte-js/kit'
 
 import { InputService } from '../services/inputService'
+import { LatteDocument, type IDocument } from './document'
 
 export class Editor {
   public static COUNT = 0
@@ -19,22 +16,18 @@ export class Editor {
   public inputService: InputService
   private _baristaClient: BaristaClient
   private _services = new Map<string, any>()
+  private _documents: IDocument[] = []
+  private _activeDocument: IDocument | null = null
+
+  private readonly _onDidChangeActiveDocument = new Emitter<IDocument | null>()
+  public readonly onDidChangeActiveDocument =
+    this._onDidChangeActiveDocument.event
 
   constructor() {
     this.id = `editor_${Editor.COUNT++}`
-    // Create a default graph to start with
     const sharedBuffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
     const allocBuffer = new SharedArrayBuffer(MAX_NODES)
     this._graph = new SceneGraph(sharedBuffer, allocBuffer)
-
-    // Default context service
-    this.registerService(IContextService, {
-      getContextId: () => DEFAULT_SCENE_GRAPH_NAME,
-    })
-  }
-
-  public registerService(id: string, service: any) {
-    this._services.set(id, service)
   }
 
   public getService<T>(id: string): T {
@@ -43,6 +36,49 @@ export class Editor {
       throw new Error(`[Editor] Service not found: ${id}`)
     }
     return service
+  }
+
+  public async openDocument(id: string, uri: string) {
+    const doc = new LatteDocument(id, uri)
+
+    await this.baristaClient.initSession(
+      doc.id,
+      doc.graph.buffer,
+      doc.graph.allocator.buffer
+    )
+
+    this._documents.push(doc)
+    this.setActiveDocument(doc)
+    return doc
+  }
+
+  public setActiveDocument(doc: IDocument | null) {
+    if (this._activeDocument === doc) {
+      return
+    }
+
+    this._activeDocument = doc
+    if (doc) {
+      editor.setGraph(doc.graph)
+      editor.baristaClient.setTargetSession(doc.id)
+    } else {
+      editor.baristaClient.setTargetSession(null)
+    }
+
+    this._onDidChangeActiveDocument.fire(doc)
+  }
+
+  public closeDocument(id: string) {
+    const index = this._documents.findIndex(d => d.id === id)
+    if (index !== -1) {
+      const [doc] = this._documents.splice(index, 1)
+      if (this._activeDocument === doc) {
+        this.setActiveDocument(
+          this._documents[this._documents.length - 1] || null
+        )
+      }
+      // TODO: destroy session in barista
+    }
   }
 
   public get graph() {
@@ -56,7 +92,6 @@ export class Editor {
   public async startup(container: HTMLDivElement) {
     this.worker = new BaristaWorker()
     this._baristaClient = new BaristaClient(this.worker)
-    this.registerService(IRpcService, this._baristaClient)
 
     const initResult = await this._baristaClient.init(
       this._graph.buffer,

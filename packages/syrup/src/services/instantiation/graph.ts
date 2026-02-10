@@ -2,7 +2,10 @@ export class Node<T> {
   readonly incoming = new Map<string, Node<T>>()
   readonly outgoing = new Map<string, Node<T>>()
 
-  constructor(readonly key: string, readonly data: T) {}
+  constructor(
+    readonly key: string,
+    readonly data: T
+  ) {}
 }
 
 export class Graph<T> {

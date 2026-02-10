@@ -18,7 +18,7 @@ describe('LatteLoader', () => {
     const json = {
       elements: [
         {
-          guid: 'rect-1',
+          guid: '0:rect-1',
           type: 'RECTANGLE',
           transform: [1, 0, 0, 1, 10, 20],
           size: { x: 100, y: 50 },
@@ -28,7 +28,7 @@ describe('LatteLoader', () => {
 
     loader.load(json)
 
-    const idx = graph.getIndex('rect-1')
+    const idx = graph.getIndex('0:rect-1')
     expect(idx).not.toBe(-1)
     expect(graph.type[idx]).toBe(NodeType.RECTANGLE)
     expect(graph.matrix[idx * 6 + 4]).toBe(10)
@@ -41,20 +41,20 @@ describe('LatteLoader', () => {
     const json = {
       elements: [
         {
-          guid: 'parent',
+          guid: '0:parent',
           type: 'FRAME',
           transform: [1, 0, 0, 1, 0, 0],
         },
         {
-          guid: 'child-2',
+          guid: '0:child-2',
           type: 'RECTANGLE',
-          parentIndex: { guid: 'parent', position: '2' },
+          parentIndex: { guid: '0:parent', position: '2' },
           transform: [1, 0, 0, 1, 0, 0],
         },
         {
-          guid: 'child-1',
+          guid: '0:child-1',
           type: 'RECTANGLE',
-          parentIndex: { guid: 'parent', position: '1' },
+          parentIndex: { guid: '0:parent', position: '1' },
           transform: [1, 0, 0, 1, 0, 0],
         },
       ],
@@ -62,9 +62,9 @@ describe('LatteLoader', () => {
 
     loader.load(json)
 
-    const pIdx = graph.getIndex('parent')
-    const c1Idx = graph.getIndex('child-1')
-    const c2Idx = graph.getIndex('child-2')
+    const pIdx = graph.getIndex('0:parent')
+    const c1Idx = graph.getIndex('0:child-1')
+    const c2Idx = graph.getIndex('0:child-2')
 
     expect(graph.parent[c1Idx]).toBe(pIdx)
     expect(graph.parent[c2Idx]).toBe(pIdx)
@@ -75,10 +75,10 @@ describe('LatteLoader', () => {
 
   it('should handle numeric type in JSON for backward compatibility', () => {
     const json = {
-      elements: [{ guid: 'rect-num', type: NodeType.RECTANGLE }],
+      elements: [{ guid: '0:rect-num', type: NodeType.RECTANGLE }],
     } as unknown as ILatteFile
     loader.load(json)
-    const idx = graph.getIndex('rect-num')
+    const idx = graph.getIndex('0:rect-num')
     expect(graph.type[idx]).toBe(NodeType.RECTANGLE)
   })
 
@@ -94,14 +94,14 @@ describe('LatteLoader', () => {
     const json = {
       elements: [
         {
-          guid: 'rect-fill',
+          guid: '0:rect-fill',
           type: 'RECTANGLE',
           fillPaints: fills,
         },
       ],
     } as unknown as ILatteFile
     loader.load(json)
-    const idx = graph.getIndex('rect-fill')
+    const idx = graph.getIndex('0:rect-fill')
     const cursor = new NodeCursor(graph, idx)
     expect(cursor.fills).toEqual(fills)
   })
@@ -110,14 +110,14 @@ describe('LatteLoader', () => {
     const json = {
       elements: [
         {
-          guid: 'child-1',
+          guid: '0:child-1',
           type: NodeType.RECTANGLE,
-          parentIndex: { guid: 'non-existent', position: '1' },
+          parentIndex: { guid: '0:non-existent', position: '1' },
         },
       ],
     } as unknown as ILatteFile
     loader.load(json)
-    const idx = graph.getIndex('child-1')
+    const idx = graph.getIndex('0:child-1')
     expect(graph.parent[idx]).toBe(-1)
   })
 })

@@ -1,8 +1,4 @@
-import {
-  DI_DEPENDENCIES,
-  IInstantiationService,
-  createDecorator,
-} from './instantiation'
+import { DI_DEPENDENCIES, IInstantiationService } from './instantiation'
 
 export class ServiceCollection {
   private _services = new Map<any, any>()

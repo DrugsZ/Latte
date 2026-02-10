@@ -75,37 +75,6 @@ export class LatteLoader {
     return this._graph.getUUIDMap()
   }
 
-  private _updateWorldTransforms(idMap: Map<string, number>) {
-    const tempMatrix = mat2d.create()
-    const parentWorldMat = mat2d.create()
-    const localMat = mat2d.create()
-
-    const updateNode = (index: number) => {
-      const parentIdx = this._graph.parent[index]
-      if (parentIdx === NULL_INDEX) {
-        TransformOps.getMatrix(this._graph, index, localMat)
-        TransformOps.setWorldMatrix(this._graph, index, localMat)
-      } else {
-        TransformOps.getWorldMatrix(this._graph, parentIdx, parentWorldMat)
-        TransformOps.getMatrix(this._graph, index, localMat)
-        mat2d.multiply(tempMatrix, parentWorldMat, localMat)
-        TransformOps.setWorldMatrix(this._graph, index, tempMatrix)
-      }
-
-      let childIdx = this._graph.firstChild[index]
-      while (childIdx !== NULL_INDEX) {
-        updateNode(childIdx)
-        childIdx = this._graph.nextSibling[childIdx]
-      }
-    }
-
-    for (const [, index] of idMap) {
-      if (this._graph.parent[index] === NULL_INDEX) {
-        updateNode(index)
-      }
-    }
-  }
-
   public convertNode(node: ILatteNode): number {
     const typeNum = mapType(node.type as keyof typeof NodeType)
     const idx = this._graph.createNode(typeNum, node.guid)
