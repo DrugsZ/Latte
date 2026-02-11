@@ -16,6 +16,8 @@ export default defineConfig(
           alwaysTryTypes: true,
           project: [
             './tsconfig.json',
+            './packages/*/tsconfig.json',
+            './apps/*/tsconfig.json'
           ],
         },
       },
@@ -25,15 +27,13 @@ export default defineConfig(
       "typescript-eslint/lines-between-class-members": "off",
       "max-classes-per-file": "off",
       "import/prefer-default-export": "off",
-      "@typescript-eslint/lines-between-class-members": "off",
+      "@typescript-eslint/no-explicit-any": "off",
       "no-underscore-dangle": "off",
       "no-plusplus": "off",
       "no-param-reassign": "off",
       "class-methods-use-this": "off",
 
-      "no-restricted-imports": ["error", {
-        patterns: [".*"],
-      }],
+      "import/no-relative-packages": "error",
 
       "consistent-return": "off",
       "no-console": "off",
@@ -66,6 +66,7 @@ export default defineConfig(
       "no-continue": "off",
       "no-restricted-syntax": "off",
       "guard-for-in": "off",
+      "@typescript-eslint/no-unsafe-function-type": "off"
     },
   }
 );

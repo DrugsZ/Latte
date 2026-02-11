@@ -1,0 +1,15 @@
+export enum NodeType {
+  RECTANGLE = 1,
+  CIRCLE,
+  ELLIPSE,
+  POLYGON,
+  STAR,
+  LINE,
+  POLYLINE,
+  PATH,
+  TEXT,
+  DOCUMENT = 128,
+  CANVAS,
+  FRAME,
+  GROUP,
+}

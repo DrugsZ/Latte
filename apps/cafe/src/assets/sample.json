@@ -1,0 +1,145 @@
+{
+  "elements": [
+    {
+      "guid": "0:0",
+      "type": "DOCUMENT",
+      "name": "Document",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "transform": [1, 0, 0, 1, 0, 0],
+      "size": { "x": 0, "y": 0 },
+      "strokeWeight": 0,
+      "locked": false
+    },
+    {
+      "guid": "0:1",
+      "parentIndex": { "guid": "0:0", "position": "!" },
+      "type": "CANVAS",
+      "name": "Page 1",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "transform": [1, 0, 0, 1, 0, 0],
+      "size": { "x": 0, "y": 0 },
+      "strokeWeight": 0,
+      "locked": false,
+      "backgrounds": [
+        {
+          "type": "SOLID",
+          "color": { "r": 0.9607843137, "g": 0.9607843137, "b": 0.9607843137, "a": 1 },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": "19:3",
+      "parentIndex": { "guid": "0:1", "position": "!" },
+      "type": "RECTANGLE",
+      "name": "Rectangle 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": { "x": 460, "y": 418 },
+      "transform": [1, 0, 0, 1, -607, -825],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "cornerRadius": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeRightWeight": 1,
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": { "r": 0.8509803922, "g": 0.8509803922, "b": 0.8509803922, "a": 1 },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": "19:4",
+      "parentIndex": { "guid": "0:1", "position": "\"" },
+      "type": "ELLIPSE",
+      "name": "Ellipse 1",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": { "x": 728, "y": 409 },
+      "transform": [1, 0, 0, 1, -124, -816],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": { "r": 0.8509803922, "g": 0.8509803922, "b": 0.8509803922, "a": 1 },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        },
+        {
+          "type": "SOLID",
+          "color": { "r": 0.975, "g": 0.0325, "b": 0.0325, "a": 1 },
+          "opacity": 0.3,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": "25:2",
+      "parentIndex": { "guid": "0:1", "position": "#" },
+      "type": "RECTANGLE",
+      "name": "Rectangle 2",
+      "visible": true,
+      "locked": false,
+      "opacity": 1,
+      "blendMode": "PASS_THROUGH",
+      "size": { "x": 530, "y": 256 },
+      "transform": [
+        0.7071067812,
+        0.7071067812,
+        -0.7071067812,
+        0.7071067812,
+        -157,
+        -1111
+      ],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "cornerRadius": 0,
+      "topLeftRadius": 0,
+      "topRightRadius": 0,
+      "bottomLeftRadius": 0,
+      "bottomRightRadius": 0,
+      "strokeTopWeight": 1,
+      "strokeBottomWeight": 1,
+      "strokeLeftWeight": 1,
+      "strokeRightWeight": 1,
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": { "r": 0.975, "g": 0.0325, "b": 0.0325, "a": 1 },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    }
+  ]
+}

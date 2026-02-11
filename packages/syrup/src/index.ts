@@ -1,0 +1,12 @@
+export { Editor, editor } from './core/editor'
+export type { IDocument } from './core/document'
+export { LatteDocument } from './core/document'
+export * from './services'
+export * from './dom/keyboardEvent'
+export * from './dom/mouseEvent'
+export * from './dom/mouseDownState'
+export * from './core/actions'
+export * from './services/instantiation/instantiation'
+export * from './services/instantiation/instantiationService'
+
+export * from './services/proxies/proxies'

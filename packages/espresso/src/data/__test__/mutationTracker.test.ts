@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest'
+
+import { MutationTracker } from '../mutationTracker'
+
+describe('MutationTracker', () => {
+  it('should mark nodes as dirty', () => {
+    const tracker = new MutationTracker()
+    tracker.mark(1, 1)
+    tracker.mark(1, 2)
+    tracker.mark(2, 4)
+
+    expect(tracker.hasChanges).toBe(true)
+    const snapshot = tracker.flush()
+    expect(snapshot.get(1)).toBe(3)
+    expect(snapshot.get(2)).toBe(4)
+    expect(tracker.hasChanges).toBe(false)
+  })
+
+  it('should clear dirty nodes after popAll', () => {
+    const tracker = new MutationTracker()
+    tracker.mark(1, 1)
+    tracker.flush()
+    expect(tracker.hasChanges).toBe(false)
+    expect(tracker.flush().size).toBe(0)
+  })
+})

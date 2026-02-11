@@ -1,0 +1,31 @@
+{
+  "name": "@latte-js/cafe",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "type-check": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@latte-js/art": "workspace:*",
+    "@latte-js/barista": "workspace:*",
+    "@latte-js/bean": "workspace:*",
+    "@latte-js/counter": "workspace:*",
+    "@latte-js/espresso": "workspace:*",
+    "@latte-js/milk": "workspace:*",
+    "@latte-js/syrup": "workspace:*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "^5.0.0",
+    "vite": "^7.2.6",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
