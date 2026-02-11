@@ -25,11 +25,18 @@ export class BaristaEngine {
     private _protocol: IMessagePassingProtocol,
     allocBuffer: SharedArrayBuffer
   ) {
+    this._initKernelSession(buffer, allocBuffer)
     this._proxyGraph = this._createGraphProxy()
     this._systems = new BaristaSystem(this._proxyGraph)
     this._serviceManager = new ServiceManager(this._proxyGraph, this._systems)
 
     this._initChannelServer()
+  }
+
+  private _initKernelSession(
+    buffer: SharedArrayBuffer,
+    allocBuffer: SharedArrayBuffer
+  ) {
     // Initial kernel session
     const kernelGraph = this.initSession(
       DEFAULT_SCENE_GRAPH_NAME,
@@ -41,11 +48,16 @@ export class BaristaEngine {
   }
 
   private _createGraphProxy(): SceneGraph {
+    if (!this._activeGraph) {
+      throw new Error(
+        '[BaristaEngine] Cannot create graph proxy without an active graph'
+      )
+    }
     return new Proxy({} as SceneGraph, {
       get: (target, prop) => {
         if (!this._activeGraph) {
           throw new Error(
-            `[BaristaEngine] No active graph set for property: ${String(prop)}`
+            `[BaristaEngine] No active graph get for property: ${String(prop)}`
           )
         }
         const value = Reflect.get(this._activeGraph, prop)
