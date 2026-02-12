@@ -3,9 +3,26 @@ import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
 import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
+import { Channels } from '@latte-js/bean'
 
-import { InputService } from '../services/input/inputService'
+import {
+  InputService,
+  EventResult,
+  InputMouseEvent,
+} from '../services/input/inputService'
 import { LatteDocument, type IDocument } from './document'
+import { ContextMenu } from '../services/contextmenu/contextMenu'
+import {
+  ContextMenuService,
+  IContextMenuService,
+} from '../services/contextmenu/contextMenuService'
+import {
+  ContextViewService,
+  IContextViewService,
+} from '../services/contextview/contextViewService'
+import { MenuService, IMenuService } from '../services/menu/menuService'
+import { CommandService } from '../services/command/commandService'
+import { ICommandService } from '../services/command/commandsRegistry'
 
 export class Editor {
   public static COUNT = 0
@@ -14,6 +31,7 @@ export class Editor {
   public _renderer: Renderer
   public worker: Worker
   public inputService: InputService
+  public contextMenu: ContextMenu
   private _baristaClient: BaristaClient
   private _services = new Map<string, any>()
   private _documents: IDocument[] = []
@@ -59,10 +77,10 @@ export class Editor {
 
     this._activeDocument = doc
     if (doc) {
-      editor.setGraph(doc.graph)
-      editor.baristaClient.setTargetSession(doc.id)
+      this.setGraph(doc.graph)
+      this.baristaClient.setTargetSession(doc.id)
     } else {
-      editor.baristaClient.setTargetSession(null)
+      this.baristaClient.setTargetSession(null)
     }
 
     this._onDidChangeActiveDocument.fire(doc)
@@ -99,6 +117,38 @@ export class Editor {
     )
 
     await this._initRenderer(container)
+
+    const commandService = new CommandService()
+    const menuService = new MenuService()
+    const contextViewService = new ContextViewService(commandService)
+    const contextMenuService = new ContextMenuService(contextViewService)
+
+    this.contextMenu = new ContextMenu(contextMenuService, menuService)
+
+    this._services.set('commandService', commandService)
+    this._services.set('menuService', menuService)
+    this._services.set('contextViewService', contextViewService)
+    this._services.set('contextMenuService', contextMenuService)
+
+    this.inputService.registerHandler({
+      id: 'contextMenu',
+      priority: 100,
+      onEvent: e => {
+        if (e.browserEvent?.type === 'contextmenu') {
+          const hitResult =
+            e instanceof InputMouseEvent ? e.hitResult : undefined
+          this.contextMenu.showContextMenu(
+            {
+              x: e.browserEvent.clientX,
+              y: e.browserEvent.clientY,
+            },
+            hitResult
+          )
+          return EventResult.CONSUMED
+        }
+        return EventResult.IGNORED
+      },
+    })
 
     return initResult
   }

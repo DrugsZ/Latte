@@ -68,6 +68,7 @@ export class InputService extends Disposable implements IInputService {
     canvas.addEventListener('pointermove', this._handleRaw)
     canvas.addEventListener('pointerup', this._handleRaw)
     canvas.addEventListener('wheel', this._handleRaw, { passive: false })
+    canvas.addEventListener('contextmenu', this._handleRaw)
     window.addEventListener('keydown', this._handleKeyDown)
     window.addEventListener('keyup', this._handleKeyUp)
   }
@@ -100,13 +101,11 @@ export class InputService extends Disposable implements IInputService {
     this._onKeyUp.fire(e)
   }
 
-  private _handleRaw = (rawEvent: PointerEvent | WheelEvent) => {
+  private _handleRaw = (rawEvent: MouseEvent | WheelEvent) => {
     let hitResult: HitResult | undefined
     if (this._renderer.activeRootId) {
-      const x =
-        rawEvent instanceof PointerEvent ? rawEvent.clientX : rawEvent.clientX
-      const y =
-        rawEvent instanceof PointerEvent ? rawEvent.clientY : rawEvent.clientY
+      const x = rawEvent.clientX
+      const y = rawEvent.clientY
 
       const rTreeHits = this._renderer.rTree.search({
         minX: x,
@@ -153,12 +152,13 @@ export class InputService extends Disposable implements IInputService {
         worldPos
       )
     } else {
-      event = new InputMouseEvent(rawEvent as PointerEvent, hitResult, worldPos)
+      event = new InputMouseEvent(rawEvent, hitResult, worldPos)
     }
 
     for (const handler of this._handlers) {
       const result = handler.onEvent(event)
       if (result === EventResult.CONSUMED) {
+        rawEvent.preventDefault()
         break
       }
     }

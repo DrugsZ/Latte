@@ -2,6 +2,7 @@ import { Disposable, Emitter } from '@latte-js/kit'
 
 import MenuItemAction from './menuAction'
 import { MenuRegistry } from './menuRegistry'
+import { createDecorator } from '../instantiation/instantiation'
 
 import type { Event } from '@latte-js/kit'
 import type {
@@ -11,7 +12,9 @@ import type {
   MenuItemGroup,
 } from './menuRegistry'
 
-interface IMenuService {
+export const IMenuService = createDecorator<IMenuService>('menuService')
+
+export interface IMenuService {
   createMenu(menuId: MenuId): IMenu
 }
 

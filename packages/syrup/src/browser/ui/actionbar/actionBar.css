@@ -1,0 +1,34 @@
+.action-bar {
+  width: 200px;
+  padding: var(--spacing-sm);
+}
+
+.action-list {
+  padding: 0px;
+}
+
+.action-view-item {
+  display: block;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  height: var(--primary-line-height);
+  line-height: var(--primary-line-height);
+  color: #fff;
+  padding: 0px var(--spacing-sm);
+}
+
+.action-view-item.focused {
+  background-color: #0d99ff;
+  border-radius: var(--border-radius-lg);
+}
+
+.action-view-item.separator {
+  line-height: 0px;
+  height: 0px;
+  margin: 8px 0px;
+  border-bottom: 1px solid #606060;
+  border-radius: 0px;
+  cursor: default;
+}

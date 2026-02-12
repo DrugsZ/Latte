@@ -1,33 +1,17 @@
-import {
-  Channels,
-  type IDocumentService,
-  type INodeService,
-  type IQueryService,
-  type ISceneService,
-  type ITransformService,
-} from '@latte-js/bean'
-
 import { editor } from '../../core/editor'
 
 /**
- *
- * @param channel server channel name
- * @returns
+ * 创建领域服务代理（RPC 延迟绑定）
+ * 用于延迟绑定 BaristaClient 中的服务，并确保方法调用时 this 指向正确。
  */
-export function createServiceProxy<T extends object>(channel: string): T {
+export function createDomainServiceProxy<T extends object>(
+  serviceId: string
+): T {
   return new Proxy({} as T, {
-    get: (_target, prop) => {
-      return editor.getService(channel)
+    get: (_, prop) => {
+      if (typeof prop !== 'string') return undefined
+
+      return (editor.baristaClient?.getService(serviceId as any) as any)?.[prop]
     },
   })
 }
-
-export const nodeService = createServiceProxy<INodeService>(Channels.Node)
-export const transformService = createServiceProxy<ITransformService>(
-  Channels.Transform
-)
-export const sceneService = createServiceProxy<ISceneService>(Channels.Scene)
-export const documentService = createServiceProxy<IDocumentService>(
-  Channels.Document
-)
-export const queryService = createServiceProxy<IQueryService>(Channels.Query)
