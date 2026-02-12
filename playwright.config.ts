@@ -9,11 +9,10 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    baseURL: 'http://localhost:5173', // 指向你的 Dev Server
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
   },
 
-  // 启动本地服务进行测试
   webServer: {
     command: 'pnpm dev',
     url: 'http://localhost:5173',

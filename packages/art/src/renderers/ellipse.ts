@@ -91,18 +91,18 @@ export const EllipseRenderer: INodeRenderer = {
       case 'none':
       default:
         // No fill, just stroke if present
-        if (strokeColor !== undefined && actualStrokeWidth > 0) {
-          backend.drawEllipse(
-            cx,
-            cy,
-            rx,
-            ry,
-            0,
-            undefined,
-            strokeColor,
-            actualStrokeWidth
-          )
-        }
+        // if (strokeColor !== undefined && actualStrokeWidth > 0) {
+        backend.drawEllipse(
+          cx,
+          cy,
+          rx,
+          ry,
+          0,
+          0xffffffff,
+          strokeColor,
+          actualStrokeWidth
+        )
+        // }
         break
     }
   },

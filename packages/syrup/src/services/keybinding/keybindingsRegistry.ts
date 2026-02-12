@@ -1,17 +1,6 @@
-import { decodeKeybinding, LinkedList, OS } from '@latte-js/kit'
-
+import type { IKeybindingRule } from '@latte-js/bean'
 import type { Keybinding } from '@latte-js/kit'
-
-export interface IKeybindings {
-  primary?: number
-  secondary?: number[]
-}
-
-export interface IKeybindingRule extends IKeybindings {
-  id: string
-  weight: number
-  args?: any
-}
+import { decodeKeybinding, LinkedList, OS } from '@latte-js/kit'
 
 export interface IKeybindingItem {
   keybinding: Keybinding | null

@@ -4,7 +4,7 @@ import { editor } from '@latte-js/syrup'
 import data from './assets/sample.json'
 
 const CanvasArea = () => {
-  const containerRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const loadFile = async () => {
     const documentService = editor.baristaClient.getService(Channels.Document)
@@ -15,7 +15,7 @@ const CanvasArea = () => {
     }
   }
 
-  const startup = async (container: HTMLCanvasElement) => {
+  const startup = async (container: HTMLDivElement) => {
     await editor.startup(container)
 
     await loadFile()
@@ -77,7 +77,7 @@ const CanvasArea = () => {
     }
   }, [])
 
-  return <canvas ref={containerRef} className="canvas-container" />
+  return <div ref={containerRef} className="canvas-container" />
 }
 
 export function App() {

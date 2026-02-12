@@ -17,12 +17,15 @@ import type {
   StrokeJoinKey,
   StrokeStyleKey,
 } from '@latte-js/bean'
-import type { mat2d } from 'gl-matrix'
+import { mat2d } from 'gl-matrix'
 import type { SceneGraph } from './sceneGraph'
 
 export class NodeCursor {
   private _index: number
   private _generation: number
+
+  private _transform = mat2d.create()
+  private _worldTransform = mat2d.create()
 
   constructor(
     private _graph: SceneGraph,
@@ -167,7 +170,7 @@ export class NodeCursor {
   }
 
   get transform() {
-    return TransformOps.getMatrix(this._graph, this._index)
+    return TransformOps.getMatrix(this._graph, this._index, this._transform)
   }
 
   set transform(mat: mat2d) {
@@ -178,7 +181,11 @@ export class NodeCursor {
 
   get worldTransform() {
     this._checkAlive()
-    const out = TransformOps.getWorldMatrix(this._graph, this._index)
+    const out = TransformOps.getWorldMatrix(
+      this._graph,
+      this._index,
+      this._worldTransform
+    )
     return out
   }
 

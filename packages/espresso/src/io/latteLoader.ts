@@ -70,8 +70,6 @@ export class LatteLoader {
       }
     }
 
-    // this._updateWorldTransforms(idMap)
-
     return this._graph.getUUIDMap()
   }
 

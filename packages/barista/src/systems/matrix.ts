@@ -19,7 +19,6 @@ import { system, SystemBase, Systems } from './systems'
 export class MatrixSystem extends SystemBase {
   public static readonly name = Systems.Matrix
   private _cursor: NodeCursor
-  private _tempMatrix: mat2d = mat2d.create()
 
   constructor(sceneGraph: SceneGraph) {
     super(sceneGraph)
@@ -28,13 +27,43 @@ export class MatrixSystem extends SystemBase {
 
   public process(dirtyMap: Map<number, number>) {
     if (dirtyMap.size === 0) return
-    this._processSubtree(0, false, dirtyMap)
+
+    const processed = new Set<number>()
+
+    for (const nodeIndex of dirtyMap.keys()) {
+      if (!processed.has(nodeIndex)) {
+        this._processNodeWithAncestors(nodeIndex, dirtyMap, processed)
+      }
+    }
+  }
+
+  private _processNodeWithAncestors(
+    index: number,
+    dirtyMap: Map<number, number>,
+    processed: Set<number>
+  ) {
+    if (processed.has(index)) return
+
+    this._cursor.to(index)
+    const parent = this._cursor.parent
+
+    if (
+      parent !== null &&
+      dirtyMap.has(parent.index) &&
+      !processed.has(parent.index)
+    ) {
+      this._processNodeWithAncestors(parent.index, dirtyMap, processed)
+    }
+
+    const parentDirty = parent !== null && processed.has(parent.index)
+    this._processSubtree(index, parentDirty, dirtyMap, processed)
   }
 
   private _processSubtree(
     index: number,
     parentDirty: boolean,
-    dirtyMap: Map<number, number>
+    dirtyMap: Map<number, number>,
+    processed: Set<number>
   ) {
     const flags = dirtyMap.get(index) || 0
     const hasDirtyTransform = (flags & DIRTY_TRANSFORM) !== 0
@@ -45,6 +74,7 @@ export class MatrixSystem extends SystemBase {
     }
 
     this._cursor.to(index)
+    processed.add(index)
 
     const mustUpdate = hasDirtyTransform || parentDirty
 
@@ -55,8 +85,10 @@ export class MatrixSystem extends SystemBase {
       dirtyMap.set(index, currentFlags | DIRTY_AABB)
     }
 
-    for (const child of this._cursor.children()) {
-      this._processSubtree(child.index, mustUpdate, dirtyMap)
+    if (hasDirtySubtree || mustUpdate) {
+      for (const child of this._cursor.children()) {
+        this._processSubtree(child.index, mustUpdate, dirtyMap, processed)
+      }
     }
   }
 
@@ -64,14 +96,13 @@ export class MatrixSystem extends SystemBase {
     const parent = this._cursor.parent
 
     if (parent === null) {
-      this._cursor.worldTransform = this._cursor.transform
+      this._cursor.worldTransform = mat2d.clone(this._cursor.transform)
     } else {
-      mat2d.multiply(
-        this._tempMatrix,
+      this._cursor.worldTransform = mat2d.multiply(
+        mat2d.create(),
         parent.worldTransform,
         this._cursor.transform
       )
-      this._cursor.worldTransform = this._tempMatrix
     }
   }
 }
