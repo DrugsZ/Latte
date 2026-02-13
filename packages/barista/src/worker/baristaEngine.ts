@@ -23,9 +23,10 @@ export class BaristaEngine {
   constructor(
     buffer: SharedArrayBuffer,
     private _protocol: IMessagePassingProtocol,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
-    this._initKernelSession(buffer, allocBuffer)
+    this._initKernelSession(buffer, allocBuffer, heapBuffer)
     this._proxyGraph = this._createGraphProxy()
     this._systems = new BaristaSystem(this._proxyGraph)
     this._serviceManager = new ServiceManager(this._proxyGraph, this._systems)
@@ -35,13 +36,15 @@ export class BaristaEngine {
 
   private _initKernelSession(
     buffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
     // Initial kernel session
     const kernelGraph = this.initSession(
       DEFAULT_SCENE_GRAPH_NAME,
       buffer,
-      allocBuffer
+      allocBuffer,
+      heapBuffer
     )
     this._activeGraph = kernelGraph
     this._activeSessionId = DEFAULT_SCENE_GRAPH_NAME
@@ -80,9 +83,10 @@ export class BaristaEngine {
   public initSession(
     sessionId: string,
     buffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
-    const graph = new SceneGraph(buffer, allocBuffer)
+    const graph = new SceneGraph(buffer, allocBuffer, heapBuffer)
     this._graphs.set(sessionId, graph)
     return graph
   }

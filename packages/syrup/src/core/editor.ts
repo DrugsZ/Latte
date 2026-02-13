@@ -1,7 +1,12 @@
 import { Canvas2DRender, Renderer } from '@latte-js/art'
 import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
-import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
+import {
+  DEFAULT_HEAP_SIZE,
+  MAX_NODES,
+  SceneGraph,
+  TOTAL_MEMORY_BYTES,
+} from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
 import { Channels } from '@latte-js/bean'
 
@@ -45,7 +50,8 @@ export class Editor {
     this.id = `editor_${Editor.COUNT++}`
     const sharedBuffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
     const allocBuffer = new SharedArrayBuffer(MAX_NODES)
-    this._graph = new SceneGraph(sharedBuffer, allocBuffer)
+    const heapBuffer = new SharedArrayBuffer(DEFAULT_HEAP_SIZE)
+    this._graph = new SceneGraph(sharedBuffer, allocBuffer, heapBuffer)
   }
 
   public getService<T>(id: string): T {
@@ -62,7 +68,8 @@ export class Editor {
     await this.baristaClient.initSession(
       doc.id,
       doc.graph.buffer,
-      doc.graph.allocator.buffer
+      doc.graph.allocator.buffer,
+      doc.graph.heap.buffer
     )
 
     this._documents.push(doc)
@@ -113,7 +120,8 @@ export class Editor {
 
     const initResult = await this._baristaClient.init(
       this._graph.buffer,
-      this._graph.allocator.buffer
+      this._graph.allocator.buffer,
+      this._graph.heap.buffer
     )
 
     await this._initRenderer(container)

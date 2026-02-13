@@ -49,7 +49,7 @@ export class SceneGraph {
   public readonly blobs: BlobManager
   public readonly blobIndexToPtr = new Map<number, number>()
   public readonly strokeBlobIndexToPtr = new Map<number, number>()
-  public readonly heap: HeapManager = new HeapManager()
+  public readonly heap: HeapManager
 
   private _uuidToIndex = new Map<IDType, number>()
   private _indexToUuid = new Map<number, IDType>()
@@ -57,7 +57,8 @@ export class SceneGraph {
 
   constructor(
     existingBuffer?: SharedArrayBuffer,
-    allocatorBuffer?: SharedArrayBuffer
+    allocatorBuffer?: SharedArrayBuffer,
+    heapBuffer?: SharedArrayBuffer
   ) {
     const isHost = !existingBuffer
 
@@ -73,6 +74,7 @@ export class SceneGraph {
     }
 
     this.allocator = new Allocator(allocatorBuffer)
+    this.heap = new HeapManager(heapBuffer)
 
     let byteOffset = 0
 

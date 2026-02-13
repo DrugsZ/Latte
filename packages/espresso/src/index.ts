@@ -13,6 +13,7 @@ export {
   BOUNDS_AFFECTING_FLAGS,
   NULL_INDEX,
   MAX_NODES,
+  DEFAULT_HEAP_SIZE,
 } from './data/config'
 export {
   applyStretchToMatrix,

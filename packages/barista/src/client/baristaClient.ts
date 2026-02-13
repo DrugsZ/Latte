@@ -27,7 +27,8 @@ export class BaristaClient {
   public async initSession(
     sessionId: string,
     sharedBuffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
     const requestId = Math.random().toString(36).substring(2)
     this._worker.postMessage({
@@ -35,6 +36,7 @@ export class BaristaClient {
       sessionId,
       buffer: sharedBuffer,
       allocBuffer,
+      heapBuffer,
       requestId,
     })
     return new Promise((resolve, reject) => {
@@ -64,7 +66,8 @@ export class BaristaClient {
 
   public async init(
     sharedBuffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
     this._messageChannel = new MessageChannel()
     const requestId = Math.random().toString(36).substring(2)
@@ -73,6 +76,7 @@ export class BaristaClient {
         type: Lifecycle.InitKernel,
         buffer: sharedBuffer,
         allocBuffer,
+        heapBuffer,
         requestId,
       },
       [this._messageChannel.port2]
