@@ -119,7 +119,7 @@ export const RectRenderer: INodeRenderer = {
           w,
           h,
           cornerRadius,
-          0xffffffff,
+          0xffff00ff,
           strokeColor,
           actualStrokeWidth
         )

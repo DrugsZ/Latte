@@ -77,6 +77,10 @@ export class Editor {
     return doc
   }
 
+  public get activeDocument() {
+    return this._activeDocument
+  }
+
   public setActiveDocument(doc: IDocument | null) {
     if (this._activeDocument === doc) {
       return

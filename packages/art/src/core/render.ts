@@ -31,8 +31,8 @@ export class Renderer {
     this._container.appendChild(canvas)
     this._canvas = canvas
 
-    this._initCamera(canvas)
-    this._initRenderBackend(canvas)
+    this._initCamera()
+    this._initRenderBackend()
     this._initObserver(canvas)
     this._buildRTree()
     this.start()
@@ -75,8 +75,8 @@ export class Renderer {
     observer.observe(container)
   }
 
-  private _initCamera(container: HTMLCanvasElement) {
-    const rect = container.getBoundingClientRect()
+  private _initCamera() {
+    const rect = this._container.getBoundingClientRect()
     this._camera = new Camera(rect.width, rect.height)
     this._camera.fitBounds(-100, -100, rect.right * 2, rect.bottom * 2, 0)
 
@@ -89,10 +89,10 @@ export class Renderer {
     return this._camera
   }
 
-  private _initRenderBackend(container: HTMLCanvasElement) {
-    const rect = container.getBoundingClientRect()
+  private _initRenderBackend() {
+    const rect = this._container.getBoundingClientRect()
     const dpr = window.devicePixelRatio || 1
-    this._backend.init(container, dpr)
+    this._backend.init(this._canvas, dpr)
     this._backend.resize(rect.width, rect.height, dpr)
   }
 
@@ -155,13 +155,13 @@ export class Renderer {
   }
 
   private _actualRender() {
+    const matrix = this._camera.getMatrix()
+    this._backend.setTransform(new Float32Array([1, 0, 0, 1, 0, 0]))
     this._clearRect()
 
     this._backend.beginFrame()
 
     const visibleNodeIds = this._getAllVisibleNodeIds()
-
-    const matrix = this._camera.getMatrix()
     const node = new NodeCursor(this._sceneGraph, -1)
     this._rTree.clear()
     const rTreeItems: {
@@ -174,6 +174,9 @@ export class Renderer {
     for (const id of visibleNodeIds) {
       node.to(id)
       mat2d.multiply(this._tempMatrix, matrix, node.worldTransform)
+      if (node.id === '19:4') {
+        console.log(node.x, node.y)
+      }
       this._backend.setTransform(new Float32Array(this._tempMatrix))
       const aabbPtr = id * 4
       rTreeItems.push({
@@ -215,7 +218,7 @@ export class Renderer {
 
     // this._backend.drawRect(-10, -1, 20, 2, 0, 0xff0000ff)
     // this._backend.drawRect(-1, -10, 2, 20, 0, 0xff0000ff)
-
+    this._backend.setTransform(new Float32Array(matrix))
     this._backend.endFrame()
     this._shouldRender = false
   }

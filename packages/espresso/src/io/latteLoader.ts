@@ -1,9 +1,7 @@
 import { NodeType, type ILatteFile, type ILatteNode } from '@latte-js/bean'
-import { mat2d } from 'gl-matrix'
 
 import { NULL_INDEX } from '../data/config'
 import { NodeCursor } from '../data/nodeCursor'
-import { TransformOps } from '../data/ops'
 
 import type { SceneGraph } from '../data/sceneGraph'
 
@@ -23,6 +21,7 @@ export class LatteLoader {
     const nodes = json.elements
 
     const groups = new Map<string, ILatteNode[]>()
+    const rootNodes: ILatteNode[] = []
 
     const idMap = new Map<string, number>()
 
@@ -36,6 +35,35 @@ export class LatteLoader {
           groups.set(pid, [])
         }
         groups.get(pid)!.push(node)
+      } else {
+        // No parent, should be mounted under root node (index 0)
+        rootNodes.push(node)
+      }
+    }
+
+    // Mount root nodes to index 0
+    if (rootNodes.length > 0) {
+      const ROOT_INDEX = 0
+      let prevIdx = NULL_INDEX
+
+      for (let i = 0; i < rootNodes.length; i++) {
+        const childNode = rootNodes[i]
+        const childIdx = idMap.get(childNode.guid)!
+
+        this._graph.parent[childIdx] = ROOT_INDEX
+
+        if (i === 0) {
+          this._graph.firstChild[ROOT_INDEX] = childIdx
+        } else {
+          this._graph.nextSibling[prevIdx] = childIdx
+          this._graph.prevSibling[childIdx] = prevIdx
+        }
+
+        prevIdx = childIdx
+      }
+
+      if (prevIdx !== NULL_INDEX) {
+        this._graph.lastChild[ROOT_INDEX] = prevIdx
       }
     }
 

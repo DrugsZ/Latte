@@ -4,6 +4,7 @@ import {
   type IDType,
   NodeType,
 } from '@latte-js/bean'
+import { editor } from '@latte-js/syrup'
 
 export class PageService {
   private _activePageId: IDType | null = null
@@ -24,6 +25,9 @@ export class PageService {
       NodeType.CANVAS
     )
     this._activePageId = allPages.length > 0 ? allPages[0] : null
+    if (this._activePageId) {
+      editor.renderer.setActiveRootId(this._activePageId!)
+    }
   }
 
   private _listenDocumentChanges() {

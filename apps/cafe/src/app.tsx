@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { Channels } from '@latte-js/bean'
+import { Channels, NodeType } from '@latte-js/bean'
 import { editor } from '@latte-js/syrup'
+import { startWorkbench } from '@latte-js/counter'
 import data from './assets/sample.json'
 
 const CanvasArea = () => {
@@ -9,6 +10,12 @@ const CanvasArea = () => {
   const loadFile = async () => {
     const documentService = editor.baristaClient.getService(Channels.Document)
     if (documentService) {
+      documentService.onLoad(ids => {
+        ids.forEach((index, id) => {
+          editor.graph.registerIdMap(id, index)
+        })
+        // resetActivePage()
+      })
       // const response = await fetch('/sample.latte')
       // const data = await response.json()
       await documentService.load(data)
@@ -17,6 +24,8 @@ const CanvasArea = () => {
 
   const startup = async (container: HTMLDivElement) => {
     await editor.startup(container)
+
+    const workbench = await startWorkbench(editor)
 
     await loadFile()
 
@@ -42,6 +51,18 @@ const CanvasArea = () => {
 
     // @ts-expect-error test is not defined on window
     window.test = () => editor.renderer.requestRender()
+    // @ts-expect-error test is not defined on window
+    window.testAdd = async () => {
+      const ids = workbench.selectionService.indices
+      if (ids.length > 0) {
+        console.log(ids)
+        transformService
+          ?.moveTo(ids, [Math.random() * 800, Math.random() * 800])
+          .then(() => {
+            editor.renderer.requestRender()
+          })
+      }
+    }
 
     let animationId: number | null = null
     // @ts-expect-error testRender is not defined on window
