@@ -4,7 +4,7 @@ import {
   type InputWheelEvent,
   CommandsRegistry,
   EventResult,
-  IEditorService,
+  editor,
 } from '@latte-js/syrup'
 
 import type { ITool } from '@latte-js/bean'
@@ -16,7 +16,7 @@ export class ToolService implements IInputMouseHandler {
   private _tools: Map<string, ITool> = new Map()
   private _activeTool: ITool | null = null
 
-  constructor(@IEditorService private readonly _editorService: IEditorService) {
+  constructor() {
     CommandsRegistry.registerCommand(
       'editor.tool.active',
       this._handleActivateToolCommand.bind(this)
@@ -32,11 +32,11 @@ export class ToolService implements IInputMouseHandler {
     if (!tool) {
       return EventResult.IGNORED
     }
-    const { activeEditor } = this._editorService
-    if (!activeEditor) {
+    const { activeDocument } = editor
+    if (!activeDocument) {
       return EventResult.IGNORED
     }
-    ;(e as any).editor = activeEditor
+    ;(e as any).activeDocument = activeDocument
     const type = e.browserEvent?.type
     if (type === 'mousedown') {
       tool.onPointerDown?.(e as any)

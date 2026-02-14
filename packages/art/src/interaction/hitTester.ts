@@ -39,12 +39,10 @@ export class HitTester {
     point: vec2,
     candidates?: Set<number>
   ): number {
-    // 0. Check visibility
     if (!this._sceneGraph.visible[index]) {
       return NULL_INDEX
     }
 
-    // 0.1 Check candidates (R-Tree optimization)
     if (candidates && !candidates.has(index)) {
       return NULL_INDEX
     }
@@ -72,7 +70,6 @@ export class HitTester {
       }
     }
 
-    // 2. Children Traversal (Reverse Order)
     let child = this._sceneGraph.lastChild[index]
     while (child !== NULL_INDEX) {
       const hit = this._hitTestRecursive(child, point, candidates)

@@ -82,9 +82,9 @@ export class SceneGraph {
 
       byteOffset += item.size * item.type.BYTES_PER_ELEMENT
     }
-    if (isHost) {
-      this._initMemory()
-    }
+    // if (isHost) {
+    this._initMemory()
+    // }
 
     this.blobs = new BlobManager(this.heap)
 

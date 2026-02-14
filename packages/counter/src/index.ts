@@ -1,2 +1,1 @@
-export * from './workbench'
-export * from './services/proxies'
+export { startWorkbench } from './workbench'

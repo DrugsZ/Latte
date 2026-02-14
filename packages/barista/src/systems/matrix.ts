@@ -19,6 +19,7 @@ import { system, SystemBase, Systems } from './systems'
 export class MatrixSystem extends SystemBase {
   public static readonly name = Systems.Matrix
   private _cursor: NodeCursor
+  private _tempMatrix = mat2d.create()
 
   constructor(sceneGraph: SceneGraph) {
     super(sceneGraph)
@@ -98,11 +99,56 @@ export class MatrixSystem extends SystemBase {
     if (parent === null) {
       this._cursor.worldTransform = mat2d.clone(this._cursor.transform)
     } else {
-      this._cursor.worldTransform = mat2d.multiply(
-        mat2d.create(),
-        parent.worldTransform,
-        this._cursor.transform
-      )
+      const p = parent.worldTransform
+      const c = this._cursor.transform
+
+      // Manually multiply to separate rotation/scale and translation
+      // This ensures clearer logic and avoids potential issues with standard matrix multiplication
+      // if we ever need custom handling for position vs rotation.
+
+      // 1. Rotation/Scale part (2x2 matrix multiplication)
+      // | a b |   | a' b' |
+      // | c d | * | c' d' |
+      const a = p[0] * c[0] + p[2] * c[1]
+      const b = p[1] * c[0] + p[3] * c[1]
+      const c_val = p[0] * c[2] + p[2] * c[3]
+      const d = p[1] * c[2] + p[3] * c[3]
+
+      // 2. Translation part
+      // Apply parent's transform (rotation/scale) to child's local position, then add parent's position
+      // The child's position (c[4], c[5]) is relative to the parent's center (originX, originY).
+      // We first convert it to be relative to the parent's top-left corner (standard local space),
+      // then apply the parent's world matrix.
+
+      const originX = parent.width / 2
+      const originY = parent.height / 2
+
+      // 1. Calculate Parent Center in World Space
+      // The p[4], p[5] already represents the translation.
+      // Since we rotate around the center, we simply add the center offset to the translation
+      // without applying the rotation matrix to the center offset itself again.
+      const parentCenterX = p[4] + originX
+      const parentCenterY = p[5] + originY
+
+      // 2. Calculate Child Offset Vector (rotated/scaled by Parent)
+      // Offset_world = Parent_Rotation_Scale * Child_Translation_Local
+      // Note: c[4], c[5] are treated as offsets relative to parent center
+      const xWithOrigin = c[4] - originX
+      const yWithOrigin = c[5] - originY
+      const offsetX = p[0] * xWithOrigin + p[2] * yWithOrigin
+      const offsetY = p[1] * xWithOrigin + p[3] * yWithOrigin
+
+      // 3. Final World Position = Parent Center World + Rotated Offset
+      const tx = parentCenterX + offsetX
+      const ty = parentCenterY + offsetY
+
+      this._tempMatrix[0] = a
+      this._tempMatrix[1] = b
+      this._tempMatrix[2] = c_val
+      this._tempMatrix[3] = d
+      this._tempMatrix[4] = tx
+      this._tempMatrix[5] = ty
+      this._cursor.worldTransform = this._tempMatrix
     }
   }
 }
