@@ -47,8 +47,8 @@ export const RectRenderer: INodeRenderer = {
           break
         case StrokeAlign[StrokeAlign.OUTSIDE]:
           // Stroke is outside
-          x = -strokeWeight / 2
-          y = -strokeWeight / 2
+          x -= strokeWeight / 2
+          y -= strokeWeight / 2
           w = width + strokeWeight
           h = height + strokeWeight
           break

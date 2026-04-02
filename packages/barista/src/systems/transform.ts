@@ -14,6 +14,17 @@ import type { IDType } from '@latte-js/bean'
 
 type ISnapshot = Float32Array
 
+// Snapshot layout:
+// [0] x, [1] y, [2] width, [3] height,
+// [4..9] localTransform (mat2d),
+// [10..15] worldTransform (mat2d)
+const SNAP_X = 0
+const SNAP_Y = 1
+const SNAP_W = 2
+const SNAP_H = 3
+const SNAP_WORLD_TX = 14
+const SNAP_WORLD_TY = 15
+
 @system
 export class TransformSystem extends SystemBase {
   public static readonly name = Systems.Transform
@@ -27,9 +38,16 @@ export class TransformSystem extends SystemBase {
 
   private _createSnapshot(index: number) {
     this._cursor.to(index)
-    const { x, y, width, height, transform, id } = this._cursor
+    const { x, y, width, height, transform, worldTransform, id } = this._cursor
     if (id === null) return
-    const snapshot = new Float32Array([x, y, width, height, ...transform])
+    const snapshot = new Float32Array([
+      x,
+      y,
+      width,
+      height,
+      ...transform,
+      ...worldTransform,
+    ])
     this._snapshots.set(id, snapshot)
   }
 
@@ -50,6 +68,11 @@ export class TransformSystem extends SystemBase {
     this._snapshots.clear()
   }
 
+  /**
+   * Move a node to a target world position.
+   * Computes the world-space delta, then converts to local-space delta
+   * via the parent's inverse world transform.
+   */
   private _moveTo(id: IDType, worldPos: vec2) {
     const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
@@ -67,31 +90,22 @@ export class TransformSystem extends SystemBase {
     const parent = this._cursor.parent
 
     if (parent === null) {
-      // No parent, world delta is local delta
       this._cursor.x += deltaX
       this._cursor.y += deltaY
     } else {
       const p = parent.worldTransform
-      // Parent rotation/scale matrix components
       const a = p[0]
       const b = p[1]
       const c = p[2]
       const d = p[3]
-
-      // Determine determinat to check for invertibility
       const det = a * d - b * c
 
       if (Math.abs(det) < 1e-6) {
-        // Fallback for degenerate matrix: apply delta directly (approximate)
         this._cursor.x += deltaX
         this._cursor.y += deltaY
       } else {
-        // Inverse rotation/scale:
-        // | x | = 1/det * | d  -c | * | dx |
-        // | y |           | -b  a |   | dy |
         const localDeltaX = (d * deltaX - c * deltaY) / det
         const localDeltaY = (-b * deltaX + a * deltaY) / det
-
         this._cursor.x += localDeltaX
         this._cursor.y += localDeltaY
       }
@@ -100,118 +114,116 @@ export class TransformSystem extends SystemBase {
     this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }
 
-  public moveTo(ids: IDType[], delta: vec2) {
-    ids.forEach(i => this._moveTo(i, delta))
+  public moveTo(ids: IDType[], worldPos: vec2) {
+    ids.forEach(i => this._moveTo(i, worldPos))
   }
 
-  private _moveBy(id: IDType, point: vec2) {
-    const snapData = this._snapshots.get(id)
+  /**
+   * Move a node by a world-space delta.
+   * With an active session: delta is absolute from the snapshot's world position.
+   * Without a session: delta is incremental from the current world position.
+   */
+  private _moveBy(id: IDType, worldDelta: vec2) {
     const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
-    const base = snapData
-      ? [snapData[7], snapData[8]]
-      : [this._cursor.x, this._cursor.y]
-    vec2.add(base, base, point)
-    this._cursor.x = base[0]
-    this._cursor.y = base[1]
-    this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+    const snapData = this._snapshots.get(id)
+
+    // Get base world position
+    let baseWorldX: number, baseWorldY: number
+    if (snapData) {
+      baseWorldX = snapData[SNAP_WORLD_TX]
+      baseWorldY = snapData[SNAP_WORLD_TY]
+    } else {
+      const worldMat = this._cursor.worldTransform
+      baseWorldX = worldMat[4]
+      baseWorldY = worldMat[5]
+    }
+
+    // Target world position = base + delta
+    this._moveTo(
+      id,
+      vec2.fromValues(baseWorldX + worldDelta[0], baseWorldY + worldDelta[1])
+    )
   }
 
-  public moveBy(ids: IDType[], point: vec2) {
-    ids.forEach(i => this._moveBy(i, point))
+  public moveBy(ids: IDType[], worldDelta: vec2) {
+    ids.forEach(i => this._moveBy(i, worldDelta))
   }
 
+  /**
+   * Apply a transformation matrix around a world-space pivot point.
+   *
+   * All parameters are in world coordinates:
+   * - matrixPayload: the rotation/scale matrix to apply in world space
+   * - pivot: the pivot point in world space
+   *
+   * Algorithm:
+   * 1. Get current world transform W_old
+   * 2. Construct world-space step: transformStep = T(pivot) * M * T(-pivot)
+   * 3. Compute new world: W_new = transformStep * W_old
+   * 4. Convert to local: L_new = parentWorld^(-1) * W_new
+   *
+   * This unified approach works identically for:
+   * - Single rotated nodes: parent inverse cancels node rotation for axis-aligned operations
+   * - Temporary groups: parent inverse is identity, matrix applies directly
+   * - Deeply nested nodes: full world→local conversion handles any hierarchy
+   */
   private _transformAround(id: IDType, matrixPayload: mat2d, pivot: vec2) {
     const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
-    const localMat = this._cursor.transform
 
-    // 1. Calculate the rotation/scale part separately
-    // transformStep = matrixPayload (since pivot only affects translation in the end result for rotation part)
-    // localMatRot = transformStepRot * localMatRot
-    const a = matrixPayload[0] * localMat[0] + matrixPayload[2] * localMat[1]
-    const b = matrixPayload[1] * localMat[0] + matrixPayload[3] * localMat[1]
-    const c = matrixPayload[0] * localMat[2] + matrixPayload[2] * localMat[3]
-    const d = matrixPayload[1] * localMat[2] + matrixPayload[3] * localMat[3]
+    // 1. Get current world transform
+    const currentWorld = mat2d.clone(this._cursor.worldTransform as mat2d)
 
-    // 2. Calculate the translation part separately
-    // The pivot point affects the translation.
-    // NewPos = Matrix * (OldPos - Pivot) + Pivot
-    // But since we are applying a delta matrix (matrixPayload) which is relative to the pivot:
-    // We can imagine the operation as:
-    // Translate(-pivot) -> Apply Matrix -> Translate(pivot)
-    // For a point P: P' = M * (P - pivot) + pivot
-    //                 = M * P - M * pivot + pivot
-    //                 = M * P + (pivot - M * pivot)
-
-    // The local matrix 'localMat' represents the transform of the object.
-    // We are applying the transform step "before" or "after"?
-    // "transformAround" usually implies modifying the current transform by rotating around a pivot point.
-    // If we rotate a node around a pivot, its position changes, and its rotation changes.
-
-    // Let's stick to the previous logic but implemented manually to separate components.
-    // The previous logic was:
-    // transformStep = Translate(pivot) * Matrix * Translate(-pivot)
-    // localMat = transformStep * localMat
-
-    // Let's construct transformStep manually first
-    // transformStep =
-    // [ m0 m2  px - (m0*px + m2*py) ]
-    // [ m1 m3  py - (m1*px + m3*py) ]
-    // [ 0  0   1                    ]
-
+    // 2. Construct world-space transform step: T(pivot) * M * T(-pivot)
     const m0 = matrixPayload[0]
     const m1 = matrixPayload[1]
     const m2 = matrixPayload[2]
     const m3 = matrixPayload[3]
-    const m4 = matrixPayload[4] // usually 0 for rotation/scale matrix
-    const m5 = matrixPayload[5] // usually 0
-
+    const m4 = matrixPayload[4]
+    const m5 = matrixPayload[5]
     const px = pivot[0]
     const py = pivot[1]
 
-    // The effective translation of the transformStep (M_new)
-    // M_new = T(p) * M * T(-p)
-    // The rotation part of M_new is just M (m0, m1, m2, m3)
-    // The translation part:
-    // tx_step = m0 * (-px) + m2 * (-py) + m4 + px
-    // ty_step = m1 * (-px) + m3 * (-py) + m5 + py
     const tx_step = px - (m0 * px + m2 * py) + m4
     const ty_step = py - (m1 * px + m3 * py) + m5
 
-    // Now multiply transformStep with localMat
-    // localMat = transformStep * localMat
-    // This looks wrong. "transformAround" generally means we apply a transformation in the parent space?
-    // Or are we modifying the local transform itself?
-    // If we use the tool logic `mat2d.multiply(localMat, transformStep, localMat)`
-    // it implies `localMat = transformStep * localMat`.
-    // This means transformStep is applied "after" the current local transform (in local space? No, matrix multiplication order matters).
-    // If `NewLocal = Step * OldLocal`, then Step is applied in the parent frame.
-    // Yes, we are rotating around a pivot in the parent frame (likely world frame or parent frame).
+    // 3. W_new = transformStep * W_old
+    const w0 = currentWorld[0],
+      w1 = currentWorld[1]
+    const w2 = currentWorld[2],
+      w3 = currentWorld[3]
+    const w4 = currentWorld[4],
+      w5 = currentWorld[5]
 
-    // So we update the mix:
-    // Rot/Scale part (as above):
-    // NewRot = M_rot * OldRot
+    const newWorld = mat2d.fromValues(
+      m0 * w0 + m2 * w1,
+      m1 * w0 + m3 * w1,
+      m0 * w2 + m2 * w3,
+      m1 * w2 + m3 * w3,
+      m0 * w4 + m2 * w5 + tx_step,
+      m1 * w4 + m3 * w5 + ty_step
+    )
 
-    // Pos part:
-    // NewPos = M_step * OldPos
-    // NewX = m0 * oldX + m2 * oldY + tx_step
-    // NewY = m1 * oldX + m3 * oldY + ty_step
+    // 4. Convert to local: L_new = parentWorld^(-1) * W_new
+    const parent = this._cursor.parent
+    let newLocal: mat2d
 
-    const oldX = localMat[4]
-    const oldY = localMat[5]
+    if (parent === null) {
+      // No parent: world = local
+      newLocal = newWorld
+    } else {
+      const parentWorld = parent.worldTransform as mat2d
+      const parentWorldInv = mat2d.invert(mat2d.create(), parentWorld)
+      if (parentWorldInv === null) {
+        // Degenerate parent matrix: use world as local (approximate)
+        newLocal = newWorld
+      } else {
+        newLocal = mat2d.multiply(mat2d.create(), parentWorldInv, newWorld)
+      }
+    }
 
-    const newX = m0 * oldX + m2 * oldY + tx_step
-    const newY = m1 * oldX + m3 * oldY + ty_step
-
-    localMat[0] = a
-    localMat[1] = b
-    localMat[2] = c
-    localMat[3] = d
-    localMat[4] = newX
-    localMat[5] = newY
-
-    this._cursor.transform = localMat
+    this._cursor.transform = newLocal
 
     this._sceneGraph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
   }

@@ -173,19 +173,61 @@ export class Renderer {
     }[] = []
     for (const id of visibleNodeIds) {
       node.to(id)
-      mat2d.multiply(this._tempMatrix, matrix, node.worldTransform)
+      const { width, height, worldTransform: wt } = node
+      const a = wt[0]
+      const b = wt[1]
+      const c = wt[2]
+      const d = wt[3]
+      const tx = wt[4]
+      const ty = wt[5]
+
+      const cx = width / 2
+      const cy = height / 2
+
+      // Calculate translation adjusted for center-pivot rotation
+      // Standard WT is T(tx, ty) * R_topleft.
+      // Center-pivot WT is T(tx, ty) * T(cx, cy) * R * T(-cx, -cy)
+      // = T(tx + cx - (a*cx + c*cy), ty + cy - (b*cx + d*cy)) * R
+      const ntx = tx + cx - (a * cx + c * cy)
+      const nty = ty + cy - (b * cx + d * cy)
+
+      mat2d.set(this._tempMatrix, a, b, c, d, ntx, nty)
+
+      // Calculate world-space AABB for R-Tree based on the new pivot-adjusted transform
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+      const corners = [
+        [0, 0],
+        [width, 0],
+        [width, height],
+        [0, height],
+      ]
+      for (const [lx, ly] of corners) {
+        const wx = a * lx + c * ly + ntx
+        const wy = b * lx + d * ly + nty
+        minX = Math.min(minX, wx)
+        minY = Math.min(minY, wy)
+        maxX = Math.max(maxX, wx)
+        maxY = Math.max(maxY, wy)
+      }
+
+      rTreeItems.push({
+        minX,
+        minY,
+        maxX,
+        maxY,
+        id,
+      })
+
+      // Combine with camera matrix for rendering
+      mat2d.multiply(this._tempMatrix, matrix, this._tempMatrix)
+
       if (node.id === '19:4') {
         console.log(node.x, node.y)
       }
       this._backend.setTransform(new Float32Array(this._tempMatrix))
-      const aabbPtr = id * 4
-      rTreeItems.push({
-        minX: this._sceneGraph.aabb[aabbPtr],
-        minY: this._sceneGraph.aabb[aabbPtr + 1],
-        maxX: this._sceneGraph.aabb[aabbPtr + 2],
-        maxY: this._sceneGraph.aabb[aabbPtr + 3],
-        id,
-      })
 
       const renderer = getRenderer(node.type)
       if (renderer) {
