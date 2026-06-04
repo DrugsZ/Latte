@@ -8,46 +8,41 @@ import {
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
 
+import { getTransactionManager } from '../transactions/transactionRegistry'
 import { system, SystemBase, Systems } from './systems'
 
 import type { IDType } from '@latte-js/bean'
+import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
-type ISnapshot = Float32Array
+const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
 
-@system
+const transformMutationPolicies: MutationPolicyMap = {
+  moveTo: {
+    kind: 'atomic',
+    label: 'Move Layer',
+    ids: idsFromFirstArg,
+  },
+  moveBy: {
+    kind: 'atomic',
+    label: 'Move Layer',
+    ids: idsFromFirstArg,
+  },
+  transformAround: {
+    kind: 'atomic',
+    label: 'Transform Layer',
+    ids: idsFromFirstArg,
+  },
+}
+
+@system({ mutations: transformMutationPolicies })
 export class TransformSystem extends SystemBase {
   public static readonly name = Systems.Transform
   private _cursor: NodeCursor
-  private _snapshots: Map<IDType, ISnapshot> = new Map()
+  private _transactions = getTransactionManager(this._sceneGraph)
 
   constructor(sceneGraph: SceneGraph) {
     super(sceneGraph)
     this._cursor = new NodeCursor(this._sceneGraph, 0)
-  }
-
-  private _createSnapshot(index: number) {
-    this._cursor.to(index)
-    const { x, y, width, height, transform, id } = this._cursor
-    if (id === null) return
-    const snapshot = new Float32Array([x, y, width, height, ...transform])
-    this._snapshots.set(id, snapshot)
-  }
-
-  private _createSnapshots(ids: IDType[]) {
-    this._snapshots.clear()
-    ids.forEach(id => {
-      const index = this._sceneGraph.getIndex(id)
-      this._createSnapshot(index)
-    })
-  }
-
-  public startSession(ids: IDType[]) {
-    this._snapshots.clear()
-    this._createSnapshots(ids)
-  }
-
-  public endSession() {
-    this._snapshots.clear()
   }
 
   private _moveTo(id: IDType, delta: vec2) {
@@ -63,11 +58,11 @@ export class TransformSystem extends SystemBase {
   }
 
   private _moveBy(id: IDType, point: vec2) {
-    const snapData = this._snapshots.get(id)
+    const snapshot = this._transactions.getSnapshot(id)
     const index = this._sceneGraph.getIndex(id)
     this._cursor.to(index)
-    const base = snapData
-      ? [snapData[7], snapData[8]]
+    const base = snapshot
+      ? [snapshot.x, snapshot.y]
       : [this._cursor.x, this._cursor.y]
     vec2.add(base, base, point)
     this._cursor.x = base[0]
@@ -101,7 +96,7 @@ export class TransformSystem extends SystemBase {
 
   private _resize(id: IDType, width: number, height: number) {
     const index = this._sceneGraph.getIndex(id)
-    const snapData = this._snapshots.get(id)
+    const snapData = this._transactions.getSnapshot(id)
     this._resizeByIndex(index, width, height, snapData)
   }
 
@@ -109,12 +104,12 @@ export class TransformSystem extends SystemBase {
     index: number,
     width: number,
     height: number,
-    snapData?: ISnapshot
+    snapData?: { width: number; height: number }
   ) {
     this._cursor.to(index)
 
-    const oldWidth = snapData ? snapData[2] : this._cursor.width
-    const oldHeight = snapData ? snapData[3] : this._cursor.height
+    const oldWidth = snapData ? snapData.width : this._cursor.width
+    const oldHeight = snapData ? snapData.height : this._cursor.height
 
     // Handle zero-size case: just set new size directly
     if (oldWidth === 0 || oldHeight === 0) {

@@ -18,7 +18,6 @@ export class BlobManager {
     const jsonStr = isString ? data : JSON.stringify(data)
 
     const bytes = encoder.encode(jsonStr)
-    this._heap.write(bytes)
     const ptr = this._heap.write(bytes)
 
     this._cache.set(ptr, data)
@@ -41,7 +40,9 @@ export class BlobManager {
     if (!bytes) {
       return bytes
     }
-    const jsonStr = decoder.decode(bytes)
+    const decodeBytes =
+      bytes.buffer instanceof SharedArrayBuffer ? Uint8Array.from(bytes) : bytes
+    const jsonStr = decoder.decode(decodeBytes)
 
     let result: string | object | null = null
     try {

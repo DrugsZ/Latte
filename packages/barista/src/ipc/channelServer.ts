@@ -1,5 +1,7 @@
 import {
+  JsonRpcErrorCode,
   JsonRpcMessageType,
+  LATTE_RPC_PROTOCOL_VERSION,
   type JsonRpcId,
   type JsonRpcListenMessage,
   type JsonRpcMessage,
@@ -25,6 +27,7 @@ export class ChannelServer implements IChannelServer {
   private _activeListeners = new Map<JsonRpcId, IDisposable>()
   private _onMessage = new Emitter<void>()
   public readonly onMessage = this._onMessage.event
+  private _messageQueue: Promise<void> = Promise.resolve()
 
   protected _onBeforeCall: ((sessionId: string) => void) | null = null
 
@@ -46,7 +49,19 @@ export class ChannelServer implements IChannelServer {
     return data
   }
 
-  public async handleMessage(msg: JsonRpcMessage) {
+  public handleMessage(msg: JsonRpcMessage) {
+    this._messageQueue = this._messageQueue.then(
+      () => this._handleMessage(msg),
+      () => this._handleMessage(msg)
+    )
+    return this._messageQueue
+  }
+
+  private async _handleMessage(msg: JsonRpcMessage) {
+    if (!this._validateProtocol(msg)) {
+      return
+    }
+
     if ('sessionId' in msg) {
       this._onBeforeCall?.(msg.sessionId || '')
     }
@@ -67,21 +82,25 @@ export class ChannelServer implements IChannelServer {
   private async _handleCall(msg: JsonRpcRequest | JsonRpcNotification) {
     const { method, params, id, sessionId } = msg
     const [channelName, methodName] = method.split('.')
+    if (!channelName || !methodName) {
+      this._sendError(
+        msg,
+        JsonRpcErrorCode.InvalidRequest,
+        `Invalid method: ${method}`,
+        { method }
+      )
+      return
+    }
 
     const channel = this._channels.get(channelName)
     if (!channel) {
       console.warn(`[IPC] Unknown channel: ${channelName}`)
-      if (id !== null && msg.type === JsonRpcMessageType.Request) {
-        this._protocol.send(
-          createJsonRpcErrorResponse(
-            id,
-            -32601,
-            `Method not found: ${method}`,
-            undefined,
-            sessionId
-          )
-        )
-      }
+      this._sendError(
+        msg,
+        JsonRpcErrorCode.MethodNotFound,
+        `Method not found: ${method}`,
+        { method, channelName }
+      )
       return
     }
 
@@ -104,12 +123,18 @@ export class ChannelServer implements IChannelServer {
         this._protocol.send(
           createJsonRpcErrorResponse(
             id,
-            -32603,
+            JsonRpcErrorCode.InternalError,
             e.message || 'Internal error',
-            undefined,
+            { method, channelName, methodName },
             sessionId
           )
         )
+      } else {
+        this._sendNotificationError(msg, e.message || 'Internal error', {
+          method,
+          channelName,
+          methodName,
+        })
       }
       console.error(`[IPC] Error in ${channelName}.${methodName}:`, e)
     }
@@ -119,8 +144,15 @@ export class ChannelServer implements IChannelServer {
     const { method, id, params, sessionId } = msg
     const [channelName, methodName] = method.split('.')
 
-    const channel = this._channels.get(channelName)
-    if (channel) {
+    try {
+      const channel = this._channels.get(channelName)
+      if (!channel) {
+        if (this._isEngineNotificationListen(channelName, methodName)) {
+          this._activeListeners.set(id, { dispose() {} })
+          return
+        }
+        throw new Error(`Event channel not found: ${channelName}`)
+      }
       const event = channel.listen(sessionId || '', methodName, params)
       if (typeof event === 'function') {
         const disposable = event((data: any) => {
@@ -130,6 +162,12 @@ export class ChannelServer implements IChannelServer {
         })
         this._activeListeners.set(id, disposable)
       }
+    } catch (error: any) {
+      this._sendNotificationError(msg, error.message || 'Listen failed', {
+        method,
+        channelName,
+        methodName,
+      })
     }
   }
 
@@ -140,5 +178,74 @@ export class ChannelServer implements IChannelServer {
       disposable.dispose()
       this._activeListeners.delete(id)
     }
+  }
+
+  private _isEngineNotificationListen(channelName: string, methodName: string) {
+    return channelName === 'scene' && methodName.startsWith('on')
+  }
+
+  private _validateProtocol(msg: JsonRpcMessage) {
+    if (
+      msg.protocolVersion === undefined ||
+      msg.protocolVersion === LATTE_RPC_PROTOCOL_VERSION
+    ) {
+      return true
+    }
+
+    this._sendError(
+      msg,
+      JsonRpcErrorCode.ProtocolVersionMismatch,
+      `Unsupported RPC protocol version: ${msg.protocolVersion}`,
+      {
+        expected: LATTE_RPC_PROTOCOL_VERSION,
+        actual: msg.protocolVersion,
+      }
+    )
+    return false
+  }
+
+  private _sendError(
+    msg: JsonRpcMessage,
+    code: JsonRpcErrorCode,
+    message: string,
+    data?: any
+  ) {
+    if (msg.type === JsonRpcMessageType.Request && msg.id !== null) {
+      this._protocol.send(
+        createJsonRpcErrorResponse(msg.id, code, message, data, msg.sessionId)
+      )
+      return
+    }
+
+    this._sendNotificationError(msg, message, {
+      code,
+      ...data,
+    })
+  }
+
+  private _sendNotificationError(
+    msg: JsonRpcMessage,
+    message: string,
+    data?: any
+  ) {
+    this._protocol.send(
+      createJsonRpcNotification(
+        'rpc.onError',
+        null,
+        {
+          error: {
+            code: JsonRpcErrorCode.NotificationError,
+            message,
+            data,
+          },
+          source: {
+            type: msg.type,
+            id: msg.id,
+            method: 'method' in msg ? msg.method : undefined,
+          },
+        },
+        msg.sessionId
+      )
+    )
   }
 }

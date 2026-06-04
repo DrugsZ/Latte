@@ -15,7 +15,7 @@ export default class MenuItemAction implements IAction {
     this.tooltip = item.command.tooltip || ''
   }
 
-  run(event?: unknown): unknown {
+  run(_event?: unknown): unknown {
     // Here we need to execute the command through the command service
     // Currently simplified
     return this._commandService.executeCommand(this.id)

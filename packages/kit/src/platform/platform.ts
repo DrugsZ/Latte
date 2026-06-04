@@ -41,6 +41,7 @@ export const isWindows = _isWindows
 export const isMacintosh = _isMacintosh
 export const isLinux = _isLinux
 export const isWeb = _isWeb
+export const platform = _platform
 export const isWebWorker =
   _isWeb && typeof $globalThis.importScripts === 'function'
 export const webWorkerOrigin = isWebWorker ? $globalThis.origin : undefined
@@ -65,5 +66,5 @@ export const OS =
   _isMacintosh || _isIOS
     ? OperatingSystem.Macintosh
     : _isWindows
-    ? OperatingSystem.Windows
-    : OperatingSystem.Linux
+      ? OperatingSystem.Windows
+      : OperatingSystem.Linux

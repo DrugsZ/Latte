@@ -9,7 +9,14 @@ import { Emitter } from '@latte-js/kit'
 
 import { service, ServiceBase, type IContext } from './serviceBase'
 
-@service
+import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+
+const documentMutationPolicies: MutationPolicyMap = {
+  load: { kind: 'writeNoHistory' },
+  save: { kind: 'readonly' },
+}
+
+@service({ mutations: documentMutationPolicies })
 export class DocumentService extends ServiceBase implements IDocumentService {
   public static readonly name = Channels.Document
 

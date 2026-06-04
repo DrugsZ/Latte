@@ -8,13 +8,14 @@ let engine: BaristaEngine
 self.onmessage = e => {
   if (e.data.type === Lifecycle.InitKernel) {
     try {
-      const { buffer, allocBuffer } = e.data
+      const { buffer, allocBuffer, heapBuffer } = e.data
       const port = e.ports[0]
 
       engine = new BaristaEngine(
         buffer,
         new IPCMessagePortProtocol(port),
-        allocBuffer
+        allocBuffer,
+        heapBuffer
       )
       self.postMessage({
         type: Lifecycle.InitKernelSuccess,
@@ -29,12 +30,12 @@ self.onmessage = e => {
     }
   } else if (e.data.type === Lifecycle.InitSession) {
     try {
-      const { sessionId, buffer, allocBuffer, requestId } = e.data
+      const { sessionId, buffer, allocBuffer, heapBuffer, requestId } = e.data
       if (!engine) {
         throw new Error('Engine not initialized')
       }
 
-      engine.initSession(sessionId, buffer, allocBuffer)
+      engine.initSession(sessionId, buffer, allocBuffer, heapBuffer)
 
       self.postMessage({
         type: Lifecycle.InitSessionSuccess,

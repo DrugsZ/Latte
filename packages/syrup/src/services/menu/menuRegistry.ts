@@ -100,7 +100,7 @@ class MenuRegistryChangeEvent {
   }
 }
 
-export const MenuRegistry = new (class implements IMenuRegistry {
+class MenuRegistryImpl implements IMenuRegistry {
   private readonly _onDidChangeMenu = new Emitter<IMenuRegistryChangeEvent>()
   readonly onDidChangeMenu = this._onDidChangeMenu.event
 
@@ -134,7 +134,9 @@ export const MenuRegistry = new (class implements IMenuRegistry {
     }
     return result
   }
-})()
+}
+
+export const MenuRegistry = new MenuRegistryImpl()
 
 export function registerEditorContextMenus(): void {
   const copyMenuItem: ICommandMenuItem = {

@@ -58,8 +58,9 @@ describe('BaristaClient', () => {
   it('should initialize successfully', async () => {
     const sharedBuffer = new SharedArrayBuffer(1024)
     const allocBuffer = new SharedArrayBuffer(1024)
+    const heapBuffer = new SharedArrayBuffer(1024)
 
-    const initPromise = client.init(sharedBuffer, allocBuffer)
+    const initPromise = client.init(sharedBuffer, allocBuffer, heapBuffer)
 
     // Expect worker.postMessage to be called with InitKernel
     expect(mockWorker.postMessage).toHaveBeenCalledWith(
@@ -67,6 +68,7 @@ describe('BaristaClient', () => {
         type: Lifecycle.InitKernel,
         buffer: sharedBuffer,
         allocBuffer,
+        heapBuffer,
       }),
       expect.any(Array) // port2
     )

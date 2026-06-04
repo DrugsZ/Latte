@@ -4,6 +4,17 @@ export { LatteLoader } from './io/latteLoader'
 export { Serializer } from './io/serializer'
 export { NodeCursor } from './data/nodeCursor'
 export {
+  readNodeFills,
+  readNodeGeometry,
+  readNodeName,
+  readNodeStrokes,
+  writeNodeFills,
+  writeNodeGeometry,
+  writeNodeName,
+  writeNodeStrokes,
+  type INodeGeometryPayload,
+} from './data/nodeProps'
+export {
   DIRTY_TRANSFORM,
   DIRTY_STYLE,
   DIRTY_STRUCTURE,
@@ -13,6 +24,7 @@ export {
   BOUNDS_AFFECTING_FLAGS,
   NULL_INDEX,
   MAX_NODES,
+  MAT_SIZE,
 } from './data/config'
 export {
   applyStretchToMatrix,
@@ -23,3 +35,9 @@ export {
 } from './math/transform'
 export { TransformOps } from './data/ops/transformOps'
 export { walkTree } from './query/treeWalker'
+export { PropId } from './data/propKeys'
+export type {
+  IMutationRecorder,
+  INodeMutationRecord,
+} from './data/mutationRecorder'
+export type { IMutationScope, MutationScopeKind } from './data/mutationScope'

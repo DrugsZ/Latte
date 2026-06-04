@@ -8,7 +8,7 @@
 [分支][forks-url]
 [星标][stars-url]
 [问题][issues-url]
-[MIT 许可证][license-url]
+[包级许可证][license-url]
 
 <!-- PROJECT LOGO -->
 
@@ -44,6 +44,11 @@ pnpm test
 感谢您的贡献！
 ```
 
+## 许可证
+
+本目录下应用主要作为演示和产品集成入口，不作为可复用包发布。包级许可证
+请查看根 README 以及各 package 内的 `LICENSE` 文件。
+
 ## 灵感来源
 
 - [AntV G](https://github.com/antvis/G)
@@ -63,4 +68,4 @@ pnpm test
 [issues-shield]: https://img.shields.io/github/issues/DrugsZ/Latte.svg?style=flat-square
 [issues-url]: https://github.com/DrugsZ/Latte/issues
 [license-shield]: https://img.shields.io/github/license/DrugsZ/Latte.svg?style=flat-square
-[license-url]: https://github.com/DrugsZ/Latte/blob/master/LICENSE.txt
+[license-url]: https://github.com/DrugsZ/Latte#license

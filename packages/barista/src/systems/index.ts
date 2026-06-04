@@ -1,5 +1,5 @@
 export { NodeSystem } from './node'
-export { BaristaSystem, Systems } from './systems'
+export { BaristaSystem, Systems, getRegisteredSystems } from './systems'
 export { TransformSystem } from './transform'
 export { QuerySystem } from './query'
 export { AABBSystem } from './aabb'

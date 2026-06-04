@@ -34,10 +34,10 @@ describe('NodeType String Conversion', () => {
           visible: true,
           opacity: 1,
           transform: [1, 0, 0, 1, 0, 0],
-          parentIndex: { guid: 'page-1', position: '1' },
+          parentIndex: { guid: 'page:1', position: '1' },
         },
         {
-          guid: 'page-1',
+          guid: 'page:1',
           type: 'CANVAS',
           name: 'Page 1',
           visible: true,
@@ -52,7 +52,7 @@ describe('NodeType String Conversion', () => {
     loader.load(json)
 
     const rectIndex = graph.getIndex('rect::2')
-    const pageIndex = graph.getIndex('page-1')
+    const pageIndex = graph.getIndex('page:1')
 
     expect(graph.type[rectIndex]).toBe(NodeType.RECTANGLE)
     expect(graph.type[pageIndex]).toBe(NodeType.CANVAS)
@@ -65,7 +65,7 @@ describe('NodeType String Conversion', () => {
     const json = {
       elements: [
         {
-          guid: 'invalid-1',
+          guid: 'invalid:1',
           type: 'NON_EXISTENT_TYPE',
           name: 'Invalid',
           visible: true,
@@ -77,7 +77,7 @@ describe('NodeType String Conversion', () => {
     } as unknown as ILatteFile
 
     loader.load(json)
-    const index = graph.getIndex('invalid-1')
+    const index = graph.getIndex('invalid:1')
     // Based on the implementation, invalid types currently default to GROUP (14) if mapType is used,
     // but Loader uses NodeType[node.type] directly which might result in undefined if not careful.
     // In our modified Loader: typeof node.type === 'string' ? NodeType[node.type] : node.type
@@ -94,7 +94,7 @@ describe('NodeType String Conversion', () => {
     const json = {
       elements: [
         {
-          guid: 'numeric-1',
+          guid: 'numeric:1',
           type: NodeType.RECTANGLE,
           name: 'Numeric Rect',
           visible: true,
@@ -106,7 +106,7 @@ describe('NodeType String Conversion', () => {
     } as unknown as ILatteFile
 
     loader.load(json)
-    const index = graph.getIndex('numeric-1')
+    const index = graph.getIndex('numeric:1')
     expect(graph.type[index]).toBe(NodeType.RECTANGLE)
   })
 })

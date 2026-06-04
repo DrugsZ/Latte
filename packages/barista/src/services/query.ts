@@ -8,8 +8,14 @@ import {
 import { service, ServiceBase, type IContext } from './serviceBase'
 
 import type { QuerySystem } from '../systems/query'
+import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
-@service
+const queryMutationPolicies: MutationPolicyMap = {
+  getElementByTagName: { kind: 'readonly' },
+  getElementByName: { kind: 'readonly' },
+}
+
+@service({ mutations: queryMutationPolicies })
 export class QueryService
   extends ServiceBase<QuerySystem>
   implements IQueryService

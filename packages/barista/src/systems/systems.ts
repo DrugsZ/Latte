@@ -1,4 +1,5 @@
 import type { SceneGraph } from '@latte-js/espresso'
+import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
 export enum Systems {
   Transform = 'transform',
@@ -10,6 +11,7 @@ export enum Systems {
 
 export abstract class SystemBase {
   static readonly name: Systems
+  static readonly mutationPolicies?: MutationPolicyMap
 
   constructor(protected _sceneGraph: SceneGraph) {}
 
@@ -18,14 +20,44 @@ export abstract class SystemBase {
 
 export type SystemConstructor = (new (sceneGraph: SceneGraph) => SystemBase) & {
   readonly name: Systems
+  readonly mutationPolicies?: MutationPolicyMap
+}
+
+export interface ISystemRegistrationOptions {
+  readonly mutations?: MutationPolicyMap
 }
 
 export type AccessSystem = <T extends SystemBase>(name: Systems) => T
 
 const systemRegistry: SystemConstructor[] = []
 
-export function system(ctor: SystemConstructor) {
+export function getRegisteredSystems() {
+  return systemRegistry
+}
+
+function registerSystem(
+  ctor: SystemConstructor,
+  options?: ISystemRegistrationOptions
+) {
+  if (options?.mutations) {
+    ;(ctor as any).mutationPolicies = options.mutations
+  }
   systemRegistry.push(ctor)
+}
+
+export function system(ctor: SystemConstructor): void
+export function system(
+  options: ISystemRegistrationOptions
+): (ctor: SystemConstructor) => void
+export function system(arg: SystemConstructor | ISystemRegistrationOptions) {
+  if (typeof arg === 'function') {
+    registerSystem(arg)
+    return
+  }
+
+  return (ctor: SystemConstructor) => {
+    registerSystem(ctor, arg)
+  }
 }
 
 export class BaristaSystem {

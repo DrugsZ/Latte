@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type IGraphObserver } from '../../typing'
 import { MAT_A, MAT_D, MAT_SIZE, NULL_INDEX } from '../config'
 import { PropId } from '../propKeys'
+import { writeNodeGeometry, writeNodeName } from '../nodeProps'
 import { SceneGraph } from '../sceneGraph'
 
 describe('SceneGraph', () => {
@@ -35,7 +36,7 @@ describe('SceneGraph', () => {
 
     it('should initialize identity matrix values', () => {
       const newGraph = new SceneGraph()
-      const base = 1 * MAT_SIZE
+      const base = 0 * MAT_SIZE
       expect(newGraph.matrix[base + MAT_A]).toBe(1)
       expect(newGraph.matrix[base + MAT_D]).toBe(1)
     })
@@ -53,6 +54,46 @@ describe('SceneGraph', () => {
       expect(secondGraph.type[idx]).toBe(NodeType.RECTANGLE)
       // UUIDs are not stored in buffer, so this is expectedly empty unless re-registered
       expect(secondGraph.getUUID(idx)).toBe(null)
+    })
+
+    it('should initialize a blank external SharedArrayBuffer defensively', () => {
+      const buffer = new SharedArrayBuffer(sceneGraph.buffer.byteLength)
+      const externalGraph = new SceneGraph(buffer)
+
+      expect(externalGraph.parent[0]).toBe(NULL_INDEX)
+      expect(externalGraph.firstChild[0]).toBe(NULL_INDEX)
+      expect(externalGraph.nextSibling[0]).toBe(NULL_INDEX)
+      expect(externalGraph.prevSibling[0]).toBe(NULL_INDEX)
+      expect(externalGraph.lastChild[0]).toBe(NULL_INDEX)
+      expect(externalGraph.type[0]).toBe(NodeType.DOCUMENT)
+    })
+
+    it('should read shared metadata pointers from another graph wrapper', () => {
+      const originalGraph = new SceneGraph()
+      const idx = originalGraph.createNode(NodeType.RECTANGLE, 'test:r1')
+      writeNodeName(originalGraph, idx, 'Shared Rect')
+      originalGraph.fillPtr[idx] = originalGraph.blobs.write([
+        { type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 } },
+      ])
+      writeNodeGeometry(originalGraph, idx, {
+        points: [0, 0, 100, 0, 50, 100],
+      })
+
+      const secondGraph = new SceneGraph(
+        originalGraph.buffer,
+        originalGraph.allocator.buffer,
+        originalGraph.heap.buffer
+      )
+
+      expect(secondGraph.blobs.read(secondGraph.namePtr[idx], true)).toBe(
+        'Shared Rect'
+      )
+      expect(secondGraph.blobs.read(secondGraph.fillPtr[idx])).toEqual([
+        { type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 } },
+      ])
+      expect(secondGraph.blobs.read(secondGraph.geometryPtr[idx])).toEqual({
+        points: [0, 0, 100, 0, 50, 100],
+      })
     })
 
     it('should detach child when appending to a new parent', () => {
@@ -120,6 +161,28 @@ describe('SceneGraph', () => {
     it('should delete node with specific UUID', () => {
       const idx = sceneGraph.createNode(NodeType.RECTANGLE, 'test:empty')
       expect(() => sceneGraph.deleteNode(idx)).not.toThrow()
+    })
+
+    it('rejects deleteNode in history scope before mutating graph state', () => {
+      const idx = sceneGraph.createNode(
+        NodeType.RECTANGLE,
+        'test:history-delete'
+      )
+
+      sceneGraph.runWithMutationScope(
+        { kind: 'history', source: 'test' },
+        () => {
+          expect(() => sceneGraph.deleteNode(idx)).toThrow(
+            'removeSelf history is not supported'
+          )
+        }
+      )
+
+      expect(sceneGraph.getUUID(idx)).toBe('test:history-delete')
+      expect(sceneGraph.getIndex('test:history-delete')).toBe(idx)
+      expect(
+        sceneGraph.allocator.isValid(idx, sceneGraph.allocator.generations[idx])
+      ).toBe(true)
     })
 
     it('should insertAfter node that already has a parent', () => {

@@ -9,8 +9,24 @@ import {
 import { service, ServiceBase, type IContext } from './serviceBase'
 
 import type { TransformSystem } from '../systems/transform'
+import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
-@service
+const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
+
+const transformServiceMutationPolicies: MutationPolicyMap = {
+  beginTransform: {
+    kind: 'sessionBegin',
+    label: args => (typeof args[1] === 'string' ? args[1] : 'Transform Layer'),
+    ids: idsFromFirstArg,
+  },
+  commitTransform: { kind: 'sessionCommit' },
+  cancelTransform: { kind: 'sessionCancel' },
+  moveTo$: { kind: 'sessionMutation' },
+  moveBy$: { kind: 'sessionMutation' },
+  transformAround$: { kind: 'sessionMutation' },
+}
+
+@service({ mutations: transformServiceMutationPolicies })
 export class TransformService
   extends ServiceBase<TransformSystem>
   implements ITransformService
@@ -21,17 +37,11 @@ export class TransformService
     super(ctx)
   }
 
-  public async startSession(ids: IDType[]) {
-    return this.system.startSession(ids)
-  }
+  public async beginTransform(_ids: IDType[], _label = 'Transform Layer') {}
 
-  public async endSession() {
-    return this.system.endSession()
-  }
+  public async commitTransform() {}
 
-  public async abortSession() {
-    return this.system.endSession()
-  }
+  public async cancelTransform() {}
 
   public async moveTo(ids: IDType[], delta: vec2) {
     return this.system.moveTo(ids, delta)

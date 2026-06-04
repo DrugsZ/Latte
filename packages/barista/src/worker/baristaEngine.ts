@@ -5,6 +5,7 @@ import { ChannelServer, fromService } from '../ipc'
 import { createJsonRpcNotification } from '../ipc/ipc'
 import { ServiceManager } from '../services'
 import { BaristaSystem, Systems } from '../systems'
+import { MutationGate } from '../transactions/mutationPolicy'
 
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
 
@@ -17,17 +18,20 @@ export class BaristaEngine {
   private _proxyGraph: SceneGraph
   private _systems: BaristaSystem
   private _serviceManager: ServiceManager
+  private _mutationGate: MutationGate
   private _channelServer: ChannelServer | null = null
   private _isTickScheduled = false
 
   constructor(
     buffer: SharedArrayBuffer,
     private _protocol: IMessagePassingProtocol,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
-    this._initKernelSession(buffer, allocBuffer)
+    this._initKernelSession(buffer, allocBuffer, heapBuffer)
     this._proxyGraph = this._createGraphProxy()
     this._systems = new BaristaSystem(this._proxyGraph)
+    this._mutationGate = new MutationGate(this._proxyGraph)
     this._serviceManager = new ServiceManager(this._proxyGraph, this._systems)
 
     this._initChannelServer()
@@ -35,13 +39,15 @@ export class BaristaEngine {
 
   private _initKernelSession(
     buffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
     // Initial kernel session
     const kernelGraph = this.initSession(
       DEFAULT_SCENE_GRAPH_NAME,
       buffer,
-      allocBuffer
+      allocBuffer,
+      heapBuffer
     )
     this._activeGraph = kernelGraph
     this._activeSessionId = DEFAULT_SCENE_GRAPH_NAME
@@ -80,9 +86,10 @@ export class BaristaEngine {
   public initSession(
     sessionId: string,
     buffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer
+    allocBuffer: SharedArrayBuffer,
+    heapBuffer: SharedArrayBuffer
   ) {
-    const graph = new SceneGraph(buffer, allocBuffer)
+    const graph = new SceneGraph(buffer, allocBuffer, heapBuffer)
     this._graphs.set(sessionId, graph)
     return graph
   }
@@ -97,7 +104,13 @@ export class BaristaEngine {
     })
 
     this._serviceManager.forEachService((service, name) => {
-      this._channelServer!.registerChannel(name, fromService(service))
+      this._channelServer!.registerChannel(
+        name,
+        fromService(service, {
+          channelName: name,
+          mutationGate: this._mutationGate,
+        })
+      )
     })
   }
 

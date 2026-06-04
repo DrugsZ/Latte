@@ -10,7 +10,9 @@ import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
 import { MutationTracker } from './mutationTracker'
 
 import type { IDType } from '@latte-js/bean'
-import type { PropId } from './propKeys'
+import type { IMutationRecorder, INodeMutationRecord } from './mutationRecorder'
+import type { IMutationScope } from './mutationScope'
+import { PropId } from './propKeys'
 
 export class SceneGraph {
   private _observers: IGraphObserver[] = []
@@ -36,6 +38,10 @@ export class SceneGraph {
   public readonly visible!: Uint8Array
   public readonly opacity!: Float32Array
   public readonly textPtr!: Int32Array
+  public readonly namePtr!: Int32Array
+  public readonly geometryPtr!: Int32Array
+  public readonly fillPtr!: Int32Array
+  public readonly strokePtr!: Int32Array
 
   public readonly locked!: Uint8Array
 
@@ -47,17 +53,18 @@ export class SceneGraph {
   public readonly cornerRadius!: Float32Array
 
   public readonly blobs: BlobManager
-  public readonly blobIndexToPtr = new Map<number, number>()
-  public readonly strokeBlobIndexToPtr = new Map<number, number>()
-  public readonly heap: HeapManager = new HeapManager()
+  public readonly heap: HeapManager
 
   private _uuidToIndex = new Map<IDType, number>()
   private _indexToUuid = new Map<number, IDType>()
-  public nameMap = new Map<number, string>()
+  private _mutationRecorder: IMutationRecorder | null = null
+  private _mutationGuardEnabled = false
+  private _mutationScopes: IMutationScope[] = []
 
   constructor(
     existingBuffer?: SharedArrayBuffer,
-    allocatorBuffer?: SharedArrayBuffer
+    allocatorBuffer?: SharedArrayBuffer,
+    heapBuffer?: SharedArrayBuffer
   ) {
     const isHost = !existingBuffer
 
@@ -82,13 +89,24 @@ export class SceneGraph {
 
       byteOffset += item.size * item.type.BYTES_PER_ELEMENT
     }
-    if (isHost) {
+    if (isHost || this._looksUninitialized()) {
       this._initMemory()
     }
 
+    this.heap = new HeapManager(heapBuffer, { resizable: !heapBuffer })
     this.blobs = new BlobManager(this.heap)
 
     this.tracker.setParentArray(this.parent)
+  }
+
+  private _looksUninitialized() {
+    return (
+      this.parent[0] === 0 &&
+      this.firstChild[0] === 0 &&
+      this.nextSibling[0] === 0 &&
+      this.prevSibling[0] === 0 &&
+      this.lastChild[0] === 0
+    )
   }
 
   private _initMemory() {
@@ -102,18 +120,18 @@ export class SceneGraph {
     this.opacity.fill(1.0)
     this.locked.fill(0)
     this.textPtr.fill(NULL_INDEX)
+    this.namePtr.fill(NULL_INDEX)
+    this.geometryPtr.fill(NULL_INDEX)
+    this.fillPtr.fill(NULL_INDEX)
+    this.strokePtr.fill(NULL_INDEX)
 
     this.strokeWeight.fill(1)
     this.strokeAlign.fill(StrokeAlign.CENTER)
-    this.aabb.fill(0)
-    for (let i = 0; i < MAX_NODES; i++) {
-      const base = i * 6
-      this.matrix[base + 0] = 1
-      this.matrix[base + 3] = 1
-      this.worldMatrix[base + 0] = 1
-      this.worldMatrix[base + 3] = 1
-    }
     this.type[0] = NodeType.DOCUMENT
+    this.matrix[MAT_A] = 1
+    this.matrix[MAT_D] = 1
+    this.worldMatrix[MAT_A] = 1
+    this.worldMatrix[MAT_D] = 1
   }
 
   public setObserver(obs: IGraphObserver) {
@@ -129,6 +147,68 @@ export class SceneGraph {
     for (const obs of this._observers) {
       obs.update(id, prop, oldValue, newValue)
     }
+  }
+
+  public setMutationRecorder(recorder: IMutationRecorder | null) {
+    const previous = this._mutationRecorder
+    this._mutationRecorder = recorder
+    return previous
+  }
+
+  public getMutationRecorder() {
+    return this._mutationRecorder
+  }
+
+  public recordMutation(record: INodeMutationRecord) {
+    this._mutationRecorder?.recordMutation(record)
+  }
+
+  public setMutationGuardEnabled(enabled: boolean) {
+    this._mutationGuardEnabled = enabled
+  }
+
+  public get mutationGuardEnabled() {
+    return this._mutationGuardEnabled
+  }
+
+  public get activeMutationScope(): IMutationScope | null {
+    return this._mutationScopes[this._mutationScopes.length - 1] ?? null
+  }
+
+  public runWithMutationScope<T>(scope: IMutationScope, callback: () => T): T {
+    this._mutationScopes.push(scope)
+    let popped = false
+    const pop = () => {
+      if (popped) {
+        return
+      }
+      popped = true
+      const current = this._mutationScopes.pop()
+      if (current !== scope) {
+        throw new Error('[SceneGraph] Mutation scope stack corrupted')
+      }
+    }
+
+    try {
+      const result = callback()
+      const maybePromise = result as PromiseLike<unknown> | undefined
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        return Promise.resolve(result).finally(pop) as T
+      }
+      pop()
+      return result
+    } catch (error) {
+      pop()
+      throw error
+    }
+  }
+
+  public assertMutationAllowed(source: string) {
+    if (!this._mutationGuardEnabled || this._mutationScopes.length > 0) {
+      return
+    }
+
+    throw new Error(`[SceneGraph] Mutation outside permitted scope: ${source}`)
   }
 
   public markDirty(index: number, flag: number) {
@@ -170,18 +250,31 @@ export class SceneGraph {
   }
 
   public deleteNode(index: number) {
+    this._assertDeleteNodeSupportedInActiveScope()
+    this.assertMutationAllowed('SceneGraph.deleteNode')
+
     this.detach(index)
 
     const uuid = this._indexToUuid.get(index)
     if (uuid) this._uuidToIndex.delete(uuid)
     this._indexToUuid.delete(index)
-    this.nameMap.delete(index)
 
     this.allocator.free(index)
   }
 
+  private _assertDeleteNodeSupportedInActiveScope() {
+    if (this.activeMutationScope?.kind !== 'history') {
+      return
+    }
+
+    throw new Error(
+      `[SceneGraph] ${PropId.REMOVE_SELF} history is not supported until serialized node snapshots are implemented`
+    )
+  }
+
   public appendChild(parent: number, child: number) {
     if (parent === child) throw new Error('Cycle: Append self')
+    this._assertCanReparent(parent, child)
 
     if (this.parent[child] !== NULL_INDEX) {
       this.detach(child)
@@ -204,6 +297,8 @@ export class SceneGraph {
   }
 
   public insertAfter(parent: number, child: number, refNode: number) {
+    if (parent === child) throw new Error('Cycle: Insert self')
+    this._assertCanReparent(parent, child)
     if (this.parent[child] !== NULL_INDEX) this.detach(child)
 
     this.parent[child] = parent
@@ -253,6 +348,21 @@ export class SceneGraph {
     return this._indexToUuid.get(index) ?? null
   }
 
+  private _assertCanReparent(parent: number, child: number) {
+    let current = parent
+    let depth = 0
+
+    while (current !== NULL_INDEX) {
+      if (current === child) {
+        throw new Error('Tree cycle detected')
+      }
+      if (depth++ > MAX_NODES) {
+        throw new Error('Tree cycle detected')
+      }
+      current = this.parent[current]
+    }
+  }
+
   private _resetMemory(i: number, type: NodeType) {
     this.type[i] = type
     this.visible[i] = 1
@@ -267,6 +377,10 @@ export class SceneGraph {
     this.visible[i] = 1
     this.opacity[i] = 1
     this.textPtr[i] = NULL_INDEX
+    this.namePtr[i] = NULL_INDEX
+    this.geometryPtr[i] = NULL_INDEX
+    this.fillPtr[i] = NULL_INDEX
+    this.strokePtr[i] = NULL_INDEX
 
     this.locked[i] = 0
 
@@ -277,9 +391,14 @@ export class SceneGraph {
     this.matrix.fill(0, m, m + 6)
     this.matrix[m + MAT_A] = 1
     this.matrix[m + MAT_D] = 1
+    this.worldMatrix.fill(0, m, m + 6)
+    this.worldMatrix[m + MAT_A] = 1
+    this.worldMatrix[m + MAT_D] = 1
 
     // Size Zero
     this.size[i * 2] = 0
     this.size[i * 2 + 1] = 0
+    this.aabb.fill(0, i * 4, i * 4 + 4)
+    this.cornerRadius.fill(0, i * 4, i * 4 + 4)
   }
 }

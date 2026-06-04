@@ -5,6 +5,7 @@ import {
   type IQueryService,
   type ISceneService,
   type ITransformService,
+  type IUndoRedoService,
 } from '@latte-js/bean'
 
 import { editor } from '../../core/editor'
@@ -16,7 +17,7 @@ import { editor } from '../../core/editor'
  */
 export function createServiceProxy<T extends object>(channel: string): T {
   return new Proxy({} as T, {
-    get: (_target, prop) => {
+    get: (_target, _prop) => {
       return editor.getService(channel)
     },
   })
@@ -31,3 +32,6 @@ export const documentService = createServiceProxy<IDocumentService>(
   Channels.Document
 )
 export const queryService = createServiceProxy<IQueryService>(Channels.Query)
+export const undoRedoService = createServiceProxy<IUndoRedoService>(
+  Channels.UndoRedo
+)

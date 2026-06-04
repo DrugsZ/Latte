@@ -49,6 +49,9 @@ jobs:
       - name: Lint Code
         run: pnpm lint
 
+      - name: License Metadata
+        run: pnpm licenses:check
+
       - name: Type Check
         run: pnpm type-check
 

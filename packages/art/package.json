@@ -29,7 +29,7 @@
     "graphics"
   ],
   "author": "FateLee",
-  "license": "GPL-3.0-or-later",
+  "license": "AGPL-3.0-or-later",
   "homepage": "https://github.com/DrugsZ/Latte#readme",
   "exports": {
     ".": {

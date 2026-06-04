@@ -1,4 +1,26 @@
-export const MAX_NODES = 1000000
+const DEFAULT_MAX_NODES = 1000000
+const TEST_MAX_NODES = 20000
+
+const readConfiguredMaxNodes = () => {
+  const env = (
+    globalThis as {
+      process?: {
+        env?: Record<string, string | undefined>
+      }
+    }
+  ).process?.env
+  const raw = env?.LATTE_MAX_NODES
+  const configured = raw ? Number(raw) : NaN
+  if (Number.isInteger(configured) && configured > 1) {
+    return configured
+  }
+  if (env?.VITEST || env?.NODE_ENV === 'test') {
+    return TEST_MAX_NODES
+  }
+  return DEFAULT_MAX_NODES
+}
+
+export const MAX_NODES = readConfiguredMaxNodes()
 export const NULL_INDEX = -1
 
 export const MAT_A = 0

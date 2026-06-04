@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BlobManager } from '../blobManager'
 import { NULL_INDEX } from '../config'
@@ -11,6 +11,14 @@ describe('BlobManager', () => {
     read: vi.fn().mockReturnValue(new TextEncoder().encode('{"foo":"bar"}')),
   } as unknown as HeapManager
 
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(mockHeap.write).mockReturnValue(123)
+    vi.mocked(mockHeap.read).mockReturnValue(
+      new TextEncoder().encode('{"foo":"bar"}')
+    )
+  })
+
   it('should write string data to heap and cache it', () => {
     const blobManager = new BlobManager(mockHeap)
     const data = 'test-string'
@@ -18,7 +26,7 @@ describe('BlobManager', () => {
     const ptr = blobManager.write(data)
 
     expect(ptr).toBe(123)
-    expect(mockHeap.write).toHaveBeenCalled()
+    expect(mockHeap.write).toHaveBeenCalledTimes(1)
     // Internal cache check via read
     expect(blobManager.read(ptr, true)).toBe(data)
   })
@@ -30,7 +38,7 @@ describe('BlobManager', () => {
     const ptr = blobManager.write(data)
 
     expect(ptr).toBe(123)
-    expect(mockHeap.write).toHaveBeenCalled()
+    expect(mockHeap.write).toHaveBeenCalledTimes(1)
     expect(blobManager.read(ptr)).toEqual(data)
   })
 

@@ -8,6 +8,8 @@ import {
   type JsonRpcListenMessage,
   type JsonRpcUnlistenMessage,
   JsonRpcMessageType,
+  LATTE_RPC_CAPABILITIES,
+  LATTE_RPC_PROTOCOL_VERSION,
   type IServiceMap,
 } from '@latte-js/bean'
 
@@ -48,6 +50,8 @@ export const createJsonRpcRequest = (
 ): JsonRpcRequest => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Request,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   method,
   params,
   id,
@@ -68,6 +72,8 @@ export const createJsonRpcNotification = (
 ): JsonRpcNotification => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Notification,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   method,
   params,
   id,
@@ -88,6 +94,8 @@ export const createJsonRpcListenMessage = (
 ): JsonRpcListenMessage => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Listen,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   method,
   params,
   id,
@@ -104,6 +112,8 @@ export const createJsonRpcUnlistenMessage = (
 ): JsonRpcUnlistenMessage => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Unlisten,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   id,
   sessionId,
 })
@@ -120,6 +130,8 @@ export const createJsonRpcSuccessResponse = (
 ): JsonRpcSuccessResponse => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.ResponseSuccess,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   result,
   id,
   sessionId,
@@ -141,6 +153,8 @@ export const createJsonRpcErrorResponse = (
 ): JsonRpcErrorResponse => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.ResponseError,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   error: {
     code,
     message,

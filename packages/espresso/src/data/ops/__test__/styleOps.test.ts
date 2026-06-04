@@ -59,8 +59,10 @@ describe('StyleOps', () => {
     const graph = new SceneGraph()
     const idx = graph.createNode(NodeType.RECTANGLE, 'test:n')
 
+    StyleOps.setStrokeStyle(graph, idx, 'DASH')
     StyleOps.setDashCap(graph, idx, 'ROUND')
     expect(StyleOps.getDashCap(graph, idx)).toBe('ROUND')
+    expect(StyleOps.getStrokeStyle(graph, idx)).toBe('DASH')
   })
 
   it('getLocked/setLocked', () => {
@@ -129,8 +131,7 @@ describe('StyleOps', () => {
   it('should return empty array if blob read fails', () => {
     const graph = new SceneGraph()
     const idx = graph.createNode(NodeType.RECTANGLE, 'test:n')
-    // Manually set a pointer that might fail read (e.g. 0 or out of bounds)
-    graph.blobIndexToPtr.set(idx, 99999)
+    graph.fillPtr[idx] = 99999
     expect(StyleOps.getFills(graph, idx)).toEqual([])
   })
 })

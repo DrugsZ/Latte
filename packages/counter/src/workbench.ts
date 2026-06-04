@@ -10,6 +10,13 @@ export class Workbench {
     this.selectionService = new SelectionService(this._editor.graph)
     const selectionTool = new SelectionTool(this.selectionService)
     this._editor.inputService.registerHandler(selectionTool)
+    this._editor.onDidChangeActiveDocument(doc => {
+      if (doc) {
+        this.selectionService.setGraph(doc.graph)
+      } else {
+        this.selectionService.clear()
+      }
+    })
   }
 }
 

@@ -17,6 +17,10 @@ export const LAYOUT_DEF = [
   { name: 'locked', type: Uint8Array, size: MAX_NODES },
   { name: 'opacity', type: Float32Array, size: MAX_NODES },
   { name: 'textPtr', type: Int32Array, size: MAX_NODES },
+  { name: 'namePtr', type: Int32Array, size: MAX_NODES },
+  { name: 'geometryPtr', type: Int32Array, size: MAX_NODES },
+  { name: 'fillPtr', type: Int32Array, size: MAX_NODES },
+  { name: 'strokePtr', type: Int32Array, size: MAX_NODES },
 
   { name: 'strokeWeight', type: Int32Array, size: MAX_NODES },
   { name: 'strokeAlign', type: Uint8Array, size: MAX_NODES },

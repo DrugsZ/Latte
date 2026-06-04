@@ -1,11 +1,15 @@
+import '../vite-env.d.ts'
+
 import { Canvas2DRender, Renderer } from '@latte-js/art'
 import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
-import { MAX_NODES, SceneGraph, TOTAL_MEMORY_BYTES } from '@latte-js/espresso'
+import { LatteLoader, SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
 
 import { InputService } from '../services/input/inputService'
 import { LatteDocument, type IDocument } from './document'
+
+import { NodeType, type IDType, type ILatteFile } from '@latte-js/bean'
 
 export class Editor {
   public static COUNT = 0
@@ -25,9 +29,7 @@ export class Editor {
 
   constructor() {
     this.id = `editor_${Editor.COUNT++}`
-    const sharedBuffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
-    const allocBuffer = new SharedArrayBuffer(MAX_NODES)
-    this._graph = new SceneGraph(sharedBuffer, allocBuffer)
+    this._graph = new SceneGraph()
   }
 
   public getService<T>(id: string): T {
@@ -44,7 +46,8 @@ export class Editor {
     await this.baristaClient.initSession(
       doc.id,
       doc.graph.buffer,
-      doc.graph.allocator.buffer
+      doc.graph.allocator.buffer,
+      doc.graph.heap.buffer
     )
 
     this._documents.push(doc)
@@ -59,10 +62,10 @@ export class Editor {
 
     this._activeDocument = doc
     if (doc) {
-      editor.setGraph(doc.graph)
-      editor.baristaClient.setTargetSession(doc.id)
+      this.setGraph(doc.graph)
+      this.baristaClient.setTargetSession(doc.id)
     } else {
-      editor.baristaClient.setTargetSession(null)
+      this.baristaClient.setTargetSession(null)
     }
 
     this._onDidChangeActiveDocument.fire(doc)
@@ -95,7 +98,8 @@ export class Editor {
 
     const initResult = await this._baristaClient.init(
       this._graph.buffer,
-      this._graph.allocator.buffer
+      this._graph.allocator.buffer,
+      this._graph.heap.buffer
     )
 
     await this._initRenderer(container)
@@ -113,6 +117,26 @@ export class Editor {
     }
   }
 
+  public hydrateDocument(data: ILatteFile, idMap?: Map<IDType, number>) {
+    if (idMap) {
+      this._graph.resetUUIDMap(idMap)
+    } else {
+      const loader = new LatteLoader(this._graph)
+      idMap = loader.load(data)
+    }
+
+    const activeRootId = this._findActiveRootId(data)
+
+    if (activeRootId && this._renderer) {
+      this._renderer.setActiveRootId(activeRootId)
+      this._renderer.fitToContent(activeRootId)
+    }
+
+    this._renderer?.requestRender()
+
+    return { idMap, activeRootId }
+  }
+
   public get renderer() {
     return this._renderer
   }
@@ -120,6 +144,22 @@ export class Editor {
   private _initRenderer(container: HTMLDivElement) {
     this._renderer = new Renderer(this._graph, new Canvas2DRender(), container)
     this.inputService = new InputService(this._renderer, this._graph)
+  }
+
+  private _findActiveRootId(data: ILatteFile): IDType | undefined {
+    const page = data.elements.find(node => {
+      const type = node.type as string | number
+      return type === 'CANVAS' || type === NodeType.CANVAS
+    })
+    if (page) {
+      return page.guid
+    }
+
+    const document = data.elements.find(node => {
+      const type = node.type as string | number
+      return type === 'DOCUMENT' || type === NodeType.DOCUMENT
+    })
+    return document?.guid
   }
 }
 

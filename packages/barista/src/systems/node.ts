@@ -4,8 +4,16 @@ import { Emitter } from '@latte-js/kit'
 import { system, SystemBase, Systems } from './systems'
 
 import type { IDType, NodeType } from '@latte-js/bean'
+import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
-@system
+const nodeMutationPolicies: MutationPolicyMap = {
+  create: { kind: 'writeNoHistory' },
+  remove: { kind: 'writeNoHistory' },
+  removeChild: { kind: 'writeNoHistory' },
+  insertAfter: { kind: 'writeNoHistory' },
+}
+
+@system({ mutations: nodeMutationPolicies })
 export class NodeSystem extends SystemBase {
   public static readonly name = Systems.Node
   private _nodeCursor: NodeCursor

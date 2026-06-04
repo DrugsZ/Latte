@@ -29,12 +29,16 @@ export class Serializer {
     const elements: ILatteNode[] = []
 
     const generations = this._graph.allocator.generations
-    for (let i = 0; i < generations.length; i++) {
-      if (this._graph.allocator.isValid(i, generations[i])) {
-        const node = this._readNode(i)
-        if (node.guid) {
-          elements.push(node)
-        }
+    const indices = Array.from(this._graph.getUUIDMap().values()).sort(
+      (a, b) => a - b
+    )
+    for (const index of indices) {
+      if (!this._graph.allocator.isValid(index, generations[index])) {
+        continue
+      }
+      const node = this._readNode(index)
+      if (node.guid) {
+        elements.push(node)
       }
     }
 
