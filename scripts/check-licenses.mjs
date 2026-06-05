@@ -63,6 +63,9 @@ for (const packageJsonPath of packageJsonPaths) {
       `${packageJson.name}: LICENSE text does not look like ${expectedLicense}`
     )
   }
+  if (text.includes('[year]') || text.includes('[fullname]')) {
+    failures.push(`${packageJson.name}: LICENSE contains template placeholders`)
+  }
 }
 
 if (failures.length > 0) {

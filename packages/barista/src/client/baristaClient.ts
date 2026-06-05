@@ -1,4 +1,4 @@
-import type { Channels, type IServiceMap } from '@latte-js/bean'
+import type { Channels, IServiceMap } from '@latte-js/bean'
 
 import { toService } from '../ipc'
 import { ChannelClient } from '../ipc/channelClient'
