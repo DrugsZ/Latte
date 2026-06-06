@@ -103,9 +103,14 @@ export class InputService extends Disposable implements IInputService {
 
   private _handleRaw = (rawEvent: MouseEvent | WheelEvent) => {
     let hitResult: HitResult | undefined
+    const worldPos = this._renderer.camera.toWorld(
+      rawEvent.clientX,
+      rawEvent.clientY
+    )
+
     if (this._renderer.activeRootId) {
-      const x = rawEvent.clientX
-      const y = rawEvent.clientY
+      const x = worldPos.x
+      const y = worldPos.y
 
       const rTreeHits = this._renderer.rTree.search({
         minX: x,
@@ -138,11 +143,6 @@ export class InputService extends Disposable implements IInputService {
       }
     }
 
-    const worldPos = this._renderer.camera.toWorld(
-      rawEvent.clientX,
-      rawEvent.clientY
-    )
-
     let event: InputMouseEvent | InputWheelEvent
 
     if (rawEvent instanceof WheelEvent) {
@@ -152,7 +152,7 @@ export class InputService extends Disposable implements IInputService {
         worldPos
       )
     } else {
-      event = new InputMouseEvent(rawEvent, hitResult, worldPos)
+      event = new InputMouseEvent(rawEvent as PointerEvent, hitResult, worldPos)
     }
 
     for (const handler of this._handlers) {

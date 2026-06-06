@@ -6,6 +6,7 @@ import {
   MAX_NODES,
   NULL_INDEX,
 } from './config'
+import { readNodeName, writeNodeName } from './nodeProps'
 import { HierarchyOps, StyleOps, TransformOps } from './ops'
 import { PropId } from './propKeys'
 
@@ -19,6 +20,34 @@ import type {
 } from '@latte-js/bean'
 import { mat2d } from 'gl-matrix'
 import type { SceneGraph } from './sceneGraph'
+
+const cloneMutationValue = (value: unknown): unknown => {
+  if (ArrayBuffer.isView(value)) {
+    const view = value as ArrayBufferView & {
+      readonly length?: number
+      [index: number]: number
+    }
+    if (typeof view.length === 'number') {
+      return Array.from(view as ArrayLike<number>)
+    }
+    return Array.from(
+      new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+    )
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => cloneMutationValue(item))
+  }
+
+  if (value && typeof value === 'object') {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value)
+    }
+    return JSON.parse(JSON.stringify(value))
+  }
+
+  return value
+}
 
 export class NodeCursor {
   private _index: number
@@ -68,12 +97,32 @@ export class NodeCursor {
   }
 
   private _mutate(prop: PropId, dirtyFlag: number, executor: () => void) {
-    const oldVal = this[prop]
+    this._assertCanMutate(prop)
+    const id = this.id
+    if (id === null) {
+      throw new Error(
+        `[NodeCursor] Cannot mutate node without id: ${this.index}`
+      )
+    }
+
+    const oldVal = cloneMutationValue(this[prop])
     executor()
-    const newValue = this[prop]
-    this._graph.notifyObservers(this.id!, prop, oldVal, newValue)
+    const newValue = cloneMutationValue(this[prop])
+    this._graph.notifyObservers(id, prop, oldVal, newValue)
+    this._graph.recordMutation({
+      id,
+      index: this.index,
+      prop,
+      oldValue: oldVal,
+      newValue,
+      dirtyFlag,
+    })
 
     this._graph.markDirty(this.index, dirtyFlag)
+  }
+
+  private _assertCanMutate(prop: PropId | string) {
+    this._graph.assertMutationAllowed(`NodeCursor.${String(prop)}`)
   }
 
   get index() {
@@ -92,12 +141,12 @@ export class NodeCursor {
 
   get name() {
     this._checkAlive()
-    return this._graph.nameMap.get(this._index) || 'Layer'
+    return readNodeName(this._graph, this._index)
   }
   set name(v: string) {
     this._checkAlive()
     this._mutate(PropId.NAME, DIRTY_NOT_EFFECT, () => {
-      this._graph.nameMap.set(this._index, v)
+      writeNodeName(this._graph, this._index, v)
     })
   }
   public *children(flyweight = true) {
@@ -105,11 +154,15 @@ export class NodeCursor {
 
     let curr = this._graph.firstChild[this._index]
     let safeguard = 0
+    const visited = new Set<number>()
 
     if (flyweight) {
       const scratch = new NodeCursor(this._graph, this._index)
       while (curr !== NULL_INDEX) {
-        if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
+        if (visited.has(curr) || safeguard++ > MAX_NODES) {
+          throw new Error('Tree cycle detected')
+        }
+        visited.add(curr)
         yield scratch.to(curr)
         curr = this._graph.nextSibling[curr]
       }
@@ -117,7 +170,10 @@ export class NodeCursor {
     }
 
     while (curr !== NULL_INDEX) {
-      if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
+      if (visited.has(curr) || safeguard++ > MAX_NODES) {
+        throw new Error('Tree cycle detected')
+      }
+      visited.add(curr)
       yield new NodeCursor(this._graph, curr)
       curr = this._graph.nextSibling[curr]
     }
@@ -248,33 +304,61 @@ export class NodeCursor {
 
   public appendChild(child: NodeCursor) {
     this._checkAlive()
+    this._assertCanMutate(PropId.PARENT)
     const oldParent = child.parent?.id ?? null
     HierarchyOps.appendChild(this._graph, this._index, child.index)
     const newParent = child.parent?.id ?? null
     this._graph.notifyObservers(child.id!, PropId.PARENT, oldParent, newParent)
+    this._graph.recordMutation({
+      id: child.id!,
+      index: child.index,
+      prop: PropId.PARENT,
+      oldValue: oldParent,
+      newValue: newParent,
+      dirtyFlag: DIRTY_STRUCTURE | DIRTY_TRANSFORM,
+    })
     this._graph.markDirty(child.index, DIRTY_TRANSFORM)
     this._graph.markDirty(this._index, DIRTY_STRUCTURE)
   }
 
   public removeChild(child: NodeCursor) {
+    this._assertCanMutate(PropId.PARENT)
     if (child.parent?.index !== this._index) {
       throw new Error('[NodeCursor] removeChild: not a child of this node')
     }
     this._checkAlive()
     HierarchyOps.detach(this._graph, child.index)
     this._graph.notifyObservers(child.id!, PropId.PARENT, this.id, null)
+    this._graph.recordMutation({
+      id: child.id!,
+      index: child.index,
+      prop: PropId.PARENT,
+      oldValue: this.id,
+      newValue: null,
+      dirtyFlag: DIRTY_STRUCTURE | DIRTY_TRANSFORM,
+    })
     this._graph.markDirty(this._index, DIRTY_STRUCTURE)
     return child
   }
 
   public delete() {
     this._checkAlive()
+    this._assertCanMutate(PropId.REMOVE_SELF)
     const myId = this.id
     const parent = this.parent
+    const parentId = parent?.id ?? null
     HierarchyOps.remove(this._graph, this._index)
     //FIXME：json serialization
     const nodeJSON = ''
     this._graph.notifyObservers(myId!, PropId.REMOVE_SELF, nodeJSON, null)
+    this._graph.recordMutation({
+      id: myId!,
+      index: this._index,
+      prop: PropId.REMOVE_SELF,
+      oldValue: { parentId, nodeJSON },
+      newValue: null,
+      dirtyFlag: DIRTY_STRUCTURE,
+    })
     if (parent) {
       this._graph.markDirty(parent.index, DIRTY_STRUCTURE)
     }
@@ -337,7 +421,7 @@ export class NodeCursor {
 
   set strokeAlign(v: StrokeAlignKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKES, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.STROKE_ALIGN, DIRTY_AABB, () => {
       StyleOps.setStrokeAlign(this._graph, this._index, v)
     })
   }

@@ -1,5 +1,6 @@
+import type { JsonRpcMessage } from '@latte-js/bean'
 import type { IMessagePassingProtocol } from './protocol'
-import type { IDisposable, JsonRpcMessage } from '../ipc'
+import type { IDisposable } from '../ipc'
 
 export class WebMessagePassingProtocol implements IMessagePassingProtocol {
   private _handler: ((e: MessageEvent) => void) | null = null

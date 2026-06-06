@@ -2,29 +2,11 @@ import type { mat2d, vec2 } from '../math/matrix'
 import type { IDType } from '../schema/index'
 
 export interface ITransformService {
-  /**
-   * Starts a transformation session (Request).
-   *
-   * @param ids - Array of object IDs to be transformed.
-   * @returns A promise that resolves when the session has started.
-   */
-  startSession(ids: IDType[]): Promise<void>
+  beginTransform(ids: IDType[], label?: string): Promise<void>
 
-  /**
-   * Commits the session (Request).
-   * Cleans up the snapshot and records the changes to the Undo stack.
-   *
-   * @returns A promise that resolves when the session is committed.
-   */
-  endSession(): Promise<void>
+  commitTransform(): Promise<void>
 
-  /**
-   * Aborts the session (Request).
-   * Rolls back the data without recording to the Undo stack.
-   *
-   * @returns A promise that resolves when the session is aborted.
-   */
-  abortSession(): Promise<void>
+  cancelTransform(): Promise<void>
 
   /**
    * Moves the object to the specified position (Request).

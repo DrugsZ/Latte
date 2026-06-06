@@ -1,4 +1,4 @@
-import { walkTree, type SceneGraph } from '@latte-js/espresso'
+import { readNodeName, walkTree, type SceneGraph } from '@latte-js/espresso'
 
 import { system, SystemBase, Systems } from './systems'
 
@@ -42,7 +42,7 @@ export class QuerySystem extends SystemBase {
 
   public getElementByName(name: string, parentId?: number): IDType[] {
     return this.query(idx => {
-      const n = this._sceneGraph.nameMap.get(idx)
+      const n = readNodeName(this._sceneGraph, idx)
       return n === name
     }, parentId)
   }

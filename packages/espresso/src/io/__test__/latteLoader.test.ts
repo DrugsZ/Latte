@@ -73,6 +73,37 @@ describe('LatteLoader', () => {
     expect(graph.lastChild[pIdx]).toBe(c2Idx)
   })
 
+  it('should map document nodes to the built-in root index', () => {
+    const json = {
+      elements: [
+        {
+          guid: '0:doc',
+          type: 'DOCUMENT',
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+        {
+          guid: '0:page',
+          type: 'CANVAS',
+          parentIndex: { guid: '0:doc', position: '1' },
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+      ],
+    } as unknown as ILatteFile
+
+    loader.load(json)
+
+    const docIdx = graph.getIndex('0:doc')
+    const pageIdx = graph.getIndex('0:page')
+
+    expect(docIdx).toBe(0)
+    expect(graph.parent[0]).toBe(-1)
+    expect(graph.prevSibling[0]).toBe(-1)
+    expect(graph.nextSibling[0]).toBe(-1)
+    expect(graph.parent[pageIdx]).toBe(0)
+    expect(graph.firstChild[0]).toBe(pageIdx)
+    expect(graph.lastChild[0]).toBe(pageIdx)
+  })
+
   it('should handle numeric type in JSON for backward compatibility', () => {
     const json = {
       elements: [{ guid: '0:rect-num', type: NodeType.RECTANGLE }],

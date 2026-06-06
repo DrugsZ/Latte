@@ -1,6 +1,12 @@
 import { JsonRpcMessageType, type JsonRpcMessage } from '@latte-js/bean'
 
 import type { IChannel, IServerChannel } from '../ipc'
+import type { MutationGate } from '../transactions/mutationPolicy'
+
+interface IFromServiceOptions {
+  readonly channelName?: string
+  readonly mutationGate?: MutationGate
+}
 
 export function toService(channel: IChannel) {
   return new Proxy(
@@ -29,7 +35,10 @@ export function toService(channel: IChannel) {
   )
 }
 
-export const fromService = (service: object) => {
+export const fromService = (
+  service: object,
+  options: IFromServiceOptions = {}
+) => {
   return new (class implements IServerChannel {
     listen(_sessionId: string, event: string) {
       if (event.startsWith('on')) {
@@ -44,10 +53,27 @@ export const fromService = (service: object) => {
       throw new Error(`Event not found: ${event}`)
     }
 
-    call(_sessionId: string, command: string, ...args: any[]): Promise<any> {
+    call(sessionId: string, command: string, ...args: any[]): Promise<any> {
       const target = (service as any)[command]
       if (typeof target === 'function') {
-        return target.apply(service, args)
+        const invoke = () => target.apply(service, args)
+        if (!options.mutationGate) {
+          return invoke()
+        }
+
+        const policy =
+          typeof (service as any).getMutationPolicy === 'function'
+            ? (service as any).getMutationPolicy(command, args)
+            : { kind: 'readonly' as const }
+
+        return options.mutationGate.run(
+          sessionId,
+          options.channelName ?? 'unknown',
+          command,
+          policy,
+          args,
+          invoke
+        )
       }
 
       throw new Error(`Method not found: ${command}`)

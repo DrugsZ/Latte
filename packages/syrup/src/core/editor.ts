@@ -1,33 +1,15 @@
+import '../vite-env.d.ts'
+
 import { Canvas2DRender, Renderer } from '@latte-js/art'
 import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
-import {
-  DEFAULT_HEAP_SIZE,
-  MAX_NODES,
-  SceneGraph,
-  TOTAL_MEMORY_BYTES,
-} from '@latte-js/espresso'
+import { LatteLoader, SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
-import { Channels } from '@latte-js/bean'
 
-import {
-  InputService,
-  EventResult,
-  InputMouseEvent,
-} from '../services/input/inputService'
+import { InputService } from '../services/input/inputService'
 import { LatteDocument, type IDocument } from './document'
-import { ContextMenu } from '../services/contextmenu/contextMenu'
-import {
-  ContextMenuService,
-  IContextMenuService,
-} from '../services/contextmenu/contextMenuService'
-import {
-  ContextViewService,
-  IContextViewService,
-} from '../services/contextview/contextViewService'
-import { MenuService, IMenuService } from '../services/menu/menuService'
-import { CommandService } from '../services/command/commandService'
-import { ICommandService } from '../services/command/commandsRegistry'
+
+import { NodeType, type IDType, type ILatteFile } from '@latte-js/bean'
 
 export class Editor {
   public static COUNT = 0
@@ -36,7 +18,6 @@ export class Editor {
   public _renderer: Renderer
   public worker: Worker
   public inputService: InputService
-  public contextMenu: ContextMenu
   private _baristaClient: BaristaClient
   private _services = new Map<string, any>()
   private _documents: IDocument[] = []
@@ -48,10 +29,7 @@ export class Editor {
 
   constructor() {
     this.id = `editor_${Editor.COUNT++}`
-    const sharedBuffer = new SharedArrayBuffer(TOTAL_MEMORY_BYTES)
-    const allocBuffer = new SharedArrayBuffer(MAX_NODES)
-    const heapBuffer = new SharedArrayBuffer(DEFAULT_HEAP_SIZE)
-    this._graph = new SceneGraph(sharedBuffer, allocBuffer, heapBuffer)
+    this._graph = new SceneGraph()
   }
 
   public getService<T>(id: string): T {
@@ -130,38 +108,6 @@ export class Editor {
 
     await this._initRenderer(container)
 
-    const commandService = new CommandService()
-    const menuService = new MenuService()
-    const contextViewService = new ContextViewService(commandService)
-    const contextMenuService = new ContextMenuService(contextViewService)
-
-    this.contextMenu = new ContextMenu(contextMenuService, menuService)
-
-    this._services.set('commandService', commandService)
-    this._services.set('menuService', menuService)
-    this._services.set('contextViewService', contextViewService)
-    this._services.set('contextMenuService', contextMenuService)
-
-    this.inputService.registerHandler({
-      id: 'contextMenu',
-      priority: 100,
-      onEvent: e => {
-        if (e.browserEvent?.type === 'contextmenu') {
-          const hitResult =
-            e instanceof InputMouseEvent ? e.hitResult : undefined
-          this.contextMenu.showContextMenu(
-            {
-              x: e.browserEvent.clientX,
-              y: e.browserEvent.clientY,
-            },
-            hitResult
-          )
-          return EventResult.CONSUMED
-        }
-        return EventResult.IGNORED
-      },
-    })
-
     return initResult
   }
 
@@ -175,6 +121,26 @@ export class Editor {
     }
   }
 
+  public hydrateDocument(data: ILatteFile, idMap?: Map<IDType, number>) {
+    if (idMap) {
+      this._graph.resetUUIDMap(idMap)
+    } else {
+      const loader = new LatteLoader(this._graph)
+      idMap = loader.load(data)
+    }
+
+    const activeRootId = this._findActiveRootId(data)
+
+    if (activeRootId && this._renderer) {
+      this._renderer.setActiveRootId(activeRootId)
+      this._renderer.fitToContent(activeRootId)
+    }
+
+    this._renderer?.requestRender()
+
+    return { idMap, activeRootId }
+  }
+
   public get renderer() {
     return this._renderer
   }
@@ -182,6 +148,22 @@ export class Editor {
   private _initRenderer(container: HTMLDivElement) {
     this._renderer = new Renderer(this._graph, new Canvas2DRender(), container)
     this.inputService = new InputService(this._renderer, this._graph)
+  }
+
+  private _findActiveRootId(data: ILatteFile): IDType | undefined {
+    const page = data.elements.find(node => {
+      const type = node.type as string | number
+      return type === 'CANVAS' || type === NodeType.CANVAS
+    })
+    if (page) {
+      return page.guid
+    }
+
+    const document = data.elements.find(node => {
+      const type = node.type as string | number
+      return type === 'DOCUMENT' || type === NodeType.DOCUMENT
+    })
+    return document?.guid
   }
 }
 

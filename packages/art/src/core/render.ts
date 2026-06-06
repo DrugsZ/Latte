@@ -1,11 +1,17 @@
-import { type SceneGraph, NodeCursor, NULL_INDEX } from '@latte-js/espresso'
+import {
+  type SceneGraph,
+  MAT_SIZE,
+  MAX_NODES,
+  NodeCursor,
+  NULL_INDEX,
+} from '@latte-js/espresso'
 import { mat2d } from 'gl-matrix'
 import RBush from 'rbush'
 
 import { Camera } from './camera'
 import { getRenderer } from './rendererRegistry'
 
-import type { IDType } from '@latte-js/bean'
+import { NodeType, type IDType } from '@latte-js/bean'
 import type { IRenderBackend } from '../contract/renderBackend'
 
 export class Renderer {
@@ -14,6 +20,8 @@ export class Renderer {
   private _tempMatrix: mat2d = mat2d.create()
   private _rTree = new RBush()
   private _canvas: HTMLCanvasElement
+  private _frameId: number | null = null
+  private _disposed = false
 
   constructor(
     private _sceneGraph: SceneGraph,
@@ -49,6 +57,26 @@ export class Renderer {
   public setActiveRootId(rootId: IDType) {
     this._activeRootId = rootId
     this.requestRender()
+  }
+
+  public fitToContent(rootId: IDType = this._activeRootId!, padding = 0.1) {
+    if (!rootId) return false
+
+    const rootIndex = this._sceneGraph.getIndex(rootId)
+    if (rootIndex === NULL_INDEX) return false
+
+    const bounds = this._computeContentBounds(rootIndex)
+    if (!bounds) return false
+
+    this._camera.fitBounds(
+      bounds.minX,
+      bounds.minY,
+      bounds.maxX,
+      bounds.maxY,
+      padding
+    )
+    this.requestRender()
+    return true
   }
 
   public setGraph(graph: SceneGraph) {
@@ -104,6 +132,90 @@ export class Renderer {
     this._rTree = new RBush()
   }
 
+  private _computeContentBounds(rootIndex: number) {
+    const identity = mat2d.create()
+    const stack: { index: number; parentMatrix: mat2d }[] = [
+      { index: rootIndex, parentMatrix: identity },
+    ]
+    const visited = new Set<number>()
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+
+    while (stack.length) {
+      const { index, parentMatrix } = stack.pop()!
+      if (visited.has(index)) {
+        throw new Error(`Tree cycle detected at node ${index}`)
+      }
+      if (visited.size > MAX_NODES) {
+        throw new Error('Tree cycle detected')
+      }
+
+      visited.add(index)
+
+      const local = this._sceneGraph.matrix.subarray(
+        index * MAT_SIZE,
+        index * MAT_SIZE + MAT_SIZE
+      ) as mat2d
+      const world = mat2d.create()
+      mat2d.multiply(world, parentMatrix, local)
+
+      const type = this._sceneGraph.type[index]
+      const width = this._sceneGraph.size[index * 2]
+      const height = this._sceneGraph.size[index * 2 + 1]
+      if (
+        type !== NodeType.DOCUMENT &&
+        type !== NodeType.CANVAS &&
+        Number.isFinite(width) &&
+        Number.isFinite(height) &&
+        width > 0 &&
+        height > 0
+      ) {
+        const corners = [
+          [0, 0],
+          [width, 0],
+          [width, height],
+          [0, height],
+        ]
+        for (const [x, y] of corners) {
+          const tx = world[0] * x + world[2] * y + world[4]
+          const ty = world[1] * x + world[3] * y + world[5]
+          minX = Math.min(minX, tx)
+          minY = Math.min(minY, ty)
+          maxX = Math.max(maxX, tx)
+          maxY = Math.max(maxY, ty)
+        }
+      }
+
+      const children: number[] = []
+      let childIdx = this._sceneGraph.firstChild[index]
+      const visitedChildren = new Set<number>()
+      while (childIdx !== NULL_INDEX) {
+        if (visitedChildren.has(childIdx)) {
+          throw new Error(`Tree cycle detected at node ${childIdx}`)
+        }
+        visitedChildren.add(childIdx)
+        children.push(childIdx)
+        childIdx = this._sceneGraph.nextSibling[childIdx]
+      }
+      for (let i = children.length - 1; i >= 0; i--) {
+        stack.push({ index: children[i], parentMatrix: world })
+      }
+    }
+
+    if (
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
+      return null
+    }
+
+    return { minX, minY, maxX, maxY }
+  }
+
   private _getAllVisibleNodeIds() {
     const visibleNodes: number[] = []
     const stack: number[] = []
@@ -148,10 +260,6 @@ export class Renderer {
       return
     }
     this._actualRender()
-  }
-
-  private _renderOverlay() {
-    //FIXME: implement overlay render logic
   }
 
   private _actualRender() {
@@ -270,10 +378,16 @@ export class Renderer {
   }
 
   public start() {
+    this._disposed = false
     this._scheduleRender()
   }
 
   public dispose() {
+    this._disposed = true
+    if (this._frameId !== null) {
+      cancelAnimationFrame(this._frameId)
+      this._frameId = null
+    }
     this._shouldRender = false
     this._backend.dispose()
   }
@@ -288,7 +402,13 @@ export class Renderer {
   }
 
   private _scheduleRender() {
-    requestAnimationFrame(() => {
+    if (this._disposed) {
+      return
+    }
+    this._frameId = requestAnimationFrame(() => {
+      if (this._disposed) {
+        return
+      }
       this._render()
       this._scheduleRender()
     })

@@ -1,6 +1,7 @@
 import { NodeType, type AABB } from '@latte-js/bean'
 import {
   BOUNDS_AFFECTING_FLAGS,
+  MAX_NODES,
   NodeCursor,
   NULL_INDEX,
   TransformOps,
@@ -64,9 +65,14 @@ export class AABBSystem extends SystemBase {
 
   private _getDepth(index: number): number {
     let depth = 0
+    const visited = new Set<number>()
     this._cursor.to(index)
     let parent = this._cursor.parent
     while (parent !== null) {
+      if (visited.has(parent.index) || depth > MAX_NODES) {
+        throw new Error(`Tree cycle detected at node ${parent.index}`)
+      }
+      visited.add(parent.index)
       depth++
       parent = parent.parent
     }
@@ -75,8 +81,13 @@ export class AABBSystem extends SystemBase {
 
   private _updateBottomUp(index: number, updated: Set<number>) {
     let current = index
+    const visited = new Set<number>()
 
     while (current !== NULL_INDEX) {
+      if (visited.has(current) || visited.size > MAX_NODES) {
+        throw new Error(`Tree cycle detected at node ${current}`)
+      }
+      visited.add(current)
       if (updated.has(current)) {
         // Already updated, ancestors are also updated
         break
@@ -95,7 +106,7 @@ export class AABBSystem extends SystemBase {
     this._computeSelfAABB()
 
     let hasValidChild = false
-    for (const child of this._cursor.children()) {
+    for (const child of this._cursor.children(false)) {
       TransformOps.getAABB(this._sceneGraph, child.index, this._childAABB)
       if (
         this._childAABB[0] <= this._childAABB[2] &&

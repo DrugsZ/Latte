@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,14 +7,65 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
+  checks: write
+  statuses: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  # ------------------------------------------------------------------
+  # 1. Quality Control (Parallel Jobs)
+  # ------------------------------------------------------------------
+  quality-check:
+    name: Quality Gates
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Code
+        run: pnpm lint
+
+      - name: License Metadata
+        run: pnpm licenses:check
+
+      - name: Type Check
+        run: pnpm type-check
+
+      - name: Security Audit
+        # Fails if vulnerabilities with 'high' severity or above are found
+        run: pnpm audit --audit-level=high
+        continue-on-error: true # Warning only for now to avoid blocking, user can change to false
+
+  # ------------------------------------------------------------------
+  # 2. Testing
+  # ------------------------------------------------------------------
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,28 +82,141 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type Check
-        run: pnpm type-check
-
-      - name: Test
+      - name: Run Unit Tests
         run: pnpm test:coverage
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Run E2E Tests
+        run: pnpm e2e
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # 3. Build & Performance
+  # ------------------------------------------------------------------
+  build:
+    name: Build
+    needs: [quality-check, unit-test] # Run build after quality checks pass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
 
-      - name: Upload coverage reports
+      - name: Performance Check (Bundle Size)
+        # Placeholder for performance benchmarking
+        run: |
+          echo "Checking bundle size..."
+          du -sh apps/cafe/dist
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: coverage
-          path: "**/coverage/"
+          name: dist-apps-cafe
+          path: apps/cafe/dist
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # 4. Deployment (Production)
+  # ------------------------------------------------------------------
+  deploy-production:
+    name: Deploy to Production
+    needs: [build, e2e-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-apps-cafe
+          path: apps/cafe/dist
 
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./apps/cafe/dist
           force_orphan: true
+
+  # ------------------------------------------------------------------
+  # 5. Release Automation
+  # ------------------------------------------------------------------
+  release:
+    name: Release
+    needs: [deploy-production]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # 6. Notifications (Placeholder)
+  # ------------------------------------------------------------------
+  notify:
+    name: Notifications
+    needs: [deploy-production]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify
+        run: echo "Sending notifications... (Configure Slack/Email webhook here)"

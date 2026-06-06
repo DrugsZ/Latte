@@ -7,6 +7,12 @@ import {
   StrokeStyle,
 } from '@latte-js/bean'
 
+import {
+  readNodeFills,
+  readNodeStrokes,
+  writeNodeFills,
+  writeNodeStrokes,
+} from '../nodeProps'
 import type { SceneGraph } from '../sceneGraph'
 
 const CORNER_SIZE = 4
@@ -52,11 +58,11 @@ export const StyleOps = {
   },
 
   getDashCap(graph: SceneGraph, index: number) {
-    return DashCap[graph.strokeStyle[index]] as keyof typeof DashCap
+    return DashCap[graph.dashCap[index]] as keyof typeof DashCap
   },
 
   setDashCap(graph: SceneGraph, index: number, v: keyof typeof DashCap) {
-    graph.strokeStyle[index] = DashCap[v]
+    graph.dashCap[index] = DashCap[v]
   },
 
   getLocked(graph: SceneGraph, index: number): boolean {
@@ -125,35 +131,24 @@ export const StyleOps = {
 
   // Fill paints operations
   getFills(graph: SceneGraph, index: number): IPaint[] {
-    const ptr = graph.blobIndexToPtr.get(index)
-    if (!ptr) {
-      return []
-    }
-    return graph.blobs.read(ptr) || []
+    return readNodeFills(graph, index)
   },
 
   setFills(graph: SceneGraph, index: number, style: IPaint[]) {
-    const ptr = graph.blobs.write(style)
-    graph.blobIndexToPtr.set(index, ptr)
+    writeNodeFills(graph, index, style)
   },
 
   // Stroke paints operations
   getStrokes(graph: SceneGraph, index: number): IPaint[] {
-    const ptr = graph.strokeBlobIndexToPtr.get(index)
-    if (!ptr) {
-      return []
-    }
-    return graph.blobs.read(ptr) || []
+    return readNodeStrokes(graph, index)
   },
 
   setStrokes(graph: SceneGraph, index: number, strokes: IPaint[]) {
-    const ptr = graph.blobs.write(strokes)
-    graph.strokeBlobIndexToPtr.set(index, ptr)
+    writeNodeStrokes(graph, index, strokes)
   },
 
   // Legacy alias for setFills
   setStyle(graph: SceneGraph, index: number, style: IPaint[]) {
-    const ptr = graph.blobs.write(style)
-    graph.blobIndexToPtr.set(index, ptr)
+    writeNodeFills(graph, index, style)
   },
 }

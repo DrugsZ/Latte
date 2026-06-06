@@ -1,5 +1,25 @@
 export type JsonRpcId = string | number | null
 
+export const LATTE_RPC_PROTOCOL_VERSION = 1
+
+export const LATTE_RPC_CAPABILITIES = [
+  'typed-services',
+  'mutation-policy',
+  'session-scoped-mutations',
+] as const
+
+export type LatteRpcCapability = (typeof LATTE_RPC_CAPABILITIES)[number]
+
+export enum JsonRpcErrorCode {
+  ParseError = -32700,
+  InvalidRequest = -32600,
+  MethodNotFound = -32601,
+  InvalidParams = -32602,
+  InternalError = -32603,
+  ProtocolVersionMismatch = -32001,
+  NotificationError = -32002,
+}
+
 export enum JsonRpcMessageType {
   Request = 'request',
   Notification = 'notification',
@@ -13,6 +33,8 @@ export interface JsonRpcBaseMessage {
   jsonrpc: '2.0'
   type: JsonRpcMessageType
   id: JsonRpcId
+  protocolVersion?: number
+  capabilities?: readonly LatteRpcCapability[]
   sessionId?: string
 }
 

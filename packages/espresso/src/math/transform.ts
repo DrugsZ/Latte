@@ -1,8 +1,7 @@
 import { mat2, mat2d, vec2 } from 'gl-matrix'
 
-import { type NodeCursor } from 'src/data/nodeCursor'
-
 import { DIRTY_AABB, DIRTY_TRANSFORM, NULL_INDEX } from '../data/config'
+import { type NodeCursor } from '../data/nodeCursor'
 import { type SceneGraph } from '../data/sceneGraph'
 /**
  * Apply stretch (scale) to matrix and size, baking the result.
@@ -517,9 +516,6 @@ export function applyDistributiveScale(
   //       This accurately captures "How much the X axis stretched in world space".
   //
   //       Let's implement this "World Axis Scale Extraction".
-
-  const sx = Math.hypot(newLocal[0], newLocal[1])
-  const sy = Math.hypot(newLocal[2], newLocal[3])
 
   // --- NEW LOGIC START ---
   // To ensure visual correctness of width/height properties (User Request),

@@ -6,5 +6,5 @@ export function illegalArgument(name?: string): Error {
 }
 
 export function unknownType(type: never): never {
-  throw new Error('is unknown')
+  throw new Error(`Unknown type: ${String(type)}`)
 }

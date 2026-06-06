@@ -2,9 +2,11 @@ import { BlendModeType, NodeType } from '@latte-js/bean'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { NodeCursor } from '../nodeCursor'
+import { PropId } from '../propKeys'
 import { SceneGraph } from '../sceneGraph'
 
 import type { IPaint } from '@latte-js/bean'
+import type { INodeMutationRecord } from '../mutationRecorder'
 
 describe('NodeCursor', () => {
   let graph: SceneGraph
@@ -109,6 +111,20 @@ describe('NodeCursor', () => {
       const cursor = new NodeCursor(graph, idx)
       cursor.delete()
       expect(() => cursor.type).toThrow('Accessing dead node')
+    })
+
+    it('rejects delete in history scope before removing the node', () => {
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:history-delete')
+      const cursor = new NodeCursor(graph, idx)
+
+      graph.runWithMutationScope({ kind: 'history', source: 'test' }, () => {
+        expect(() => cursor.delete()).toThrow(
+          'removeSelf history is not supported'
+        )
+      })
+
+      expect(cursor.type).toBe(NodeType.RECTANGLE)
+      expect(graph.getIndex('test:history-delete')).toBe(idx)
     })
 
     it('should navigate to parent', () => {
@@ -228,6 +244,89 @@ describe('NodeCursor', () => {
 
       cursor.dashCap = 'ROUND'
       expect(cursor.dashCap).toBe('ROUND')
+    })
+  })
+
+  describe('Mutation Recording', () => {
+    it('rejects guarded mutations outside a declared mutation scope', () => {
+      graph.setMutationGuardEnabled(true)
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:guarded')
+      const cursor = new NodeCursor(graph, idx)
+
+      expect(() => {
+        cursor.x = 42
+      }).toThrow('Mutation outside permitted scope')
+    })
+
+    it('allows guarded mutations inside a declared mutation scope', () => {
+      graph.setMutationGuardEnabled(true)
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:scoped')
+      const cursor = new NodeCursor(graph, idx)
+
+      graph.runWithMutationScope(
+        { kind: 'writeNoHistory', source: 'test' },
+        () => {
+          cursor.x = 42
+        }
+      )
+
+      expect(cursor.x).toBe(42)
+    })
+
+    it('records property mutations through the graph recorder', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:r')
+      const cursor = new NodeCursor(graph, idx)
+
+      cursor.x = 42
+
+      expect(records).toHaveLength(1)
+      expect(records[0]).toMatchObject({
+        id: 'test:r',
+        index: idx,
+        prop: PropId.X,
+        oldValue: 0,
+        newValue: 42,
+      })
+    })
+
+    it('clones matrix mutation values before and after writes', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:r')
+      const cursor = new NodeCursor(graph, idx)
+
+      cursor.transform = [1, 0, 0, 1, 10, 20]
+
+      expect(records[0].oldValue).toEqual([1, 0, 0, 1, 0, 0])
+      expect(records[0].newValue).toEqual([1, 0, 0, 1, 10, 20])
+    })
+
+    it('records hierarchy mutations through the graph recorder', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const pIdx = graph.createNode(NodeType.GROUP, 'test:p')
+      const cIdx = graph.createNode(NodeType.RECTANGLE, 'test:c')
+      const parent = new NodeCursor(graph, pIdx)
+      const child = new NodeCursor(graph, cIdx)
+
+      parent.appendChild(child)
+
+      expect(records).toHaveLength(1)
+      expect(records[0]).toMatchObject({
+        id: 'test:c',
+        index: cIdx,
+        prop: PropId.PARENT,
+        oldValue: null,
+        newValue: 'test:p',
+      })
     })
   })
 })

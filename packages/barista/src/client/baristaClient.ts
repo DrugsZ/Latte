@@ -1,4 +1,4 @@
-import { Channels, NodeType, type IServiceMap } from '@latte-js/bean'
+import type { Channels, IServiceMap } from '@latte-js/bean'
 
 import { toService } from '../ipc'
 import { ChannelClient } from '../ipc/channelClient'
@@ -55,13 +55,8 @@ export class BaristaClient {
     })
   }
 
-  private async _initIPC(port: MessagePort) {
+  private _initIPC(port: MessagePort) {
     this._channelClient = new ChannelClient(new IPCMessagePortProtocol(port))
-    const nodeService = this.getService(Channels.Node)
-    const id = await nodeService?.create('test:1', NodeType.RECTANGLE, 0, 0)
-    const transformService = this.getService(Channels.Transform)
-    await transformService?.moveTo([id!], [100, 100])
-    const i2d = await nodeService?.create('test:2', NodeType.RECTANGLE, 0, 0)
   }
 
   public async init(
@@ -87,6 +82,8 @@ export class BaristaClient {
         if (type === Lifecycle.InitKernelSuccess && resId === requestId) {
           this._initIPC(this._messageChannel.port1)
           resolve(payload)
+        } else if (type === Lifecycle.InitKernelError && resId === requestId) {
+          reject(new Error(e.data.error || 'Init kernel failed'))
         }
       }
     })

@@ -47,14 +47,14 @@ export class ActionViewItem implements IActionViewItem {
       }
     })
 
-    this._element?.addEventListener(EventType.KEY_DOWN, event => {
+    this._element?.addEventListener(EventType.KEY_DOWN, () => {
       this.focus()
     })
-    this._element?.addEventListener(EventType.KEY_UP, event => {
+    this._element?.addEventListener(EventType.KEY_UP, () => {
       this.blur()
     })
 
-    this._element?.addEventListener(EventType.MOUSE_OUT, event => {
+    this._element?.addEventListener(EventType.MOUSE_OUT, () => {
       this.blur()
     })
   }
@@ -73,6 +73,6 @@ export class ActionViewItem implements IActionViewItem {
   }
 
   public run() {
-    return this._commandService.executeCommand(this.action.id)
+    return this._commandService.executeCommand(this.action.id, this._context)
   }
 }

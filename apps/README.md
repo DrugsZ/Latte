@@ -6,7 +6,7 @@
 [Forks][forks-url]
 [Stargazers][stars-url]
 [Issues][issues-url]
-[Apache-2.0 license][license-url]
+[Package-level license][license-url]
 
 <!-- PROJECT LOGO -->
 
@@ -51,6 +51,12 @@ If you are interested in fixing issues and contributing directly to the code bas
 
 Thank you for your contributions!
 
+## License
+
+Applications in this directory are demos and product integrations. They are
+not published as reusable packages. See the root README and each package's
+`LICENSE` file for the package-level license policy.
+
 ## Inspired by
 
 - [AntV G](https://github.com/antvis/G)
@@ -70,4 +76,4 @@ Thank you for your contributions!
 [issues-shield]: https://img.shields.io/github/issues/DrugsZ/Latte.svg?style=flat-square
 [issues-url]: https://github.com/DrugsZ/Latte/issues
 [license-shield]: https://img.shields.io/github/license/DrugsZ/Latte.svg?style=flat-square
-[license-url]: https://github.com/DrugsZ/Latte/blob/master/LICENSE.txt
+[license-url]: https://github.com/DrugsZ/Latte#license

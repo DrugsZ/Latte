@@ -3,6 +3,7 @@ import {
   type IServiceMap,
   type JsonRpcId,
   type JsonRpcMessage,
+  type JsonRpcError,
 } from '@latte-js/bean'
 
 import {
@@ -16,6 +17,21 @@ import {
 } from './ipc'
 
 import type { IMessagePassingProtocol } from './protocol/protocol'
+
+export class ChannelClientError extends Error {
+  constructor(
+    public readonly code: number,
+    message: string,
+    public readonly data?: unknown
+  ) {
+    super(message)
+    this.name = 'ChannelClientError'
+  }
+
+  public static fromJsonRpcError(error: JsonRpcError) {
+    return new ChannelClientError(error.code, error.message, error.data)
+  }
+}
 
 export class ChannelClient implements IChannelClient {
   private _pendingRequests = new Map<
@@ -146,7 +162,7 @@ export class ChannelClient implements IChannelClient {
         this._pendingRequests.delete(msg.id)
 
         if (msg.type === JsonRpcMessageType.ResponseError) {
-          reject(new Error(msg.error.message))
+          reject(ChannelClientError.fromJsonRpcError(msg.error))
         } else {
           resolve(msg.result)
         }
@@ -156,6 +172,8 @@ export class ChannelClient implements IChannelClient {
       const listeners = this._listeners.get(eventId)
       if (listeners) {
         listeners.forEach(listener => listener(msg))
+      } else if (eventId === 'rpc.onError') {
+        console.error('[IPC] Notification error:', msg.params)
       }
     }
   }

@@ -11,14 +11,15 @@
     "test:coverage": "turbo run test -- --coverage",
     "test:watch": "vitest watch",
     "test:ui": "vitest --ui",
-    "e2e": "turbo run e2e",
+    "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:update": "playwright test --update-snapshots",
+    "licenses:check": "node scripts/check-licenses.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "prepare": "husky install",
     "version": "pnpm run build",
     "publish:packages": "pnpm --filter \"./packages/**\" publish --access public",
-    "prepublishOnly": "pnpm run build && pnpm run lint && pnpm run test"
+    "prepublishOnly": "pnpm run licenses:check && pnpm run build && pnpm run lint && pnpm run test"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.4.1",

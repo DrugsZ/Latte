@@ -1,17 +1,59 @@
+import {
+  Channels,
+  type IDocumentService,
+  type INodeService,
+  type IQueryService,
+  type ISceneService,
+  type ITransformService,
+  type IUndoRedoService,
+} from '@latte-js/bean'
+
 import { editor } from '../../core/editor'
 
-/**
- * 创建领域服务代理（RPC 延迟绑定）
- * 用于延迟绑定 BaristaClient 中的服务，并确保方法调用时 this 指向正确。
- */
-export function createDomainServiceProxy<T extends object>(
-  serviceId: string
-): T {
-  return new Proxy({} as T, {
-    get: (_, prop) => {
-      if (typeof prop !== 'string') return undefined
+const resolveService = (channel: string) => {
+  try {
+    return editor.getService(channel)
+  } catch {
+    return editor.baristaClient?.getService(channel as Channels)
+  }
+}
 
-      return (editor.baristaClient?.getService(serviceId as any) as any)?.[prop]
+/**
+ * Create a VSCode-style domain service facade.
+ * The caller does not need to know whether the service is local or RPC-backed.
+ */
+export function createDomainServiceProxy<T extends object>(channel: string): T {
+  return new Proxy({} as T, {
+    get: (_target, prop) => {
+      if (typeof prop !== 'string') {
+        return undefined
+      }
+
+      return (...args: unknown[]) => {
+        const service = resolveService(channel) as Record<string, unknown>
+        const value = service?.[prop]
+
+        if (typeof value === 'function') {
+          return value.apply(service, args)
+        }
+
+        return value
+      }
     },
   })
 }
+
+export const createServiceProxy = createDomainServiceProxy
+
+export const nodeService = createServiceProxy<INodeService>(Channels.Node)
+export const transformService = createServiceProxy<ITransformService>(
+  Channels.Transform
+)
+export const sceneService = createServiceProxy<ISceneService>(Channels.Scene)
+export const documentService = createServiceProxy<IDocumentService>(
+  Channels.Document
+)
+export const queryService = createServiceProxy<IQueryService>(Channels.Query)
+export const undoRedoService = createServiceProxy<IUndoRedoService>(
+  Channels.UndoRedo
+)

@@ -86,7 +86,11 @@ pnpm dev
 
 ## 📄 许可证 (License)
 
-- **核心引擎** (`espresso`, `barista`, `art`): **AGPL-3.0** (开源，强传染性)。
-- **生态组件** (`bean`, `cup`, `syrup`): **MIT** (宽松协议)。
+- 本 monorepo 采用包级许可证。二次分发前请以各包的 `package.json`
+  与 `LICENSE` 文件为准。
+- **核心/产品包** (`espresso`, `barista`, `art`, `crema`, `counter`):
+  **AGPL-3.0-or-later** 开源版，并提供商业授权。
+- **协议/SDK/UI 基础设施** (`bean`, `kit`, `syrup`, `milk`): **MIT**。
+- **应用/演示** (`apps/cafe`): **UNLICENSED**，不作为可复用包发布。
 
 _如果您希望在不开源您代码的情况下将 Latte 用于商业产品（如 SaaS、内部工具），请联系我们购买 **商业授权 (Commercial License)**。_

@@ -86,7 +86,14 @@ Open `http://localhost:5173` to start editing.
 
 ## 📄 License
 
-- **Core Engine** (`espresso`, `barista`, `art`): **AGPL-3.0** (Open Source, Copyleft).
-- **Ecosystem** (`bean`, `cup`, `syrup`): **MIT** (Permissive).
+- This monorepo uses package-level licenses. Check each package's
+  `package.json` and `LICENSE` file before redistribution.
+- **Core / Product Packages** (`espresso`, `barista`, `art`, `crema`,
+  `counter`): **AGPL-3.0-or-later** open source edition, with commercial
+  licensing available.
+- **Protocol / SDK / UI Infrastructure** (`bean`, `kit`, `syrup`, `milk`):
+  **MIT**.
+- **Apps / demos** (`apps/cafe`): **UNLICENSED** and not published as a
+  reusable package.
 
 _For commercial usage without open-sourcing your code, please contact us for a **Commercial License**._

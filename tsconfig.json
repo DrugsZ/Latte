@@ -27,6 +27,7 @@
       "@latte-js/barista": ["packages/barista/src/index.ts"],
       "@latte-js/barista/worker": ["packages/barista/src/worker/index.ts"],
       "@latte-js/syrup": ["packages/syrup/src/index.ts"],
+      "@latte-js/crema": ["packages/crema/src/index.ts"],
       "@latte-js/counter": ["packages/counter/src/index.ts"],
       "@latte-js/milk": ["packages/milk/src/index.ts"],
       "@cafe/*": ["apps/cafe/src/*"]

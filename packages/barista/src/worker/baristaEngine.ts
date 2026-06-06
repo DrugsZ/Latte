@@ -5,6 +5,7 @@ import { ChannelServer, fromService } from '../ipc'
 import { createJsonRpcNotification } from '../ipc/ipc'
 import { ServiceManager } from '../services'
 import { BaristaSystem, Systems } from '../systems'
+import { MutationGate } from '../transactions/mutationPolicy'
 
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
 
@@ -17,6 +18,7 @@ export class BaristaEngine {
   private _proxyGraph: SceneGraph
   private _systems: BaristaSystem
   private _serviceManager: ServiceManager
+  private _mutationGate: MutationGate
   private _channelServer: ChannelServer | null = null
   private _isTickScheduled = false
 
@@ -29,6 +31,7 @@ export class BaristaEngine {
     this._initKernelSession(buffer, allocBuffer, heapBuffer)
     this._proxyGraph = this._createGraphProxy()
     this._systems = new BaristaSystem(this._proxyGraph)
+    this._mutationGate = new MutationGate(this._proxyGraph)
     this._serviceManager = new ServiceManager(this._proxyGraph, this._systems)
 
     this._initChannelServer()
@@ -101,7 +104,13 @@ export class BaristaEngine {
     })
 
     this._serviceManager.forEachService((service, name) => {
-      this._channelServer!.registerChannel(name, fromService(service))
+      this._channelServer!.registerChannel(
+        name,
+        fromService(service, {
+          channelName: name,
+          mutationGate: this._mutationGate,
+        })
+      )
     })
   }
 
