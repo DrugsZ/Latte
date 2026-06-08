@@ -1,430 +1,1001 @@
-# Latte 架构评审记录
+# Latte 架构评审完整会话文档
 
-本文档汇总了当前评审/实现会话中完成的架构变更，
-用于代码评审时的引导式检查清单。
+> 日期：2026-06-08
+>
+> 用途：把本轮长会话中的架构讨论、实现取舍、已落地代码、验证结果和后续风险整理成一份 review 对照文档。另一台电脑 review 时，建议先读本文，再对照 `docs/architecture-blueprint.zh-CN.md`、`docs/roadmap.zh-CN.md` 和最近两个 review snapshot commit。
 
-## 目标方向
+## 0. Review 入口
 
-当前架构方向如下：
+当前 review snapshot 主要在以下提交中：
 
-```txt
-主线程
-  VSCode 风格的服务、命令、键绑定、工具
-    -> 类型化 RPC 服务，例如 NodeService / TransformService
-       / UndoRedoService
-
-Worker
-  领域服务
-    -> systems
-    -> NodeCursor / SceneGraph 写屏障
-    -> TransactionManager 事务记录
-    -> HistoryManager undo/redo 栈
-    -> dirty pipeline
-
-Render
-  基于 SharedArrayBuffer 的只读投影
+```text
+c3e7f1a chore: prepare architecture review snapshot
+c28d14a chore: stage transfer review snapshot
 ```
 
-主线程应保留语义化 API，不应将原始 mutation action bus
-作为主要编程模型。
-
-## 评审顺序
-
-1. 评审 `packages/espresso` 中的数据边界。
-2. 评审 `packages/barista` 中 worker 的事务与历史行为。
-3. 评审 `packages/crema` 中的运行时编排。
-4. 评审 `apps/cafe` 中的应用集成。
-5. 评审测试与 e2e 覆盖。
-
-## 数据层：`packages/espresso`
-
-### 共享内存与元数据
-
-SoA 布局已扩展，使渲染元数据可以驻留在共享内存中：
-
-- `packages/espresso/src/data/memoryLayout.ts`
-- `packages/espresso/src/data/sceneGraph.ts`
-- `packages/espresso/src/data/heapManager.ts`
-- `packages/espresso/src/data/blobManager.ts`
-- `packages/espresso/src/data/ops/styleOps.ts`
-
-这支持了 worker 侧加载、主线程只读投影的模型，可承载名称、填充、描边及相关渲染元数据。
-
-### 防御式 SAB 初始化
-
-`SceneGraph` 现在会对空的外部 buffer 进行防御式初始化，
-使层级列使用 `NULL_INDEX`，避免意外的零值。
-这可防止在挂接外部创建的 SharedArrayBuffer 时出现 root 自环。
-
-评审点：
-
-- `packages/espresso/src/data/sceneGraph.ts`
-- `packages/espresso/src/data/__test__/sceneGraph.test.ts`
-
-### 写屏障与变更记录
-
-`NodeCursor` 现在是用户可编辑属性的主要写屏障。
-它会在应用写入后、标记 dirty 前记录 mutation。
-
-新类型：
-
-- `packages/espresso/src/data/mutationRecorder.ts`
-
-集成点：
-
-- `SceneGraph.setMutationRecorder(...)`
-- `SceneGraph.recordMutation(...)`
-- `NodeCursor._mutate(...)`
-- `NodeCursor.appendChild(...)`
-- `NodeCursor.removeChild(...)`
-- `NodeCursor.delete(...)`
-
-记录结构如下：
-
-```ts
-{
-  id,
-  index,
-  prop,
-  oldValue,
-  newValue,
-  dirtyFlag
-}
-```
-
-关键边界：
-
-- 通过 `NodeCursor` 产生的用户编辑可被记录。
-- `worldMatrix` 与 `aabb` 等派生流水线写入仍使用底层操作，不应进入 undo/redo 历史。
-
-测试：
-
-- `packages/espresso/src/data/__test__/nodeCursor.test.ts`
-
-## Worker 层：`packages/barista`
-
-### Transaction Manager / History Manager
-
-`TransactionManager` 只负责当前事务生命周期：
-
-- `begin` / `capture` / `recordMutation`
-- `commit` 产出 committed transaction records
-- `abort` 使用 inverse records 回滚当前事务
-
-它实现了 `IMutationRecorder`，在事务激活时接收 `NodeCursor` 的 mutation 记录，
-但不再保存 undo/redo 栈。
-
-`HistoryManager` 负责历史状态：
-
-- 保存 undo/redo stack
-- 接收 `TransactionManager.commit()` 产出的 committed transaction
-- 生成 inverse records
-- 调用 `MutationRecordApplier` 统一回放
-
-`MutationRecordApplier` 是 undo/redo 与事务 abort 的统一写回入口。
-它使用 `NodeCursor` / `SceneGraph` 写屏障应用 `INodeMutationRecord`，
-避免历史回放走另一套直接写 SAB 的维护路径。
-
-评审点：
-
-- `packages/barista/src/transactions/transactionManager.ts`
-- `packages/barista/src/history/historyManager.ts`
-- `packages/barista/src/history/mutationRecordApplier.ts`
-- `packages/barista/src/transactions/__test__/transactionManager.test.ts`
-- `packages/barista/src/history/__test__/historyManager.test.ts`
-
-提交行为：
-
-```txt
-active records
-  -> 克隆 forward records
-  -> 返回 committed transaction
-  -> MutationGate 推入 HistoryManager
-```
-
-撤销行为：
-
-```txt
-HistoryManager 弹出 undo entry
-  -> MutationRecordApplier 回放 inverse records
-  -> 将 entry 压入 redo 栈
-```
-
-重做行为：
-
-```txt
-HistoryManager 弹出 redo entry
-  -> MutationRecordApplier 回放 forward records
-  -> 将 entry 压入 undo 栈
-```
-
-当前回放支持覆盖常见 `NodeCursor` 可编辑属性：
-
-- 变换：`x`、`y`、`width`、`height`、`transform`
-- 样式：fills、strokes、opacity、visibility、stroke 设置、radius
-- 元数据：name、locked
-- 层级父子关系变更（当前存在同级顺序限制）
-
-当前限制：
-
-- `removeSelf` 的可逆回放仍需要序列化节点快照。
-  在快照实现前，`SceneGraph.deleteNode()`/`NodeCursor.delete()` 会在
-  history mutation scope 中修改数据前抛错，避免生成无法 undo/redo 的
-  history journal；`MutationRecordApplier` 回放分支仍保留防御性错误。
-
-### 内部 Transaction Registry 与 Undo/Redo 服务
-
-`TransactionManager` 与 `HistoryManager` 通过弱引用注册表按 `SceneGraph`
-共享。这样所有 worker 服务都能参与同一活跃事务和同一历史栈。
-它们是 worker 内部基础设施，不作为主线程或插件可直接调用的 RPC。
-
-评审点：
-
-- `packages/barista/src/transactions/mutationPolicy.ts`
-- `packages/barista/src/transactions/transactionRegistry.ts`
-- `packages/barista/src/ipc/proxyChannel.ts`
-- `packages/barista/src/ipc/channelServer.ts`
-- `packages/barista/src/services/serviceBase.ts`
-- `packages/barista/src/systems/systems.ts`
-- `packages/barista/src/services/undoRedo.ts`
-- `packages/bean/src/rpc/undoRedo.ts`
-
-公开服务边界：
-
-- `UndoRedoService`：`undo`、`redo`、`canUndo`、`canRedo`
-
-RPC/service dispatcher 通过 `MutationGate` 统一拥有事务边界。
-Service 与 System 在注册时通过 `@service({ mutations: ... })` 或
-`@system({ mutations: ... })` 声明方法策略。Service 级策略优先；
-如果没有声明，则 fallback 到同名 System 的策略。单次语义 RPC，
-例如 `TransformService.moveBy(...)`，会自动包进 worker 事务。
-连续交互使用领域 session，例如 `TransformService.beginTransform(...)`、
-`commitTransform()`、`cancelTransform()`；这些是变换交互 API，
-不是通用事务 API。
-
-这样可以避免插件或主线程代码直接调用危险的 `begin/commit/abort`
-原语。重命名、样式修改、节点移动，或未来的增删 API 都应遵循同一模式：
-对外暴露语义 RPC，声明 mutation policy，然后由 dispatcher 包裹实际
-`NodeCursor` 写入。
-
-当前 policy kind 覆盖 `readonly`、`writeNoHistory`、`manual`、`atomic`、
-`sessionBegin`、`sessionMutation`、`sessionCommit`、`sessionCancel` 与
-`history`。其中 `manual` 留给复杂方法在 worker 内部细粒度控制
-`TransactionManager`，但仍不向主线程暴露通用事务 API。
-
-`ChannelServer` 现在顺序处理消息。这样可以避免多个文档或协作者几乎同时
-发送 RPC 时，active graph session 切换与写事务发生交错。
-
-测试：
-
-- `packages/barista/src/ipc/__test__/channelServer.test.ts`
-- `packages/barista/src/services/__test__/serviceMutationPolicy.test.ts`
-- `packages/barista/src/services/__test__/transformServiceTransactions.test.ts`
-
-### Transform System 与服务
-
-`TransformSystem` 现在仅暴露变换相关的领域行为。
-它可以读取活跃事务快照以保持拖拽增量稳定，
-但不再负责事务生命周期或 undo/redo。
-
-评审点：
-
-- `packages/barista/src/systems/transform.ts`
-- `packages/barista/src/services/transform.ts`
-- `packages/bean/src/rpc/transform.ts`
-
-测试：
-
-- `packages/barista/src/systems/__test__/transformSystem.test.ts`
-
-### 已移除 Mutation RPC
-
-公开的 `MutationService` / `MutationOperation` / `Channels.Mutation` 路径已移除。
-
-原因：
-
-- 主线程应保持 VSCode 风格，使用类型化语义服务 RPC。
-- 原始 mutation 操作是内部日志关注点，不应成为公开编程模型。
-
-已删除文件：
-
-- `packages/barista/src/services/mutation.ts`
-- `packages/barista/src/services/__test__/mutationService.test.ts`
-- `packages/bean/src/rpc/mutation.ts`
-
-请确认无残留引用：
+建议 review 顺序：
 
 ```sh
-rg -n "MutationService|IMutationService|MutationOperation|Channels\.Mutation|mutationService|rpc/mutation|services/mutation" packages apps
+git fetch
+git checkout codex/temp-transfer-review-20260606
+git log --oneline -5
+git show --stat c28d14a
+git show --stat c3e7f1a
 ```
 
-## 运行时层：`packages/crema`
+建议先看文档，再看代码：
 
-`@latte-js/crema` 已作为编辑器运行时编排包新增。
+1. `docs/architecture-blueprint.zh-CN.md`
+2. `docs/roadmap.zh-CN.md`
+3. `docs/governance-and-licensing.zh-CN.md`
+4. `docs/figma-layout-resize-plan.zh-CN.md`
+5. 本文档
+6. `packages/espresso`
+7. `packages/barista`
+8. `packages/crema`
+9. `packages/syrup` / `packages/counter` / `packages/art`
+10. `apps/cafe`
 
-评审点：
+## 1. 本轮总目标
 
-- `packages/crema/package.json`
-- `packages/crema/src/editorRuntime.ts`
-- `packages/crema/src/interactions/runtimeInteractionController.ts`
-- `packages/crema/src/interactions/__test__/runtimeInteractionController.test.ts`
+Latte 的长期目标被重新明确为：
 
-职责：
-
-- 启动编辑器
-- 注册渲染桥接
-- 通过 worker 加载文档
-- 暴露交互辅助能力
-- 释放渲染器与监听器
-
-`RuntimeInteractionController` 使用类型化服务协调主线程编辑流程。
-变换交互生命周期委托给 `TransformService`，历史控制使用
-`UndoRedoService`。
-
-拖拽期间：
-
-```txt
-moveBy(...)
-  -> 合并（coalesced）的 requestAnimationFrame 更新
-  -> transformService.moveBy$ 通知
+```text
+Figma 级画布编辑能力
++ VSCode 级 service / command / contribution / extension 架构
++ 可商业化开源治理
++ Worker 权威写入
++ SharedArrayBuffer / SoA 只读投影
++ 未来可选 Rust/WASM native engine
 ```
 
-提交期间：
+本轮所有讨论基本围绕一个主线展开：
 
-```txt
-先通过 transformService.moveBy request 刷新待处理更新
-  -> transformService.commitTransform
+```text
+UI / Input / Keybinding / Plugin
+  -> Command as user-intent entry
+  -> Workbench contribution
+  -> Service as domain capability
+  -> RPC or local implementation
+  -> Worker mutation authority
+  -> NodeCursor / SceneGraph / SoA / SAB
+  -> Worker pipeline recompute
+  -> Projection dirty notification
+  -> Main-thread readonly render/UI readback
 ```
 
-历史辅助方法现在委托给 `UndoRedoService`：
+核心原则：
+
+- 主线程不直接写 document model。
+- worker 是文档写入权威。
+- 主线程可以读共享投影，但读的是 projection，不是权威写入口。
+- 高频交互不需要每一帧走 command。
+- command 是用户意图入口，service 是领域能力边界。
+- 事务由 worker 自动管理，主线程和插件不直接调用通用 transaction API。
+- undo/redo 是独立服务，不属于 TransformSystem。
+- history 和 transaction 是两件事。
+- dirty flags 描述下游 pipeline invalidation target，不描述 mutation 类型。
+
+## 2. SharedArrayBuffer + SoA + Worker 路线
+
+本轮一开始重新评估了：
+
+```text
+SharedArrayBuffer + SoA 内存布局 + Worker 计算 + 渲染层只读投影
+```
+
+相对于主线程直接做所有事，它的优点：
+
+- 主线程更专注输入、UI 和 render scheduling。
+- worker 可以集中处理文档写入、事务、history、派生重算。
+- SoA 对大量节点的矩阵、bounds、style pointer 等热数据更友好。
+- SharedArrayBuffer 避免大量结构化拷贝。
+- 便于未来接入协同、extension host、Rust/WASM native engine。
+
+劣势：
+
+- 架构复杂度明显更高。
+- 需要 COOP/COEP 才能稳定使用 SharedArrayBuffer。
+- 需要处理 projection sync、version、dirty notification。
+- 主线程不能随意写，开发纪律更强。
+- 对调试和测试要求更高。
+
+综合判断：
+
+当前项目目标不是普通 canvas demo，而是长期平台型编辑器。因此继续走
+`SAB + SoA + worker authority + readonly projection` 是更优路线。
+
+## 3. Coffee Stack 包职责
+
+最终包职责建议如下。
+
+| 包 | 定位 | 应该包含 | 不应该包含 |
+| --- | --- | --- | --- |
+| `bean` | 协议与类型契约 | schema、RPC contract、ID type、公共协议 | 运行时逻辑、UI、worker 实现 |
+| `espresso` | 数据内核 | SceneGraph、NodeCursor、SoA、SAB、heap/blob、loader/serializer | 业务 service、React、插件 API |
+| `barista` | worker 权威执行层 | RPC services、systems、MutationGate、HistoryManager、pipeline | DOM、React、主线程工具状态 |
+| `syrup` | 主线程平台层 | EditorHost、DI、Command、Menu、Keybinding、Input、本地/RPC service 注册能力 | 产品工具业务、worker 写入实现、稳定插件 facade |
+| `crema` | runtime assembly | 启动 worker、创建 editor/runtime、注册 services、projection sync、interaction controller | 具体工具业务、SoA 细节 |
+| `counter` | workbench/contrib | SelectionService、ToolService、内置工具、内置 command handlers | 平台 DI 内核、worker mutation 实现 |
+| `art` | 渲染与命中 | Renderer、Camera、HitTest、readonly projection 绘制 | document 写入、事务、history |
+| `milk` | UI 组件 | React 控件、面板、输入框、hooks | document 权威写入 |
+| `api` | 未来插件 facade | `ctx.nodes`、`ctx.commands`、`ctx.selection`、`ctx.workspace` | 内部 service 实例直接泄漏 |
+
+`counter` 当前更像 VSCode 的 workbench/contrib。短期可保留名称，文档中明确它就是内置产品贡献包；未来如果追求语义清晰，可改名为 `@latte-js/workbench`。
+
+## 4. Command、Service、Controller 的边界
+
+最终规则：
+
+```text
+Command = 用户意图入口
+Service = 领域能力边界
+Controller = 高频交互编排
+System = worker 内部领域计算模块
+Manager = worker/runtime 内部状态管理基础设施
+```
+
+### 4.1 是否所有操作都走 command
+
+不应该。
+
+VSCode 内部也不是所有高频编辑器交互都走 `executeCommand`。快捷键、菜单、命令面板、插件显式命令通常走 command；内部 controller/editor 代码大量通过 DI 获取 service。
+
+Latte 推荐：
+
+| 场景 | 推荐入口 |
+| --- | --- |
+| 命令面板执行对齐 | Command |
+| 快捷键删除节点 | Command -> NodeService |
+| 属性面板手动输入 x/y/w/h 后 Enter/blur | Command 或直接 service |
+| 属性面板拖拽 scrub 数值 | begin edit -> service notification -> commit |
+| 画布拖拽移动 | Tool/InteractionController -> TransformService |
+| 插件移动节点 | Public API facade |
+| undo/redo | UndoRedoService |
+
+### 4.2 面板输入框与拖拽 scrub
+
+Figma 的宽高位置输入框既能输入，也能拖拽 scrub。Latte 应按两种语义处理：
+
+```text
+手动输入后 Enter / blur
+  -> command 或 service
+  -> worker atomic transaction
+  -> 生成一次 history
+
+拖拽 scrub 数值
+  -> pointerdown: beginTransform / beginPropertyEdit
+  -> pointermove: service notification，按 rAF 合并
+  -> pointerup: commit
+  -> 生成一次 history
+```
+
+拖拽不会绕过事务。它绕过的是每帧 command，不是绕过 worker transaction。
+
+## 5. Editor、Syrup、DI 与插件 API
+
+### 5.1 Editor 的职责
+
+`Editor` 不应成为“所有能力集合”。更合理的职责：
+
+- 作为 main-thread editor host。
+- 持有当前 renderer、graph projection、barista client。
+- 提供生命周期管理。
+- 承接 service collection / instantiation infrastructure。
+- 不长期承担 document 权威写入。
+- 不直接成为公开插件 API facade。
+
+### 5.2 为什么保留 main-thread service 概念
+
+参考 VSCode，调用方不应关心 service 真实执行地点：
+
+```text
+ISelectionService 可能是主线程本地
+INodeService 可能是 worker RPC
+ITransformService 可能是 worker RPC
+IToolService 可能是 workbench 本地
+```
+
+因此 service 可以注册到主线程 DI，但这不等于插件作者可以直接拿内部 service。
+
+长期插件 API 应是稳定 facade：
+
+```ts
+ctx.commands.execute(...)
+ctx.nodes.moveBy(...)
+ctx.selection.get()
+ctx.workspace.activeDocument
+```
+
+Facade 内部可以调用 command，也可以调用 service。插件作者不应依赖内部 `editor.getService(...)`。
+
+### 5.3 `syrup/services/proxies` 的问题
+
+全局 proxy 设计长期不合适：
+
+- 依赖全局 editor。
+- 不支持多 editor/multi document。
+- 绕过 ServiceCollection。
+- 把 worker channel 与主线程 service 隐式混在一起。
+
+目标是由 `crema` 在 runtime startup 时注册 local services 与 worker RPC services。
+
+## 6. 事务、历史与 Undo/Redo
+
+本轮重点澄清：
+
+```text
+TransactionManager != HistoryManager
+```
+
+### 6.1 TransactionManager
+
+只负责当前事务生命周期：
+
+- `begin`
+- capture snapshot
+- record mutation
+- `commit` 产出 committed transaction
+- `abort` 使用 inverse records 回滚当前事务
+
+它不应该保存 undo/redo 栈。
+
+### 6.2 HistoryManager
+
+负责 history 状态：
+
+- undo stack
+- redo stack
+- push committed transaction
+- undo replay inverse records
+- redo replay forward records
+
+命名上最终选择 `HistoryManager`，因为它管理 history stack，是 worker 内部基础设施；`UndoRedoService` 才是外部语义 service。
+
+### 6.3 UndoRedoService
+
+主线程和插件未来只应看到：
 
 - `undo`
 - `redo`
 - `canUndo`
 - `canRedo`
 
-## 渲染层：`packages/art`
+不应暴露通用 transaction API。
 
-渲染器改进：
+### 6.4 为什么主线程不管理事务
 
-- active root 支持
-- `Renderer.fitToContent(rootId?, padding?)`
-- 基于图数据的只读渲染投影
-- 树遍历循环保护
-- 通过 `dispose` 做 rAF 生命周期清理
+主线程直接管理事务会带来危险：
 
-评审点：
+- 插件可能忘记 commit/abort。
+- 高频交互和 atomic operation 语义混在一起。
+- 多文档、多协作者、worker session 切换更容易出错。
+- undo/redo 难以统一。
 
-- `packages/art/src/core/render.ts`
-- `packages/art/src/render/canvas/canvas2DBackend.ts`
+最终选择：
 
-## Worker Pipeline
-
-worker 在服务调用后计算 dirty 派生状态：
-
-```txt
-RPC 调用 / 通知
-  -> ChannelServer.onMessage
-  -> BaristaEngine.scheduleTick
-  -> MatrixSystem
-  -> AABBSystem
-  -> scene.onDirty
+```text
+主线程只发语义 RPC
+worker MutationGate 自动处理事务
+service/system 注册时声明 mutation policy
 ```
 
-评审点：
+### 6.5 MutationGate 与 mutation policy
 
-- `packages/barista/src/worker/baristaEngine.ts`
-- `packages/barista/src/systems/matrix.ts`
-- `packages/barista/src/systems/aabb.ts`
+Service/System 通过注册声明：
 
-已新增循环保护，避免无界遍历。
+- `readonly`
+- `writeNoHistory`
+- `atomic`
+- `manual`
+- `sessionBegin`
+- `sessionMutation`
+- `sessionCommit`
+- `sessionCancel`
+- `history`
 
-## 应用集成：`apps/cafe`
+dispatcher 通过 `MutationGate` 统一包裹。
 
-`apps/cafe` 现在使用 `EditorRuntime`，
-而不是手工串联 editor、bridge 与 document load。
+### 6.6 TransformSystem 不再拥有 undo/redo
 
-评审点：
+TransformSystem 只做 transform 领域计算。
 
-- `apps/cafe/src/app.tsx`
-- `apps/cafe/package.json`
-- `apps/cafe/vite.config.js`
+不应该：
 
-Vite 开发与预览都包含 COOP/COEP 响应头，
-以确保 SharedArrayBuffer 可用。
+- 在 TransformSystem 中调用 undo/redo。
+- 在 TransformSystem 中长期拥有通用 transaction 生命周期。
 
-## 测试与工具链
+添加、删除、重命名、样式修改都应通过自己的 service/system 进入同一个 MutationGate 和 NodeCursor 写入口。
 
-新增或相关覆盖：
+## 7. Mutation RPC 与语义化 Service
 
-- SAB 空外部 buffer 初始化
-- loader root 拓扑
-- matrix/AABB 遍历循环保护
-- render `fitToContent`
-- worker 加载与只读投影 smoke
-- transform 事务 abort/commit
-- dispatcher 拥有的 transform 自动事务行为
-- service/system 注册期 mutation policy 解析
-- channel 顺序调度以避免冲突
-- transaction mutation recording
-- history undo/redo
-- runtime interaction 合并（coalescing）与类型化服务委托
+旧思路里有 `MutationService` / raw mutation RPC。本轮决定移除公开 mutation RPC。
 
-关键文件：
+原因：
 
-- `e2e/cafe-smoke.spec.ts`
-- `playwright.config.ts`
-- `turbo.json`
-- 根目录 `package.json`
+- 主线程应该保持 VSCode 风格的语义服务。
+- mutation record 是内部日志/历史关注点，不是主线程编程模型。
+- `NodeService.move()`、`TransformService.resizeTo()`、`StyleService.setFill()` 这样的能力更清晰。
+- 插件 API 也不应该暴露 raw mutation bus。
 
-## 验证命令
+最终方向：
 
-2026-06-04 当前状态已通过以下命令验证：
+```text
+UI / Command / Plugin
+  -> Semantic Service
+  -> RPC
+  -> Worker Service
+  -> MutationGate
+  -> System / NodeCursor
+  -> Mutation records / dirty pipeline
+```
+
+## 8. NodeCursor 作为写入口
+
+本轮多次讨论后确认：
+
+- 用户编辑类写入应尽量通过 `NodeCursor` 或等效写屏障。
+- `MutationRecordApplier` 回放 undo/redo 也应走同一种数据结构。
+- 不应让主线程写、redo/undo 写、worker service 写各有一套不同路径。
+
+这样更容易维护：
+
+- dirty 标记统一。
+- mutation record 统一。
+- undo/redo replay 统一。
+- 协同和审计未来可以复用。
+
+派生写入例外：
+
+- `worldMatrix`
+- `aabb`
+- pipeline projection
+
+这些是 worker pipeline 的派生数据，不应进入历史。
+
+## 9. Selection 设计
+
+当前结论：
+
+- `SelectionService` 作为主线程 service 名称是合理的。
+- 这符合 VSCode 风格：调用方不关心能力来源是本地、远程还是 RPC。
+- selection 当前是 UI/session state，不是 document model。
+- 主线程需要快速响应 hover、selection outline、property panel。
+
+因此当前保留主线程 SelectionService 更合适。
+
+### 9.1 是否需要 worker-side SelectionContext
+
+短期不需要强行加。
+
+性价比：
+
+- 当 selection 只负责选中 ids、overlay、属性面板时，主线程足够。
+- 当需要 OBB、复杂 bounds、snap guides、resize handles、多人协同时，再加入 worker-side SelectionContext。
+
+未来增强：
+
+```text
+Main SelectionService
+  -> sync selected ids to worker
+  -> worker computes OBB / handles / snap guides
+  -> writes projection
+  -> main reads projection
+```
+
+## 10. 主线程读取与 SAB projection 同步
+
+曾经出现的问题：
+
+```text
+worker 有数据，主线程读不到
+```
+
+根因主要是：
+
+- 主线程 graph 和 worker graph 不是同一套写入来源。
+- loader 曾经可能在主线程二次写 graph。
+- idMap / heap metadata / projection sync 没同步完整。
+
+当前方向：
+
+- worker load document。
+- worker 写 SAB 和 heap/blob metadata。
+- main 只同步 idMap、active root、projection dirty/version。
+- renderer/art 从 SAB 只读 projection。
+
+字符串、JSON-like metadata 的路径：
+
+```text
+name / fills / strokes / text / geometry
+  -> shared heap / blob
+  -> SoA pointer columns
+  -> main thread 通过 pointer 读
+```
+
+因此 name 本质不是直接存在 TypedArray 数值列里，而是通过 pointer column 指向 heap/blob 中的字符串/JSON-like blob。
+
+## 11. 渲染与 Projection
+
+渲染层原则：
+
+- `art` 只读。
+- 不做 document 权威写入。
+- 读取 SAB projection。
+- 根据 dirty notification 调度 render。
+
+本轮落地：
+
+- `Renderer.fitToContent(rootId?, padding?)`
+- active root 支持
+- 负坐标样例可以首屏可见
+- traversal cycle guard
+- renderer dispose 清理 rAF
+
+当前渲染流程：
+
+```text
+worker mutation
+  -> dirty tracker
+  -> pipeline recompute
+  -> scene.onDirty payload
+  -> ProjectionSyncController.markDirty
+  -> renderer.requestRender
+  -> renderer read SAB projection
+```
+
+## 12. Dirty Flags 重构
+
+本轮将 dirty flag 从“mutation category”改成“pipeline invalidation target”。
+
+当前 dirty flags：
+
+- `DIRTY_LOCAL_MATRIX`：local matrix 失效
+- `DIRTY_PAINT`：paint/compositing 失效
+- `DIRTY_TREE`：树拓扑输入变化
+- `DIRTY_WORLD_BOUNDS`：world bounds 派生失效
+- `DIRTY_TEXT`：文本内容/样式/layout 输入失效
+- `DIRTY_METADATA`：name、lock、plugin metadata
+- `DIRTY_SUBTREE_MATRIX`：子树中存在 matrix-affecting change 的派生遍历标记
+- `DIRTY_GEOMETRY`：本地 shape/size/path 变化
+- `DIRTY_LAYOUT`：layout constraints/autolayout 输入失效
+- `DIRTY_EFFECT`：blur/shadow/filter 可能影响 visual bounds
+
+已全量移除旧名：
+
+- `DIRTY_TRANSFORM`
+- `DIRTY_STYLE`
+- `DIRTY_STRUCTURE`
+- `DIRTY_AABB`
+- `DIRTY_NOT_EFFECT`
+
+### 12.1 三个容易混淆的 flag
+
+`DIRTY_TREE`
+
+- 表示 document topology input 变化。
+- parent/child/order 变化。
+- 会影响 matrix、bounds、layout。
+
+`DIRTY_SUBTREE_MATRIX`
+
+- 派生遍历剪枝标记。
+- 表示某个祖先的子树里有 matrix-affecting dirty。
+- 不是用户 mutation 分类。
+
+`DIRTY_LAYOUT`
+
+- 表示 layout rule/input invalidated。
+- 未来由 LayoutSystem 消费。
+- 不等于 tree，也不等于 subtree matrix。
+
+## 13. MutationTracker
+
+`MutationTracker` 的根本目的：
+
+```text
+收集哪些 node 的哪些 pipeline target 失效
+  -> 合并同一 tick 内多次变化
+  -> 做极少量便宜派生传播
+  -> 交给 worker pipeline 重算
+```
+
+它不负责：
+
+- 执行 pipeline。
+- 通知主线程。
+- 管理 render。
+- 管理事务或 history。
+
+当前保留的派生传播：
+
+- 如果 dirty 命中 `MATRIX_AFFECTING_FLAGS`，向父链冒泡 `DIRTY_SUBTREE_MATRIX`。
+
+已收紧：
+
+- `getSnapshot()` 返回 defensive copy。
+- 移除未使用 flushing 开关。
+- 父链冒泡加入 cycle/depth guard。
+
+## 14. Worker Pipeline
+
+本轮将 pipeline 从 `BaristaEngine.tick()` 中抽出一层。
+
+当前流程：
+
+```text
+BaristaEngine.tick
+  -> tracker.flush()
+  -> DirtyBatch.from(...)
+  -> PipelineRunner.process(batch)
+  -> NotificationPlanner.createDirtyPayload(batch, version)
+  -> scene.onDirty(payload)
+```
+
+新增：
+
+- `packages/barista/src/pipeline/dirtyBatch.ts`
+- `packages/barista/src/pipeline/pipelineRunner.ts`
+- `packages/barista/src/pipeline/notificationPlanner.ts`
+- `packages/barista/src/pipeline/__test__/pipelineRunner.test.ts`
+- `packages/barista/src/pipeline/__test__/notificationPlanner.test.ts`
+
+### 14.1 DirtyBatch
+
+封装 dirty map：
+
+- `mark`
+- `markDerived`
+- `hasAny`
+- `entriesByMask`
+- `keysByMask`
+- `idsByMask`
+
+它是 pipeline batch 容器，不属于 `espresso`。
+
+### 14.2 System schedule
+
+本轮把 `@system({ pipeline: ... })` 改成了更中性的：
+
+```ts
+@system({
+  schedule: {
+    stage: ScheduleStage.Matrix,
+    reads: DIRTY_LOCAL_MATRIX | DIRTY_TREE | DIRTY_SUBTREE_MATRIX,
+    writes: DIRTY_WORLD_BOUNDS,
+  },
+})
+```
+
+原因：
+
+- MatrixSystem 不应被设计成只能给 pipeline 使用。
+- `schedule` 表达“这个 system 在 dirty 调度中如何被触发”。
+- system 仍可被测试或 worker 内部直接调用。
+
+### 14.3 PipelineRunner
+
+当前 runner：
+
+- 按 `ScheduleStage` 排序。
+- 读取 system 的 `schedule.reads`。
+- 只有 batch 中存在命中的 dirty 时才触发 system。
+- 把完整 `DirtyBatch` 传给 system。
+
+这样比所有 system 扫所有 dirty ids 更合理。
+
+### 14.4 NotificationPlanner
+
+`scene.onDirty` payload 从纯 ids 升级为：
+
+```ts
+{
+  version,
+  ids,
+  renderIds,
+  allIds,
+  nodes: [{ id, flags }]
+}
+```
+
+当前约定：
+
+- `ids` 保留为 render ids 的兼容字段。
+- `renderIds` 表示需要画布重绘。
+- `allIds` 表示所有 dirty ids。
+- `nodes` 保留 flags，未来 UI/插件/outline 可按需消费。
+
+`ProjectionSyncController` 兼容旧数组 payload，也支持新 payload。
+
+metadata-only dirty：
+
+- 推进 projection version。
+- 不触发 renderer.requestRender。
+
+### 14.5 system 消费中产生新 dirty
+
+当前已支持前向链路：
+
+```text
+MatrixSystem reads LOCAL_MATRIX/TREE/SUBTREE_MATRIX
+  -> writes WORLD_BOUNDS
+  -> AABBSystem reads WORLD_BOUNDS
+```
+
+因为 runner 传的是同一个 mutable DirtyBatch。
+
+尚未完整支持反向依赖：
+
+```text
+后置 system 产生前置 system 需要消费的 dirty
+```
+
+推荐长期升级：
+
+- pipeline 尽量保持单向 DAG。
+- Layout/Text 等系统放在 Matrix 前。
+- runner 引入 worklist/fixpoint。
+- 根据 reads/writes 构建依赖图。
+- back edge 默认报错，或显式 `allowBackEdge`。
+- 加 max iteration 防循环。
+
+## 15. Tree Traversal 与 SceneGraph API
+
+本轮整理了 tree traversal：
+
+- 将重复遍历逻辑收敛到共享 traversal helper。
+- `SceneGraph` 内部仍保留核心树操作。
+- query 和 SceneGraph 不应各自维护一套语义相近但 guard 不一致的遍历。
+
+关注文件：
+
+- `packages/espresso/src/data/treeTraversal.ts`
+- `packages/espresso/src/query/treeWalker.ts`
+- `packages/espresso/src/query/traversalGuards.ts`
+- `packages/espresso/src/data/sceneGraph.ts`
+
+API 原则：
+
+- `espresso` 是数据内核。
+- 不引入 `kit` 或平台层依赖。
+- tree traversal guard 应尽量函数式、可复用。
+- observer disposable、heap/blob lifecycle 属于下一阶段生命周期/API 清理。
+
+## 16. Heap / Blob / Allocator
+
+讨论过 `_readBlockSize` 与 `_allocSizes` 的唯一真值问题。
+
+最终原则：
+
+- 当前 heap/blob 是 JS 临时存储方案。
+- 不要过早引入复杂 free-list。
+- 如果后续 Rust/WASM native engine 接管存储与性能计算，heap/blob manager 可能被替换或下沉。
+- 现阶段优先保持可理解、可测试、可迁移。
+
+关于为什么既有 cache 又写 heap：
+
+- cache 适合作为 JS 侧解码/对象缓存。
+- heap/blob 是跨 worker/main 的共享投影来源。
+- 如果只生成 id 而不写 heap，主线程无法仅通过 SAB/pointer 读取对应内容。
+- 因此当前设计是 pointer column + shared blob + optional cache。
+
+## 17. Rust/WASM 未来方向
+
+Rust 是未来方向之一，但不是当前 P0 必须项。
+
+适合 Rust/WASM 的场景：
+
+- 大规模几何计算。
+- Path boolean / flatten / stroke outline。
+- AABB/OBB 批处理。
+- 文档 snapshot/diff/replay。
+- 压缩存储、二进制文件格式。
+- 协同 CRDT/OT 核心。
+
+边界：
+
+- Rust/WASM 应挂在 worker service/system 后面。
+- 不改变主线程 service/command/API facade。
+- 不让 UI 直接依赖 native engine。
+- 先用 JS 明确架构和测试，再用性能基线决定替换热点。
+
+## 18. Figma Layout / Resize
+
+本轮确认：
+
+- 自由变换和 Frame/layout resize 是两条语义。
+- Figma 的 `relativeTransform` 不长期承担 scaling 语义。
+- resize 应走 width/height/layout constraints，而不是把所有缩放塞进 transform matrix。
+
+后续方向见：
+
+- `docs/figma-layout-resize-plan.zh-CN.md`
+
+## 19. Governance、License 与商业化
+
+本轮增加/调整了：
+
+- issue templates
+- PR template
+- CODE_OF_CONDUCT
+- SECURITY
+- CONTRIBUTING
+- README
+- release gate script
+- CI / e2e / license check 相关设置
+
+商业化许可建议：
+
+- 核心商业护城河包可使用 AGPL 或 GPL + 商业双授权。
+- 协议、类型、SDK、插件 API 尽量使用更宽松协议，例如 MIT/Apache-2.0，以降低生态接入门槛。
+- 不要让插件作者因为依赖 `bean` 或 public API 就被强制 GPL 污染。
+- 如果未来做 cloud/collaboration/proprietary hosting，AGPL 比 GPL 更能覆盖网络服务场景。
+- 最终要由法律专业人士确认，但工程划分应先支持“双授权核心 + 宽松生态边界”。
+
+建议包许可分层：
+
+| 包 | 建议 |
+| --- | --- |
+| `espresso` | AGPL/GPL + commercial dual license |
+| `barista` | AGPL/GPL + commercial dual license |
+| `crema` | 视商业策略，可 AGPL/GPL 或 proprietary-friendly dual |
+| `art` | 可 AGPL/GPL 或 MPL/Apache，取决于是否作为核心护城河 |
+| `bean` | MIT/Apache-2.0 更适合生态 |
+| `syrup` | 可宽松或双授权，取决于是否作为平台内核商业资产 |
+| `milk` | 通常可宽松，便于 UI 生态 |
+| `api` | 推荐宽松 |
+
+## 20. E2E、COOP/COEP 与测试治理
+
+SharedArrayBuffer 需要 cross-origin isolation：
+
+- COOP
+- COEP
+
+`apps/cafe` dev/preview/deploy 都需要保证 headers。
+
+关于 e2e：
+
+- 当前更推荐根目录统一 e2e。
+- 不需要每个 package 都单独 `turbo run e2e`。
+- package 单测/type-check/build 仍可按 package 运行。
+
+release gate 应覆盖：
 
 ```sh
 pnpm type-check
 pnpm test
 pnpm --filter @latte-js/cafe build
-pnpm --filter @latte-js/espresso build
-pnpm --filter @latte-js/barista build
-pnpm --filter @latte-js/espresso test
-pnpm --filter @latte-js/barista test
+pnpm e2e
 pnpm licenses:check
 git diff --check
 ```
 
-`pnpm e2e` 已尝试运行，但当前本机缺少 Playwright Chromium 可执行文件：
-`/Users/wt/Library/Caches/ms-playwright/chromium_headless_shell-1200/.../chrome-headless-shell`。
-需要先执行 `pnpm exec playwright install chromium`，或在 CI 中执行
-`pnpm exec playwright install --with-deps chromium` 后再作为发布门禁。
+## 21. 当前已验证命令
 
-说明：2026-06-04 已针对 `@latte-js/espresso` 超时风险做收敛：
-测试环境默认容量降为 20k 节点，生产默认仍为 1M 节点；`SceneGraph`
-构造阶段不再逐槽初始化全部矩阵，而是在根节点和新分配节点上初始化
-identity matrix。最新 `pnpm --filter @latte-js/espresso test` 通过
-14 个文件 / 141 个测试，serializer 与 nodeTypeConversion 不再触发
-默认 5 秒单测超时。
+本轮末尾已通过：
 
-## 已知后续事项
+```sh
+pnpm --filter @latte-js/espresso test
+pnpm --filter @latte-js/barista test
+pnpm --filter @latte-js/crema test
+pnpm --filter @latte-js/bean type-check
+pnpm --filter @latte-js/espresso type-check
+pnpm --filter @latte-js/barista type-check
+pnpm --filter @latte-js/crema type-check
+pnpm --filter @latte-js/syrup type-check
+pnpm --filter @latte-js/counter type-check
+pnpm --filter @latte-js/art type-check
+pnpm --filter @latte-js/cafe build
+git diff --check
+```
 
-1. 将节点 create/delete/reparent 迁移到领域服务，并经由 `NodeCursor` 或等效结构写屏障写入。
-2. 增加序列化节点快照，使 `removeSelf` 可安全 undo/redo。
-3. 在父节点历史回放时保留同级顺序。
-4. 接入 undo/redo 的命令与键绑定入口。
-5. 增加一次实际 transform 后再 undo/redo 的 UI 层 smoke。
-6. 审计直接 typed-array 写入，并将其归类为用户编辑写入或派生流水线写入。
+曾经的 review 阻断：
 
-## 评审清单
+- `@latte-js/espresso` serializer / nodeTypeConversion 超时。
 
-- 主线程不使用原始 mutation RPC。
-- 主线程不使用通用 transaction RPC。
-- 公开 API 保持类型化服务 API。
-- mutation policy 在 service/system 注册时声明，并由 worker dispatcher 执行。
-- worker RPC 顺序处理，避免 active session 交错。
-- 代表用户编辑的 worker 写入流经 `NodeCursor`。
-- 流水线写入不会污染历史。
-- 事务提交仅在存在记录时创建 undo 条目。
-- undo/redo 回放不创建新的历史条目。
-- `TransformService` 在内部拥有 transform 交互 session 边界。
-- transaction abort 使用记录的逆向 mutation + transform 快照进行即时回滚。
-- 现有 cafe 样例在启用 SharedArrayBuffer 时仍可渲染。
+已处理方向：
+
+- 测试环境节点容量降低。
+- 初始化路径收敛。
+- 最新 espresso test 已稳定通过。
+
+仍需后续确认：
+
+- release gate 全量 CI 状态。
+- e2e 是否在安装 Playwright Chromium 后稳定。
+- 删除历史回放的节点快照能力。
+
+## 22. 当前仍需重点 review 的文件
+
+### Espresso
+
+- `packages/espresso/src/data/config.ts`
+- `packages/espresso/src/data/sceneGraph.ts`
+- `packages/espresso/src/data/nodeCursor.ts`
+- `packages/espresso/src/data/mutationTracker.ts`
+- `packages/espresso/src/data/treeTraversal.ts`
+- `packages/espresso/src/query/treeWalker.ts`
+- `packages/espresso/src/data/blobManager.ts`
+- `packages/espresso/src/data/heapManager.ts`
+
+Review 重点：
+
+- dirty flags 是否仍有重叠或遗漏。
+- SceneGraph API 是否过宽。
+- NodeCursor 是否成为用户编辑写入口。
+- 派生写入是否没有污染 history。
+- traversal guard 是否一致。
+- heap/blob lifecycle 是否足够安全。
+
+### Barista
+
+- `packages/barista/src/transactions/mutationPolicy.ts`
+- `packages/barista/src/transactions/transactionManager.ts`
+- `packages/barista/src/history/historyManager.ts`
+- `packages/barista/src/history/mutationRecordApplier.ts`
+- `packages/barista/src/systems/systems.ts`
+- `packages/barista/src/pipeline/dirtyBatch.ts`
+- `packages/barista/src/pipeline/pipelineRunner.ts`
+- `packages/barista/src/pipeline/notificationPlanner.ts`
+- `packages/barista/src/systems/matrix.ts`
+- `packages/barista/src/systems/aabb.ts`
+- `packages/barista/src/systems/transform.ts`
+- `packages/barista/src/services/undoRedo.ts`
+
+Review 重点：
+
+- transaction/history 是否边界清晰。
+- MutationGate 是否拥有所有写事务。
+- schedule metadata 是否表达清楚，不把 system 绑定死为 pipeline-only。
+- 当前 runner 是否足够处理 Matrix -> AABB。
+- 后续 worklist/fixpoint 是否需要进入 P1。
+- undo/redo replay 是否都走同一写入口。
+
+### Crema
+
+- `packages/crema/src/editorRuntime.ts`
+- `packages/crema/src/interactions/runtimeInteractionController.ts`
+- `packages/crema/src/projection/projectionSyncController.ts`
+
+Review 重点：
+
+- runtime 是否只负责 assembly。
+- projection dirty payload 处理是否合理。
+- 高频 transform coalescing 是否清楚。
+- main thread 是否没有直接管理 transaction。
+
+### Syrup / Counter
+
+- `packages/syrup/src/core/editor.ts`
+- `packages/syrup/src/services/command/commandService.ts`
+- `packages/syrup/src/services/keybinding/keybindingService.ts`
+- `packages/counter`
+
+Review 重点：
+
+- `syrup` 是否保持 platform 层。
+- `counter` 是否承载 workbench/contrib。
+- 内部 getService 与未来 public API facade 是否区分。
+- 全局 proxy 是否仍有残留风险。
+
+### Art / Cafe
+
+- `packages/art/src/core/render.ts`
+- `apps/cafe/src/app.tsx`
+- `apps/cafe/src/main.tsx`
+- `apps/cafe/vite.config.*`
+
+Review 重点：
+
+- renderer 是否只读 projection。
+- fitToContent 是否可靠。
+- canvas smoke 是否可见。
+- COOP/COEP 是否生效。
+
+## 23. Roadmap 摘要
+
+### P0
+
+- 收敛 worker authority + readonly projection。
+- 移除主线程 loader 写 graph 长期路径。
+- 淘汰全局 proxy。
+- pipeline DirtyBatch/Schedule/NotificationPlanner 基础稳定。
+- espresso dirty flags 和 traversal guard 稳定。
+- cafe 可运行、可见、可构建。
+
+### P1
+
+- Workbench/counter 明确贡献机制。
+- SelectionService / ToolService / commands 通过 DI 注册。
+- StyleService 补齐，样式变更不绕过 mutation/history。
+- Layout/Text/Effect system 进入 schedule。
+- PipelineRunner 增加 worklist/fixpoint/back-edge 检测。
+- worker-side SelectionContext 视性能需求加入。
+- public API facade 草案。
+
+### P2
+
+- Extension host / sandbox。
+- Manifest schema 和贡献点。
+- 文件 schema migration。
+- 协同、权限、command 权限。
+- 性能基线和 Rust/WASM 热点替换。
+- 完整 release gate。
+- 决定 `counter` 是否重命名为 `workbench`。
+
+## 24. Review 清单
+
+架构边界：
+
+- 主线程不直接写 document model。
+- worker 是唯一权威写入端。
+- renderer/art 只读 projection。
+- `espresso` 不依赖平台层。
+- `barista` 不依赖 DOM/React。
+- `crema` 只做 runtime assembly。
+- `syrup` 只做 main-thread platform。
+- `counter` 只做 workbench/contrib。
+
+调用链：
+
+- command 是用户意图入口。
+- 高频交互不每帧走 command。
+- service 是领域能力边界。
+- worker RPC 最终进入 MutationGate。
+- NodeCursor 是用户编辑写屏障。
+
+事务与历史：
+
+- 主线程不暴露通用 transaction API。
+- TransactionManager 不保存 undo/redo stack。
+- HistoryManager 不管理 active transaction。
+- UndoRedoService 是外部入口。
+- undo/redo replay 不创建新的历史条目。
+- 删除历史在节点快照前不应进入可回放 history。
+
+Pipeline：
+
+- dirty flag 表达 invalidation target。
+- MutationTracker 只收集 dirty 和少量派生冒泡。
+- PipelineRunner 通过 schedule 决定系统触发。
+- Matrix -> AABB 前向派生链路可用。
+- NotificationPlanner 在重算后通知主线程。
+- scene.onDirty payload 区分 renderIds/allIds/nodes flags。
+
+测试与治理：
+
+- espresso/barista/crema 单测通过。
+- type-check 通过。
+- cafe build 通过。
+- `git diff --check` 通过。
+- COOP/COEP 配置可用。
+- license 策略支持未来商业化。
+
+## 25. 当前最重要的未完成问题
+
+1. 删除节点的完整 history 快照和 replay。
+2. reparent/sibling order 的完整可逆历史。
+3. StyleService 和 LayoutService 的正式接入。
+4. PipelineRunner 的 worklist/fixpoint/back-edge 检测。
+5. SelectionContext 是否进入 worker 的触发标准。
+6. Public extension API facade。
+7. 多文档、多 editor、多窗口下 service/projection isolation。
+8. Rust/WASM 是否进入性能热点路径，需要性能基线证明。
+9. 全量 CI / e2e / release gate 稳定性。
+10. `counter` 是否在语义上重命名为 `workbench`。
+
+## 26. 一句话结论
+
+本轮架构从“主线程能做很多事 + worker 是计算补充”的形态，进一步收敛为：
+
+```text
+主线程表达意图和读取投影；
+worker 拥有写入、事务、历史和派生重算；
+service 统一领域能力；
+command 只承载用户意图入口；
+pipeline 负责失效重算；
+renderer 只读 SAB。
+```
+
+这是更接近“Figma 编辑能力 + VSCode 工程架构”的路线。
