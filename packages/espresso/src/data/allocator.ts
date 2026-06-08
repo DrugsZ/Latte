@@ -4,43 +4,51 @@ export class Allocator {
   private _freeList: number[] = []
 
   private _cursor = 1
-  public readonly generations:Uint8Array
+  public readonly generations: Uint8Array
 
   constructor(existingBuffer?: SharedArrayBuffer) {
     if (existingBuffer) {
-      this.generations = new Uint8Array(existingBuffer);
+      this.generations = new Uint8Array(existingBuffer)
     } else {
-      const buffer = new SharedArrayBuffer(MAX_NODES);
-      this.generations = new Uint8Array(buffer);
+      const buffer = new SharedArrayBuffer(MAX_NODES)
+      this.generations = new Uint8Array(buffer)
     }
   }
 
   public alloc(): { index: number; generation: number } {
-    let index: number;
+    let index: number
 
     if (this._freeList.length > 0) {
-      index = this._freeList.pop()!;
+      index = this._freeList.pop()!
     } else {
-      if (this._cursor >= MAX_NODES) throw new Error("OOM");
-      index = this._cursor++;
+      if (this._cursor >= MAX_NODES) throw new Error('OOM')
+      index = this._cursor++
     }
 
-    return { index, generation: this.generations[index] };
+    return { index, generation: this.generations[index] }
   }
 
   public free(index: number) {
-    this._freeList.push(index);
+    this._freeList.push(index)
 
-    const nextGen = (this.generations[index] + 1) & 0xFF;
-    Atomics.store(this.generations, index, nextGen);
+    const nextGen = (this.generations[index] + 1) & 0xff
+    Atomics.store(this.generations, index, nextGen)
   }
-  
+
   public isValid(index: number, expectedGen: number): boolean {
-    const currentGen = Atomics.load(this.generations, index);
-    return currentGen === expectedGen;
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index >= this.generations.length
+    ) {
+      return false
+    }
+
+    const currentGen = Atomics.load(this.generations, index)
+    return currentGen === expectedGen
   }
 
   public get buffer() {
-    return this.generations.buffer as SharedArrayBuffer;
+    return this.generations.buffer as SharedArrayBuffer
   }
 }

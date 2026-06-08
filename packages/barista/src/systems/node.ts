@@ -46,8 +46,8 @@ export class NodeSystem extends SystemBase {
 
   async remove(id: IDType): Promise<void> {
     const index = this._sceneGraph.getIndex(id)
-    this._onDelete.fire([[id, index]])
-    this._sceneGraph.deleteNode(index)
+    const deleted = this._sceneGraph.deleteNode(index)
+    this._onDelete.fire(deleted)
   }
 
   async removeChild(child: IDType): Promise<void> {

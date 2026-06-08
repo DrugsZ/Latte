@@ -86,10 +86,10 @@ export class RuntimeInteractionController {
     }
   }
 
-  public moveBy(ids: IDType[], delta: vec2) {
+  public moveBy(ids: IDType[], totalDelta: vec2) {
     this._scheduleTransformUpdate({
-      notify: () => this._transformService.moveBy$(ids, delta),
-      request: () => this._transformService.moveBy(ids, delta),
+      notify: () => this._transformService.moveBy$(ids, totalDelta),
+      request: () => this._transformService.moveBy(ids, totalDelta),
     })
   }
 

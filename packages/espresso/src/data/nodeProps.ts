@@ -32,7 +32,7 @@ export const writeNodeName = (
   index: number,
   name: string
 ) => {
-  const ptr = graph.blobs.write(name)
+  const ptr = graph.blobs.replace(graph.namePtr[index], name)
   graph.namePtr[index] = ptr
   return ptr
 }
@@ -46,7 +46,7 @@ export const writeNodeFills = (
   index: number,
   fills: IPaint[]
 ) => {
-  const ptr = graph.blobs.write(fills)
+  const ptr = graph.blobs.replace(graph.fillPtr[index], fills)
   graph.fillPtr[index] = ptr
   return ptr
 }
@@ -60,7 +60,7 @@ export const writeNodeStrokes = (
   index: number,
   strokes: IPaint[]
 ) => {
-  const ptr = graph.blobs.write(strokes)
+  const ptr = graph.blobs.replace(graph.strokePtr[index], strokes)
   graph.strokePtr[index] = ptr
   return ptr
 }
@@ -77,7 +77,7 @@ export const writeNodeGeometry = <T extends object>(
   index: number,
   geometry: T
 ) => {
-  const ptr = graph.blobs.write(geometry)
+  const ptr = graph.blobs.replace(graph.geometryPtr[index], geometry)
   graph.geometryPtr[index] = ptr
   return ptr
 }

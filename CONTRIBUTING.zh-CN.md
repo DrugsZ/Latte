@@ -1,140 +1,170 @@
 # Latte 贡献指南
 
-首先，感谢您愿意为 Latte 贡献代码！🎉
+感谢你帮助改进 Latte。项目目前仍处于 1.0 之前，所以架构一致性和功能完成度同样重要。
 
-Latte 是一个架构独特的复杂图形引擎。为了保持高性能和可扩展性，我们遵循严格的 **面向数据设计 (DOD)** 原则。
+## 项目结构
 
-在编写代码之前，请务必仔细阅读本指南。违反架构规则的代码将无法合并。
+Latte 是 pnpm/Turborepo monorepo。关键包如下：
 
----
+| 包                   | 职责                                                                      |
+| -------------------- | ------------------------------------------------------------------------- |
+| `@latte-js/bean`     | 共享类型、文件 schema 类型与 RPC contracts。                              |
+| `@latte-js/espresso` | 共享内存数据内核、SceneGraph、SoA 布局与 NodeCursor。                     |
+| `@latte-js/barista`  | Worker 侧 services、systems、mutation policy、事务与历史。                |
+| `@latte-js/crema`    | Runtime 组装、worker client、projection sync 与 interaction controllers。 |
+| `@latte-js/art`      | 只读 renderer、camera 与 hit testing。                                    |
+| `@latte-js/syrup`    | 主线程平台服务：DI、commands、menus、keybindings 与 input。               |
+| `@latte-js/counter`  | 内置 workbench contributions、tools 与 selection state。                  |
+| `@latte-js/milk`     | React UI 组件与面板。                                                     |
+| `@latte-js/kit`      | 共享运行时工具。                                                          |
 
-## 目录
-
-1. [环境搭建](#-环境搭建)
-2. [架构宪法](#-架构宪法)
-3. [开发工作流](#-开发工作流)
-4. [测试策略](#-测试策略)
-5. [反馈问题](#-反馈问题)
-6. [Pull Request 规范](#-pull-request-规范)
-7. [项目结构](#-项目结构)
-
----
-
-## 🏗 环境搭建
-
-我们使用 **pnpm** 工作区和 **Turborepo**。
+## 环境搭建
 
 ```bash
-# 1. 安装依赖
 pnpm install
-
-# 2. 构建所有包
 pnpm build
-
-# 3. 启动编辑器 (开发模式)
 pnpm dev
 ```
 
----
+打开 `http://localhost:5173` 查看示例应用。
 
-## 📐 架构宪法
+## 架构规则
 
-Latte **不是** 一个普通的 React 应用。为了性能，请务必遵守以下规则：
+### 1. 依赖方向
 
-### 1. 依赖法则 (The Law of Dependency)
+保持包依赖有意且无环。底层包不能导入产品/UI 包。
 
-依赖关系必须**单向向下**流动。严禁循环依赖。
-
-- ✅ `milk` -> `counter` -> `syrup` -> `barista` -> `espresso` -> `bean`
-- ❌ `espresso` 不能引用 `milk`.
-- ❌ `bean` 不能引用任何包.
-
-### 2. 数据法则 (`@latte-js/espresso`)
-
-- **禁止对象**: 严禁在内核中使用 JS 对象存储状态 (如 `{x: 10}`）。必须使用 `TypedArray` 索引。
-- **禁止类存入 Buffer**: `SharedArrayBuffer` 只能存纯数字。
-- **使用游标**: 业务逻辑必须通过 `NodeCursor` 读写数据。直接操作 Buffer 仅限于底层的 `Ops` 函数。
-
-### 3. 渲染法则 (`@latte-js/art`)
-
-- **只读**: 渲染器 **严禁** 修改业务数据。
-- **无 React**: 严禁在渲染循环逻辑中使用 React 组件。
-- **性能**: 必须使用 WorldMatrix 进行扁平化渲染。必须使用 AABB 进行视口剔除。
-
-### 4. 变更法则 (The Law of Mutation)
-
-- **单一真理来源**: 所有的写操作必须经过 `NodeCursor`，以触发：
-  1.  脏标记 (Dirty Flags - 给渲染器)
-  2.  观察者 (Observers - 给历史记录/协同)
-- **事务**: 复杂操作必须包裹在 `history.startTransaction` 中。
-
----
-
-## 🛠 开发工作流
-
-### 示例：添加一个新功能 ("圆形工具")
-
-1.  **定义类型 (`bean`)**: 在 `NodeType` 枚举中添加 `ELLIPSE`。
-2.  **更新内核 (`espresso`)**: 确保 `Allocator` 和 `Serializer` 能正确处理该类型。
-3.  **实现渲染 (`art`)**: 在 `RendererRegistry` 中注册圆形的绘制逻辑 (`ctx.ellipse`)。
-4.  **实现逻辑 (`counter`)**:
-    - 创建 `CircleTool` 继承自 `BaseTool`。
-    - 注册命令: `latte.tool.circle`.
-    - 处理拖拽事件，并通过 RPC 通知引擎更新数据。
-5.  **更新 UI (`milk`)**: 在工具栏组件中添加圆形图标，绑定命令。
-
----
-
-## 🧪 测试策略
-
-- **单元测试 (`vitest`)**:
-  - **必须**: 对 `espresso` (内存完整性) 和 `barista` (数学逻辑) 进行覆盖。
-  - 运行: `pnpm test`
-- **E2E 测试 (`playwright`)**:
-  - **必须**: 对 `art` 进行视觉回归测试 (Visual Regression)。
-  - 运行: `pnpm e2e`
-
----
-
-## 🐛 反馈问题
-
-### 报告 Bug
-
-1.  **搜索**: 请先搜索 Issue 列表，确认该问题是否已被汇报。
-2.  **清晰**: 提供清晰且描述性的标题。
-3.  **细节**: 包含尽可能多的信息（Latte 版本、操作系统、复现步骤）。
-
-### 功能建议
-
-1.  **搜索**: 确认该建议是否已被提出。
-2.  **解释**: 说明该功能的价值以及预期的工作方式。
-
----
-
-## 🔀 Pull Request 规范
-
-1.  **Fork** 仓库到您的账号。
-2.  **创建分支** 用于您的功能或修复。
-3.  **提交代码**: 遵循 **Conventional Commits** 规范 (例如: `feat: add circle tool`, `fix: memory leak`)。
-4.  **编写测试**: 确保您的更改通过了测试。
-5.  **Rebase**: 提交前请基于最新的 `main` 分支进行 Rebase。
-6.  **签署工作**: 所有贡献都需要签署。这证明您编写了补丁或有权将其贡献给项目。
-
----
-
-## 📦 项目结构速查
+期望流向：
 
 ```text
-packages/
-├── bean/         # 字典 (Types)
-├── espresso/     # 数据库 (Data Kernel)
-├── barista/      # 引擎/工人 (The Worker)
-├── art/          # 画家 (Renderer)
-├── syrup/        # 操作系统 (Infra)
-├── counter/      # 应用程序 (Business Logic)
-└── milk/         # 皮肤 (React UI)
+apps/cafe
+  -> crema / counter / milk / art
+  -> syrup / barista
+  -> espresso
+  -> bean
 ```
 
-**需要帮助？** 如果您遇到困难，请创建 Draft PR 或在 [Discussions](https://github.com/DrugsZ/Latte/discussions) 页面提问。
+### 2. Worker 权威写入
 
-感谢您的贡献！
+Document model 写入最终必须进入 worker 侧路径：
+
+```text
+main-thread service facade
+  -> RPC
+  -> worker service
+  -> MutationGate
+  -> System / Manager
+  -> NodeCursor
+  -> SharedArrayBuffer / SoA
+```
+
+Renderer、React 组件和主线程 workbench 代码只读 projection 与 session state，不能直接修改 document data。
+
+### 3. NodeCursor 是 mutation gateway
+
+业务 mutation 应通过 `NodeCursor`，这样 mutation records、dirty flags、observers 和 history 才能保持一致。直接 typed-array 访问仅限 Espresso 底层 ops 和经过审查的内部代码。
+
+### 4. Mutation policy 与事务
+
+不要让主线程调用方手动打开事务。Worker services/systems 需要声明 mutation policy，由 `MutationGate` 自动处理事务边界。
+
+常见策略包括：
+
+- `readonly`
+- `writeNoHistory`
+- `atomic`
+- `sessionBegin`
+- `sessionMutation`
+- `sessionCommit`
+- `sessionCancel`
+- `manual`
+
+如果某个 service method 会写 document data，它必须有明确 policy 和测试。
+
+### 5. Transaction 与 History 分离
+
+- `TransactionManager` 记录单次编辑的生命周期。
+- `HistoryManager` 拥有 undo/redo 栈与 inverse replay。
+- `UndoRedoService` 提供面向用户的 undo/redo 入口。
+
+Undo/redo replay 应复用同一 mutation application 路径，不应直接写 raw SAB 字段。
+
+### 6. Transform 与 Layout 分离
+
+自由变换属于 transform systems。Frame resize、constraints、auto layout 与 group auto-bounds 属于 layout systems/services。
+
+详见 [docs/figma-layout-resize-plan.zh-CN.md](./docs/figma-layout-resize-plan.zh-CN.md)。
+
+### 7. 运行时校验只放在边界
+
+Runtime schema validation 适合文件导入、插件 manifest、external commands、RPC payloads 和配置。不应把重校验放进 NodeCursor、SoA hot path、matrix/AABB tick 或 renderer loop。
+
+## 开发流程
+
+添加功能时：
+
+1. 如果功能跨包或跨 RPC 边界，先在 `@latte-js/bean` 定义共享类型。
+2. 如果数据属于 document model，再在 `@latte-js/espresso` 增加存储支持。
+3. 权威写入或重计算放在 `@latte-js/barista` 的 worker service/system。
+4. 主线程需要调用 worker-backed service 时，在 `@latte-js/crema` 做 runtime wiring。
+5. 内置工具/命令行为放在 `@latte-js/counter`。
+6. 渲染和 hit-test 行为放在 `@latte-js/art`。
+7. UI 放在 `@latte-js/milk`。
+8. 同一 PR 更新对应文档和测试。
+
+## 测试
+
+开发时优先跑相关包检查：
+
+```bash
+pnpm --filter @latte-js/espresso test
+pnpm --filter @latte-js/barista test
+pnpm --filter @latte-js/crema test
+pnpm --filter @latte-js/cafe build
+```
+
+提交 PR 前，根据改动范围运行发布门禁：
+
+```bash
+pnpm release:check
+```
+
+几何改动应测试 rendered/world-space 结果，而不只检查 local matrix 字段。
+
+## 文档
+
+修改架构、公共 API、包边界、许可证策略或贡献流程时，需要同步更新文档。
+
+重要文档：
+
+- [README.zh-CN.md](./README.zh-CN.md)
+- [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md)
+- [docs/architecture-blueprint.zh-CN.md](./docs/architecture-blueprint.zh-CN.md)
+- [docs/governance-and-licensing.zh-CN.md](./docs/governance-and-licensing.zh-CN.md)
+
+## Pull Request
+
+- PR 应聚焦、可 review。
+- 尽量使用 Conventional Commits，例如 `feat: add transform target tests`。
+- 行为变更需要测试。
+- 架构边界变化需要在 PR 描述中说明。
+- 不要格式化无关文件。
+- 不要提交生成报告、本地缓存或构建产物，除非它们本来就是有意跟踪的文件。
+
+## 许可证与商业化
+
+Latte 使用包级许可证。核心/产品包为 `AGPL-3.0-or-later`，可提供商业授权；协议/SDK/UI 基础设施包当前为 `MIT`。
+
+外部贡献在进入商业双授权版本前，可能需要 CLA 或等效贡献者授权。这里不是法律意见；正式 1.0 前维护者应让专业律师确认最终策略。
+
+## 反馈问题
+
+报告 bug 时请包含：
+
+- 操作系统和浏览器。
+- Node/pnpm 版本。
+- 复现步骤。
+- 预期行为和实际行为。
+- 可用时附上 console/page errors。
+
+提出功能建议时，请说明用户工作流、为什么重要，以及它影响 Figma 类编辑语义、VSCode 类平台 API，还是两者都影响。

@@ -1,53 +1,59 @@
 import {
   type SceneGraph,
-  DIRTY_AABB,
+  DIRTY_WORLD_BOUNDS,
   DIRTY_SUBTREE_MATRIX,
-  DIRTY_TRANSFORM,
+  MATRIX_AFFECTING_FLAGS,
   MAX_NODES,
   NodeCursor,
   TransformOps,
 } from '@latte-js/espresso'
 import { mat2d } from 'gl-matrix'
 
-import { system, SystemBase, Systems } from './systems'
+import type { DirtyBatch } from '../pipeline/dirtyBatch'
+import { ScheduleStage, system, SystemBase, Systems } from './systems'
+
+const MATRIX_SCHEDULE_READS = MATRIX_AFFECTING_FLAGS | DIRTY_SUBTREE_MATRIX
 
 /**
  * MatrixSystem - Computes world transform matrices using DIRTY_SUBTREE_MATRIX pruning.
  *
  * Traverses top-down, skipping subtrees without transform changes.
- * Marks updated nodes with DIRTY_AABB for AABBSystem to process.
+ * Marks updated nodes with DIRTY_WORLD_BOUNDS for AABBSystem to process.
  */
-@system
+@system({
+  schedule: {
+    stage: ScheduleStage.Matrix,
+    reads: MATRIX_SCHEDULE_READS,
+    writes: DIRTY_WORLD_BOUNDS,
+  },
+})
 export class MatrixSystem extends SystemBase {
   public static readonly name = Systems.Matrix
   private _cursor: NodeCursor
   private _tempMatrix: mat2d = mat2d.create()
+  private _parentMatrix: mat2d = mat2d.create()
+  private _localMatrix: mat2d = mat2d.create()
 
   constructor(sceneGraph: SceneGraph) {
     super(sceneGraph)
     this._cursor = new NodeCursor(this._sceneGraph, -1)
   }
 
-  public process(dirtyMap: Map<number, number>) {
-    if (dirtyMap.size === 0) return
+  public process(batch: DirtyBatch) {
+    if (!batch.hasChanges) return
 
     const processed = new Set<number>()
 
-    for (const nodeIndex of dirtyMap.keys()) {
+    for (const nodeIndex of batch.keysByMask(MATRIX_SCHEDULE_READS)) {
       if (!processed.has(nodeIndex)) {
-        this._processNodeWithAncestors(
-          nodeIndex,
-          dirtyMap,
-          processed,
-          new Set()
-        )
+        this._processNodeWithAncestors(nodeIndex, batch, processed, new Set())
       }
     }
   }
 
   private _processNodeWithAncestors(
     index: number,
-    dirtyMap: Map<number, number>,
+    batch: DirtyBatch,
     processed: Set<number>,
     path: Set<number>
   ) {
@@ -62,21 +68,21 @@ export class MatrixSystem extends SystemBase {
 
     if (
       parent !== null &&
-      dirtyMap.has(parent.index) &&
+      batch.has(parent.index) &&
       !processed.has(parent.index)
     ) {
-      this._processNodeWithAncestors(parent.index, dirtyMap, processed, path)
+      this._processNodeWithAncestors(parent.index, batch, processed, path)
     }
 
     path.delete(index)
     const parentDirty = parent !== null && processed.has(parent.index)
-    this._processSubtree(index, parentDirty, dirtyMap, processed, new Set())
+    this._processSubtree(index, parentDirty, batch, processed, new Set())
   }
 
   private _processSubtree(
     index: number,
     parentDirty: boolean,
-    dirtyMap: Map<number, number>,
+    batch: DirtyBatch,
     processed: Set<number>,
     path: Set<number>
   ) {
@@ -84,11 +90,11 @@ export class MatrixSystem extends SystemBase {
       throw new Error(`Tree cycle detected at node ${index}`)
     }
 
-    const flags = dirtyMap.get(index) || 0
-    const hasDirtyTransform = (flags & DIRTY_TRANSFORM) !== 0
+    const flags = batch.getFlags(index)
+    const hasMatrixInputChange = (flags & MATRIX_AFFECTING_FLAGS) !== 0
     const hasDirtySubtree = (flags & DIRTY_SUBTREE_MATRIX) !== 0
 
-    if (!parentDirty && !hasDirtyTransform && !hasDirtySubtree) {
+    if (!parentDirty && !hasMatrixInputChange && !hasDirtySubtree) {
       return
     }
 
@@ -96,17 +102,16 @@ export class MatrixSystem extends SystemBase {
     this._cursor.to(index)
     processed.add(index)
 
-    const mustUpdate = hasDirtyTransform || parentDirty
+    const mustUpdate = hasMatrixInputChange || parentDirty
 
     if (mustUpdate) {
       this._updateWorldTransform()
-      const currentFlags = dirtyMap.get(index) || 0
-      dirtyMap.set(index, currentFlags | DIRTY_AABB)
+      batch.markDerived(index, DIRTY_WORLD_BOUNDS)
     }
 
     if (hasDirtySubtree || mustUpdate) {
       for (const child of this._cursor.children(false)) {
-        this._processSubtree(child.index, mustUpdate, dirtyMap, processed, path)
+        this._processSubtree(child.index, mustUpdate, batch, processed, path)
       }
     }
 
@@ -125,29 +130,9 @@ export class MatrixSystem extends SystemBase {
       return
     }
 
-    const p = parent.worldTransform
-    const c = this._cursor.transform
-
-    const a = p[0] * c[0] + p[2] * c[1]
-    const b = p[1] * c[0] + p[3] * c[1]
-    const cVal = p[0] * c[2] + p[2] * c[3]
-    const d = p[1] * c[2] + p[3] * c[3]
-
-    const originX = parent.width / 2
-    const originY = parent.height / 2
-    const parentCenterX = p[4] + originX
-    const parentCenterY = p[5] + originY
-    const xWithOrigin = c[4] - originX
-    const yWithOrigin = c[5] - originY
-    const offsetX = p[0] * xWithOrigin + p[2] * yWithOrigin
-    const offsetY = p[1] * xWithOrigin + p[3] * yWithOrigin
-
-    this._tempMatrix[0] = a
-    this._tempMatrix[1] = b
-    this._tempMatrix[2] = cVal
-    this._tempMatrix[3] = d
-    this._tempMatrix[4] = parentCenterX + offsetX
-    this._tempMatrix[5] = parentCenterY + offsetY
+    mat2d.copy(this._parentMatrix, parent.worldTransform)
+    mat2d.copy(this._localMatrix, this._cursor.transform)
+    mat2d.multiply(this._tempMatrix, this._parentMatrix, this._localMatrix)
 
     TransformOps.setWorldMatrix(
       this._sceneGraph,

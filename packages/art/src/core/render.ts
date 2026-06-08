@@ -289,19 +289,8 @@ export class Renderer {
       const tx = wt[4]
       const ty = wt[5]
 
-      const cx = width / 2
-      const cy = height / 2
+      mat2d.set(this._tempMatrix, a, b, c, d, tx, ty)
 
-      // Calculate translation adjusted for center-pivot rotation
-      // Standard WT is T(tx, ty) * R_topleft.
-      // Center-pivot WT is T(tx, ty) * T(cx, cy) * R * T(-cx, -cy)
-      // = T(tx + cx - (a*cx + c*cy), ty + cy - (b*cx + d*cy)) * R
-      const ntx = tx + cx - (a * cx + c * cy)
-      const nty = ty + cy - (b * cx + d * cy)
-
-      mat2d.set(this._tempMatrix, a, b, c, d, ntx, nty)
-
-      // Calculate world-space AABB for R-Tree based on the new pivot-adjusted transform
       let minX = Infinity
       let minY = Infinity
       let maxX = -Infinity
@@ -313,8 +302,8 @@ export class Renderer {
         [0, height],
       ]
       for (const [lx, ly] of corners) {
-        const wx = a * lx + c * ly + ntx
-        const wy = b * lx + d * ly + nty
+        const wx = a * lx + c * ly + tx
+        const wy = b * lx + d * ly + ty
         minX = Math.min(minX, wx)
         minY = Math.min(minY, wy)
         maxX = Math.max(maxX, wx)
@@ -332,9 +321,6 @@ export class Renderer {
       // Combine with camera matrix for rendering
       mat2d.multiply(this._tempMatrix, matrix, this._tempMatrix)
 
-      if (node.id === '19:4') {
-        console.log(node.x, node.y)
-      }
       this._backend.setTransform(new Float32Array(this._tempMatrix))
 
       const renderer = getRenderer(node.type)

@@ -1,14 +1,16 @@
 import {
-  DIRTY_AABB,
-  DIRTY_NOT_EFFECT,
-  DIRTY_STRUCTURE,
-  DIRTY_TRANSFORM,
-  MAX_NODES,
+  DIRTY_GEOMETRY,
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_METADATA,
+  DIRTY_PAINT,
+  DIRTY_TREE,
+  DIRTY_WORLD_BOUNDS,
   NULL_INDEX,
 } from './config'
 import { readNodeName, writeNodeName } from './nodeProps'
 import { HierarchyOps, StyleOps, TransformOps } from './ops'
 import { PropId } from './propKeys'
+import { iterateChildIndices } from './treeTraversal'
 
 import type {
   DashCapKey,
@@ -65,7 +67,7 @@ export class NodeCursor {
   }
 
   private _checkAlive() {
-    if (!this._graph.allocator.isValid(this._index, this._generation)) {
+    if (!this._graph.isNodeIndexAlive(this._index, this._generation)) {
       throw new Error(`[NodeCursor] Accessing dead node: ${this._index}`)
     }
   }
@@ -145,37 +147,23 @@ export class NodeCursor {
   }
   set name(v: string) {
     this._checkAlive()
-    this._mutate(PropId.NAME, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.NAME, DIRTY_METADATA, () => {
       writeNodeName(this._graph, this._index, v)
     })
   }
   public *children(flyweight = true) {
     this._checkAlive()
 
-    let curr = this._graph.firstChild[this._index]
-    let safeguard = 0
-    const visited = new Set<number>()
-
     if (flyweight) {
       const scratch = new NodeCursor(this._graph, this._index)
-      while (curr !== NULL_INDEX) {
-        if (visited.has(curr) || safeguard++ > MAX_NODES) {
-          throw new Error('Tree cycle detected')
-        }
-        visited.add(curr)
-        yield scratch.to(curr)
-        curr = this._graph.nextSibling[curr]
+      for (const child of iterateChildIndices(this._graph, this._index)) {
+        yield scratch.to(child)
       }
       return
     }
 
-    while (curr !== NULL_INDEX) {
-      if (visited.has(curr) || safeguard++ > MAX_NODES) {
-        throw new Error('Tree cycle detected')
-      }
-      visited.add(curr)
-      yield new NodeCursor(this._graph, curr)
-      curr = this._graph.nextSibling[curr]
+    for (const child of iterateChildIndices(this._graph, this._index)) {
+      yield new NodeCursor(this._graph, child)
     }
   }
 
@@ -187,7 +175,7 @@ export class NodeCursor {
   }
   set x(v: number) {
     this._checkAlive()
-    this._mutate(PropId.X, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.X, DIRTY_LOCAL_MATRIX, () => {
       TransformOps.setX(this._graph, this._index, v)
     })
   }
@@ -198,7 +186,7 @@ export class NodeCursor {
   }
   set y(v: number) {
     this._checkAlive()
-    this._mutate(PropId.Y, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.Y, DIRTY_LOCAL_MATRIX, () => {
       TransformOps.setY(this._graph, this._index, v)
     })
   }
@@ -209,7 +197,7 @@ export class NodeCursor {
   }
   set width(v: number) {
     this._checkAlive()
-    this._mutate(PropId.WIDTH, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.WIDTH, DIRTY_GEOMETRY, () => {
       TransformOps.setWidth(this._graph, this._index, v)
     })
   }
@@ -220,7 +208,7 @@ export class NodeCursor {
   }
   set height(v: number) {
     this._checkAlive()
-    this._mutate(PropId.HEIGHT, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.HEIGHT, DIRTY_GEOMETRY, () => {
       TransformOps.setHeight(this._graph, this._index, v)
     })
   }
@@ -230,7 +218,7 @@ export class NodeCursor {
   }
 
   set transform(mat: mat2d) {
-    this._mutate(PropId.TRANSFORM, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.TRANSFORM, DIRTY_LOCAL_MATRIX, () => {
       TransformOps.setMatrix(this._graph, this._index, mat)
     })
   }
@@ -247,7 +235,7 @@ export class NodeCursor {
 
   set worldTransform(mat: mat2d) {
     this._checkAlive()
-    this._mutate(PropId.WORLD_TRANSFORM, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.WORLD_TRANSFORM, DIRTY_WORLD_BOUNDS, () => {
       TransformOps.setWorldMatrix(this._graph, this._index, mat)
     })
   }
@@ -267,7 +255,7 @@ export class NodeCursor {
 
   set locked(v: boolean) {
     this._checkAlive()
-    this._mutate(PropId.LOCKED, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.LOCKED, DIRTY_METADATA, () => {
       StyleOps.setLocked(this._graph, this._index, v)
     })
   }
@@ -279,7 +267,7 @@ export class NodeCursor {
 
   set visible(v: boolean) {
     this._checkAlive()
-    this._mutate(PropId.VISIBLE, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.VISIBLE, DIRTY_PAINT, () => {
       StyleOps.setVisible(this._graph, this._index, v)
     })
   }
@@ -291,7 +279,7 @@ export class NodeCursor {
 
   set opacity(v: number) {
     this._checkAlive()
-    this._mutate(PropId.OPACITY, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.OPACITY, DIRTY_PAINT, () => {
       StyleOps.setOpacity(this._graph, this._index, v)
     })
   }
@@ -315,10 +303,10 @@ export class NodeCursor {
       prop: PropId.PARENT,
       oldValue: oldParent,
       newValue: newParent,
-      dirtyFlag: DIRTY_STRUCTURE | DIRTY_TRANSFORM,
+      dirtyFlag: DIRTY_TREE,
     })
-    this._graph.markDirty(child.index, DIRTY_TRANSFORM)
-    this._graph.markDirty(this._index, DIRTY_STRUCTURE)
+    this._graph.markDirty(child.index, DIRTY_TREE)
+    this._graph.markDirty(this._index, DIRTY_TREE)
   }
 
   public removeChild(child: NodeCursor) {
@@ -335,9 +323,9 @@ export class NodeCursor {
       prop: PropId.PARENT,
       oldValue: this.id,
       newValue: null,
-      dirtyFlag: DIRTY_STRUCTURE | DIRTY_TRANSFORM,
+      dirtyFlag: DIRTY_TREE,
     })
-    this._graph.markDirty(this._index, DIRTY_STRUCTURE)
+    this._graph.markDirty(this._index, DIRTY_TREE)
     return child
   }
 
@@ -357,10 +345,10 @@ export class NodeCursor {
       prop: PropId.REMOVE_SELF,
       oldValue: { parentId, nodeJSON },
       newValue: null,
-      dirtyFlag: DIRTY_STRUCTURE,
+      dirtyFlag: DIRTY_TREE,
     })
     if (parent) {
-      this._graph.markDirty(parent.index, DIRTY_STRUCTURE)
+      this._graph.markDirty(parent.index, DIRTY_TREE)
     }
   }
 
@@ -369,7 +357,7 @@ export class NodeCursor {
   }
 
   set fills(style: IPaint[]) {
-    this._mutate(PropId.FILLS, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.FILLS, DIRTY_PAINT, () => {
       StyleOps.setFills(this._graph, this._index, style)
     })
   }
@@ -379,7 +367,7 @@ export class NodeCursor {
   }
 
   set strokes(style: IPaint[]) {
-    this._mutate(PropId.STROKES, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.STROKES, DIRTY_PAINT, () => {
       StyleOps.setStrokes(this._graph, this._index, style)
     })
   }
@@ -391,7 +379,7 @@ export class NodeCursor {
 
   set cornerRadius(v: [number, number, number, number]) {
     this._checkAlive()
-    this._mutate(PropId.CORNER_RADIUS, DIRTY_AABB, () => {
+    this._mutate(PropId.CORNER_RADIUS, DIRTY_GEOMETRY, () => {
       StyleOps.setCornerRadius(this._graph, this._index, v)
     })
   }
@@ -409,7 +397,7 @@ export class NodeCursor {
 
   set strokeWeight(v: number) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_WEIGHT, DIRTY_AABB, () => {
+    this._mutate(PropId.STROKE_WEIGHT, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setStrokeWeight(this._graph, this._index, v)
     })
   }
@@ -421,7 +409,7 @@ export class NodeCursor {
 
   set strokeAlign(v: StrokeAlignKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_ALIGN, DIRTY_AABB, () => {
+    this._mutate(PropId.STROKE_ALIGN, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setStrokeAlign(this._graph, this._index, v)
     })
   }
@@ -433,7 +421,7 @@ export class NodeCursor {
 
   set strokeJoin(v: StrokeJoinKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_JOIN, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.STROKE_JOIN, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setStrokeJoin(this._graph, this._index, v)
     })
   }
@@ -445,7 +433,7 @@ export class NodeCursor {
 
   set strokeStyle(v: StrokeStyleKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_STYLE, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.STROKE_STYLE, DIRTY_PAINT, () => {
       StyleOps.setStrokeStyle(this._graph, this._index, v)
     })
   }
@@ -457,7 +445,7 @@ export class NodeCursor {
 
   set dashCap(v: DashCapKey) {
     this._checkAlive()
-    this._mutate(PropId.DASH_CAP, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.DASH_CAP, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setDashCap(this._graph, this._index, v)
     })
   }

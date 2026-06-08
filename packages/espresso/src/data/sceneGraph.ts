@@ -1,15 +1,28 @@
-import { NodeType, StrokeAlign } from '@latte-js/bean'
+import {
+  NodeType,
+  StrokeAlign,
+  type IDType,
+  type IDisposable,
+} from '@latte-js/bean'
 
 import { type IGraphObserver } from '../typing'
 
 import { Allocator } from './allocator'
 import { BlobManager } from './blobManager'
-import { MAT_A, MAT_D, MAT_SIZE, MAX_NODES, NULL_INDEX } from './config'
+import {
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_TREE,
+  MAT_A,
+  MAT_D,
+  MAT_SIZE,
+  MAX_NODES,
+  NULL_INDEX,
+} from './config'
 import { HeapManager } from './heapManager'
 import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
 import { MutationTracker } from './mutationTracker'
+import { collectSubtreeIndices } from './treeTraversal'
 
-import type { IDType } from '@latte-js/bean'
 import type { IMutationRecorder, INodeMutationRecord } from './mutationRecorder'
 import type { IMutationScope } from './mutationScope'
 import { PropId } from './propKeys'
@@ -134,8 +147,26 @@ export class SceneGraph {
     this.worldMatrix[MAT_D] = 1
   }
 
-  public setObserver(obs: IGraphObserver) {
+  public addObserver(obs: IGraphObserver): IDisposable {
     this._observers.push(obs)
+    let isDisposed = false
+
+    return {
+      dispose: () => {
+        if (isDisposed) {
+          return
+        }
+        isDisposed = true
+        const index = this._observers.indexOf(obs)
+        if (index !== -1) {
+          this._observers.splice(index, 1)
+        }
+      },
+    }
+  }
+
+  public setObserver(obs: IGraphObserver): IDisposable {
+    return this.addObserver(obs)
   }
 
   public notifyObservers<T>(
@@ -147,6 +178,13 @@ export class SceneGraph {
     for (const obs of this._observers) {
       obs.update(id, prop, oldValue, newValue)
     }
+  }
+
+  public dispose() {
+    this._observers = []
+    this._mutationRecorder = null
+    this._mutationScopes = []
+    this.blobs.dispose()
   }
 
   public setMutationRecorder(recorder: IMutationRecorder | null) {
@@ -173,6 +211,37 @@ export class SceneGraph {
 
   public get activeMutationScope(): IMutationScope | null {
     return this._mutationScopes[this._mutationScopes.length - 1] ?? null
+  }
+
+  public isNodeIndexAlive(index: number, expectedGeneration?: number): boolean {
+    if (!Number.isInteger(index) || index < 0 || index >= MAX_NODES) {
+      return false
+    }
+
+    if (index !== 0 && this.type[index] === 0) {
+      return false
+    }
+
+    if (
+      expectedGeneration !== undefined &&
+      !this.allocator.isValid(index, expectedGeneration)
+    ) {
+      return false
+    }
+
+    return true
+  }
+
+  public assertNodeIndexAlive(
+    index: number,
+    source: string,
+    expectedGeneration?: number
+  ) {
+    if (this.isNodeIndexAlive(index, expectedGeneration)) {
+      return
+    }
+
+    throw new Error(`[SceneGraph] Invalid node index ${index}: ${source}`)
   }
 
   public runWithMutationScope<T>(scope: IMutationScope, callback: () => T): T {
@@ -216,20 +285,36 @@ export class SceneGraph {
   }
 
   public registerIdMap(uuid: IDType, index: number) {
+    this.assertMutationAllowed('SceneGraph.registerIdMap')
+    this.assertNodeIndexAlive(index, 'SceneGraph.registerIdMap')
+    const previousIndex = this._uuidToIndex.get(uuid)
+    if (previousIndex !== undefined && previousIndex !== index) {
+      this._indexToUuid.delete(previousIndex)
+    }
+    const previousUuid = this._indexToUuid.get(index)
+    if (previousUuid !== undefined && previousUuid !== uuid) {
+      this._uuidToIndex.delete(previousUuid)
+    }
     this._uuidToIndex.set(uuid, index)
     this._indexToUuid.set(index, uuid)
   }
 
   public unregisterIdMap(uuid: IDType, index: number) {
-    this._uuidToIndex.delete(uuid)
-    this._indexToUuid.delete(index)
+    this.assertMutationAllowed('SceneGraph.unregisterIdMap')
+    if (this._uuidToIndex.get(uuid) === index) {
+      this._uuidToIndex.delete(uuid)
+    }
+    if (this._indexToUuid.get(index) === uuid) {
+      this._indexToUuid.delete(index)
+    }
   }
 
   public getUUIDMap() {
-    return this._uuidToIndex
+    return new Map(this._uuidToIndex)
   }
 
   public resetUUIDMap(map: Map<IDType, number>) {
+    this.assertMutationAllowed('SceneGraph.resetUUIDMap')
     this._uuidToIndex.clear()
     this._indexToUuid.clear()
     for (const [k, v] of map) {
@@ -239,12 +324,18 @@ export class SceneGraph {
   }
 
   public createNode(type: NodeType, uuid: IDType): number {
+    this.assertMutationAllowed('SceneGraph.createNode')
+    if (this._uuidToIndex.has(uuid)) {
+      throw new Error(`[SceneGraph] Duplicate node id: ${uuid}`)
+    }
+
     const { index } = this.allocator.alloc()
 
     this._uuidToIndex.set(uuid, index)
     this._indexToUuid.set(index, uuid)
 
     this._resetMemory(index, type)
+    this._markNodeStructureChanged(index)
 
     return index
   }
@@ -252,14 +343,33 @@ export class SceneGraph {
   public deleteNode(index: number) {
     this._assertDeleteNodeSupportedInActiveScope()
     this.assertMutationAllowed('SceneGraph.deleteNode')
+    this.assertNodeIndexAlive(index, 'SceneGraph.deleteNode')
 
-    this.detach(index)
+    if (index === 0) {
+      throw new Error('[SceneGraph] Cannot delete root document node')
+    }
 
-    const uuid = this._indexToUuid.get(index)
-    if (uuid) this._uuidToIndex.delete(uuid)
-    this._indexToUuid.delete(index)
+    const subtree = collectSubtreeIndices(this, index)
+    this._detach(index, { markChildDirty: false })
 
-    this.allocator.free(index)
+    const deleted: [id: IDType, index: number][] = []
+
+    for (const nodeIndex of subtree) {
+      const uuid = this._indexToUuid.get(nodeIndex)
+      if (uuid) {
+        deleted.push([uuid, nodeIndex])
+        this._uuidToIndex.delete(uuid)
+      }
+      this._indexToUuid.delete(nodeIndex)
+    }
+
+    for (const nodeIndex of subtree.reverse()) {
+      this.tracker.clear(nodeIndex)
+      this._clearMemory(nodeIndex)
+      this.allocator.free(nodeIndex)
+    }
+
+    return deleted
   }
 
   private _assertDeleteNodeSupportedInActiveScope() {
@@ -273,11 +383,14 @@ export class SceneGraph {
   }
 
   public appendChild(parent: number, child: number) {
+    this.assertMutationAllowed('SceneGraph.appendChild')
+    this.assertNodeIndexAlive(parent, 'SceneGraph.appendChild parent')
+    this.assertNodeIndexAlive(child, 'SceneGraph.appendChild child')
     if (parent === child) throw new Error('Cycle: Append self')
     this._assertCanReparent(parent, child)
 
     if (this.parent[child] !== NULL_INDEX) {
-      this.detach(child)
+      this._detach(child)
     }
 
     this.parent[child] = parent
@@ -294,12 +407,28 @@ export class SceneGraph {
 
     this.nextSibling[child] = NULL_INDEX
     this.lastChild[parent] = child
+    this._markHierarchyChanged(parent, child)
   }
 
   public insertAfter(parent: number, child: number, refNode: number) {
+    this.assertMutationAllowed('SceneGraph.insertAfter')
+    this.assertNodeIndexAlive(parent, 'SceneGraph.insertAfter parent')
+    this.assertNodeIndexAlive(child, 'SceneGraph.insertAfter child')
     if (parent === child) throw new Error('Cycle: Insert self')
+    if (child === refNode) throw new Error('Cycle: Insert after self')
     this._assertCanReparent(parent, child)
-    if (this.parent[child] !== NULL_INDEX) this.detach(child)
+
+    if (refNode === NULL_INDEX) {
+      this.appendChild(parent, child)
+      return
+    }
+
+    this.assertNodeIndexAlive(refNode, 'SceneGraph.insertAfter refNode')
+    if (this.parent[refNode] !== parent) {
+      throw new Error('[SceneGraph] insertAfter refNode is not child of parent')
+    }
+
+    if (this.parent[child] !== NULL_INDEX) this._detach(child)
 
     this.parent[child] = parent
 
@@ -315,9 +444,16 @@ export class SceneGraph {
     } else {
       this.lastChild[parent] = child
     }
+    this._markHierarchyChanged(parent, child)
   }
 
   public detach(child: number) {
+    this.assertMutationAllowed('SceneGraph.detach')
+    this.assertNodeIndexAlive(child, 'SceneGraph.detach child')
+    this._detach(child)
+  }
+
+  private _detach(child: number, options: { markChildDirty?: boolean } = {}) {
     const parent = this.parent[child]
     if (parent === NULL_INDEX) return
 
@@ -339,6 +475,11 @@ export class SceneGraph {
     this.parent[child] = NULL_INDEX
     this.prevSibling[child] = NULL_INDEX
     this.nextSibling[child] = NULL_INDEX
+
+    this.markDirty(parent, DIRTY_TREE)
+    if (options.markChildDirty ?? true) {
+      this._markNodeStructureChanged(child)
+    }
   }
 
   public getIndex(uuid: IDType) {
@@ -361,6 +502,58 @@ export class SceneGraph {
       }
       current = this.parent[current]
     }
+  }
+
+  private _markNodeStructureChanged(index: number) {
+    this.markDirty(index, DIRTY_TREE | DIRTY_LOCAL_MATRIX)
+  }
+
+  private _markHierarchyChanged(parent: number, child: number) {
+    this.markDirty(parent, DIRTY_TREE)
+    this.markDirty(child, DIRTY_TREE)
+  }
+
+  private _clearMemory(i: number) {
+    this._releaseNodeBlobs(i)
+
+    this.type[i] = 0
+
+    this.parent[i] = NULL_INDEX
+    this.firstChild[i] = NULL_INDEX
+    this.nextSibling[i] = NULL_INDEX
+    this.prevSibling[i] = NULL_INDEX
+    this.lastChild[i] = NULL_INDEX
+
+    this.visible[i] = 0
+    this.opacity[i] = 0
+    this.textPtr[i] = NULL_INDEX
+    this.namePtr[i] = NULL_INDEX
+    this.geometryPtr[i] = NULL_INDEX
+    this.fillPtr[i] = NULL_INDEX
+    this.strokePtr[i] = NULL_INDEX
+
+    this.locked[i] = 0
+
+    this.strokeWeight[i] = 0
+    this.strokeAlign[i] = 0
+    this.strokeJoin[i] = 0
+    this.strokeStyle[i] = 0
+    this.dashCap[i] = 0
+
+    const m = i * MAT_SIZE
+    this.matrix.fill(0, m, m + MAT_SIZE)
+    this.worldMatrix.fill(0, m, m + MAT_SIZE)
+    this.size.fill(0, i * 2, i * 2 + 2)
+    this.aabb.fill(0, i * 4, i * 4 + 4)
+    this.cornerRadius.fill(0, i * 4, i * 4 + 4)
+  }
+
+  private _releaseNodeBlobs(i: number) {
+    this.blobs.release(this.textPtr[i])
+    this.blobs.release(this.namePtr[i])
+    this.blobs.release(this.geometryPtr[i])
+    this.blobs.release(this.fillPtr[i])
+    this.blobs.release(this.strokePtr[i])
   }
 
   private _resetMemory(i: number, type: NodeType) {

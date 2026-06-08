@@ -47,6 +47,25 @@ describe('RuntimeInteractionController', () => {
     expect(transformService.moveBy$).toHaveBeenCalledWith(['test:rect'], [5, 8])
   })
 
+  it('coalesces world-position targets without replaying intermediate positions', async () => {
+    const controller = new RuntimeInteractionController(
+      transformService,
+      undoRedoService
+    )
+
+    await controller.beginTransform(['test:rect'])
+    controller.moveTo(['test:rect'], [10, 20])
+    controller.moveTo(['test:rect'], [50, 80])
+
+    vi.advanceTimersByTime(16)
+
+    expect(transformService.moveTo$).toHaveBeenCalledTimes(1)
+    expect(transformService.moveTo$).toHaveBeenCalledWith(
+      ['test:rect'],
+      [50, 80]
+    )
+  })
+
   it('flushes pending update before committing the transform interaction', async () => {
     const controller = new RuntimeInteractionController(
       transformService,

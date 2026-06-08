@@ -8,7 +8,8 @@ import {
   type SceneGraph,
 } from '@latte-js/espresso'
 
-import { system, SystemBase, Systems } from './systems'
+import type { DirtyBatch } from '../pipeline/dirtyBatch'
+import { ScheduleStage, system, SystemBase, Systems } from './systems'
 
 interface DirtyNode {
   index: number
@@ -21,7 +22,12 @@ interface DirtyNode {
  * Collects all bounds-dirty nodes, sorts by depth (deepest first), then updates upward.
  * O(dirty nodes × depth) complexity without needing DIRTY_SUBTREE_BOUNDS.
  */
-@system
+@system({
+  schedule: {
+    stage: ScheduleStage.Bounds,
+    reads: BOUNDS_AFFECTING_FLAGS,
+  },
+})
 export class AABBSystem extends SystemBase {
   public static readonly name = Systems.AABB
   private _cursor: NodeCursor
@@ -33,11 +39,11 @@ export class AABBSystem extends SystemBase {
     this._cursor = new NodeCursor(this._sceneGraph, -1)
   }
 
-  public process(dirtyMap: Map<number, number>) {
-    if (dirtyMap.size === 0) return
+  public process(batch: DirtyBatch) {
+    if (!batch.hasChanges) return
 
     // Step 1: Collect all bounds-dirty nodes with their depths
-    const dirtyNodes = this._collectDirtyNodes(dirtyMap)
+    const dirtyNodes = this._collectDirtyNodes(batch)
 
     if (dirtyNodes.length === 0) return
 
@@ -51,13 +57,11 @@ export class AABBSystem extends SystemBase {
     }
   }
 
-  private _collectDirtyNodes(dirtyMap: Map<number, number>): DirtyNode[] {
+  private _collectDirtyNodes(batch: DirtyBatch): DirtyNode[] {
     const result: DirtyNode[] = []
 
-    for (const [index, flags] of dirtyMap) {
-      if (flags & BOUNDS_AFFECTING_FLAGS) {
-        result.push({ index, depth: this._getDepth(index) })
-      }
+    for (const [index] of batch.entriesByMask(BOUNDS_AFFECTING_FLAGS)) {
+      result.push({ index, depth: this._getDepth(index) })
     }
 
     return result

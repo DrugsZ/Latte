@@ -46,20 +46,34 @@ export const VISIBLE_SIZE = 1
 export const OPACITY_SIZE = 1
 export const TEXT_PTR_SIZE = 1
 
-export const DIRTY_TRANSFORM = 1 << 0 // x, y, w, h, rotation
-export const DIRTY_STYLE = 1 << 1 // color, stroke
-export const DIRTY_STRUCTURE = 1 << 2 // add, remove
-export const DIRTY_AABB = 1 << 3 // DIRTY_AABB
-export const DIRTY_TEXT = 1 << 4 // text content
-export const DIRTY_NOT_EFFECT = 1 << 5 // not effect on layout
-export const DIRTY_SUBTREE_MATRIX = 1 << 6 // subtree has transform changes
+// Dirty flags describe which downstream pipeline needs invalidation.
+// PropId/mutation records describe what changed.
+export const DIRTY_LOCAL_MATRIX = 1 << 0 // local matrix changed
+export const DIRTY_PAINT = 1 << 1 // visual paint/compositing changed
+export const DIRTY_TREE = 1 << 2 // parent/child/order changed
+export const DIRTY_WORLD_BOUNDS = 1 << 3 // derived world bounds invalidated
+export const DIRTY_TEXT = 1 << 4 // text content/style/layout changed
+export const DIRTY_METADATA = 1 << 5 // name/lock/plugin metadata changed
+export const DIRTY_SUBTREE_MATRIX = 1 << 6 // subtree has matrix-affecting changes
+export const DIRTY_GEOMETRY = 1 << 7 // local shape/size/path changed
+export const DIRTY_LAYOUT = 1 << 8 // layout constraints/autolayout invalidated
+export const DIRTY_EFFECT = 1 << 9 // blur/shadow/filter may affect visual bounds
 
-// Flags that affect world transform calculation
-export const MATRIX_AFFECTING_FLAGS = DIRTY_TRANSFORM | DIRTY_STRUCTURE
+export const MATRIX_AFFECTING_FLAGS = DIRTY_LOCAL_MATRIX | DIRTY_TREE
 
-// Flags that affect bounds/AABB calculation
 export const BOUNDS_AFFECTING_FLAGS =
-  DIRTY_TRANSFORM | DIRTY_STRUCTURE | DIRTY_STYLE | DIRTY_TEXT | DIRTY_AABB
+  DIRTY_LOCAL_MATRIX |
+  DIRTY_GEOMETRY |
+  DIRTY_TREE |
+  DIRTY_TEXT |
+  DIRTY_EFFECT |
+  DIRTY_WORLD_BOUNDS
+
+export const RENDER_AFFECTING_FLAGS =
+  BOUNDS_AFFECTING_FLAGS | DIRTY_PAINT | DIRTY_LAYOUT
+
+export const LAYOUT_AFFECTING_FLAGS =
+  DIRTY_GEOMETRY | DIRTY_TREE | DIRTY_TEXT | DIRTY_LAYOUT
 
 export const BIT_IS_CONTAINER = 0b10000000
 

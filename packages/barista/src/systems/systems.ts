@@ -1,4 +1,5 @@
 import type { SceneGraph } from '@latte-js/espresso'
+import type { DirtyBatch } from '../pipeline/dirtyBatch'
 import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
 export enum Systems {
@@ -9,22 +10,42 @@ export enum Systems {
   AABB = 'aabb',
 }
 
+export enum ScheduleStage {
+  Layout = 10,
+  Matrix = 20,
+  Bounds = 30,
+  Projection = 40,
+}
+
+export interface ISystemScheduleDescriptor {
+  readonly stage: ScheduleStage
+  readonly reads: number
+  readonly writes?: number
+}
+
 export abstract class SystemBase {
   static readonly name: Systems
   static readonly mutationPolicies?: MutationPolicyMap
+  static readonly schedule?: ISystemScheduleDescriptor
 
   constructor(protected _sceneGraph: SceneGraph) {}
 
-  process?(dirtyMap: Map<number, number>): void
+  public getScheduleDescriptor() {
+    return (this.constructor as typeof SystemBase).schedule
+  }
+
+  process?(batch: DirtyBatch): void
 }
 
 export type SystemConstructor = (new (sceneGraph: SceneGraph) => SystemBase) & {
   readonly name: Systems
   readonly mutationPolicies?: MutationPolicyMap
+  readonly schedule?: ISystemScheduleDescriptor
 }
 
 export interface ISystemRegistrationOptions {
   readonly mutations?: MutationPolicyMap
+  readonly schedule?: ISystemScheduleDescriptor
 }
 
 export type AccessSystem = <T extends SystemBase>(name: Systems) => T
@@ -41,6 +62,9 @@ function registerSystem(
 ) {
   if (options?.mutations) {
     ;(ctor as any).mutationPolicies = options.mutations
+  }
+  if (options?.schedule) {
+    ;(ctor as any).schedule = options.schedule
   }
   systemRegistry.push(ctor)
 }
@@ -80,5 +104,15 @@ export class BaristaSystem {
 
   public getSystem<T extends SystemBase>(name: Systems): T {
     return this._systems.get(name) as T
+  }
+
+  public getScheduledSystems() {
+    return Array.from(this._systems.values())
+      .filter(system => !!system.getScheduleDescriptor())
+      .sort((a, b) => {
+        return (
+          a.getScheduleDescriptor()!.stage - b.getScheduleDescriptor()!.stage
+        )
+      })
   }
 }

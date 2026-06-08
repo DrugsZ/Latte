@@ -59,4 +59,26 @@ describe('HeapManager', () => {
     const result = heap.read(ptr)
     expect(result).toBeNull()
   })
+
+  it('marks freed heap blocks as tombstones without reusing storage', () => {
+    const heap = new HeapManager()
+    const ptr = heap.write(new Uint8Array([1, 2, 3, 4]))
+
+    expect(heap.free(ptr)).toBe(true)
+    expect(heap.read(ptr)).toBeNull()
+
+    const nextPtr = heap.write(new Uint8Array([9, 8]))
+    expect(nextPtr).toBeGreaterThan(ptr)
+    expect(Array.from(heap.read(nextPtr)!)).toEqual([9, 8])
+  })
+
+  it('returns false when freeing invalid or already freed pointers', () => {
+    const heap = new HeapManager()
+    const ptr = heap.write(new Uint8Array([1]))
+
+    expect(heap.free(-1)).toBe(false)
+    expect(heap.free(heap.buffer.byteLength + 1)).toBe(false)
+    expect(heap.free(ptr)).toBe(true)
+    expect(heap.free(ptr)).toBe(false)
+  })
 })

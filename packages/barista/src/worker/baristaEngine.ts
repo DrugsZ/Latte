@@ -1,15 +1,19 @@
-import { type IDType, DEFAULT_SCENE_GRAPH_NAME } from '@latte-js/bean'
+import {
+  DEFAULT_SCENE_GRAPH_NAME,
+  type ISceneDirtyPayload,
+} from '@latte-js/bean'
 import { SceneGraph } from '@latte-js/espresso'
 
 import { ChannelServer, fromService } from '../ipc'
 import { createJsonRpcNotification } from '../ipc/ipc'
+import { DirtyBatch } from '../pipeline/dirtyBatch'
+import { NotificationPlanner } from '../pipeline/notificationPlanner'
+import { PipelineRunner } from '../pipeline/pipelineRunner'
 import { ServiceManager } from '../services'
-import { BaristaSystem, Systems } from '../systems'
+import { BaristaSystem } from '../systems'
 import { MutationGate } from '../transactions/mutationPolicy'
 
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
-
-const PIPELINE_SYSTEMS: Systems[] = [Systems.Matrix, Systems.AABB]
 
 export class BaristaEngine {
   private _graphs = new Map<string, SceneGraph>()
@@ -19,8 +23,11 @@ export class BaristaEngine {
   private _systems: BaristaSystem
   private _serviceManager: ServiceManager
   private _mutationGate: MutationGate
+  private _pipelineRunner: PipelineRunner
+  private _notificationPlanner: NotificationPlanner
   private _channelServer: ChannelServer | null = null
   private _isTickScheduled = false
+  private _projectionVersions = new Map<string, number>()
 
   constructor(
     buffer: SharedArrayBuffer,
@@ -32,6 +39,8 @@ export class BaristaEngine {
     this._proxyGraph = this._createGraphProxy()
     this._systems = new BaristaSystem(this._proxyGraph)
     this._mutationGate = new MutationGate(this._proxyGraph)
+    this._pipelineRunner = new PipelineRunner(this._systems)
+    this._notificationPlanner = new NotificationPlanner(this._proxyGraph)
     this._serviceManager = new ServiceManager(this._proxyGraph, this._systems)
 
     this._initChannelServer()
@@ -132,31 +141,33 @@ export class BaristaEngine {
   }
 
   private _tickCurrentSession(sessionId: string) {
-    const dirtyMap = this._proxyGraph.tracker.flush()
+    const batch = DirtyBatch.from(this._proxyGraph.tracker.flush())
 
-    if (dirtyMap.size === 0) return
+    if (!batch.hasChanges) return
 
-    for (const name of PIPELINE_SYSTEMS) {
-      const system = this._systems.getSystem(name)
-      system?.process?.(dirtyMap)
-    }
+    this._pipelineRunner.process(batch)
 
-    this._sendRenderNotification(
-      sessionId,
-      Array.from(dirtyMap.keys())
-        .map(item => this._proxyGraph.getUUID(item))
-        .filter((item): item is IDType => !!item)
+    const payload = this._notificationPlanner.createDirtyPayload(
+      batch,
+      this._nextProjectionVersion(sessionId)
     )
+    if (payload) {
+      this._sendDirtyNotification(sessionId, payload)
+    }
   }
 
-  private _sendRenderNotification(sessionId: string, dirtyIds: IDType[]) {
+  private _nextProjectionVersion(sessionId: string) {
+    const next = (this._projectionVersions.get(sessionId) || 0) + 1
+    this._projectionVersions.set(sessionId, next)
+    return next
+  }
+
+  private _sendDirtyNotification(
+    sessionId: string,
+    payload: ISceneDirtyPayload
+  ) {
     this._protocol.send(
-      createJsonRpcNotification(
-        'scene.onDirty',
-        null,
-        { ids: dirtyIds },
-        sessionId
-      )
+      createJsonRpcNotification('scene.onDirty', null, payload, sessionId)
     )
   }
 }

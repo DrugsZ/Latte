@@ -1,79 +1,42 @@
-# Latte
+# Latte Apps
 
-<!-- PROJECT SHIELDS -->
+This directory contains demo applications and product integrations for the Latte monorepo.
 
-[Contributors][contributors-url]
-[Forks][forks-url]
-[Stargazers][stars-url]
-[Issues][issues-url]
-[Package-level license][license-url]
+## Current App
 
-<!-- PROJECT LOGO -->
+| App    | Purpose                                                                                           | Package          |
+| ------ | ------------------------------------------------------------------------------------------------- | ---------------- |
+| `cafe` | Integration demo and smoke target for the editor runtime, renderer, worker pipeline and UI shell. | `@latte-js/cafe` |
 
-A Canvas-Powered Design Tool
+Applications in this directory are not published as reusable packages. Shared code should live in `packages/*`.
 
-Latte aims to provide underlying 2D rendering capabilities to any web page, enabling any developer to quickly and conveniently develop their own graphic editing tools.
-`<br />`
+## Development
 
-## 🛠️ Development
-
-Start previewing demos:
+From the repository root:
 
 ```bash
-  git clone git@github.com:DrugsZ/Latte.git
-  cd Latte
-  pnpm install
-  pnpm build
-  pnpm start
+pnpm install
+pnpm build
+pnpm dev
 ```
 
-### Run test cases
+Open `http://localhost:5173`.
+
+Useful app checks:
 
 ```bash
-pnpm test
+pnpm --filter @latte-js/cafe build
+pnpm e2e
 ```
 
-### Roadmap
+## SharedArrayBuffer Requirement
 
-- [x] Absorption Line
-- [x] Life Cycle
-- [x] Configuration Manager
-- [ ] Context Menu
-- [ ] Ruler
-- [ ] Mouse Box Select
-- [ ] Frame
-- [ ] Text, Path...
-- [ ] Render
+Latte depends on `SharedArrayBuffer`. Local previews and deployments must send COOP/COEP headers so the page is cross-origin isolated. The `cafe` Vite config is the reference setup for local development.
 
-### Contributing
+## Contributing
 
-If you are interested in fixing issues and contributing directly to the code base, please see the document [How to Contribute](https://github.com/DrugsZ/Latte/blob/master/CONTRIBUTING.md).
-
-Thank you for your contributions!
+See [../CONTRIBUTING.md](../CONTRIBUTING.md). App code should assemble packages and demonstrate workflows; it should not become the source of core engine behavior.
 
 ## License
 
-Applications in this directory are demos and product integrations. They are
-not published as reusable packages. See the root README and each package's
-`LICENSE` file for the package-level license policy.
-
-## Inspired by
-
-- [AntV G](https://github.com/antvis/G)
-- [Pixi.js](https://pixijs.com/)
-- [Figma](https://www.figma.com/)
-- [VSCode](https://github.com/microsoft/vscode)
-- [Fabric](http://fabricjs.com/)
-
-<!-- links -->
-
-[contributors-shield]: https://img.shields.io/github/contributors/DrugsZ/Latte.svg?style=flat-square
-[contributors-url]: https://github.com/DrugsZ/Latte/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/DrugsZ/Latte.svg?style=flat-square
-[forks-url]: https://github.com/DrugsZ/Latte/network/members
-[stars-shield]: https://img.shields.io/github/stars/DrugsZ/Latte.svg?style=flat-square
-[stars-url]: https://github.com/DrugsZ/Latte/stargazers
-[issues-shield]: https://img.shields.io/github/issues/DrugsZ/Latte.svg?style=flat-square
-[issues-url]: https://github.com/DrugsZ/Latte/issues
-[license-shield]: https://img.shields.io/github/license/DrugsZ/Latte.svg?style=flat-square
-[license-url]: https://github.com/DrugsZ/Latte#license
+Applications in this directory are demos and product integrations. `apps/cafe` is `UNLICENSED` and private; package-level licenses live in each package under `packages/*`.

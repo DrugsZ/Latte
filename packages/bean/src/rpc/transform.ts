@@ -20,7 +20,11 @@ export interface ITransformService {
   moveTo$(ids: IDType[], delta: vec2): void
 
   /**
-   * Moves the object by the specified delta (Request).
+   * Moves the object by the specified world-space delta (Request).
+   *
+   * During an active transform session, delta is the total offset from the
+   * session snapshot. Callers should send the latest target delta, not
+   * frame-to-frame increments.
    *
    * @param id - The ID of the object to move.
    * @param delta - The delta vector [dx, dy].

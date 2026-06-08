@@ -56,7 +56,11 @@
 
    建立大文档加载、Matrix/AABB tick、拖拽通知频率、undo/redo replay 的可重复性能基线。
 
-4. License compliance 自动化
+4. Rust/WASM native engine 评估
+
+   只有在性能基线证明 TypeScript/JS 实现成为瓶颈后，再评估 Rust/WASM 承接 storage、geometry、snapshot/diff、replay 等热路径。native 模块必须保持 worker/service 边界，不作为插件或主线程 raw memory API 暴露。
+
+5. License compliance 自动化
 
    增加包级 license 检查、第三方依赖 license 审计、NOTICE 生成和发布前校验。
 
@@ -88,6 +92,7 @@ Latte 的目标是“Figma 的图形能力 + VSCode 的扩展模型”。这意�
 | `@latte-js/milk` | React/UI 绑定 | `Apache-2.0` 或 `MPL-2.0` | 可按组件商业化拆分 | 如果希望第三方应用接入，避免 GPL；如果想保护组件修改，可选文件级 copyleft 的 MPL-2.0。 |
 | `@latte-js/espresso` | SAB/SoA 数据内核 | `AGPL-3.0-or-later` | 商业双授权 | 这是性能和数据模型核心，适合用 AGPL 防止闭源 SaaS 直接改造后托管竞争。 |
 | `@latte-js/barista` | Worker 计算、service/system、历史 | `AGPL-3.0-or-later` | 商业双授权 | 这是服务语义、事务、计算调度核心，是商业护城河。 |
+| `@latte-js/native` | 未来可选 Rust/WASM 性能与存储内核 | `AGPL-3.0-or-later` | 商业双授权 | 若承接几何、存储、snapshot/diff、replay 热路径，它属于核心引擎能力，应随核心双授权。 |
 | `@latte-js/art` | 渲染器 | `AGPL-3.0-or-later`，可备选 `MPL-2.0` | 商业双授权 | 如果渲染器是核心能力，随核心双授权；如果希望它成为通用嵌入式 renderer，可降到 MPL/Apache。 |
 | `@latte-js/crema` | Editor runtime 编排 | `AGPL-3.0-or-later` | 商业双授权 | 它连接主线程、worker、renderer，是完整编辑器产品边界的一部分。若未来只提供很薄的 client SDK，可拆出宽松包。 |
 | `@latte-js/counter` | 内置工具和业务逻辑 | `AGPL-3.0-or-later` | 商业双授权或私有 | 内置能力属于产品功能，不建议作为基础生态协议层。 |

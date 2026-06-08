@@ -1,6 +1,11 @@
 import { mat2, mat2d, vec2 } from 'gl-matrix'
 
-import { DIRTY_AABB, DIRTY_TRANSFORM, NULL_INDEX } from '../data/config'
+import {
+  DIRTY_GEOMETRY,
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_WORLD_BOUNDS,
+  NULL_INDEX,
+} from '../data/config'
 import { type NodeCursor } from '../data/nodeCursor'
 import { type SceneGraph } from '../data/sceneGraph'
 /**
@@ -598,7 +603,10 @@ export function applyDistributiveScale(
   cursor.x = newLocal[4]
   cursor.y = newLocal[5]
 
-  graph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+  graph.markDirty(
+    index,
+    DIRTY_LOCAL_MATRIX | DIRTY_GEOMETRY | DIRTY_WORLD_BOUNDS
+  )
 
   // 6. Recurse
   // The current node's New World Transform becomes the Parent New World for its children.

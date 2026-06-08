@@ -3,18 +3,39 @@ import {
   type IDisposable,
   type IDType,
   type ILatteFile,
+  type ISceneDirtyNode,
+  type ISceneDirtyPayload,
 } from '@latte-js/bean'
 
 import type { Editor } from '@latte-js/syrup'
 
 type NodeIdMapPayload = [id: IDType, index: number][]
-type DirtyPayload = IDType[] | { ids?: IDType[] }
+type DirtyPayload = IDType[] | Partial<ISceneDirtyPayload>
 
-const toDirtyIds = (payload: DirtyPayload): IDType[] => {
+interface NormalizedDirtyPayload {
+  renderIds: IDType[]
+  allIds: IDType[]
+  nodes: ISceneDirtyNode[]
+}
+
+const normalizeDirtyPayload = (
+  payload: DirtyPayload
+): NormalizedDirtyPayload => {
   if (Array.isArray(payload)) {
-    return payload
+    return {
+      renderIds: payload,
+      allIds: payload,
+      nodes: [],
+    }
   }
-  return payload.ids ?? []
+
+  const renderIds = payload.renderIds ?? payload.ids ?? []
+
+  return {
+    renderIds,
+    allIds: payload.allIds ?? payload.ids ?? renderIds,
+    nodes: payload.nodes ?? [],
+  }
 }
 
 export class ProjectionSyncController {
@@ -22,6 +43,8 @@ export class ProjectionSyncController {
   private _started = false
   private _version = 0
   private _dirtyIds: IDType[] = []
+  private _allDirtyIds: IDType[] = []
+  private _dirtyNodes: ISceneDirtyNode[] = []
 
   constructor(private readonly _editor: Editor) {}
 
@@ -31,6 +54,14 @@ export class ProjectionSyncController {
 
   public get dirtyIds() {
     return [...this._dirtyIds]
+  }
+
+  public get allDirtyIds() {
+    return [...this._allDirtyIds]
+  }
+
+  public get dirtyNodes() {
+    return [...this._dirtyNodes]
   }
 
   public start() {
@@ -53,7 +84,7 @@ export class ProjectionSyncController {
     const sceneService = this._editor.baristaClient.getService(Channels.Scene)
     this._disposables.push(
       sceneService.onDirty(payload => {
-        this.markDirty(toDirtyIds(payload as DirtyPayload))
+        this.markDirty(payload as DirtyPayload)
       })
     )
 
@@ -84,10 +115,17 @@ export class ProjectionSyncController {
     }
   }
 
-  public markDirty(ids: IDType[]) {
-    this._dirtyIds = [...ids]
+  public markDirty(payload: DirtyPayload) {
+    const normalized = normalizeDirtyPayload(payload)
+
+    this._dirtyIds = [...normalized.renderIds]
+    this._allDirtyIds = [...normalized.allIds]
+    this._dirtyNodes = [...normalized.nodes]
     this._version++
-    this._editor.renderer.requestRender()
+
+    if (normalized.renderIds.length > 0) {
+      this._editor.renderer.requestRender()
+    }
   }
 
   public dispose() {
@@ -95,6 +133,8 @@ export class ProjectionSyncController {
       disposable.dispose()
     }
     this._dirtyIds = []
+    this._allDirtyIds = []
+    this._dirtyNodes = []
     this._started = false
   }
 }

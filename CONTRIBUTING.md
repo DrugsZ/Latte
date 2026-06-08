@@ -1,147 +1,170 @@
 # Contributing to Latte
 
-First off, thanks for taking the time to contribute! 🎉
+Thanks for helping improve Latte. This project is still pre-1.0, so architectural consistency matters as much as feature completeness.
 
-Latte is a complex engineering project with a unique architecture. To maintain high performance and scalability, we follow strict **Data-Oriented Design (DOD)** principles.
+## Project Shape
 
-Please read this guide carefully. Code that violates these rules will be rejected.
+Latte is a pnpm/Turborepo monorepo. The key packages are:
 
----
+| Package              | Responsibility                                                                |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `@latte-js/bean`     | Shared types, file schema types and RPC contracts.                            |
+| `@latte-js/espresso` | Shared-memory data kernel, SceneGraph, SoA layout and NodeCursor.             |
+| `@latte-js/barista`  | Worker-side services, systems, mutation policy, transactions and history.     |
+| `@latte-js/crema`    | Runtime assembly, worker client, projection sync and interaction controllers. |
+| `@latte-js/art`      | Read-only renderer, camera and hit testing.                                   |
+| `@latte-js/syrup`    | Main-thread platform services: DI, commands, menus, keybindings and input.    |
+| `@latte-js/counter`  | Built-in workbench contributions, tools and selection state.                  |
+| `@latte-js/milk`     | React UI components and panels.                                               |
+| `@latte-js/kit`      | Shared runtime utilities.                                                     |
 
-## Table of Contents
-
-- [Contributing to Latte](#contributing-to-latte)
-  - [Table of Contents](#table-of-contents)
-  - [🏗 Monorepo Setup](#-monorepo-setup)
-  - [📐 Architectural Constitution](#-architectural-constitution)
-    - [1. The Law of Dependency](#1-the-law-of-dependency)
-    - [2. The Law of Data (`@latte-js/espresso`)](#2-the-law-of-data-latte-jsespresso)
-    - [3. The Law of Rendering (`@latte-js/art`)](#3-the-law-of-rendering-latte-jsart)
-    - [4. The Law of Mutation](#4-the-law-of-mutation)
-  - [🛠 Development Workflow](#-development-workflow)
-    - [Example: Adding a New Feature ("Circle Tool")](#example-adding-a-new-feature-circle-tool)
-  - [🧪 Testing Strategy](#-testing-strategy)
-  - [🐛 Reporting Issues](#-reporting-issues)
-    - [Bug Reports](#bug-reports)
-    - [Feature Requests](#feature-requests)
-  - [🔀 Pull Request Guidelines](#-pull-request-guidelines)
-  - [📦 Project Structure](#-project-structure)
-
----
-
-## 🏗 Monorepo Setup
-
-We use **pnpm** workspaces and **Turborepo**.
+## Setup
 
 ```bash
-# 1. Install dependencies
 pnpm install
-
-# 2. Build all packages
 pnpm build
-
-# 3. Start the editor (Dev mode)
 pnpm dev
 ```
 
----
+Open `http://localhost:5173` for the demo app.
 
-## 📐 Architectural Constitution
+## Architecture Rules
 
-Latte is **NOT** a standard React application. We enforce the following laws to ensure performance.
+### 1. Dependency Direction
 
-### 1. The Law of Dependency
+Keep package dependencies intentional and acyclic. Lower-level packages must not import product/UI packages.
 
-Dependencies must flow **downwards**. Circular dependencies are strictly forbidden.
-
-- ✅ `milk` -> `counter` -> `syrup` -> `barista` -> `espresso` -> `bean`
-- ❌ `espresso` cannot import `milk`.
-- ❌ `bean` cannot import anything.
-
-### 2. The Law of Data (`@latte-js/espresso`)
-
-- **No Objects**: Do not store state as JS objects in the kernel (e.g., `{x: 10}`). Use `TypedArray` indices.
-- **No Classes in Buffer**: Data in `SharedArrayBuffer` must be flat numbers.
-- **Use Cursors**: Business logic must use `NodeCursor` to read/write data. Direct buffer access is restricted to internal `Ops`.
-
-### 3. The Law of Rendering (`@latte-js/art`)
-
-- **Read-Only**: The renderer should **NEVER** modify business data.
-- **No React**: Do not use React components inside the renderer logic.
-- **Performance**: Always use WorldMatrix for flat rendering. Do not traverse the tree recursively if possible.
-
-### 4. The Law of Mutation
-
-- **Single Source of Truth**: All writes must go through `NodeCursor` to trigger:
-  1.  Dirty Flags (for Renderer)
-  2.  Observers (for History/Sync)
-- **Transactions**: Complex operations must be wrapped in `history.startTransaction`.
-
----
-
-## 🛠 Development Workflow
-
-### Example: Adding a New Feature ("Circle Tool")
-
-1.  **Define Type (`bean`)**: Add `ELLIPSE` to `NodeType` enum.
-2.  **Update Kernel (`espresso`)**: Ensure `Allocator` and `Serializer` handle the new type.
-3.  **Implement Rendering (`art`)**: Add drawing logic (`ctx.ellipse`) to the `RendererRegistry`.
-4.  **Implement Logic (`counter`)**:
-    - Create `CircleTool` extending `BaseTool`.
-    - Register command: `latte.tool.circle`.
-    - Handle drag events to update kernel data via RPC.
-5.  **Update UI (`milk`)**: Add an icon to the toolbar component.
-
----
-
-## 🧪 Testing Strategy
-
-- **Unit Tests (`vitest`)**:
-  - **Required** for `espresso` (memory integrity) and `barista` (math logic).
-  - Run: `pnpm test`
-- **E2E Tests (`playwright`)**:
-  - **Required** for `art` (Visual Regression).
-  - Run: `pnpm e2e`
-
----
-
-## 🐛 Reporting Issues
-
-### Bug Reports
-
-1.  **Search**: Check if the issue has already been reported.
-2.  **Be clear**: Provide a clear and descriptive title for the issue.
-3.  **Include details**: Include as much information as possible, such as the version of Latte, your operating system, and steps to reproduce the issue.
-
-### Feature Requests
-
-1.  **Search**: Check if the enhancement has already been suggested.
-2.  **Explain**: Explain why this enhancement would be useful and how it would work.
-
----
-
-## 🔀 Pull Request Guidelines
-
-1.  **Fork** the repository to your own GitHub account.
-2.  **Create a branch** for your feature or fix.
-3.  **Commit** your changes following the **Conventional Commits** specification (e.g., `feat: add circle tool`, `fix: memory leak in loader`).
-4.  **Write tests** for your changes.
-5.  **Rebase** your branch on the latest `main` before submitting.
-6.  **Sign your work**: The sign-off is required. It certifies that you wrote the patch or have the right to contribute it.
-
----
-
-## 📦 Project Structure
+Expected flow:
 
 ```text
-packages/
-├── bean/         # Types (The Dictionary)
-├── espresso/     # Data (The Database)
-├── barista/      # Engine (The Worker)
-├── art/          # Render (The Painter)
-├── syrup/        # Infra (The OS)
-├── counter/      # Logic (The App)
-└── milk/         # UI (The Skin)
+apps/cafe
+  -> crema / counter / milk / art
+  -> syrup / barista
+  -> espresso
+  -> bean
 ```
 
-**Need Help?** If you’re stuck, create a draft pull request or ask for help on the [Discussions](https://github.com/DrugsZ/Latte/discussions) page.
+### 2. Worker-Authoritative Writes
+
+Document model writes must end in the worker-side path:
+
+```text
+main-thread service facade
+  -> RPC
+  -> worker service
+  -> MutationGate
+  -> System / Manager
+  -> NodeCursor
+  -> SharedArrayBuffer / SoA
+```
+
+Renderers, React components and main-thread workbench code read projections and session state. They must not mutate document data directly.
+
+### 3. NodeCursor Is the Mutation Gateway
+
+Business mutations should use `NodeCursor` so mutation records, dirty flags, observers and history stay coherent. Direct typed-array access is restricted to low-level Espresso ops and carefully reviewed internal code.
+
+### 4. Mutation Policy and Transactions
+
+Do not make callers manually open transactions from the main thread. Worker services/systems declare mutation policy and `MutationGate` handles automatic transaction boundaries.
+
+Use explicit policies such as:
+
+- `readonly`
+- `writeNoHistory`
+- `atomic`
+- `sessionBegin`
+- `sessionMutation`
+- `sessionCommit`
+- `sessionCancel`
+- `manual`
+
+If a service method writes document data, it needs an intentional policy and tests.
+
+### 5. Transaction and History Are Separate
+
+- `TransactionManager` records the lifecycle of a single edit.
+- `HistoryManager` owns undo/redo stacks and inverse replay.
+- `UndoRedoService` exposes user-facing undo/redo operations.
+
+Undo/redo replay should reuse the same mutation application path and should not write raw SAB fields directly.
+
+### 6. Transform and Layout Are Separate
+
+Free transform belongs in transform systems. Frame resize, constraints, auto layout and group auto-bounds belong in layout systems/services.
+
+See [docs/figma-layout-resize-plan.zh-CN.md](./docs/figma-layout-resize-plan.zh-CN.md).
+
+### 7. Runtime Validation Belongs at Boundaries
+
+Runtime schema validation is appropriate for file import, plugin manifests, external commands, RPC payloads and configuration. Do not add heavy validation inside NodeCursor, SoA hot paths, matrix/AABB ticks or renderer loops.
+
+## Development Workflow
+
+When adding a feature:
+
+1. Define shared types in `@latte-js/bean` when the feature crosses package or RPC boundaries.
+2. Add storage support in `@latte-js/espresso` only when the data belongs in the document model.
+3. Add worker service/system behavior in `@latte-js/barista` for authoritative writes or heavy computation.
+4. Add runtime wiring in `@latte-js/crema` when the main thread must call worker-backed services.
+5. Add built-in tool/command behavior in `@latte-js/counter`.
+6. Add rendering or hit-test behavior in `@latte-js/art`.
+7. Add UI in `@latte-js/milk`.
+8. Update docs and tests with the same PR.
+
+## Testing
+
+Use focused package checks while developing:
+
+```bash
+pnpm --filter @latte-js/espresso test
+pnpm --filter @latte-js/barista test
+pnpm --filter @latte-js/crema test
+pnpm --filter @latte-js/cafe build
+```
+
+Before opening a PR, run the release gate that applies to your change:
+
+```bash
+pnpm release:check
+```
+
+Geometry changes should include tests that verify rendered/world-space results, not only local matrix fields.
+
+## Documentation
+
+Update documentation when changing architecture, public APIs, package boundaries, license policy or contributor workflow.
+
+Important docs:
+
+- [README.md](./README.md)
+- [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md)
+- [docs/architecture-blueprint.zh-CN.md](./docs/architecture-blueprint.zh-CN.md)
+- [docs/governance-and-licensing.zh-CN.md](./docs/governance-and-licensing.zh-CN.md)
+
+## Pull Requests
+
+- Keep PRs focused and reviewable.
+- Use Conventional Commits when possible, such as `feat: add transform target tests`.
+- Include tests for behavior changes.
+- Explain architectural boundary changes in the PR description.
+- Do not reformat unrelated files.
+- Do not commit generated reports, local caches or build outputs unless they are intentionally tracked.
+
+## License and Commercialization
+
+Latte uses package-level licenses. Core/product packages are `AGPL-3.0-or-later` with commercial licensing available; protocol/SDK/UI infrastructure packages are currently `MIT`.
+
+External contributions may require a CLA or equivalent contributor authorization before being included in a commercial dual-license release. This is not legal advice; maintainers should confirm final policy with counsel before a public 1.0 launch.
+
+## Reporting Issues
+
+For bugs, include:
+
+- OS and browser.
+- Node/pnpm versions.
+- Steps to reproduce.
+- Expected and actual behavior.
+- Console/page errors when available.
+
+For feature requests, describe the user workflow, why it matters and whether it affects Figma-like editing semantics, VSCode-like platform APIs or both.

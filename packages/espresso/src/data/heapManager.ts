@@ -58,6 +58,24 @@ export class HeapManager {
     return ptr
   }
 
+  public free(ptr: number): boolean {
+    if (
+      !Number.isInteger(ptr) ||
+      ptr <= 0 ||
+      ptr + 4 > this.buffer.byteLength
+    ) {
+      return false
+    }
+
+    const view = new DataView(this.buffer, ptr, 4)
+    if (view.getUint32(0, true) === 0) {
+      return false
+    }
+
+    view.setUint32(0, 0, true)
+    return true
+  }
+
   public read(ptr: number): Uint8Array | null {
     if (ptr + 4 > this.buffer.byteLength) {
       console.warn(`[BlobManager] Pointer out of bounds: ${ptr}`)

@@ -1,6 +1,12 @@
 import { BlendModeType, NodeType } from '@latte-js/bean'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import {
+  DIRTY_GEOMETRY,
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_METADATA,
+  DIRTY_PAINT,
+} from '../config'
 import { NodeCursor } from '../nodeCursor'
 import { PropId } from '../propKeys'
 import { SceneGraph } from '../sceneGraph'
@@ -39,14 +45,13 @@ describe('NodeCursor', () => {
       expect(root.id).toBe('test:frame')
     })
 
-    // it('to(idx) should revert index on error', () => {
-    //   const idx1 = graph.createNode(NodeType.RECTANGLE, 'test:r1')
-    //   const cursor = new NodeCursor(graph, idx1)
+    it('to(idx) should revert index on unallocated index error', () => {
+      const idx1 = graph.createNode(NodeType.RECTANGLE, 'test:r1')
+      const cursor = new NodeCursor(graph, idx1)
 
-    //   // index 9999 is invalid/dead
-    //   expect(() => cursor.to(9999)).toThrow('Accessing dead node')
-    //   expect(cursor.index).toBe(idx1)
-    // })
+      expect(() => cursor.to(9999)).toThrow('Accessing dead node')
+      expect(cursor.index).toBe(idx1)
+    })
   })
 
   describe('Property Accessors', () => {
@@ -249,9 +254,9 @@ describe('NodeCursor', () => {
 
   describe('Mutation Recording', () => {
     it('rejects guarded mutations outside a declared mutation scope', () => {
-      graph.setMutationGuardEnabled(true)
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:guarded')
       const cursor = new NodeCursor(graph, idx)
+      graph.setMutationGuardEnabled(true)
 
       expect(() => {
         cursor.x = 42
@@ -259,9 +264,9 @@ describe('NodeCursor', () => {
     })
 
     it('allows guarded mutations inside a declared mutation scope', () => {
-      graph.setMutationGuardEnabled(true)
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:scoped')
       const cursor = new NodeCursor(graph, idx)
+      graph.setMutationGuardEnabled(true)
 
       graph.runWithMutationScope(
         { kind: 'writeNoHistory', source: 'test' },
@@ -291,6 +296,27 @@ describe('NodeCursor', () => {
         oldValue: 0,
         newValue: 42,
       })
+    })
+
+    it('records downstream dirty flags by invalidation target', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:dirty-targets')
+      const cursor = new NodeCursor(graph, idx)
+
+      cursor.name = 'Renamed'
+      cursor.x = 10
+      cursor.width = 100
+      cursor.opacity = 0.5
+
+      expect(records.map(record => [record.prop, record.dirtyFlag])).toEqual([
+        [PropId.NAME, DIRTY_METADATA],
+        [PropId.X, DIRTY_LOCAL_MATRIX],
+        [PropId.WIDTH, DIRTY_GEOMETRY],
+        [PropId.OPACITY, DIRTY_PAINT],
+      ])
     })
 
     it('clones matrix mutation values before and after writes', () => {

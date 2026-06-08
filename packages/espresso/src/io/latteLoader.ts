@@ -1,6 +1,6 @@
 import { NodeType, type ILatteFile, type ILatteNode } from '@latte-js/bean'
 
-import { DIRTY_STRUCTURE, DIRTY_TRANSFORM, NULL_INDEX } from '../data/config'
+import { DIRTY_LOCAL_MATRIX, DIRTY_TREE, NULL_INDEX } from '../data/config'
 import { NodeCursor } from '../data/nodeCursor'
 
 import type { SceneGraph } from '../data/sceneGraph'
@@ -55,12 +55,12 @@ export class LatteLoader {
         const childIdx = idMap.get(childNode.guid)!
 
         this._graph.appendChild(parentIdx, childIdx)
-        this._graph.markDirty(parentIdx, DIRTY_STRUCTURE)
-        this._graph.markDirty(childIdx, DIRTY_TRANSFORM)
+        this._graph.markDirty(parentIdx, DIRTY_TREE)
+        this._graph.markDirty(childIdx, DIRTY_TREE)
       }
     }
 
-    this._graph.markDirty(0, DIRTY_TRANSFORM | DIRTY_STRUCTURE)
+    this._graph.markDirty(0, DIRTY_LOCAL_MATRIX | DIRTY_TREE)
 
     return this._graph.getUUIDMap()
   }

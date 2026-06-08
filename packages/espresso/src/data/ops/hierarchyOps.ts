@@ -1,4 +1,5 @@
 import type { SceneGraph } from '../sceneGraph'
+import { iterateChildIndices } from '../treeTraversal'
 
 export const HierarchyOps = {
   getParent: (graph: SceneGraph, index: number) => {
@@ -32,11 +33,8 @@ export const HierarchyOps = {
 
   getChildren: (graph: SceneGraph, parent: number): number[] => {
     const children: number[] = []
-    let curr = graph.firstChild[parent]
-    while (curr !== -1) {
-      // -1 is NULL_INDEX
-      children.push(curr)
-      curr = graph.nextSibling[curr]
+    for (const child of iterateChildIndices(graph, parent)) {
+      children.push(child)
     }
     return children
   },

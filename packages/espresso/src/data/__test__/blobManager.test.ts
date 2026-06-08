@@ -9,6 +9,7 @@ describe('BlobManager', () => {
   const mockHeap = {
     write: vi.fn().mockReturnValue(123),
     read: vi.fn().mockReturnValue(new TextEncoder().encode('{"foo":"bar"}')),
+    free: vi.fn().mockReturnValue(true),
   } as unknown as HeapManager
 
   beforeEach(() => {
@@ -17,6 +18,7 @@ describe('BlobManager', () => {
     vi.mocked(mockHeap.read).mockReturnValue(
       new TextEncoder().encode('{"foo":"bar"}')
     )
+    vi.mocked(mockHeap.free).mockReturnValue(true)
   })
 
   it('should write string data to heap and cache it', () => {
@@ -117,5 +119,46 @@ describe('BlobManager', () => {
     const result = blobManager.read(ptr, true)
 
     expect(result).toBe(jsonStr)
+  })
+
+  it('should release blob pointers', () => {
+    const blobManager = new BlobManager(mockHeap)
+
+    expect(blobManager.release(123)).toBe(true)
+    expect(mockHeap.free).toHaveBeenCalledWith(123)
+    expect(blobManager.release(NULL_INDEX)).toBe(false)
+    expect(blobManager.release(0)).toBe(false)
+  })
+
+  it('should replace a blob and release the old pointer', () => {
+    const blobManager = new BlobManager(mockHeap)
+    vi.mocked(mockHeap.write).mockReturnValueOnce(456)
+
+    const ptr = blobManager.replace(123, 'new-value')
+
+    expect(ptr).toBe(456)
+    expect(mockHeap.free).toHaveBeenCalledWith(123)
+    expect(blobManager.read(ptr, true)).toBe('new-value')
+  })
+
+  it('should keep the old pointer when replacement write fails', () => {
+    const blobManager = new BlobManager(mockHeap)
+    vi.mocked(mockHeap.write).mockImplementationOnce(() => {
+      throw new Error('out of memory')
+    })
+
+    expect(() => blobManager.replace(123, 'retry-value')).toThrow(
+      'out of memory'
+    )
+    expect(mockHeap.free).not.toHaveBeenCalled()
+  })
+
+  it('should not release the old pointer when replacement data cannot serialize', () => {
+    const blobManager = new BlobManager(mockHeap)
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+
+    expect(() => blobManager.replace(123, circular)).toThrow()
+    expect(mockHeap.free).not.toHaveBeenCalled()
   })
 })

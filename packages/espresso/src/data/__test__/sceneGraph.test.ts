@@ -1,10 +1,15 @@
-import { NodeType, StrokeAlign } from '@latte-js/bean'
+import { BlendModeType, FillType, NodeType, StrokeAlign } from '@latte-js/bean'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type IGraphObserver } from '../../typing'
-import { MAT_A, MAT_D, MAT_SIZE, NULL_INDEX } from '../config'
+import { DIRTY_TREE, MAT_A, MAT_D, MAT_SIZE, NULL_INDEX } from '../config'
 import { PropId } from '../propKeys'
-import { writeNodeGeometry, writeNodeName } from '../nodeProps'
+import {
+  writeNodeFills,
+  writeNodeGeometry,
+  writeNodeName,
+  writeNodeStrokes,
+} from '../nodeProps'
 import { SceneGraph } from '../sceneGraph'
 
 describe('SceneGraph', () => {
@@ -148,6 +153,93 @@ describe('SceneGraph', () => {
       const index = sceneGraph.createNode(NodeType.RECTANGLE, 'test:rect-1')
       sceneGraph.deleteNode(index)
       expect(sceneGraph.getIndex('test:rect-1')).toBe(NULL_INDEX)
+      expect(sceneGraph.type[index]).toBe(0)
+    })
+
+    it('should delete a subtree without leaving child UUID mappings', () => {
+      const parent = sceneGraph.createNode(NodeType.GROUP, 'test:parent')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:child')
+      const grandchild = sceneGraph.createNode(
+        NodeType.RECTANGLE,
+        'test:grandchild'
+      )
+
+      sceneGraph.appendChild(parent, child)
+      sceneGraph.appendChild(child, grandchild)
+      sceneGraph.deleteNode(parent)
+
+      expect(sceneGraph.getIndex('test:parent')).toBe(NULL_INDEX)
+      expect(sceneGraph.getIndex('test:child')).toBe(NULL_INDEX)
+      expect(sceneGraph.getIndex('test:grandchild')).toBe(NULL_INDEX)
+      expect(sceneGraph.type[parent]).toBe(0)
+      expect(sceneGraph.type[child]).toBe(0)
+      expect(sceneGraph.type[grandchild]).toBe(0)
+    })
+
+    it('should release blob metadata when deleting a node', () => {
+      const index = sceneGraph.createNode(NodeType.RECTANGLE, 'test:rect-blob')
+      const textPtr = sceneGraph.blobs.write('Text content')
+      sceneGraph.textPtr[index] = textPtr
+      const namePtr = writeNodeName(sceneGraph, index, 'Blob Rect')
+      const geometryPtr = writeNodeGeometry(sceneGraph, index, {
+        points: [0, 0, 10, 10],
+      })
+      const fillPtr = writeNodeFills(sceneGraph, index, [
+        {
+          type: FillType.SOLID,
+          color: { r: 1, g: 0, b: 0, a: 1 },
+          visible: true,
+          opacity: 1,
+          blendMode: BlendModeType.NORMAL,
+        },
+      ])
+      const strokePtr = writeNodeStrokes(sceneGraph, index, [
+        {
+          type: FillType.SOLID,
+          color: { r: 0, g: 0, b: 1, a: 1 },
+          visible: true,
+          opacity: 1,
+          blendMode: BlendModeType.NORMAL,
+        },
+      ])
+
+      sceneGraph.deleteNode(index)
+
+      expect(sceneGraph.blobs.read(textPtr, true)).toBeNull()
+      expect(sceneGraph.blobs.read(namePtr, true)).toBeNull()
+      expect(sceneGraph.blobs.read(geometryPtr)).toBeNull()
+      expect(sceneGraph.blobs.read(fillPtr)).toBeNull()
+      expect(sceneGraph.blobs.read(strokePtr)).toBeNull()
+    })
+
+    it('should clear dirty entries for deleted subtree indices', () => {
+      const parent = sceneGraph.createNode(NodeType.GROUP, 'test:parent')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:child')
+      sceneGraph.appendChild(0, parent)
+      sceneGraph.appendChild(parent, child)
+      sceneGraph.tracker.flush()
+
+      sceneGraph.markDirty(parent, DIRTY_TREE)
+      sceneGraph.markDirty(child, DIRTY_TREE)
+      sceneGraph.deleteNode(parent)
+
+      const dirty = sceneGraph.tracker.flush()
+      expect(dirty.has(parent)).toBe(false)
+      expect(dirty.has(child)).toBe(false)
+      expect(dirty.get(0)! & DIRTY_TREE).toBeTruthy()
+    })
+
+    it('should reject deleting root document node', () => {
+      expect(() => sceneGraph.deleteNode(0)).toThrow(
+        'Cannot delete root document node'
+      )
+    })
+
+    it('should reject duplicate node ids', () => {
+      sceneGraph.createNode(NodeType.RECTANGLE, 'test:duplicate')
+      expect(() =>
+        sceneGraph.createNode(NodeType.RECTANGLE, 'test:duplicate')
+      ).toThrow('Duplicate node id')
     })
 
     it('should handle multiple nodes correctly', () => {
@@ -198,6 +290,89 @@ describe('SceneGraph', () => {
       expect(sceneGraph.nextSibling[ref]).toBe(c1)
       expect(sceneGraph.firstChild[p1]).toBe(NULL_INDEX)
     })
+
+    it('should reject insertAfter with refNode from a different parent', () => {
+      const p1 = sceneGraph.createNode(NodeType.GROUP, 'test:p1')
+      const p2 = sceneGraph.createNode(NodeType.GROUP, 'test:p2')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:child')
+      const ref = sceneGraph.createNode(NodeType.RECTANGLE, 'test:ref')
+
+      sceneGraph.appendChild(p1, ref)
+
+      expect(() => sceneGraph.insertAfter(p2, child, ref)).toThrow(
+        'refNode is not child of parent'
+      )
+      expect(sceneGraph.parent[child]).toBe(NULL_INDEX)
+    })
+
+    it('should append when insertAfter receives NULL_INDEX refNode', () => {
+      const parent = sceneGraph.createNode(NodeType.GROUP, 'test:p')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:c')
+
+      sceneGraph.insertAfter(parent, child, NULL_INDEX)
+
+      expect(sceneGraph.parent[child]).toBe(parent)
+      expect(sceneGraph.firstChild[parent]).toBe(child)
+      expect(sceneGraph.lastChild[parent]).toBe(child)
+    })
+
+    it('should reject graph operations with invalid node indices', () => {
+      const parent = sceneGraph.createNode(NodeType.GROUP, 'test:p')
+      expect(() => sceneGraph.appendChild(parent, 9999)).toThrow(
+        'Invalid node index'
+      )
+      expect(() => sceneGraph.detach(9999)).toThrow('Invalid node index')
+    })
+
+    it('rejects guarded structural mutations outside a declared mutation scope', () => {
+      const parent = sceneGraph.createNode(NodeType.GROUP, 'test:p')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:c')
+      sceneGraph.appendChild(parent, child)
+
+      sceneGraph.setMutationGuardEnabled(true)
+
+      expect(() =>
+        sceneGraph.createNode(NodeType.RECTANGLE, 'test:new')
+      ).toThrow('Mutation outside permitted scope')
+      expect(() => sceneGraph.detach(child)).toThrow(
+        'Mutation outside permitted scope'
+      )
+      expect(() => sceneGraph.appendChild(parent, child)).toThrow(
+        'Mutation outside permitted scope'
+      )
+      expect(() => sceneGraph.insertAfter(parent, child, NULL_INDEX)).toThrow(
+        'Mutation outside permitted scope'
+      )
+      expect(() => sceneGraph.registerIdMap('test:alias', parent)).toThrow(
+        'Mutation outside permitted scope'
+      )
+      expect(() => sceneGraph.unregisterIdMap('test:p', parent)).toThrow(
+        'Mutation outside permitted scope'
+      )
+      expect(() => sceneGraph.resetUUIDMap(new Map())).toThrow(
+        'Mutation outside permitted scope'
+      )
+    })
+
+    it('allows guarded structural mutations inside a declared mutation scope', () => {
+      sceneGraph.setMutationGuardEnabled(true)
+
+      sceneGraph.runWithMutationScope(
+        { kind: 'writeNoHistory', source: 'test' },
+        () => {
+          const parent = sceneGraph.createNode(NodeType.GROUP, 'test:p')
+          const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:c')
+          sceneGraph.appendChild(parent, child)
+          sceneGraph.detach(child)
+          sceneGraph.registerIdMap('test:root-alias', 0)
+          sceneGraph.unregisterIdMap('test:root-alias', 0)
+        }
+      )
+
+      expect(sceneGraph.getIndex('test:p')).not.toBe(NULL_INDEX)
+      expect(sceneGraph.getIndex('test:c')).not.toBe(NULL_INDEX)
+      expect(sceneGraph.getIndex('test:root-alias')).toBe(NULL_INDEX)
+    })
   })
 
   describe('Hierarchy Operations', () => {
@@ -244,6 +419,24 @@ describe('SceneGraph', () => {
       expect(sceneGraph.parent[child]).toBe(NULL_INDEX)
       expect(sceneGraph.firstChild[parent]).toBe(NULL_INDEX)
     })
+
+    it('should mark hierarchy changes dirty', () => {
+      const parent = sceneGraph.createNode(NodeType.FRAME, 'test:p')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:c')
+      sceneGraph.tracker.flush()
+
+      sceneGraph.appendChild(parent, child)
+
+      let dirty = sceneGraph.tracker.flush()
+      expect(dirty.get(parent)! & DIRTY_TREE).toBeTruthy()
+      expect(dirty.get(child)! & DIRTY_TREE).toBeTruthy()
+
+      sceneGraph.detach(child)
+
+      dirty = sceneGraph.tracker.flush()
+      expect(dirty.get(parent)! & DIRTY_TREE).toBeTruthy()
+      expect(dirty.get(child)! & DIRTY_TREE).toBeTruthy()
+    })
   })
 
   describe('Observers and Notifications', () => {
@@ -280,6 +473,27 @@ describe('SceneGraph', () => {
       expect(obs1.update).toHaveBeenCalledTimes(1)
       expect(obs2.update).toHaveBeenCalledTimes(1)
     })
+
+    it('should stop notifying disposed observers', () => {
+      const observer = { update: vi.fn() }
+      const disposable = sceneGraph.setObserver(observer)
+
+      disposable.dispose()
+      disposable.dispose()
+      sceneGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
+
+      expect(observer.update).not.toHaveBeenCalled()
+    })
+
+    it('should clear observers on dispose', () => {
+      const observer = { update: vi.fn() }
+      sceneGraph.setObserver(observer)
+
+      sceneGraph.dispose()
+      sceneGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
+
+      expect(observer.update).not.toHaveBeenCalled()
+    })
   })
 
   describe('Mutation Tracking', () => {
@@ -306,6 +520,16 @@ describe('SceneGraph', () => {
       const idx = sceneGraph.createNode(NodeType.RECTANGLE, 'test:uuid1')
       expect(sceneGraph.getUUID(idx)).toBe('test:uuid1')
       expect(sceneGraph.getIndex('test:uuid1')).toBe(idx)
+    })
+
+    it('should expose UUID maps as snapshots', () => {
+      sceneGraph.createNode(NodeType.RECTANGLE, 'test:uuid1')
+      const map = sceneGraph.getUUIDMap()
+
+      map.set('test:external', 42)
+
+      expect(sceneGraph.getIndex('test:external')).toBe(NULL_INDEX)
+      expect(sceneGraph.getUUID(42)).toBe(null)
     })
   })
 
