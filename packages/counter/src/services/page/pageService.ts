@@ -4,14 +4,17 @@ import {
   type IDType,
   NodeType,
 } from '@latte-js/bean'
-import { editor } from '@latte-js/syrup'
+import type { SceneGraph } from '@latte-js/espresso'
+
+import type { IEditorRenderer } from '@latte-js/syrup'
 
 export class PageService {
   private _activePageId: IDType | null = null
 
   constructor(
     private _documentService: IDocumentService,
-    private _queryService: IQueryService
+    private _queryService: IQueryService,
+    private _renderer: IEditorRenderer<SceneGraph>
   ) {
     this._listenDocumentChanges()
   }
@@ -26,7 +29,7 @@ export class PageService {
     )
     this._activePageId = allPages.length > 0 ? allPages[0] : null
     if (this._activePageId) {
-      editor.renderer.setActiveRootId(this._activePageId!)
+      this._renderer.setActiveRootId(this._activePageId)
     }
   }
 

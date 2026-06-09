@@ -16,5 +16,4 @@ export {
   IContextViewService,
   type IContextMenuShowOptions as IContextViewMenuShowOptions,
 } from './contextview/contextViewService'
-export * from './proxies/proxies'
 export * from './editor/editorService'

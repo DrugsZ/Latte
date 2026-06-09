@@ -9,21 +9,24 @@ import {
 import { service, ServiceBase, type IContext } from './serviceBase'
 
 import type { TransformSystem } from '../systems/transform'
-import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
 
 const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
 
 const transformServiceMutationPolicies: MutationPolicyMap = {
   beginTransform: {
-    kind: 'sessionBegin',
+    kind: MutationPolicyKind.SessionBegin,
     label: args => (typeof args[1] === 'string' ? args[1] : 'Transform Layer'),
     ids: idsFromFirstArg,
   },
-  commitTransform: { kind: 'sessionCommit' },
-  cancelTransform: { kind: 'sessionCancel' },
-  moveTo$: { kind: 'sessionMutation' },
-  moveBy$: { kind: 'sessionMutation' },
-  transformAround$: { kind: 'sessionMutation' },
+  commitTransform: { kind: MutationPolicyKind.SessionCommit },
+  cancelTransform: { kind: MutationPolicyKind.SessionCancel },
+  moveTo$: { kind: MutationPolicyKind.SessionMutation },
+  moveBy$: { kind: MutationPolicyKind.SessionMutation },
+  transformAround$: { kind: MutationPolicyKind.SessionMutation },
 }
 
 @service({ mutations: transformServiceMutationPolicies })

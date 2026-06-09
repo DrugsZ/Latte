@@ -1,17 +1,13 @@
-import { SceneGraph } from '@latte-js/espresso'
-
 import type { IDocument as IBaseDocument } from '@latte-js/bean'
 
-export type IDocument = IBaseDocument<SceneGraph>
+export type IDocument<TGraph = unknown> = IBaseDocument<TGraph>
 
-export class LatteDocument implements IDocument {
+export class LatteDocument<TGraph = unknown> implements IDocument<TGraph> {
   public isDirty = false
-  public readonly graph: SceneGraph
 
   constructor(
     public readonly id: string,
-    public readonly uri: string
-  ) {
-    this.graph = new SceneGraph()
-  }
+    public readonly uri: string,
+    public readonly graph: TGraph
+  ) {}
 }

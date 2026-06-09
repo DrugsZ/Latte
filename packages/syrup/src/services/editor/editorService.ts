@@ -1,9 +1,9 @@
 import { createDecorator } from '../instantiation/instantiation'
 
-import type { Editor } from '../../core/editor'
+import type { EditorHost } from '../../core/editorHost'
 
 export interface IEditorService {
-  readonly activeEditor: Editor | null
+  readonly activeEditor: EditorHost | null
 }
 
 export const IEditorService = createDecorator<IEditorService>('editorService')

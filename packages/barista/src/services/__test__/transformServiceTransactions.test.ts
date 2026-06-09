@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 import { fromService } from '../../ipc'
 import { BaristaSystem } from '../../systems'
-import { MutationGate } from '../../transactions/mutationPolicy'
+import {
+  MutationGate,
+  MutationPolicyKind,
+} from '../../transactions/mutationPolicy'
 import { TransformService } from '../transform'
 import { UndoRedoService } from '../undoRedo'
 
@@ -119,7 +122,7 @@ describe('TransformService transactions', () => {
     const cursor = new NodeCursor(graph, index)
     const channel = fromService(
       {
-        getMutationPolicy: () => ({ kind: 'readonly' as const }),
+        getMutationPolicy: () => ({ kind: MutationPolicyKind.Readonly }),
         async write() {
           cursor.x = 10
         },

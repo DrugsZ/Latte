@@ -1,26 +1,19 @@
-import type {
-  IDType,
-  ITransformService,
-  IUndoRedoService,
-  mat2d,
-  vec2,
-} from '@latte-js/bean'
+import type { IDType, ITransformService, mat2d, vec2 } from '@latte-js/bean'
 
-interface PendingUpdate {
+interface PendingTransformUpdate {
   notify: () => void
   request: () => Promise<void>
 }
 
 interface IActiveTransformInteraction {
-  readonly kind: 'transform'
   readonly label: string
   readonly ids: IDType[]
-  pendingUpdate: PendingUpdate | null
+  pendingUpdate: PendingTransformUpdate | null
   frameId: number | null
 }
 
-export type RuntimeInteractionCallback<T> = (
-  controller: RuntimeInteractionController
+export type TransformInteractionCallback<T> = (
+  controller: TransformInteractionController
 ) => T | Promise<T>
 
 const requestFrame = (callback: FrameRequestCallback) => {
@@ -38,13 +31,10 @@ const cancelFrame = (frameId: number) => {
   clearTimeout(frameId)
 }
 
-export class RuntimeInteractionController {
+export class TransformInteractionController {
   private _active: IActiveTransformInteraction | null = null
 
-  constructor(
-    private readonly _transformService: ITransformService,
-    private readonly _undoRedoService: IUndoRedoService
-  ) {}
+  constructor(private readonly _transformService: ITransformService) {}
 
   public get isActive() {
     return this._active !== null
@@ -53,13 +43,12 @@ export class RuntimeInteractionController {
   public async beginTransform(ids: IDType[], label = 'transform') {
     if (this._active) {
       throw new Error(
-        `[RuntimeInteractionController] Cannot begin ${label} while ${this._active.label} is active`
+        `[TransformInteractionController] Cannot begin ${label} while ${this._active.label} is active`
       )
     }
 
     await this._transformService.beginTransform(ids, label)
     this._active = {
-      kind: 'transform',
       label,
       ids: [...ids],
       pendingUpdate: null,
@@ -69,7 +58,7 @@ export class RuntimeInteractionController {
 
   public async runTransform<T>(
     label: string,
-    callback: RuntimeInteractionCallback<T>,
+    callback: TransformInteractionCallback<T>,
     ids: IDType[] = []
   ): Promise<T> {
     await this.beginTransform(ids, label)
@@ -127,31 +116,15 @@ export class RuntimeInteractionController {
     this._active = null
   }
 
-  public async undo() {
-    return this._undoRedoService.undo()
-  }
-
-  public async redo() {
-    return this._undoRedoService.redo()
-  }
-
-  public async canUndo() {
-    return this._undoRedoService.canUndo()
-  }
-
-  public async canRedo() {
-    return this._undoRedoService.canRedo()
-  }
-
   public dispose() {
     this._cancelPendingUpdate()
     this._active = null
   }
 
-  private _scheduleTransformUpdate(update: PendingUpdate) {
-    if (!this._active || this._active.kind !== 'transform') {
+  private _scheduleTransformUpdate(update: PendingTransformUpdate) {
+    if (!this._active) {
       throw new Error(
-        '[RuntimeInteractionController] beginTransform must be called before transform updates'
+        '[TransformInteractionController] beginTransform must be called before transform updates'
       )
     }
 

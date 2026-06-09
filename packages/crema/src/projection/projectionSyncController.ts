@@ -1,13 +1,16 @@
 import {
-  Channels,
+  NodeType,
   type IDisposable,
   type IDType,
   type ILatteFile,
+  type INodeService,
   type ISceneDirtyNode,
   type ISceneDirtyPayload,
+  type ISceneService,
 } from '@latte-js/bean'
+import type { SceneGraph } from '@latte-js/espresso'
 
-import type { Editor } from '@latte-js/syrup'
+import type { EditorHost } from '@latte-js/syrup'
 
 type NodeIdMapPayload = [id: IDType, index: number][]
 type DirtyPayload = IDType[] | Partial<ISceneDirtyPayload>
@@ -38,6 +41,9 @@ const normalizeDirtyPayload = (
   }
 }
 
+// FIXME(projection-events): Split projection state sync from render invalidation
+// once metadata/outline panels or multi-session projection consumers need
+// explicit events instead of this controller directly calling renderer.
 export class ProjectionSyncController {
   private _disposables: IDisposable[] = []
   private _started = false
@@ -46,7 +52,11 @@ export class ProjectionSyncController {
   private _allDirtyIds: IDType[] = []
   private _dirtyNodes: ISceneDirtyNode[] = []
 
-  constructor(private readonly _editor: Editor) {}
+  constructor(
+    private readonly _host: EditorHost<SceneGraph>,
+    private readonly _nodeService: INodeService,
+    private readonly _sceneService: ISceneService
+  ) {}
 
   public get version() {
     return this._version
@@ -69,21 +79,19 @@ export class ProjectionSyncController {
       return
     }
 
-    const nodeService = this._editor.baristaClient.getService(Channels.Node)
     this._disposables.push(
-      nodeService.onCreate(nodes => {
+      this._nodeService.onCreate(nodes => {
         this.applyCreated(nodes)
       })
     )
     this._disposables.push(
-      nodeService.onDelete(nodes => {
+      this._nodeService.onDelete(nodes => {
         this.applyDeleted(nodes)
       })
     )
 
-    const sceneService = this._editor.baristaClient.getService(Channels.Scene)
     this._disposables.push(
-      sceneService.onDirty(payload => {
+      this._sceneService.onDirty(payload => {
         this.markDirty(payload as DirtyPayload)
       })
     )
@@ -91,15 +99,23 @@ export class ProjectionSyncController {
     this._started = true
   }
 
-  public hydrateDocument(data: ILatteFile, idMap: Map<IDType, number>) {
-    const result = this._editor.hydrateDocument(data, idMap)
+  public applyLoadedDocument(data: ILatteFile, idMap: Map<IDType, number>) {
+    this._host.graph.resetUUIDMap(idMap)
+
+    const activeRootId = this._findActiveRootId(data)
+    if (activeRootId && this._host.renderer) {
+      this._host.renderer.setActiveRootId(activeRootId)
+      this._host.renderer.fitToContent(activeRootId)
+    }
+
+    this._host.renderer?.requestRender()
     this._version++
-    return result
+    return { idMap, activeRootId }
   }
 
   public applyCreated(nodes: NodeIdMapPayload) {
     for (const [id, index] of nodes) {
-      this._editor.graph.registerIdMap(id, index)
+      this._host.graph.registerIdMap(id, index)
     }
     if (nodes.length > 0) {
       this._version++
@@ -108,7 +124,7 @@ export class ProjectionSyncController {
 
   public applyDeleted(nodes: NodeIdMapPayload) {
     for (const [id, index] of nodes) {
-      this._editor.graph.unregisterIdMap(id, index)
+      this._host.graph.unregisterIdMap(id, index)
     }
     if (nodes.length > 0) {
       this._version++
@@ -124,7 +140,7 @@ export class ProjectionSyncController {
     this._version++
 
     if (normalized.renderIds.length > 0) {
-      this._editor.renderer.requestRender()
+      this._host.renderer?.requestRender()
     }
   }
 
@@ -136,5 +152,21 @@ export class ProjectionSyncController {
     this._allDirtyIds = []
     this._dirtyNodes = []
     this._started = false
+  }
+
+  private _findActiveRootId(data: ILatteFile): IDType | undefined {
+    const page = data.elements.find(node => {
+      const type = node.type as string | number
+      return type === 'CANVAS' || type === NodeType.CANVAS
+    })
+    if (page) {
+      return page.guid
+    }
+
+    const document = data.elements.find(node => {
+      const type = node.type as string | number
+      return type === 'DOCUMENT' || type === NodeType.DOCUMENT
+    })
+    return document?.guid
   }
 }

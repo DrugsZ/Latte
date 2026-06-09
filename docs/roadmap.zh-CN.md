@@ -151,12 +151,14 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 - `@latte-js/bean`：基础类型、节点枚举、文件/RPC 类型契约。
 - `@latte-js/espresso`：SAB + SoA SceneGraph、NodeCursor、loader/serializer、临时 append-only shared heap/blob pointer columns。
 - `@latte-js/barista`：worker engine、ChannelServer/Client、MutationGate、TransactionManager、HistoryManager、UndoRedoService、Transform/Matrix/AABB/Query systems。
-- `@latte-js/crema`：EditorRuntime、ProjectionSyncController、RuntimeInteractionController。
-- `@latte-js/syrup`：Editor、Document、Input、Command、Menu、Keybinding、DI/Instantiation。
+- `@latte-js/crema`：EditorRuntime、Worker/BaristaClient/Renderer/Input 装配、ProjectionSyncController、TransformInteractionController。
+- `@latte-js/syrup`：EditorHost、Document、Input 抽象、Command、Menu、Keybinding、DI/Instantiation。
 - `@latte-js/counter`：内置 workbench/contrib、SelectionService、ToolService、SelectionTool。
 - `@latte-js/art`：只读 Renderer、Camera、HitTester、RTree、fitToContent。
 - `@latte-js/milk`：React UI 组件与面板承载层。
 - `apps/cafe`：集成样例、SAB/COOP/COEP smoke target。
+- TypeScript 工具链：type-check 已切到 Go native `tsgo`；JS `typescript`
+  仍作为 `tsup`、Vite、ESLint 等工具的 API/peer dependency 保留。
 
 ### 3.2 仍缺的关键能力
 
@@ -249,17 +251,24 @@ P0 是后续所有能力的地基。如果当前内核不能稳定加载、渲�
    - 禁止 wrapper-private metadata Map 成为权威数据。
    - 当前 JS heap/blob 只做 append-only + tombstone release，不在 P1 里扩展成完整 allocator。
 
-3. StyleService
+3. Typed DI / ServiceCollection
+   - 在 `syrup` 中建立 VSCode 风格的 `ServiceIdentifier<T>`、`ServiceCollection`、`ServicesAccessor` 和基础 `InstantiationService`。
+   - 把 `EditorHost.registerService(string, unknown)` 收敛为内部过渡 API，不作为插件或长期平台 API 暴露。
+   - 由 `crema` 在 runtime startup 时显式注册本地 service 与 worker RPC proxy：`IInputService`、`ICommandService`、`INodeService`、`ITransformService`、`IStyleService`、`IDocumentService`、`IUndoRedoService` 等。
+   - `counter/workbench`、command handler、tool 和未来 public facade 通过 `ServicesAccessor` 获取能力，不直接依赖 channel string 或全局 singleton。
+   - RPC proxy 仍由 `baristaClient.getService(Channels.X)` 创建，但注册进主线程平台时必须映射成 typed service identifier。
+
+4. StyleService
    - fill/stroke/name/opacity/visibility/lock/cornerRadius 等修改走 worker。
    - NodeCursor 写入、dirty、history record 完整。
    - 高频样式 preview 与 commit 语义分开。
 
-4. NodeService
+5. NodeService
    - create/delete/reparent/insert/reorder 的 RPC 与 mutation policy。
    - delete/reparent 增加 serialized node snapshot 与 sibling order inverse。
    - 不支持历史的结构操作必须显式 `writeNoHistory` 或拒绝。
 
-5. QueryService
+6. QueryService
    - bounds、world matrix、children、ancestor、descendant query。
    - 只读 RPC 可以后续并发化。
 
@@ -270,6 +279,7 @@ Figma 类编辑器最容易坏在“主线程看见一套数据，worker 拥有�
 ### 交付物
 
 - Projection sync 测试矩阵。
+- Typed DI / ServiceCollection 第一版实现和迁移文档。
 - StyleService/NodeService/QueryService 文档和单测。
 - delete/reparent history 设计和第一版实现。
 
@@ -277,6 +287,7 @@ Figma 类编辑器最容易坏在“主线程看见一套数据，worker 拥有�
 
 - worker load/create/delete 后主线程 query 与 renderer 都能读到一致结果。
 - 普通 mutation、undo、redo、插件命令最终共用同一写入收口。
+- workbench/command 不再通过 channel string 获取 worker service。
 - 删除、reparent 不再出现 history 回放硬失败。
 
 ## 6. P2：Figma 对齐的几何与布局系统
@@ -608,7 +619,7 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 | `@latte-js/espresso` | SAB/SoA 数据内核、SceneGraph、NodeCursor、Loader/Serializer、临时 shared heap/blob contract | AGPL-3.0-or-later + commercial |
 | `@latte-js/barista`  | worker services/systems、MutationGate、TransactionManager、HistoryManager、UndoRedoService、native compute bridge | AGPL-3.0-or-later + commercial |
 | `@latte-js/native`   | 未来可选，Rust/WASM 存储、几何、snapshot/diff、replay 热路径                                | AGPL-3.0-or-later + commercial |
-| `@latte-js/crema`    | editor runtime assembly、worker client、projection sync、interaction controller             | AGPL-3.0-or-later + commercial |
+| `@latte-js/crema`    | editor runtime assembly、worker client、projection sync、transform interaction controller   | AGPL-3.0-or-later + commercial |
 | `@latte-js/art`      | renderer、camera、hit test、RTree、render backends                                          | AGPL-3.0-or-later + commercial |
 | `@latte-js/syrup`    | main-thread platform、DI、commands、menus、keybindings、input、future contribution registry | MIT                            |
 | `@latte-js/counter`  | built-in workbench/contrib、tools、selection、built-in commands                             | AGPL-3.0-or-later + commercial |

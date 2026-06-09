@@ -1,13 +1,13 @@
-import {
+import type {
+ EditorHost ,
   type IInputMouseHandler,
   type InputMouseEvent,
   type InputWheelEvent,
   CommandsRegistry,
-  EventResult,
-  editor,
-} from '@latte-js/syrup'
+  EventResult } from '@latte-js/syrup';
 
 import type { ITool } from '@latte-js/bean'
+import type { SceneGraph } from '@latte-js/espresso'
 
 export class ToolService implements IInputMouseHandler {
   public readonly id = 'tool-service'
@@ -15,15 +15,20 @@ export class ToolService implements IInputMouseHandler {
 
   private _tools: Map<string, ITool> = new Map()
   private _activeTool: ITool | null = null
+  private readonly _commandDisposables: (() => void)[] = []
 
-  constructor() {
-    CommandsRegistry.registerCommand(
-      'editor.tool.active',
-      this._handleActivateToolCommand.bind(this)
+  constructor(private readonly _editor: EditorHost<SceneGraph>) {
+    this._commandDisposables.push(
+      CommandsRegistry.registerCommand(
+        'editor.tool.active',
+        this._handleActivateToolCommand.bind(this)
+      )
     )
-    CommandsRegistry.registerCommand(
-      'editor.tool.deactivate',
-      this.deactivateCurrentTool.bind(this)
+    this._commandDisposables.push(
+      CommandsRegistry.registerCommand(
+        'editor.tool.deactivate',
+        this.deactivateCurrentTool.bind(this)
+      )
     )
   }
 
@@ -32,17 +37,17 @@ export class ToolService implements IInputMouseHandler {
     if (!tool) {
       return EventResult.IGNORED
     }
-    const { activeDocument } = editor
+    const { activeDocument } = this._editor
     if (!activeDocument) {
       return EventResult.IGNORED
     }
     ;(e as any).activeDocument = activeDocument
     const type = e.browserEvent?.type
-    if (type === 'mousedown') {
+    if (type === 'pointerdown') {
       tool.onPointerDown?.(e as any)
-    } else if (type === 'mousemove') {
+    } else if (type === 'pointermove') {
       tool.onPointerMove?.(e as any)
-    } else if (type === 'mouseup') {
+    } else if (type === 'pointerup') {
       tool.onPointerUp?.(e as any)
     } else if (type === 'dblclick') {
       tool.onDoubleTap?.(e as any)
@@ -76,6 +81,13 @@ export class ToolService implements IInputMouseHandler {
     if (this._activeTool) {
       this._activeTool.deactivate()
       this._activeTool = null
+    }
+  }
+
+  public dispose() {
+    this.deactivateCurrentTool()
+    for (const dispose of this._commandDisposables.splice(0)) {
+      dispose()
     }
   }
 

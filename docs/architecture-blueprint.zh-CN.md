@@ -273,9 +273,9 @@ sequenceDiagram
 
     App->>Runtime: startup(container)
     Runtime->>Editor: create main-thread editor resources
-    Editor->>Client: init(worker, shared buffers)
+    Runtime->>Client: init(worker, shared buffers)
     Client->>Worker: init kernel session
-    Editor->>Render: create renderer/input
+    Runtime->>Render: create renderer/input
     Runtime->>DI: register local services
     Runtime->>DI: register worker RPC services
     Runtime->>WB: register built-in contributions
@@ -345,7 +345,7 @@ sequenceDiagram
     actor User
     participant Input as Syrup InputService
     participant Tool as Counter Tool
-    participant Interaction as Crema RuntimeInteractionController
+    participant Interaction as Crema TransformInteractionController
     participant Transform as TransformService RPC
     participant Worker as Barista Worker
     participant Gate as MutationGate
@@ -608,10 +608,10 @@ worker 负责判断某个 service method 是否需要自动事务。
 
 ### 13.1 P0
 
-- 去掉 `Editor.hydrateDocument(data)` 中无 `idMap` 时主线程 loader 写 graph 的长期主路径。
-- 淘汰 `syrup/services/proxies` 的全局 singleton proxy。
-- 明确 `Editor.getService()` 是内部 host API，或替换为正式 `ServiceCollection`。
-- 让 `crema` 负责注册 local services 与 worker RPC services。
+- 已去掉 `Editor.hydrateDocument(data)` 中无 `idMap` 时主线程 loader 写 graph 的长期主路径。
+- 已淘汰 `syrup/services/proxies` 的全局 singleton proxy。
+- 已将 `Editor` 收窄并改名为 `EditorHost`，作为内部 host/service scope。
+- 已让 `crema` 负责创建 Worker、BaristaClient、Renderer、InputService，并注册 worker RPC services。
 - 保证 `apps/cafe` 仍然可运行、可见、无运行时错误。
 
 ### 13.2 P1

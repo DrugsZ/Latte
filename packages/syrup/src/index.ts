@@ -1,4 +1,5 @@
-export { Editor, editor } from './core/editor'
+export { EditorHost } from './core/editorHost'
+export type { IEditorRenderer } from './core/editorHost'
 export type { IDocument } from './core/document'
 export { LatteDocument } from './core/document'
 export * from './services'
@@ -8,5 +9,3 @@ export * from './dom/mouseDownState'
 export * from './core/actions'
 export * from './services/instantiation/instantiation'
 export * from './services/instantiation/instantiationService'
-
-export * from './services/proxies/proxies'

@@ -278,20 +278,21 @@ Review:
 
 - `packages/crema/package.json`
 - `packages/crema/src/editorRuntime.ts`
-- `packages/crema/src/interactions/runtimeInteractionController.ts`
-- `packages/crema/src/interactions/__test__/runtimeInteractionController.test.ts`
+- `packages/crema/src/interactions/transformInteractionController.ts`
+- `packages/crema/src/interactions/__test__/transformInteractionController.test.ts`
 
 Responsibilities:
 
 - start editor
 - register render bridge
 - load document through worker
-- expose interaction helpers
+- expose transform interaction helpers
 - dispose renderer and listeners
 
-`RuntimeInteractionController` coordinates the main-thread editing flow with
-typed services. Transform interaction lifecycle calls are delegated to
-`TransformService`; history controls use `UndoRedoService`.
+`TransformInteractionController` coordinates only the main-thread transform
+interaction flow. Transform lifecycle calls are delegated to
+`TransformService`; history controls stay on `UndoRedoService` instead of
+being proxied through the interaction controller.
 
 During dragging:
 
@@ -307,13 +308,6 @@ During commit:
 flush pending update with transformService.moveBy request
   -> transformService.commitTransform
 ```
-
-History helpers now delegate to `UndoRedoService`:
-
-- `undo`
-- `redo`
-- `canUndo`
-- `canRedo`
 
 ## Render Layer: `packages/art`
 

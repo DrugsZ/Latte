@@ -1,3 +1,3 @@
 export { EditorRuntime } from './editorRuntime'
-export { RuntimeInteractionController } from './interactions/runtimeInteractionController'
+export { TransformInteractionController } from './interactions/transformInteractionController'
 export { ProjectionSyncController } from './projection/projectionSyncController'

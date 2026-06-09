@@ -4,9 +4,12 @@ import type {
   MutationPolicy,
   MutationPolicyMap,
 } from '../transactions/mutationPolicy'
+import { MutationPolicyKind } from '../transactions/mutationPolicy'
 import type { IContext } from './types'
 
-const readonlyMutationPolicy: MutationPolicy = { kind: 'readonly' }
+const readonlyMutationPolicy: MutationPolicy = {
+  kind: MutationPolicyKind.Readonly,
+}
 
 export interface IServiceRegistrationOptions {
   readonly mutations?: MutationPolicyMap

@@ -1,5 +1,6 @@
-import { Channels, NodeType } from '@latte-js/bean'
-import { Editor } from '@latte-js/syrup'
+import { NodeType } from '@latte-js/bean'
+import { SceneGraph } from '@latte-js/espresso'
+import { EditorHost } from '@latte-js/syrup'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ProjectionSyncController } from '../projectionSyncController'
@@ -7,7 +8,7 @@ import { ProjectionSyncController } from '../projectionSyncController'
 import type { IDType, ILatteFile, ISceneDirtyPayload } from '@latte-js/bean'
 
 const createHarness = () => {
-  const editor = new Editor()
+  const editor = new EditorHost(new SceneGraph())
   const requestRender = vi.fn()
   const disposables = [vi.fn(), vi.fn(), vi.fn()]
   const createListeners: ((nodes: [IDType, number][]) => void)[] = []
@@ -34,20 +35,12 @@ const createHarness = () => {
       }
     ),
   }
-  const baristaClient = {
-    getService: vi.fn((channel: Channels) => {
-      if (channel === Channels.Node) {
-        return nodeService
-      }
-      if (channel === Channels.Scene) {
-        return sceneService
-      }
-      throw new Error(`Unexpected channel ${channel}`)
-    }),
-  }
-
-  ;(editor as any)._renderer = { requestRender }
-  ;(editor as any)._baristaClient = baristaClient
+  editor.setRenderer({
+    setGraph: vi.fn(),
+    setActiveRootId: vi.fn(),
+    fitToContent: vi.fn().mockReturnValue(true),
+    requestRender,
+  })
 
   return {
     editor,
@@ -56,7 +49,11 @@ const createHarness = () => {
     createListeners,
     deleteListeners,
     dirtyListeners,
-    projection: new ProjectionSyncController(editor),
+    projection: new ProjectionSyncController(
+      editor,
+      nodeService as any,
+      sceneService as any
+    ),
   }
 }
 
@@ -115,19 +112,15 @@ describe('ProjectionSyncController', () => {
     expect(requestRender).not.toHaveBeenCalled()
   })
 
-  it('hydrates through the editor and advances projection version', () => {
+  it('applies loaded document projection and advances projection version', () => {
     const { editor, projection } = createHarness()
     const data = { elements: [] } as unknown as ILatteFile
     const idMap = new Map<IDType, number>([['test:doc', 0]])
-    const hydrateDocument = vi
-      .spyOn(editor, 'hydrateDocument')
-      .mockReturnValue({ idMap, activeRootId: undefined })
-
-    expect(projection.hydrateDocument(data, idMap)).toEqual({
+    expect(projection.applyLoadedDocument(data, idMap)).toEqual({
       idMap,
       activeRootId: undefined,
     })
-    expect(hydrateDocument).toHaveBeenCalledWith(data, idMap)
+    expect(editor.graph.getIndex('test:doc')).toBe(0)
     expect(projection.version).toBe(1)
   })
 

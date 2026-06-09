@@ -172,17 +172,19 @@ Figma 的宽高位置输入框既能输入，也能拖拽 scrub。Latte 应按�
 
 拖拽不会绕过事务。它绕过的是每帧 command，不是绕过 worker transaction。
 
-## 5. Editor、Syrup、DI 与插件 API
+## 5. EditorHost、Syrup、DI 与插件 API
 
-### 5.1 Editor 的职责
+### 5.1 EditorHost 的职责
 
-`Editor` 不应成为“所有能力集合”。更合理的职责：
+`EditorHost` 不应成为“所有能力集合”。更合理的职责：
 
 - 作为 main-thread editor host。
-- 持有当前 renderer、graph projection、barista client。
-- 提供生命周期管理。
+- 持有当前 graph projection、active document/session 的轻量主线程状态。
+- 承载 renderer attachment，但不负责创建 renderer。
+- 提供 per-editor service scope / disposable root。
 - 承接 service collection / instantiation infrastructure。
 - 不长期承担 document 权威写入。
+- 不负责创建 Worker、BaristaClient、Renderer 或 worker RPC proxy。
 - 不直接成为公开插件 API facade。
 
 ### 5.2 为什么保留 main-thread service 概念
@@ -209,16 +211,16 @@ ctx.workspace.activeDocument
 
 Facade 内部可以调用 command，也可以调用 service。插件作者不应依赖内部 `editor.getService(...)`。
 
-### 5.3 `syrup/services/proxies` 的问题
+### 5.3 `syrup/services/proxies` 已移除
 
-全局 proxy 设计长期不合适：
+全局 proxy 设计长期不合适，因此已经移除：
 
 - 依赖全局 editor。
 - 不支持多 editor/multi document。
 - 绕过 ServiceCollection。
 - 把 worker channel 与主线程 service 隐式混在一起。
 
-目标是由 `crema` 在 runtime startup 时注册 local services 与 worker RPC services。
+当前目标已经切到由 `crema` 在 runtime startup 时注册 local services 与 worker RPC services。
 
 ## 6. 事务、历史与 Undo/Redo
 
@@ -855,7 +857,7 @@ Review 重点：
 ### Crema
 
 - `packages/crema/src/editorRuntime.ts`
-- `packages/crema/src/interactions/runtimeInteractionController.ts`
+- `packages/crema/src/interactions/transformInteractionController.ts`
 - `packages/crema/src/projection/projectionSyncController.ts`
 
 Review 重点：
@@ -867,7 +869,7 @@ Review 重点：
 
 ### Syrup / Counter
 
-- `packages/syrup/src/core/editor.ts`
+- `packages/syrup/src/core/editorHost.ts`
 - `packages/syrup/src/services/command/commandService.ts`
 - `packages/syrup/src/services/keybinding/keybindingService.ts`
 - `packages/counter`

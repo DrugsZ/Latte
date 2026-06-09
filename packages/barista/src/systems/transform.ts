@@ -12,24 +12,27 @@ import { getTransactionManager } from '../transactions/transactionRegistry'
 import { system, SystemBase, Systems } from './systems'
 
 import type { IDType } from '@latte-js/bean'
-import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
 
 const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
 const EPSILON = 1e-6
 
 const transformMutationPolicies: MutationPolicyMap = {
   moveTo: {
-    kind: 'atomic',
+    kind: MutationPolicyKind.Atomic,
     label: 'Move Layer',
     ids: idsFromFirstArg,
   },
   moveBy: {
-    kind: 'atomic',
+    kind: MutationPolicyKind.Atomic,
     label: 'Move Layer',
     ids: idsFromFirstArg,
   },
   transformAround: {
-    kind: 'atomic',
+    kind: MutationPolicyKind.Atomic,
     label: 'Transform Layer',
     ids: idsFromFirstArg,
   },

@@ -9,11 +9,14 @@ import { Emitter } from '@latte-js/kit'
 
 import { service, ServiceBase, type IContext } from './serviceBase'
 
-import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
 
 const documentMutationPolicies: MutationPolicyMap = {
-  load: { kind: 'writeNoHistory' },
-  save: { kind: 'readonly' },
+  load: { kind: MutationPolicyKind.WriteNoHistory },
+  save: { kind: MutationPolicyKind.Readonly },
 }
 
 @service({ mutations: documentMutationPolicies })

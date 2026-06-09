@@ -11,6 +11,7 @@ import {
 } from '../serviceBase'
 import { TransformService } from '../transform'
 import { UndoRedoService } from '../undoRedo'
+import { MutationPolicyKind } from '../../transactions/mutationPolicy'
 
 const createContext = (graph: SceneGraph) => ({
   sceneGraph: graph,
@@ -25,7 +26,7 @@ describe('service mutation policies', () => {
     const transform = new TransformService(createContext(new SceneGraph()))
 
     expect(transform.getMutationPolicy('moveBy$', [])).toMatchObject({
-      kind: 'sessionMutation',
+      kind: MutationPolicyKind.SessionMutation,
     })
   })
 
@@ -37,11 +38,11 @@ describe('service mutation policies', () => {
     expect(
       transform.getMutationPolicy('moveBy', [['test:rect']])
     ).toMatchObject({
-      kind: 'atomic',
+      kind: MutationPolicyKind.Atomic,
       label: 'Move Layer',
     })
     expect(node.getMutationPolicy('create', [])).toMatchObject({
-      kind: 'writeNoHistory',
+      kind: MutationPolicyKind.WriteNoHistory,
     })
   })
 
@@ -49,7 +50,7 @@ describe('service mutation policies', () => {
     const query = new QueryService(createContext(new SceneGraph()))
 
     expect(query.getMutationPolicy('getElementByName', [])).toMatchObject({
-      kind: 'readonly',
+      kind: MutationPolicyKind.Readonly,
     })
   })
 

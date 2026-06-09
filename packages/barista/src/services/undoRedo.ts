@@ -3,13 +3,16 @@ import { Channels, type IUndoRedoService } from '@latte-js/bean'
 import { getHistoryManager } from '../transactions/transactionRegistry'
 import { service, ServiceBase, type IContext } from './serviceBase'
 
-import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
 
 const undoRedoMutationPolicies: MutationPolicyMap = {
-  undo: { kind: 'history' },
-  redo: { kind: 'history' },
-  canUndo: { kind: 'readonly' },
-  canRedo: { kind: 'readonly' },
+  undo: { kind: MutationPolicyKind.History },
+  redo: { kind: MutationPolicyKind.History },
+  canUndo: { kind: MutationPolicyKind.Readonly },
+  canRedo: { kind: MutationPolicyKind.Readonly },
 }
 
 @service({ mutations: undoRedoMutationPolicies })

@@ -16,7 +16,7 @@
 
 ```text
 main thread intent
-  -> RuntimeInteractionController
+  -> TransformInteractionController
   -> TransformService RPC
   -> MutationGate / TransactionManager
   -> TransformSystem

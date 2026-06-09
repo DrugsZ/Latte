@@ -8,7 +8,7 @@ Editor runtime assembly for Latte applications.
 - Start and connect the Barista worker client.
 - Register local and RPC-backed services.
 - Coordinate projection sync between worker-owned data and main-thread read-only consumers.
-- Coordinate high-frequency interactions through runtime controllers.
+- Coordinate high-frequency transform interactions through a transform interaction controller.
 
 ## Boundaries
 

@@ -8,11 +8,14 @@ import {
 import { service, ServiceBase, type IContext } from './serviceBase'
 
 import type { QuerySystem } from '../systems/query'
-import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
 
 const queryMutationPolicies: MutationPolicyMap = {
-  getElementByTagName: { kind: 'readonly' },
-  getElementByName: { kind: 'readonly' },
+  getElementByTagName: { kind: MutationPolicyKind.Readonly },
+  getElementByName: { kind: MutationPolicyKind.Readonly },
 }
 
 @service({ mutations: queryMutationPolicies })

@@ -3,23 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InputService } from '../input/inputService'
 
-// Mock HitTester
-vi.mock('@latte-js/art', async importOriginal => {
-  const actual = await importOriginal<any>()
-  return {
-    ...actual,
-    HitTester: class {
-      hitTest = vi.fn().mockReturnValue(1)
-    },
-    // Mock Renderer class if needed, but we pass instance mock
-  }
-})
-
 describe('InputService', () => {
   let inputService: InputService
-  let mockRenderer: any
-  let mockSceneGraph: any
   let mockCanvas: any
+  let hitTestProvider: any
 
   beforeEach(() => {
     // Setup DOM environment mocks
@@ -29,22 +16,14 @@ describe('InputService', () => {
       getBoundingClientRect: vi.fn().mockReturnValue({ left: 0, top: 0 }),
     }
 
-    mockRenderer = {
-      canvas: mockCanvas,
-      camera: {
-        toWorld: vi.fn().mockReturnValue({ x: 0, y: 0 }),
-      },
-      activeRootId: 'root',
-      rTree: {
-        search: vi.fn().mockReturnValue([]),
-      },
-    } as any
+    hitTestProvider = {
+      hitTest: vi.fn().mockReturnValue({
+        hitResult: undefined,
+        client: { x: 0, y: 0 },
+      }),
+    }
 
-    mockSceneGraph = {
-      getUUID: vi.fn().mockReturnValue('node-id'),
-    } as any
-
-    inputService = new InputService(mockRenderer, mockSceneGraph)
+    inputService = new InputService(mockCanvas, hitTestProvider)
   })
 
   afterEach(() => {
@@ -103,6 +82,7 @@ describe('InputService', () => {
     listener(mockEvent)
 
     expect(handler.onEvent).toHaveBeenCalled()
+    expect(hitTestProvider.hitTest).toHaveBeenCalledWith(10, 10)
   })
 
   it('should remove handlers', () => {

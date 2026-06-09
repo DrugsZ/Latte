@@ -1,7 +1,10 @@
 import { JsonRpcMessageType, type JsonRpcMessage } from '@latte-js/bean'
 
 import type { IChannel, IServerChannel } from '../ipc'
-import type { MutationGate } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationGate,
+} from '../transactions/mutationPolicy'
 
 interface IFromServiceOptions {
   readonly channelName?: string
@@ -64,7 +67,7 @@ export const fromService = (
         const policy =
           typeof (service as any).getMutationPolicy === 'function'
             ? (service as any).getMutationPolicy(command, args)
-            : { kind: 'readonly' as const }
+            : { kind: MutationPolicyKind.Readonly }
 
         return options.mutationGate.run(
           sessionId,

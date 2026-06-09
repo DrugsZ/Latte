@@ -6,47 +6,59 @@ import type { MutationScopeKind, SceneGraph } from '@latte-js/espresso'
 
 type PolicyResolver<T> = T | ((args: readonly unknown[]) => T)
 
+export enum MutationPolicyKind {
+  Readonly = 'readonly',
+  WriteNoHistory = 'writeNoHistory',
+  Manual = 'manual',
+  History = 'history',
+  Atomic = 'atomic',
+  SessionBegin = 'sessionBegin',
+  SessionMutation = 'sessionMutation',
+  SessionCommit = 'sessionCommit',
+  SessionCancel = 'sessionCancel',
+}
+
 export interface IReadonlyMutationPolicy {
-  readonly kind: 'readonly'
+  readonly kind: MutationPolicyKind.Readonly
 }
 
 export interface IWriteNoHistoryMutationPolicy {
-  readonly kind: 'writeNoHistory'
+  readonly kind: MutationPolicyKind.WriteNoHistory
 }
 
 export interface IManualMutationPolicy {
-  readonly kind: 'manual'
+  readonly kind: MutationPolicyKind.Manual
 }
 
 export interface IHistoryMutationPolicy {
-  readonly kind: 'history'
+  readonly kind: MutationPolicyKind.History
 }
 
 export interface IAtomicMutationPolicy {
-  readonly kind: 'atomic'
+  readonly kind: MutationPolicyKind.Atomic
   readonly label: PolicyResolver<string>
   readonly ids?: PolicyResolver<IDType[]>
 }
 
 export interface ISessionBeginMutationPolicy {
-  readonly kind: 'sessionBegin'
+  readonly kind: MutationPolicyKind.SessionBegin
   readonly label: PolicyResolver<string>
   readonly ids?: PolicyResolver<IDType[]>
   readonly sessionKey?: string
 }
 
 export interface ISessionMutationPolicy {
-  readonly kind: 'sessionMutation'
+  readonly kind: MutationPolicyKind.SessionMutation
   readonly sessionKey?: string
 }
 
 export interface ISessionCommitMutationPolicy {
-  readonly kind: 'sessionCommit'
+  readonly kind: MutationPolicyKind.SessionCommit
   readonly sessionKey?: string
 }
 
 export interface ISessionCancelMutationPolicy {
-  readonly kind: 'sessionCancel'
+  readonly kind: MutationPolicyKind.SessionCancel
   readonly sessionKey?: string
 }
 
@@ -106,9 +118,9 @@ export class MutationGate {
     const normalizedSessionId = normalizeSessionId(sessionId)
 
     switch (policy.kind) {
-      case 'readonly':
+      case MutationPolicyKind.Readonly:
         return invoke()
-      case 'writeNoHistory':
+      case MutationPolicyKind.WriteNoHistory:
         this._assertNoActiveMutation(command)
         return this._runWithMutationScope(
           'writeNoHistory',
@@ -117,7 +129,7 @@ export class MutationGate {
           command,
           invoke
         )
-      case 'manual':
+      case MutationPolicyKind.Manual:
         this._assertNoActiveMutation(command)
         return this._runWithMutationScope(
           'manual',
@@ -126,7 +138,7 @@ export class MutationGate {
           command,
           invoke
         )
-      case 'history':
+      case MutationPolicyKind.History:
         this._assertNoActiveMutation(command)
         return this._runWithMutationScope(
           'history',
@@ -135,7 +147,7 @@ export class MutationGate {
           command,
           invoke
         )
-      case 'atomic':
+      case MutationPolicyKind.Atomic:
         return this._runAtomicMutation(
           normalizedSessionId,
           serviceName,
@@ -144,7 +156,7 @@ export class MutationGate {
           args,
           invoke
         )
-      case 'sessionBegin':
+      case MutationPolicyKind.SessionBegin:
         return this._beginSession(
           normalizedSessionId,
           serviceName,
@@ -153,7 +165,7 @@ export class MutationGate {
           args,
           invoke
         )
-      case 'sessionMutation':
+      case MutationPolicyKind.SessionMutation:
         return this._runActiveSessionMutation(
           normalizedSessionId,
           this._sessionKey(serviceName, policy.sessionKey),
@@ -161,14 +173,14 @@ export class MutationGate {
           command,
           invoke
         )
-      case 'sessionCommit':
+      case MutationPolicyKind.SessionCommit:
         return this._commitSession(
           normalizedSessionId,
           this._sessionKey(serviceName, policy.sessionKey),
           command,
           invoke
         )
-      case 'sessionCancel':
+      case MutationPolicyKind.SessionCancel:
         return this._cancelSession(
           normalizedSessionId,
           this._sessionKey(serviceName, policy.sessionKey),

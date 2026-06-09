@@ -4,13 +4,16 @@ import { Emitter } from '@latte-js/kit'
 import { system, SystemBase, Systems } from './systems'
 
 import type { IDType, NodeType } from '@latte-js/bean'
-import type { MutationPolicyMap } from '../transactions/mutationPolicy'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
 
 const nodeMutationPolicies: MutationPolicyMap = {
-  create: { kind: 'writeNoHistory' },
-  remove: { kind: 'writeNoHistory' },
-  removeChild: { kind: 'writeNoHistory' },
-  insertAfter: { kind: 'writeNoHistory' },
+  create: { kind: MutationPolicyKind.WriteNoHistory },
+  remove: { kind: MutationPolicyKind.WriteNoHistory },
+  removeChild: { kind: MutationPolicyKind.WriteNoHistory },
+  insertAfter: { kind: MutationPolicyKind.WriteNoHistory },
 }
 
 @system({ mutations: nodeMutationPolicies })

@@ -47,12 +47,12 @@ describe('BaristaClient', () => {
     client = new BaristaClient(mockWorker as any)
 
     // Mock global MessageChannel
-    originalMessageChannel = global.MessageChannel
-    global.MessageChannel = MockMessageChannel as any
+    originalMessageChannel = globalThis.MessageChannel
+    globalThis.MessageChannel = MockMessageChannel as any
   })
 
   afterEach(() => {
-    global.MessageChannel = originalMessageChannel
+    globalThis.MessageChannel = originalMessageChannel
   })
 
   it('should initialize successfully', async () => {

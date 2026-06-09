@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { RuntimeInteractionController } from '../runtimeInteractionController'
+import { TransformInteractionController } from '../transformInteractionController'
 
-describe('RuntimeInteractionController', () => {
+describe('TransformInteractionController', () => {
   let transformService: any
-  let undoRedoService: any
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -19,12 +18,6 @@ describe('RuntimeInteractionController', () => {
       transformAround: vi.fn().mockResolvedValue(undefined),
       transformAround$: vi.fn(),
     }
-    undoRedoService = {
-      undo: vi.fn().mockResolvedValue(true),
-      redo: vi.fn().mockResolvedValue(true),
-      canUndo: vi.fn().mockResolvedValue(true),
-      canRedo: vi.fn().mockResolvedValue(false),
-    }
   })
 
   afterEach(() => {
@@ -32,10 +25,7 @@ describe('RuntimeInteractionController', () => {
   })
 
   it('coalesces transform updates to the latest frame update', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
+    const controller = new TransformInteractionController(transformService)
 
     await controller.beginTransform(['test:rect'])
     controller.moveBy(['test:rect'], [1, 1])
@@ -48,10 +38,7 @@ describe('RuntimeInteractionController', () => {
   })
 
   it('coalesces world-position targets without replaying intermediate positions', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
+    const controller = new TransformInteractionController(transformService)
 
     await controller.beginTransform(['test:rect'])
     controller.moveTo(['test:rect'], [10, 20])
@@ -67,10 +54,7 @@ describe('RuntimeInteractionController', () => {
   })
 
   it('flushes pending update before committing the transform interaction', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
+    const controller = new TransformInteractionController(transformService)
 
     await controller.beginTransform(['test:rect'])
     controller.moveBy(['test:rect'], [2, 3])
@@ -85,10 +69,7 @@ describe('RuntimeInteractionController', () => {
   })
 
   it('drops pending update before canceling the transform interaction', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
+    const controller = new TransformInteractionController(transformService)
 
     await controller.beginTransform(['test:rect'])
     controller.moveBy(['test:rect'], [2, 3])
@@ -98,23 +79,8 @@ describe('RuntimeInteractionController', () => {
     expect(transformService.cancelTransform).toHaveBeenCalledTimes(1)
   })
 
-  it('delegates history controls to the undo/redo service', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
-
-    await expect(controller.undo()).resolves.toBe(true)
-    await expect(controller.redo()).resolves.toBe(true)
-    await expect(controller.canUndo()).resolves.toBe(true)
-    await expect(controller.canRedo()).resolves.toBe(false)
-  })
-
   it('runTransform commits a successful interaction', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
+    const controller = new TransformInteractionController(transformService)
 
     const result = await controller.runTransform(
       'Move Layer',
@@ -135,10 +101,7 @@ describe('RuntimeInteractionController', () => {
   })
 
   it('runTransform cancels when the callback fails', async () => {
-    const controller = new RuntimeInteractionController(
-      transformService,
-      undoRedoService
-    )
+    const controller = new TransformInteractionController(transformService)
 
     await expect(
       controller.runTransform(
