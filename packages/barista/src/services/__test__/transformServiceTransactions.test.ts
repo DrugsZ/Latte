@@ -11,9 +11,12 @@ import {
 import { TransformService } from '../transform'
 import { UndoRedoService } from '../undoRedo'
 
+const ctx = (sessionId = '') => ({ sessionId })
+
 const createContext = (graph: SceneGraph) => ({
   sceneGraph: graph,
   accessSystem: new BaristaSystem(graph),
+  currentSessionId: '',
   getService: () => {
     throw new Error('getService is not used in transform service tests')
   },
@@ -46,16 +49,16 @@ describe('TransformService transactions', () => {
     const transform = createTransformChannel(graph)
     const undoRedo = createUndoRedoChannel(graph)
 
-    await transform.call('', 'moveBy', ['test:rect'], [5, 7])
+    await transform.call(ctx(), 'moveBy', ['test:rect'], [5, 7])
 
     expect(cursor.x).toBe(15)
     expect(cursor.y).toBe(27)
-    expect(await undoRedo.call('', 'canUndo')).toBe(true)
-    expect(await undoRedo.call('', 'undo')).toBe(true)
+    expect(await undoRedo.call(ctx(), 'canUndo')).toBe(true)
+    expect(await undoRedo.call(ctx(), 'undo')).toBe(true)
     expect(cursor.x).toBe(10)
     expect(cursor.y).toBe(20)
 
-    expect(await undoRedo.call('', 'redo')).toBe(true)
+    expect(await undoRedo.call(ctx(), 'redo')).toBe(true)
     expect(cursor.x).toBe(15)
     expect(cursor.y).toBe(27)
   })
@@ -77,15 +80,15 @@ describe('TransformService transactions', () => {
       mutationGate: gate,
     })
 
-    await transform.call('', 'beginTransform', ['test:rect'], 'Drag Layer')
-    await transform.call('', 'moveBy$', ['test:rect'], [5, 0])
-    await transform.call('', 'moveBy', ['test:rect'], [7, 0])
-    await transform.call('', 'commitTransform')
+    await transform.call(ctx(), 'beginTransform', ['test:rect'], 'Drag Layer')
+    await transform.call(ctx(), 'moveBy$', ['test:rect'], [5, 0])
+    await transform.call(ctx(), 'moveBy', ['test:rect'], [7, 0])
+    await transform.call(ctx(), 'commitTransform')
 
     expect(cursor.x).toBe(17)
-    expect(await undoRedo.call('', 'undo')).toBe(true)
+    expect(await undoRedo.call(ctx(), 'undo')).toBe(true)
     expect(cursor.x).toBe(10)
-    expect(await undoRedo.call('', 'redo')).toBe(true)
+    expect(await undoRedo.call(ctx(), 'redo')).toBe(true)
     expect(cursor.x).toBe(17)
   })
 
@@ -98,9 +101,9 @@ describe('TransformService transactions', () => {
 
     const transform = createTransformChannel(graph)
 
-    await transform.call('', 'beginTransform', ['test:rect'], 'Drag Layer')
-    await transform.call('', 'moveBy$', ['test:rect'], [40, 30])
-    await transform.call('', 'cancelTransform')
+    await transform.call(ctx(), 'beginTransform', ['test:rect'], 'Drag Layer')
+    await transform.call(ctx(), 'moveBy$', ['test:rect'], [40, 30])
+    await transform.call(ctx(), 'cancelTransform')
 
     expect(cursor.x).toBe(10)
     expect(cursor.y).toBe(20)
@@ -112,7 +115,7 @@ describe('TransformService transactions', () => {
     const transform = createTransformChannel(graph)
 
     await expect(
-      transform.call('', 'moveBy$', ['test:rect'], [1, 1])
+      transform.call(ctx(), 'moveBy$', ['test:rect'], [1, 1])
     ).rejects.toThrow('requires an active mutation session')
   })
 
@@ -133,12 +136,12 @@ describe('TransformService transactions', () => {
       }
     )
 
-    await expect(channel.call('', 'write')).rejects.toThrow(
+    await expect(channel.call(ctx(), 'write')).rejects.toThrow(
       'Mutation outside permitted scope'
     )
   })
 
-  it('rejects writes from another session while an interaction is active', async () => {
+  it('keeps the active session guard scoped by session id', async () => {
     const graph = new SceneGraph()
     const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
     const cursor = new NodeCursor(graph, index)
@@ -148,13 +151,18 @@ describe('TransformService transactions', () => {
       mutationGate: gate,
     })
 
-    await transform.call('doc:a', 'beginTransform', ['test:rect'], 'Drag Layer')
+    await transform.call(
+      ctx('doc:a'),
+      'beginTransform',
+      ['test:rect'],
+      'Drag Layer'
+    )
 
     await expect(
-      transform.call('doc:b', 'moveBy', ['test:rect'], [10, 0])
-    ).rejects.toThrow('while "Drag Layer" is active for doc:a')
+      transform.call(ctx('doc:b'), 'moveBy', ['test:rect'], [10, 0])
+    ).rejects.toThrow('another mutation recorder is active')
     expect(cursor.x).toBe(0)
 
-    await transform.call('doc:a', 'cancelTransform')
+    await transform.call(ctx('doc:a'), 'cancelTransform')
   })
 })

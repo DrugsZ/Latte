@@ -1,8 +1,13 @@
 import { DEFAULT_SCENE_GRAPH_NAME, type IDType } from '@latte-js/bean'
+import { MutationScopeKind } from '@latte-js/espresso'
 
 import { getHistoryManager, getTransactionManager } from './transactionRegistry'
 
-import type { MutationScopeKind, SceneGraph } from '@latte-js/espresso'
+import {
+  toSceneGraphContext,
+  type ISceneGraphContext,
+  type SceneGraphContextSource,
+} from '../context/sceneGraphContext'
 
 type PolicyResolver<T> = T | ((args: readonly unknown[]) => T)
 
@@ -101,10 +106,16 @@ const normalizeSessionId = (sessionId: string) =>
   sessionId || DEFAULT_SCENE_GRAPH_NAME
 
 export class MutationGate {
-  private _activeSession: IActiveMutationSession | null = null
+  private _activeSessions = new Map<string, IActiveMutationSession>()
+  private readonly _context: ISceneGraphContext
 
-  constructor(private readonly _sceneGraph: SceneGraph) {
+  constructor(source: SceneGraphContextSource) {
+    this._context = toSceneGraphContext(source)
     this._sceneGraph.setMutationGuardEnabled(true)
+  }
+
+  private get _sceneGraph() {
+    return this._context.sceneGraph
   }
 
   public async run<T>(
@@ -121,27 +132,27 @@ export class MutationGate {
       case MutationPolicyKind.Readonly:
         return invoke()
       case MutationPolicyKind.WriteNoHistory:
-        this._assertNoActiveMutation(command)
+        this._assertNoActiveMutation(normalizedSessionId, command)
         return this._runWithMutationScope(
-          'writeNoHistory',
+          MutationScopeKind.WriteNoHistory,
           command,
           serviceName,
           command,
           invoke
         )
       case MutationPolicyKind.Manual:
-        this._assertNoActiveMutation(command)
+        this._assertNoActiveMutation(normalizedSessionId, command)
         return this._runWithMutationScope(
-          'manual',
+          MutationScopeKind.Manual,
           command,
           serviceName,
           command,
           invoke
         )
       case MutationPolicyKind.History:
-        this._assertNoActiveMutation(command)
+        this._assertNoActiveMutation(normalizedSessionId, command)
         return this._runWithMutationScope(
-          'history',
+          MutationScopeKind.History,
           command,
           serviceName,
           command,
@@ -199,10 +210,10 @@ export class MutationGate {
     invoke: () => T | Promise<T>
   ): Promise<T> {
     const sessionKey = this._sessionKey(serviceName)
-    if (this._activeSession) {
+    if (this._activeSessions.has(sessionId)) {
       const active = this._assertActiveSession(sessionId, sessionKey, command)
       return this._runWithMutationScope(
-        'history',
+        MutationScopeKind.History,
         active.label,
         serviceName,
         command,
@@ -213,11 +224,11 @@ export class MutationGate {
     const label = resolvePolicyValue(policy.label, args, command)
     const ids = resolvePolicyValue(policy.ids, args, [])
     return this._runWithMutationScope(
-      'history',
+      MutationScopeKind.History,
       label,
       serviceName,
       command,
-      () => this._runCommittedTransaction(label, ids, invoke)
+      () => this._runCommittedTransaction(sessionId, label, ids, invoke)
     )
   }
 
@@ -229,33 +240,38 @@ export class MutationGate {
     args: readonly unknown[],
     invoke: () => T | Promise<T>
   ): Promise<T> {
-    if (this._activeSession) {
+    if (this._activeSessions.has(sessionId)) {
+      const active = this._activeSessions.get(sessionId)!
       throw new Error(
-        `[MutationGate] Cannot ${command} while "${this._activeSession.label}" is active`
+        `[MutationGate] Cannot ${command} while "${active.label}" is active`
       )
     }
 
     const label = resolvePolicyValue(policy.label, args, command)
     const ids = resolvePolicyValue(policy.ids, args, [])
     const sessionKey = this._sessionKey(serviceName, policy.sessionKey)
-    const manager = getTransactionManager(this._sceneGraph)
+    const manager = getTransactionManager(this._sceneGraph, sessionId)
 
     manager.begin(label, ids)
-    this._activeSession = { sessionId, sessionKey, label }
+    this._activeSessions.set(sessionId, { sessionId, sessionKey, label })
 
     try {
       return await this._runWithMutationScope(
-        'history',
+        MutationScopeKind.History,
         label,
         serviceName,
         command,
         invoke
       )
     } catch (error) {
-      this._runWithMutationScope('history', label, serviceName, command, () =>
-        manager.abort()
+      this._runWithMutationScope(
+        MutationScopeKind.History,
+        label,
+        serviceName,
+        command,
+        () => manager.abort()
       )
-      this._activeSession = null
+      this._activeSessions.delete(sessionId)
       throw error
     }
   }
@@ -269,7 +285,7 @@ export class MutationGate {
   ): Promise<T> {
     const active = this._assertActiveSession(sessionId, sessionKey, command)
     return this._runWithMutationScope(
-      'history',
+      MutationScopeKind.History,
       active.label,
       serviceName,
       command,
@@ -284,28 +300,28 @@ export class MutationGate {
     invoke: () => T | Promise<T>
   ): Promise<T> {
     const active = this._assertActiveSession(sessionId, sessionKey, command)
-    const manager = getTransactionManager(this._sceneGraph)
+    const manager = getTransactionManager(this._sceneGraph, sessionId)
 
     try {
       const result = await this._runWithMutationScope(
-        'history',
+        MutationScopeKind.History,
         active.label,
         sessionKey,
         command,
         invoke
       )
-      getHistoryManager(this._sceneGraph).push(manager.commit())
-      this._activeSession = null
+      getHistoryManager(this._sceneGraph).push(sessionId, manager.commit())
+      this._activeSessions.delete(sessionId)
       return result
     } catch (error) {
       this._runWithMutationScope(
-        'history',
+        MutationScopeKind.History,
         active.label,
         sessionKey,
         command,
         () => manager.abort()
       )
-      this._activeSession = null
+      this._activeSessions.delete(sessionId)
       throw error
     }
   }
@@ -317,11 +333,11 @@ export class MutationGate {
     invoke: () => T | Promise<T>
   ): Promise<T> {
     const active = this._assertActiveSession(sessionId, sessionKey, command)
-    const manager = getTransactionManager(this._sceneGraph)
+    const manager = getTransactionManager(this._sceneGraph, sessionId)
 
     try {
       return await this._runWithMutationScope(
-        'history',
+        MutationScopeKind.History,
         active.label,
         sessionKey,
         command,
@@ -329,23 +345,24 @@ export class MutationGate {
       )
     } finally {
       this._runWithMutationScope(
-        'history',
+        MutationScopeKind.History,
         active.label,
         sessionKey,
         command,
         () => manager.abort()
       )
-      this._activeSession = null
+      this._activeSessions.delete(sessionId)
     }
   }
 
-  private _assertNoActiveMutation(command: string) {
-    if (!this._activeSession) {
+  private _assertNoActiveMutation(sessionId: string, command: string) {
+    const active = this._activeSessions.get(sessionId)
+    if (!active) {
       return
     }
 
     throw new Error(
-      `[MutationGate] Cannot ${command} while "${this._activeSession.label}" is active`
+      `[MutationGate] Cannot ${command} while "${active.label}" is active`
     )
   }
 
@@ -354,21 +371,19 @@ export class MutationGate {
     sessionKey: string,
     command: string
   ): IActiveMutationSession {
-    if (
-      this._activeSession?.sessionId === sessionId &&
-      this._activeSession.sessionKey === sessionKey
-    ) {
-      return this._activeSession
+    const active = this._activeSessions.get(sessionId)
+    if (active?.sessionKey === sessionKey) {
+      return active
     }
 
-    if (!this._activeSession) {
+    if (!active) {
       throw new Error(
         `[MutationGate] ${command} requires an active mutation session`
       )
     }
 
     throw new Error(
-      `[MutationGate] Cannot ${command} for ${sessionId} while "${this._activeSession.label}" is active for ${this._activeSession.sessionId}`
+      `[MutationGate] Cannot ${command} for ${sessionId} while "${active.label}" is active for ${active.sessionId}`
     )
   }
 
@@ -394,15 +409,16 @@ export class MutationGate {
   }
 
   private async _runCommittedTransaction<T>(
+    sessionId: string,
     label: string,
     ids: IDType[],
     invoke: () => T | Promise<T>
   ): Promise<T> {
-    const manager = getTransactionManager(this._sceneGraph)
+    const manager = getTransactionManager(this._sceneGraph, sessionId)
     manager.begin(label, ids)
     try {
       const result = await invoke()
-      getHistoryManager(this._sceneGraph).push(manager.commit())
+      getHistoryManager(this._sceneGraph).push(sessionId, manager.commit())
       return result
     } catch (error) {
       manager.abort()

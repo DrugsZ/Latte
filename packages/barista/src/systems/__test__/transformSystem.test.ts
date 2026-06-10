@@ -16,6 +16,8 @@ import { DirtyBatch } from '../../pipeline/dirtyBatch'
 import { MatrixSystem } from '../matrix'
 import { TransformSystem } from '../transform'
 
+const RESOURCE_ID = 'doc:test'
+
 const flushMatrix = (graph: SceneGraph) => {
   new MatrixSystem(graph).process(
     DirtyBatch.from(new Map([[0, DIRTY_LOCAL_MATRIX]]))
@@ -114,7 +116,7 @@ describe('TransformSystem', () => {
     const history = getHistoryManager(graph)
     transactions.begin('Move Layer', ['test:rect'])
     system.moveBy(['test:rect'], [40, 30])
-    history.push(transactions.commit())
+    history.push(RESOURCE_ID, transactions.commit())
 
     expect(cursor.x).toBe(50)
     expect(cursor.y).toBe(50)
@@ -132,15 +134,15 @@ describe('TransformSystem', () => {
     const history = getHistoryManager(graph)
     transactions.begin('Move Layer', ['test:rect'])
     system.moveBy(['test:rect'], [40, 30])
-    history.push(transactions.commit())
+    history.push(RESOURCE_ID, transactions.commit())
 
-    expect(history.canUndo).toBe(true)
-    expect(history.undo()).toBe(true)
+    expect(history.canUndo(RESOURCE_ID)).toBe(true)
+    expect(history.undo(RESOURCE_ID)).toBe(true)
     expect(cursor.x).toBe(10)
     expect(cursor.y).toBe(20)
 
-    expect(history.canRedo).toBe(true)
-    expect(history.redo()).toBe(true)
+    expect(history.canRedo(RESOURCE_ID)).toBe(true)
+    expect(history.redo(RESOURCE_ID)).toBe(true)
     expect(cursor.x).toBe(50)
     expect(cursor.y).toBe(50)
   })

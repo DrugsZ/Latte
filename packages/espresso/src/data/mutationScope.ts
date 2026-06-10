@@ -1,8 +1,9 @@
-export type MutationScopeKind =
-  | 'history'
-  | 'writeNoHistory'
-  | 'manual'
-  | 'pipeline'
+export enum MutationScopeKind {
+  History = 'history',
+  WriteNoHistory = 'writeNoHistory',
+  Manual = 'manual',
+  Pipeline = 'pipeline',
+}
 
 export interface IMutationScope {
   readonly kind: MutationScopeKind

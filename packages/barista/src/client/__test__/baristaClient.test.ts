@@ -20,9 +20,28 @@ class MockMessageChannel {
 
 // Mock Worker
 class MockWorker {
-  onmessage: ((e: MessageEvent) => void) | null = null
+  private readonly _listeners = new Set<(e: MessageEvent) => void>()
   postMessage = vi.fn()
   terminate = vi.fn()
+
+  addEventListener = vi.fn(
+    (_type: string, listener: (e: MessageEvent) => void) => {
+      this._listeners.add(listener)
+    }
+  )
+
+  removeEventListener = vi.fn(
+    (_type: string, listener: (e: MessageEvent) => void) => {
+      this._listeners.delete(listener)
+    }
+  )
+
+  dispatchMessage(data: unknown) {
+    const event = { data } as MessageEvent
+    for (const listener of this._listeners) {
+      listener(event)
+    }
+  }
 }
 
 // Mock ChannelClient
@@ -78,15 +97,11 @@ describe('BaristaClient', () => {
     const { requestId } = callArgs
 
     // Simulate worker response
-    if (mockWorker.onmessage) {
-      mockWorker.onmessage({
-        data: {
-          type: Lifecycle.InitKernelSuccess,
-          resId: requestId,
-          payload: 'success',
-        },
-      } as MessageEvent)
-    }
+    mockWorker.dispatchMessage({
+      type: Lifecycle.InitKernelSuccess,
+      resId: requestId,
+      payload: 'success',
+    })
 
     const result = await initPromise
     expect(result).toBe('success')

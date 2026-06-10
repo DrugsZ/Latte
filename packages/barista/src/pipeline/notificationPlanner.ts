@@ -1,4 +1,4 @@
-import { RENDER_AFFECTING_FLAGS, type SceneGraph } from '@latte-js/espresso'
+import { RENDER_AFFECTING_FLAGS } from '@latte-js/espresso'
 
 import type {
   IDType,
@@ -6,9 +6,22 @@ import type {
   ISceneDirtyPayload,
 } from '@latte-js/bean'
 import type { DirtyBatch } from './dirtyBatch'
+import {
+  toSceneGraphContext,
+  type ISceneGraphContext,
+  type SceneGraphContextSource,
+} from '../context/sceneGraphContext'
 
 export class NotificationPlanner {
-  constructor(private readonly _sceneGraph: SceneGraph) {}
+  private readonly _context: ISceneGraphContext
+
+  constructor(source: SceneGraphContextSource) {
+    this._context = toSceneGraphContext(source)
+  }
+
+  private get _sceneGraph() {
+    return this._context.sceneGraph
+  }
 
   public createDirtyPayload(
     batch: DirtyBatch,

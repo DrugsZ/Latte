@@ -15,6 +15,7 @@ import {
   createJsonRpcErrorResponse,
   createJsonRpcNotification,
   createJsonRpcSuccessResponse,
+  type IChannelCallContext,
   type IChannelServer,
   type IDisposable,
   type IServerChannel,
@@ -25,7 +26,7 @@ import type { IMessagePassingProtocol } from './protocol/protocol'
 export class ChannelServer implements IChannelServer {
   private _channels = new Map<string, IServerChannel>()
   private _activeListeners = new Map<JsonRpcId, IDisposable>()
-  private _onMessage = new Emitter<void>()
+  private _onMessage = new Emitter<string>()
   public readonly onMessage = this._onMessage.event
   private _messageQueue: Promise<void> = Promise.resolve()
 
@@ -43,9 +44,12 @@ export class ChannelServer implements IChannelServer {
     this._channels.set(name, channel)
   }
 
-  private async _runWithOnMessage(fn: () => any): Promise<any> {
+  private async _runWithOnMessage(
+    sessionId: string,
+    fn: () => any
+  ): Promise<any> {
     const data = await fn()
-    await this._onMessage.fire()
+    await this._onMessage.fire(sessionId)
     return data
   }
 
@@ -62,11 +66,22 @@ export class ChannelServer implements IChannelServer {
       return
     }
 
-    if ('sessionId' in msg) {
-      this._onBeforeCall?.(msg.sessionId || '')
+    if ('sessionId' in msg && this._onBeforeCall) {
+      try {
+        this._onBeforeCall(msg.sessionId || '')
+      } catch (error) {
+        this._sendError(
+          msg,
+          JsonRpcErrorCode.InvalidRequest,
+          error instanceof Error ? error.message : String(error),
+          { sessionId: msg.sessionId }
+        )
+        return
+      }
     }
 
-    await this._runWithOnMessage(async () => {
+    const sessionId = 'sessionId' in msg ? msg.sessionId || '' : ''
+    await this._runWithOnMessage(sessionId, async () => {
       switch (msg.type) {
         case JsonRpcMessageType.Request:
         case JsonRpcMessageType.Notification:
@@ -104,9 +119,11 @@ export class ChannelServer implements IChannelServer {
       return
     }
 
+    const ctx = this._createChannelCallContext(sessionId)
+
     try {
       const result = await channel.call(
-        sessionId || '',
+        ctx,
         methodName,
         ...(Array.isArray(params)
           ? params
@@ -143,6 +160,7 @@ export class ChannelServer implements IChannelServer {
   private _handleListen(msg: JsonRpcListenMessage) {
     const { method, id, params, sessionId } = msg
     const [channelName, methodName] = method.split('.')
+    const ctx = this._createChannelCallContext(sessionId)
 
     try {
       const channel = this._channels.get(channelName)
@@ -153,7 +171,7 @@ export class ChannelServer implements IChannelServer {
         }
         throw new Error(`Event channel not found: ${channelName}`)
       }
-      const event = channel.listen(sessionId || '', methodName, params)
+      const event = channel.listen(ctx, methodName, params)
       if (typeof event === 'function') {
         const disposable = event((data: any) => {
           this._protocol.send(
@@ -182,6 +200,14 @@ export class ChannelServer implements IChannelServer {
 
   private _isEngineNotificationListen(channelName: string, methodName: string) {
     return channelName === 'scene' && methodName.startsWith('on')
+  }
+
+  private _createChannelCallContext(
+    sessionId: string | undefined
+  ): IChannelCallContext {
+    return {
+      sessionId: sessionId || '',
+    }
   }
 
   private _validateProtocol(msg: JsonRpcMessage) {

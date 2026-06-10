@@ -1,10 +1,11 @@
-import type {
- EditorHost ,
+import {
+  CommandsRegistry,
+  EventResult,
+  type EditorHost,
   type IInputMouseHandler,
   type InputMouseEvent,
   type InputWheelEvent,
-  CommandsRegistry,
-  EventResult } from '@latte-js/syrup';
+} from '@latte-js/syrup'
 
 import type { ITool } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'

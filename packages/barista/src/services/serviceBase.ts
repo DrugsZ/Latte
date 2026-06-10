@@ -1,4 +1,4 @@
-import type { Channels } from '@latte-js/bean'
+import { DEFAULT_SCENE_GRAPH_NAME, type Channels } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
 import type {
   MutationPolicy,
@@ -44,6 +44,10 @@ export abstract class ServiceBase<T = any> {
 
   protected get sceneGraph(): SceneGraph {
     return this.context.sceneGraph
+  }
+
+  protected get currentSessionId(): string {
+    return this.context.currentSessionId || DEFAULT_SCENE_GRAPH_NAME
   }
 
   protected get system(): T {

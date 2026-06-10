@@ -1,4 +1,9 @@
-import type { SceneGraph } from '@latte-js/espresso'
+import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
+import {
+  toSceneGraphContext,
+  type ISceneGraphContext,
+  type SceneGraphContextSource,
+} from '../context/sceneGraphContext'
 import type { DirtyBatch } from '../pipeline/dirtyBatch'
 import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
@@ -27,17 +32,47 @@ export abstract class SystemBase {
   static readonly name: Systems
   static readonly mutationPolicies?: MutationPolicyMap
   static readonly schedule?: ISystemScheduleDescriptor
+  private _cursors = new WeakMap<SceneGraph, Map<string, NodeCursor>>()
+  protected readonly _context: ISceneGraphContext
 
-  constructor(protected _sceneGraph: SceneGraph) {}
+  constructor(source: SceneGraphContextSource) {
+    this._context = toSceneGraphContext(source)
+  }
 
   public getScheduleDescriptor() {
     return (this.constructor as typeof SystemBase).schedule
   }
 
+  protected get _sceneGraph() {
+    return this._context.sceneGraph
+  }
+
+  protected get _currentSessionId() {
+    return this._context.currentSessionId
+  }
+
+  protected _getCursor(name: string, initialIndex: number) {
+    let cursors = this._cursors.get(this._sceneGraph)
+    if (!cursors) {
+      cursors = new Map()
+      this._cursors.set(this._sceneGraph, cursors)
+    }
+
+    let cursor = cursors.get(name)
+    if (!cursor) {
+      cursor = new NodeCursor(this._sceneGraph, initialIndex)
+      cursors.set(name, cursor)
+    }
+
+    return cursor
+  }
+
   process?(batch: DirtyBatch): void
 }
 
-export type SystemConstructor = (new (sceneGraph: SceneGraph) => SystemBase) & {
+export type SystemConstructor = (new (
+  source: SceneGraphContextSource
+) => SystemBase) & {
   readonly name: Systems
   readonly mutationPolicies?: MutationPolicyMap
   readonly schedule?: ISystemScheduleDescriptor
@@ -86,14 +121,16 @@ export function system(arg: SystemConstructor | ISystemRegistrationOptions) {
 
 export class BaristaSystem {
   private _systems = new Map<Systems, SystemBase>()
+  private readonly _context: ISceneGraphContext
 
-  constructor(private _sceneGraph: SceneGraph) {
+  constructor(source: SceneGraphContextSource) {
+    this._context = toSceneGraphContext(source)
     this._init()
   }
 
   private _init() {
     systemRegistry.forEach(ctor => {
-      const instance = new ctor(this._sceneGraph)
+      const instance = new ctor(this._context)
       this._systems.set(ctor.name, instance)
     })
   }

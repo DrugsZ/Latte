@@ -6,6 +6,7 @@ export { ChannelServer } from './channelServer'
 export { ChannelClient, ChannelClientError } from './channelClient'
 export type {
   IChannel,
+  IChannelCallContext,
   IServerChannel,
   IChannelClient,
   IChannelServer,

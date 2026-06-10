@@ -80,4 +80,39 @@ describe('NodeSystem', () => {
     expect(dirty.get(parent)! & DIRTY_TREE).toBeTruthy()
     expect(dirty.get(child)! & DIRTY_TREE).toBeTruthy()
   })
+
+  it('scopes create events by the active session context', async () => {
+    const graphA = new SceneGraph()
+    const graphB = new SceneGraph()
+    let currentSessionId = 'doc:a'
+    let sceneGraph = graphA
+    const system = new NodeSystem({
+      get currentSessionId() {
+        return currentSessionId
+      },
+      get sceneGraph() {
+        return sceneGraph
+      },
+    })
+    const onCreateA = vi.fn()
+    const onCreateB = vi.fn()
+
+    system.onCreate(onCreateA)
+    currentSessionId = 'doc:b'
+    sceneGraph = graphB
+    system.onCreate(onCreateB)
+
+    currentSessionId = 'doc:a'
+    sceneGraph = graphA
+    await system.create('test:a', NodeType.RECTANGLE, 0, 0)
+
+    currentSessionId = 'doc:b'
+    sceneGraph = graphB
+    await system.create('test:b', NodeType.RECTANGLE, 0, 0)
+
+    expect(onCreateA).toHaveBeenCalledTimes(1)
+    expect(onCreateA).toHaveBeenCalledWith([['test:a', 1]])
+    expect(onCreateB).toHaveBeenCalledTimes(1)
+    expect(onCreateB).toHaveBeenCalledWith([['test:b', 1]])
+  })
 })

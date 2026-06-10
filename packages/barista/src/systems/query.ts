@@ -1,4 +1,4 @@
-import { readNodeName, walkTree, type SceneGraph } from '@latte-js/espresso'
+import { readNodeName, walkTree } from '@latte-js/espresso'
 
 import { system, SystemBase, Systems } from './systems'
 
@@ -7,10 +7,6 @@ import type { IDType, NodeType } from '@latte-js/bean'
 @system
 export class QuerySystem extends SystemBase {
   public static readonly name = Systems.Query
-
-  constructor(sceneGraph: SceneGraph) {
-    super(sceneGraph)
-  }
 
   /**
    * @param predicate (index) => boolean

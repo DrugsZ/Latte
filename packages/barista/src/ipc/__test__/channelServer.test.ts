@@ -100,6 +100,33 @@ describe('ChannelServer', () => {
     )
   })
 
+  it('passes an object call context to server channels', async () => {
+    const protocol = new MockProtocol()
+    const server = new ChannelServer(protocol)
+    const call = vi.fn()
+
+    server.registerChannel('test', {
+      async call<T>(ctx, command, ...args) {
+        call(ctx, command, ...args)
+        return 'ok' as T
+      },
+      listen() {
+        throw new Error('listen is not used in this test')
+      },
+    })
+
+    await server.handleMessage({
+      jsonrpc: '2.0',
+      type: JsonRpcMessageType.Request,
+      method: 'test.call',
+      params: [],
+      id: 1,
+      sessionId: 'doc:a',
+    })
+
+    expect(call).toHaveBeenCalledWith({ sessionId: 'doc:a' }, 'call')
+  })
+
   it('reports notification errors through rpc.onError', async () => {
     const protocol = new MockProtocol()
     const server = new ChannelServer(protocol)
@@ -122,6 +149,45 @@ describe('ChannelServer', () => {
             code: JsonRpcErrorCode.NotificationError,
           }),
         }),
+      })
+    )
+  })
+
+  it('reports session activation errors before dispatching calls', async () => {
+    const protocol = new MockProtocol()
+    const server = new ChannelServer(protocol)
+    const call = vi.fn()
+
+    server.onBeforeCall(() => {
+      throw new Error('Unknown session: missing-session')
+    })
+    server.registerChannel('test', {
+      call,
+      listen() {
+        throw new Error('listen is not used in this test')
+      },
+    })
+
+    await server.handleMessage({
+      jsonrpc: '2.0',
+      type: JsonRpcMessageType.Request,
+      protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+      method: 'test.call',
+      params: [],
+      id: 1,
+      sessionId: 'missing-session',
+    })
+
+    expect(call).not.toHaveBeenCalled()
+    expect(protocol.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: JsonRpcMessageType.ResponseError,
+        error: expect.objectContaining({
+          code: JsonRpcErrorCode.InvalidRequest,
+          message: 'Unknown session: missing-session',
+          data: { sessionId: 'missing-session' },
+        }),
+        sessionId: 'missing-session',
       })
     )
   })

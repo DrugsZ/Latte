@@ -24,18 +24,18 @@ export class UndoRedoService extends ServiceBase implements IUndoRedoService {
   }
 
   public async undo() {
-    return getHistoryManager(this.sceneGraph).undo()
+    return getHistoryManager(this.sceneGraph).undo(this.currentSessionId)
   }
 
   public async redo() {
-    return getHistoryManager(this.sceneGraph).redo()
+    return getHistoryManager(this.sceneGraph).redo(this.currentSessionId)
   }
 
   public async canUndo() {
-    return getHistoryManager(this.sceneGraph).canUndo
+    return getHistoryManager(this.sceneGraph).canUndo(this.currentSessionId)
   }
 
   public async canRedo() {
-    return getHistoryManager(this.sceneGraph).canRedo
+    return getHistoryManager(this.sceneGraph).canRedo(this.currentSessionId)
   }
 }

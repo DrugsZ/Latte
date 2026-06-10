@@ -1,6 +1,6 @@
 import { JsonRpcMessageType, type JsonRpcMessage } from '@latte-js/bean'
 
-import type { IChannel, IServerChannel } from '../ipc'
+import type { IChannel, IChannelCallContext, IServerChannel } from '../ipc'
 import {
   MutationPolicyKind,
   type MutationGate,
@@ -43,7 +43,7 @@ export const fromService = (
   options: IFromServiceOptions = {}
 ) => {
   return new (class implements IServerChannel {
-    listen(_sessionId: string, event: string) {
+    listen(_ctx: IChannelCallContext, event: string) {
       if (event.startsWith('on')) {
         const target = (service as any)[event]
         if (typeof target === 'function') {
@@ -56,7 +56,11 @@ export const fromService = (
       throw new Error(`Event not found: ${event}`)
     }
 
-    call(sessionId: string, command: string, ...args: any[]): Promise<any> {
+    call(
+      ctx: IChannelCallContext,
+      command: string,
+      ...args: any[]
+    ): Promise<any> {
       const target = (service as any)[command]
       if (typeof target === 'function') {
         const invoke = () => target.apply(service, args)
@@ -70,7 +74,7 @@ export const fromService = (
             : { kind: MutationPolicyKind.Readonly }
 
         return options.mutationGate.run(
-          sessionId,
+          ctx.sessionId,
           options.channelName ?? 'unknown',
           command,
           policy,

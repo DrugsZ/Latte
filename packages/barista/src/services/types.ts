@@ -5,5 +5,6 @@ import type { BaristaSystem } from '../systems/systems'
 export interface IContext {
   readonly sceneGraph: SceneGraph
   readonly accessSystem: BaristaSystem
+  readonly currentSessionId: string
   getService<T extends Channels>(name: T): IServiceMap[T]
 }

@@ -1,12 +1,10 @@
-import type { SceneGraph, INodeMutationRecord } from '@latte-js/espresso'
+import type { INodeMutationRecord, SceneGraph } from '@latte-js/espresso'
 
 import { MutationRecordApplier } from './mutationRecordApplier'
+import { MutationRecordCompressor } from './mutationRecordCompressor'
 import { invertRecords } from './mutationRecords'
 
-import type {
-  ICommittedTransaction,
-  TransactionManager,
-} from '../transactions/transactionManager'
+import type { ICommittedTransaction } from '../transactions/transactionManager'
 
 export interface IHistoryEntry {
   readonly label: string
@@ -14,78 +12,111 @@ export interface IHistoryEntry {
   readonly inverseRecords: readonly INodeMutationRecord[]
 }
 
+interface IHistoryStack {
+  undoStack: IHistoryEntry[]
+  redoStack: IHistoryEntry[]
+}
+
+const normalizeResourceId = (resourceId: string) => {
+  if (!resourceId) {
+    throw new Error('[HistoryManager] resourceId is required')
+  }
+  return resourceId
+}
+
 export class HistoryManager {
-  private _undoStack: IHistoryEntry[] = []
-  private _redoStack: IHistoryEntry[] = []
+  private _stacks = new Map<string, IHistoryStack>()
   private readonly _applier: MutationRecordApplier
+  private readonly _compressor: MutationRecordCompressor
 
   constructor(
     private readonly _sceneGraph: SceneGraph,
-    private readonly _transactions: TransactionManager,
+    compressor?: MutationRecordCompressor,
     applier?: MutationRecordApplier
   ) {
     this._applier = applier ?? new MutationRecordApplier(_sceneGraph)
+    this._compressor = compressor ?? new MutationRecordCompressor()
   }
 
-  public get canUndo() {
-    return this._undoStack.length > 0
+  public canUndo(resourceId: string) {
+    return this._getStack(resourceId).undoStack.length > 0
   }
 
-  public get canRedo() {
-    return this._redoStack.length > 0
+  public canRedo(resourceId: string) {
+    return this._getStack(resourceId).redoStack.length > 0
   }
 
-  public push(transaction: ICommittedTransaction | null) {
+  public push(resourceId: string, transaction: ICommittedTransaction | null) {
+    resourceId = normalizeResourceId(resourceId)
     if (!transaction || transaction.records.length === 0) {
       return
     }
 
-    this._undoStack.push({
+    const records = this._compressor.compress(transaction.records)
+    if (records.length === 0) {
+      return
+    }
+
+    const stack = this._getStack(resourceId)
+    stack.undoStack.push({
       label: transaction.label,
-      records: transaction.records,
-      inverseRecords: invertRecords(transaction.records),
+      records,
+      inverseRecords: invertRecords(records),
     })
-    this._redoStack = []
+    stack.redoStack = []
   }
 
-  public undo() {
+  public undo(resourceId: string) {
     this._assertCanApplyHistory('undo')
-    const entry = this._undoStack.pop()
+    const stack = this._getStack(resourceId)
+    const entry = stack.undoStack.pop()
     if (!entry) {
       return false
     }
 
     this._applier.applyRecords(entry.inverseRecords)
-    this._redoStack.push(entry)
+    stack.redoStack.push(entry)
     return true
   }
 
-  public redo() {
+  public redo(resourceId: string) {
     this._assertCanApplyHistory('redo')
-    const entry = this._redoStack.pop()
+    const stack = this._getStack(resourceId)
+    const entry = stack.redoStack.pop()
     if (!entry) {
       return false
     }
 
     this._applier.applyRecords(entry.records)
-    this._undoStack.push(entry)
+    stack.undoStack.push(entry)
     return true
   }
 
-  public peekUndo(): IHistoryEntry | null {
-    return this._undoStack[this._undoStack.length - 1] ?? null
+  public peekUndo(resourceId: string): IHistoryEntry | null {
+    const { undoStack } = this._getStack(resourceId)
+    return undoStack[undoStack.length - 1] ?? null
   }
 
-  public peekRedo(): IHistoryEntry | null {
-    return this._redoStack[this._redoStack.length - 1] ?? null
+  public peekRedo(resourceId: string): IHistoryEntry | null {
+    const { redoStack } = this._getStack(resourceId)
+    return redoStack[redoStack.length - 1] ?? null
+  }
+
+  public removeResource(resourceId: string) {
+    this._stacks.delete(normalizeResourceId(resourceId))
+  }
+
+  private _getStack(resourceId: string): IHistoryStack {
+    resourceId = normalizeResourceId(resourceId)
+    let stack = this._stacks.get(resourceId)
+    if (!stack) {
+      stack = { undoStack: [], redoStack: [] }
+      this._stacks.set(resourceId, stack)
+    }
+    return stack
   }
 
   private _assertCanApplyHistory(action: 'undo' | 'redo') {
-    if (this._transactions.isActive) {
-      throw new Error(
-        `[HistoryManager] Cannot ${action} while a transaction is active`
-      )
-    }
     if (this._sceneGraph.getMutationRecorder()) {
       throw new Error(
         `[HistoryManager] Cannot ${action} while another mutation recorder is active`

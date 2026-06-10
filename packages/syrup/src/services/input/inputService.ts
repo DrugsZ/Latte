@@ -5,6 +5,7 @@ import {
   StandardWheelEvent,
   type IPoint,
 } from '../../dom/mouseEvent'
+import { createDecorator } from '../instantiation/instantiation'
 
 import type { HitResult, ILatteEvent, IMouseWheelEvent } from '@latte-js/bean'
 
@@ -17,6 +18,8 @@ export interface IInputService {
   readonly onKeyDown: Event<KeyboardEvent>
   readonly onKeyUp: Event<KeyboardEvent>
 }
+
+export const IInputService = createDecorator<IInputService>('inputService')
 
 export interface IInputHitTestResult {
   hitResult: HitResult | undefined

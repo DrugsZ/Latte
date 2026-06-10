@@ -1,9 +1,10 @@
 import { type IDType } from '@latte-js/bean'
-import { Disposable, Emitter } from '@latte-js/kit'
+import { Disposable, Emitter, type Event } from '@latte-js/kit'
 
 import type { IDocument } from './document'
+import type { ServiceIdentifier } from '../services/instantiation/instantiation'
 
-import type { Event } from '@latte-js/kit'
+export type EditorHostServiceId<T = unknown> = ServiceIdentifier<T> | string
 
 export interface IEditorRenderer<TGraph = unknown> {
   setGraph(graph: TGraph): void
@@ -21,7 +22,7 @@ export class EditorHost<TGraph = unknown> extends Disposable {
   // FIXME(di): This is a temporary host-local registry. Move to typed service
   // identifiers and a ServiceCollection/ServicesAccessor before exposing it as
   // a stable platform or extension API.
-  private readonly _services = new Map<string, unknown>()
+  private readonly _services = new Map<EditorHostServiceId, unknown>()
   private readonly _documents: IDocument<TGraph>[] = []
   private _activeDocument: IDocument<TGraph> | null = null
 
@@ -36,20 +37,20 @@ export class EditorHost<TGraph = unknown> extends Disposable {
     this.id = `editor_${EditorHost.COUNT++}`
   }
 
-  public registerService<T>(id: string, service: T): T {
+  public registerService<T>(id: EditorHostServiceId<T>, service: T): T {
     this._services.set(id, service)
     return service
   }
 
-  public getService<T>(id: string): T {
+  public getService<T>(id: EditorHostServiceId<T>): T {
     const service = this._services.get(id)
     if (!service) {
-      throw new Error(`[EditorHost] Service not found: ${id}`)
+      throw new Error(`[EditorHost] Service not found: ${String(id)}`)
     }
     return service as T
   }
 
-  public hasService(id: string) {
+  public hasService(id: EditorHostServiceId) {
     return this._services.has(id)
   }
 

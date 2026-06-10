@@ -51,7 +51,26 @@ UI / Tool / Command / Plugin
 - 对齐 VSCode 的内部工程习惯：命令是用户意图入口，服务是领域能力边界。
 - 高频交互不必把每一帧都包装成 command，但仍应通过 service/controller 进入 worker。
 
-### 2.3 发送 target，不发送逐帧增量
+### 2.3 EditorHost 是 editor instance scope，不是万能 Editor
+
+`EditorHost` 的长期定位应是单个 editor 实例的运行时上下文边界，而不是应用装配器、service locator、插件 API facade 或 worker/renderer 工厂。
+
+推荐边界：
+
+- `EditorRuntime`：runtime composition root，负责创建 Worker、BaristaClient、Renderer、InputService、ProjectionSyncController、Workbench，并注册本地 service 与 worker RPC proxy。
+- `EditorHost`：单个 editor instance scope，持有 editor id、active document、document lifecycle event、renderer 绑定、active graph/projection 引用、focus/context scope，以及未来 child `ServiceCollection` 引用。
+- `syrup` services：Command、Input、Keybinding、Menu、ContextKey、Configuration、Instantiation 等主线程平台能力。
+- `counter/workbench`：Selection、Tool、内置命令、内置面板与产品贡献。
+- future public API：插件可见 facade，不暴露内部 `EditorHost.getService()` 或 raw service instance。
+
+为什么：
+
+- VSCode 没有一个万能 `Editor` 对象；它将 Workbench startup、ServiceCollection/InstantiationService、EditorService、EditorGroupsService、EditorPane/CodeEditorWidget 和 extension API facade 分层处理。
+- Latte 的 `EditorHost` 如果保留，就应对应“当前 editor/session 的 scope”，而不是把所有能力塞进一个对象。
+- 多 editor、多 document、focus/context、command/keybinding scope 和插件隔离都需要稳定的 instance scope。
+- 如果后续 `EditorHost` 仍然只是 graph、renderer、document array 的薄壳，则应重新评估是否并入 `EditorRuntime` 或拆成更明确的 `EditorSession`/`EditorScope`。
+
+### 2.4 发送 target，不发送逐帧增量
 
 移动、旋转、缩放、面板输入、插件 API 都应尽量发送明确目标值：
 
@@ -66,7 +85,7 @@ UI / Tool / Command / Plugin
 - 多层嵌套、旋转父级、临时组选区下更容易保持视觉结果稳定。
 - undo/redo 与协同 replay 更容易确定性复现。
 
-### 2.4 Transform 与 Layout 分离
+### 2.5 Transform 与 Layout 分离
 
 自由变换和 Figma Frame/layout resize 是两条不同语义：
 
@@ -79,7 +98,7 @@ UI / Tool / Command / Plugin
 - Frame resize 会触发 child constraints、auto layout、group 包裹和 ancestor bounds 派生，不能长期塞进 transform 分支。
 - 分层后测试可以分别验证自由变换视觉角点和布局规则。
 
-### 2.5 Transaction 与 History 分离
+### 2.6 Transaction 与 History 分离
 
 - `TransactionManager`：负责一次编辑操作的记录生命周期，包含 begin、record、commit、abort。
 - `HistoryManager`：负责用户可见的 undo/redo 栈、inverse records 与 replay。
@@ -91,7 +110,27 @@ UI / Tool / Command / Plugin
 - 删除、reparent、style、transform、layout 的历史策略不同，不应把长期历史堆栈塞进事务管理器。
 - replay 也应复用 NodeCursor/MutationGate 收口，避免绕过数据一致性机制。
 
-### 2.6 Selection 是 UI/session 状态，不是 document graph
+### 2.7 派生数据需要明确 freshness boundary
+
+`matrix`、`size`、`parent/children` 等 source columns 应始终即时可靠；
+`worldMatrix`、`aabb`、projection bounds 等 derived columns 应由 pipeline 在明确观察边界前保证可靠。
+
+推荐边界：
+
+- `MatrixSystem` 是 `SceneGraph.worldMatrix` 的唯一写入者。
+- `AABBSystem` 是 `SceneGraph.aabb` 的唯一写入者。
+- service、transaction、query、notification 和 renderer 读取 derived data 前，应通过 `DerivedScheduler` / pipeline barrier 确认 fresh。
+- 事务 snapshot 可以保存 base world matrix，但应通过统一派生算法或 freshness barrier 捕获，不能依赖 stale cache。
+- 高频交互过程中不要求每次 mutation 后立刻刷新全部 derived columns；提交、通知、查询和调试观察前必须可刷新。
+
+为什么：
+
+- 避免 `TransformSystem`、`TransactionManager` 和 `MatrixSystem` 各自实现一套 world matrix 派生逻辑。
+- 避免异步 tick 尚未执行时读取到过期 `worldMatrix/aabb`。
+- 允许高频拖拽保持轻量，同时让调试和查询有明确的“数据已刷新”边界。
+- 为未来 Rust/WASM 批量派生计算留下可替换的调度入口。
+
+### 2.8 Selection 是 UI/session 状态，不是 document graph
 
 短期保留主线程 `SelectionService` 拥有 selected ids、active id、anchor id。
 
@@ -103,7 +142,7 @@ UI / Tool / Command / Plugin
 - 当前主线程读 projection 计算轻量 selection overlay 性价比更高。
 - worker-side SelectionContext 可以作为派生 session projection，而不是替代主线程 SelectionService。
 
-### 2.7 Zod 只放在边界
+### 2.9 Zod 只放在边界
 
 建议未来引入 `@latte-js/schema`，但只用于：
 
@@ -126,7 +165,7 @@ UI / Tool / Command / Plugin
 - 核心热路径需要靠 TypeScript + 单元测试 + 内部 invariant 保持性能。
 - 外部输入边界需要运行时错误质量和安全性。
 
-### 2.8 Rust/WASM 是可替换 native engine，不是当前默认实现
+### 2.10 Rust/WASM 是可替换 native engine，不是当前默认实现
 
 Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段提前把 JS 内核改成复杂的半成品 allocator。
 
@@ -244,31 +283,38 @@ P0 是后续所有能力的地基。如果当前内核不能稳定加载、渲�
    - dirty ids 合并与下一帧可读约定。
    - 删除节点后 selection 清理。
 
-2. Shared metadata 收口
+2. DerivedScheduler / pipeline barrier
+   - 建立 worker 内部派生数据刷新边界：`ensureFresh(sessionId, kind, ids)` 或等价 API。
+   - `MatrixSystem` 继续作为 `worldMatrix` 唯一写入者，`AABBSystem` 继续作为 `aabb` 唯一写入者。
+   - transaction begin/capture、QueryService、notification 发送和 renderer/projection 读取前，有明确的 derived freshness 约定。
+   - 事务 snapshot 可保存 base world matrix，但捕获时不能直接信任未刷新的 cache。
+   - 高频 interaction 内部不强制每帧全量 flush，只在查询、提交、通知和调试观察边界刷新。
+
+3. Shared metadata 收口
    - `namePtr -> shared heap string`。
    - `fillPtr/strokePtr -> shared heap JSON`。
    - `geometryPtr -> shared heap JSON`。
    - 禁止 wrapper-private metadata Map 成为权威数据。
    - 当前 JS heap/blob 只做 append-only + tombstone release，不在 P1 里扩展成完整 allocator。
 
-3. Typed DI / ServiceCollection
+4. Typed DI / ServiceCollection
    - 在 `syrup` 中建立 VSCode 风格的 `ServiceIdentifier<T>`、`ServiceCollection`、`ServicesAccessor` 和基础 `InstantiationService`。
    - 把 `EditorHost.registerService(string, unknown)` 收敛为内部过渡 API，不作为插件或长期平台 API 暴露。
    - 由 `crema` 在 runtime startup 时显式注册本地 service 与 worker RPC proxy：`IInputService`、`ICommandService`、`INodeService`、`ITransformService`、`IStyleService`、`IDocumentService`、`IUndoRedoService` 等。
    - `counter/workbench`、command handler、tool 和未来 public facade 通过 `ServicesAccessor` 获取能力，不直接依赖 channel string 或全局 singleton。
    - RPC proxy 仍由 `baristaClient.getService(Channels.X)` 创建，但注册进主线程平台时必须映射成 typed service identifier。
 
-4. StyleService
+5. StyleService
    - fill/stroke/name/opacity/visibility/lock/cornerRadius 等修改走 worker。
    - NodeCursor 写入、dirty、history record 完整。
    - 高频样式 preview 与 commit 语义分开。
 
-5. NodeService
+6. NodeService
    - create/delete/reparent/insert/reorder 的 RPC 与 mutation policy。
    - delete/reparent 增加 serialized node snapshot 与 sibling order inverse。
    - 不支持历史的结构操作必须显式 `writeNoHistory` 或拒绝。
 
-6. QueryService
+7. QueryService
    - bounds、world matrix、children、ancestor、descendant query。
    - 只读 RPC 可以后续并发化。
 
@@ -279,6 +325,7 @@ Figma 类编辑器最容易坏在“主线程看见一套数据，worker 拥有�
 ### 交付物
 
 - Projection sync 测试矩阵。
+- DerivedScheduler / pipeline barrier 设计与 freshness 回归测试。
 - Typed DI / ServiceCollection 第一版实现和迁移文档。
 - StyleService/NodeService/QueryService 文档和单测。
 - delete/reparent history 设计和第一版实现。
@@ -286,6 +333,7 @@ Figma 类编辑器最容易坏在“主线程看见一套数据，worker 拥有�
 ### 验收标准
 
 - worker load/create/delete 后主线程 query 与 renderer 都能读到一致结果。
+- 读取 `worldMatrix/aabb` 的 service/query/notification 路径有明确 fresh 保证。
 - 普通 mutation、undo、redo、插件命令最终共用同一写入收口。
 - workbench/command 不再通过 channel string 获取 worker service。
 - 删除、reparent 不再出现 history 回放硬失败。
@@ -640,6 +688,7 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 - shared heap grow/compaction protocol。
 - 多后端渲染大重构。
 - 立即 Rust/WASM 迁移。
+- 每次 mutation 后立刻同步刷新全部 derived columns。
 
 ## 15. Review Checklist
 
@@ -650,6 +699,7 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 - [ ] mutation policy 覆盖新增 service/system 方法。
 - [ ] undo/redo replay 没有绕过 NodeCursor。
 - [ ] projection sync 的 ID map、dirty/version、graph reset 可解释。
+- [ ] 读取 `worldMatrix/aabb` 等 derived data 前有 fresh 边界或明确不依赖最新派生值。
 - [ ] metadata 不再依赖 private Map 作为权威来源。
 - [ ] selection 没有污染 document graph。
 - [ ] transform/layout 测试验证视觉角点或明确布局结果。

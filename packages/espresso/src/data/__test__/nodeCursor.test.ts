@@ -7,6 +7,7 @@ import {
   DIRTY_METADATA,
   DIRTY_PAINT,
 } from '../config'
+import { MutationScopeKind } from '../mutationScope'
 import { NodeCursor } from '../nodeCursor'
 import { PropId } from '../propKeys'
 import { SceneGraph } from '../sceneGraph'
@@ -122,11 +123,14 @@ describe('NodeCursor', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:history-delete')
       const cursor = new NodeCursor(graph, idx)
 
-      graph.runWithMutationScope({ kind: 'history', source: 'test' }, () => {
-        expect(() => cursor.delete()).toThrow(
-          'removeSelf history is not supported'
-        )
-      })
+      graph.runWithMutationScope(
+        { kind: MutationScopeKind.History, source: 'test' },
+        () => {
+          expect(() => cursor.delete()).toThrow(
+            'removeSelf history is not supported'
+          )
+        }
+      )
 
       expect(cursor.type).toBe(NodeType.RECTANGLE)
       expect(graph.getIndex('test:history-delete')).toBe(idx)
@@ -269,7 +273,7 @@ describe('NodeCursor', () => {
       graph.setMutationGuardEnabled(true)
 
       graph.runWithMutationScope(
-        { kind: 'writeNoHistory', source: 'test' },
+        { kind: MutationScopeKind.WriteNoHistory, source: 'test' },
         () => {
           cursor.x = 42
         }

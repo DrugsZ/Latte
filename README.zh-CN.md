@@ -54,6 +54,15 @@ UI / Tool / Command / Plugin
 | `@latte-js/kit`      | 工具包         | Events、lifecycle、平台工具与共享数据结构。                                               |
 | `apps/cafe`          | 示例应用       | 集成示例、本地 smoke target 与产品 playground。                                           |
 
+### Runtime 与 Host 边界
+
+Latte 会刻意保留 `@latte-js/syrup` 与 `@latte-js/crema` 的分层：
+
+- `syrup` 提供主线程平台基础设施：host scope、commands、input、keybindings、menus 和未来 typed DI。
+- `crema` 是 runtime composition root：创建 worker client、renderer、projection sync、input bridge 和 workbench wiring。
+- `EditorHost` 应定型为单个 editor instance 的 scope，而不是 service locator 或插件公开 API。
+- worker RPC services 后续应注册到 typed `ServiceCollection` identifier 中，让调用方不关心能力来自本地还是远端。
+
 ## 快速开始
 
 ### 环境要求
@@ -86,7 +95,7 @@ pnpm release:check
 详版计划见 [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md)。
 
 - P0：稳定内核、投影、变换、历史边界与发布门禁。
-- P1：补齐 projection 一致性、shared metadata、style/node/query services 与结构历史。
+- P1：补齐 projection 一致性、typed DI/service collection、shared metadata、style/node/query services 与结构历史。
 - P2：实现 Figma 对齐的几何与布局语义：constraints、auto layout、group auto-bounds。
 - P3：建设 VSCode 风格平台能力：context keys、configuration、contribution registry、plugin manifest。
 - P4：补齐设计语义：components、instances、variants、variables、styles、text/vector 与 libraries。

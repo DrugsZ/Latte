@@ -18,9 +18,13 @@ export interface IChannel {
   listen(event: string, listener: (msg: JsonRpcMessage) => void): IDisposable
 }
 
+export interface IChannelCallContext {
+  readonly sessionId: string
+}
+
 export interface IServerChannel {
-  call<T>(ctx: string, command: string, ...args: any[]): Promise<T>
-  listen(ctx: string, event: string, ...args: any[]): any
+  call<T>(ctx: IChannelCallContext, command: string, ...args: any[]): Promise<T>
+  listen(ctx: IChannelCallContext, event: string, ...args: any[]): any
 }
 
 export interface IChannelClient {

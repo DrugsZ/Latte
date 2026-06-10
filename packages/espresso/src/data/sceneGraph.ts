@@ -20,6 +20,7 @@ import {
 } from './config'
 import { HeapManager } from './heapManager'
 import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
+import { MutationScopeKind } from './mutationScope'
 import { MutationTracker } from './mutationTracker'
 import { collectSubtreeIndices } from './treeTraversal'
 
@@ -373,7 +374,7 @@ export class SceneGraph {
   }
 
   private _assertDeleteNodeSupportedInActiveScope() {
-    if (this.activeMutationScope?.kind !== 'history') {
+    if (this.activeMutationScope?.kind !== MutationScopeKind.History) {
       return
     }
 

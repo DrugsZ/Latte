@@ -48,4 +48,5 @@ export type {
   IMutationRecorder,
   INodeMutationRecord,
 } from './data/mutationRecorder'
-export type { IMutationScope, MutationScopeKind } from './data/mutationScope'
+export { MutationScopeKind } from './data/mutationScope'
+export type { IMutationScope } from './data/mutationScope'

@@ -1,9 +1,7 @@
 import {
-  type SceneGraph,
   DIRTY_LOCAL_MATRIX,
   DIRTY_WORLD_BOUNDS,
   MAX_NODES,
-  NodeCursor,
   NULL_INDEX,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
@@ -41,14 +39,17 @@ const transformMutationPolicies: MutationPolicyMap = {
 @system({ mutations: transformMutationPolicies })
 export class TransformSystem extends SystemBase {
   public static readonly name = Systems.Transform
-  private _cursor: NodeCursor
-  private _transactions = getTransactionManager(this._sceneGraph)
-  private _scratchCursor: NodeCursor
 
-  constructor(sceneGraph: SceneGraph) {
-    super(sceneGraph)
-    this._cursor = new NodeCursor(this._sceneGraph, 0)
-    this._scratchCursor = new NodeCursor(this._sceneGraph, 0)
+  private get _cursor() {
+    return this._getCursor('transform', 0)
+  }
+
+  private get _scratchCursor() {
+    return this._getCursor('transform:scratch', 0)
+  }
+
+  private get _transactions() {
+    return getTransactionManager(this._sceneGraph, this._currentSessionId)
   }
 
   private _getSnapshot(id: IDType) {

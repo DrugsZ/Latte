@@ -2,25 +2,19 @@ import { NodeType, type AABB } from '@latte-js/bean'
 import {
   BOUNDS_AFFECTING_FLAGS,
   MAX_NODES,
-  NodeCursor,
   NULL_INDEX,
   TransformOps,
-  type SceneGraph,
 } from '@latte-js/espresso'
 
 import type { DirtyBatch } from '../pipeline/dirtyBatch'
 import { ScheduleStage, system, SystemBase, Systems } from './systems'
 
-interface DirtyNode {
-  index: number
-  depth: number
-}
-
 /**
- * AABBSystem - Computes hierarchy AABB (self ∪ all children) using bottom-up approach.
+ * AABBSystem - Computes hierarchy AABB (self ∪ all children) for affected nodes.
  *
- * Collects all bounds-dirty nodes, sorts by depth (deepest first), then updates upward.
- * O(dirty nodes × depth) complexity without needing DIRTY_SUBTREE_BOUNDS.
+ * Builds the affected ancestor closure and updates it in post-order so each
+ * parent reads fresh AABBs from affected children and cached AABBs from
+ * unaffected children.
  */
 @system({
   schedule: {
@@ -30,79 +24,110 @@ interface DirtyNode {
 })
 export class AABBSystem extends SystemBase {
   public static readonly name = Systems.AABB
-  private _cursor: NodeCursor
   private _tempAABB: AABB = Float32Array.from({ length: 4 })
   private _childAABB: AABB = Float32Array.from({ length: 4 })
 
-  constructor(sceneGraph: SceneGraph) {
-    super(sceneGraph)
-    this._cursor = new NodeCursor(this._sceneGraph, -1)
+  private get _cursor() {
+    return this._getCursor('aabb', -1)
   }
 
   public process(batch: DirtyBatch) {
     if (!batch.hasChanges) return
 
-    // Step 1: Collect all bounds-dirty nodes with their depths
-    const dirtyNodes = this._collectDirtyNodes(batch)
+    const affected = this._collectAffectedClosure(batch)
 
-    if (dirtyNodes.length === 0) return
+    if (affected.size === 0) return
 
-    // Step 2: Sort by depth descending (deepest first)
-    dirtyNodes.sort((a, b) => b.depth - a.depth)
-
-    // Step 3: Update from bottom to top, tracking already updated nodes
+    const roots = this._collectAffectedRoots(affected)
     const updated = new Set<number>()
-    for (const { index } of dirtyNodes) {
-      this._updateBottomUp(index, updated)
+
+    for (const root of roots) {
+      this._updateAffectedPostOrder(root, affected, updated, new Set())
     }
   }
 
-  private _collectDirtyNodes(batch: DirtyBatch): DirtyNode[] {
-    const result: DirtyNode[] = []
+  private _collectAffectedClosure(batch: DirtyBatch) {
+    const affected = new Set<number>()
 
     for (const [index] of batch.entriesByMask(BOUNDS_AFFECTING_FLAGS)) {
-      result.push({ index, depth: this._getDepth(index) })
+      this._collectAncestors(index, affected)
     }
 
-    return result
+    return affected
   }
 
-  private _getDepth(index: number): number {
-    let depth = 0
+  private _collectAncestors(index: number, affected: Set<number>) {
     const visited = new Set<number>()
-    this._cursor.to(index)
-    let parent = this._cursor.parent
-    while (parent !== null) {
-      if (visited.has(parent.index) || depth > MAX_NODES) {
-        throw new Error(`Tree cycle detected at node ${parent.index}`)
-      }
-      visited.add(parent.index)
-      depth++
-      parent = parent.parent
-    }
-    return depth
-  }
-
-  private _updateBottomUp(index: number, updated: Set<number>) {
     let current = index
-    const visited = new Set<number>()
 
     while (current !== NULL_INDEX) {
       if (visited.has(current) || visited.size > MAX_NODES) {
         throw new Error(`Tree cycle detected at node ${current}`)
       }
-      visited.add(current)
-      if (updated.has(current)) {
-        // Already updated, ancestors are also updated
-        break
+      if (!this._sceneGraph.isNodeIndexAlive(current)) {
+        return
       }
 
-      this._cursor.to(current)
-      this._updateHierarchyAABB()
-      updated.add(current)
+      visited.add(current)
+      affected.add(current)
+      current = this._sceneGraph.parent[current]
+    }
+  }
 
-      const parent = this._cursor.parent
-      current = parent !== null ? parent.index : NULL_INDEX
+  private _collectAffectedRoots(affected: Set<number>) {
+    const roots: number[] = []
+
+    for (const index of affected) {
+      const parent = this._sceneGraph.parent[index]
+      if (parent === NULL_INDEX || !affected.has(parent)) {
+        roots.push(index)
+      }
+    }
+
+    if (roots.length === 0 && affected.size > 0) {
+      throw new Error('Tree cycle detected in affected AABB roots')
+    }
+
+    return roots
+  }
+
+  private _updateAffectedPostOrder(
+    index: number,
+    affected: Set<number>,
+    updated: Set<number>,
+    visiting: Set<number>
+  ) {
+    if (updated.has(index)) return
+    if (visiting.has(index) || visiting.size > MAX_NODES) {
+      throw new Error(`Tree cycle detected at node ${index}`)
+    }
+
+    visiting.add(index)
+    try {
+      let child = this._sceneGraph.firstChild[index]
+      const visitedChildren = new Set<number>()
+
+      while (child !== NULL_INDEX) {
+        if (visitedChildren.has(child) || visitedChildren.size > MAX_NODES) {
+          throw new Error(`Tree cycle detected at node ${child}`)
+        }
+        if (!this._sceneGraph.isNodeIndexAlive(child)) {
+          throw new Error(`Invalid child node in AABB traversal: ${child}`)
+        }
+
+        visitedChildren.add(child)
+        const next = this._sceneGraph.nextSibling[child]
+        if (affected.has(child)) {
+          this._updateAffectedPostOrder(child, affected, updated, visiting)
+        }
+        child = next
+      }
+
+      this._cursor.to(index)
+      this._updateHierarchyAABB()
+      updated.add(index)
+    } finally {
+      visiting.delete(index)
     }
   }
 

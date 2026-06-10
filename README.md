@@ -54,6 +54,15 @@ UI / Tool / Command / Plugin
 | `@latte-js/kit`      | Utilities               | Events, lifecycle helpers, platform utilities and shared data structures.                   |
 | `apps/cafe`          | Demo app                | Integration demo, local smoke target and product playground.                                |
 
+### Runtime and Host Boundary
+
+Latte keeps `@latte-js/syrup` and `@latte-js/crema` separate on purpose:
+
+- `syrup` provides main-thread platform primitives: host scope, commands, input, keybindings, menus and future typed DI.
+- `crema` is the runtime composition root: it creates the worker client, renderer, projection sync, input bridge and workbench wiring.
+- `EditorHost` should become the scope of one editor instance, not a service locator or public plugin API.
+- Worker-backed RPC services should eventually be registered into typed `ServiceCollection` identifiers, so callers do not know whether a service is local or remote.
+
 ## Getting Started
 
 ### Requirements
@@ -86,7 +95,7 @@ pnpm release:check
 See the detailed plan in [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md).
 
 - P0: stabilize the kernel, projection, transform, history boundaries and release gates.
-- P1: complete projection consistency, shared metadata, style/node/query services and structural history.
+- P1: complete projection consistency, typed DI/service collection, shared metadata, style/node/query services and structural history.
 - P2: implement Figma-aligned geometry and layout semantics: constraints, auto layout and group auto-bounds.
 - P3: build VSCode-style platform features: context keys, configuration, contribution registry and plugin manifest.
 - P4: add design semantics: components, instances, variants, variables, styles, text/vector and libraries.

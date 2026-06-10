@@ -6,13 +6,14 @@ Editor runtime assembly for Latte applications.
 
 - Create and wire the main-thread editor runtime.
 - Start and connect the Barista worker client.
-- Register local and RPC-backed services.
+- Register local and RPC-backed services into the main-thread platform scope.
 - Coordinate projection sync between worker-owned data and main-thread read-only consumers.
 - Coordinate high-frequency transform interactions through a transform interaction controller.
 
 ## Boundaries
 
 - Does not implement product tools directly; those belong in `@latte-js/counter`.
+- Does not define platform DI primitives; those belong in `@latte-js/syrup`.
 - Does not implement low-level data structures; those belong in `@latte-js/espresso`.
 - Does not expose the long-term public plugin API; future plugin facade should be a stable package above internal services.
 

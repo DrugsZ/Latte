@@ -16,6 +16,7 @@ import { MutationPolicyKind } from '../../transactions/mutationPolicy'
 const createContext = (graph: SceneGraph) => ({
   sceneGraph: graph,
   accessSystem: new BaristaSystem(graph),
+  currentSessionId: '',
   getService: () => {
     throw new Error('getService is not used in mutation policy tests')
   },

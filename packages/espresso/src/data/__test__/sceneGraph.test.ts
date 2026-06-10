@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { type IGraphObserver } from '../../typing'
 import { DIRTY_TREE, MAT_A, MAT_D, MAT_SIZE, NULL_INDEX } from '../config'
+import { MutationScopeKind } from '../mutationScope'
 import { PropId } from '../propKeys'
 import {
   writeNodeFills,
@@ -262,7 +263,7 @@ describe('SceneGraph', () => {
       )
 
       sceneGraph.runWithMutationScope(
-        { kind: 'history', source: 'test' },
+        { kind: MutationScopeKind.History, source: 'test' },
         () => {
           expect(() => sceneGraph.deleteNode(idx)).toThrow(
             'removeSelf history is not supported'
@@ -358,7 +359,7 @@ describe('SceneGraph', () => {
       sceneGraph.setMutationGuardEnabled(true)
 
       sceneGraph.runWithMutationScope(
-        { kind: 'writeNoHistory', source: 'test' },
+        { kind: MutationScopeKind.WriteNoHistory, source: 'test' },
         () => {
           const parent = sceneGraph.createNode(NodeType.GROUP, 'test:p')
           const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:c')

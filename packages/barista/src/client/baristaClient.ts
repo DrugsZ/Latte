@@ -5,6 +5,13 @@ import { ChannelClient } from '../ipc/channelClient'
 import { IPCMessagePortProtocol } from '../ipc/protocol/ipcMessageport'
 import { Lifecycle } from '../lifecycle/lifecycle'
 
+interface LifecycleResponse {
+  type: Lifecycle
+  resId: string
+  payload?: unknown
+  error?: unknown
+}
+
 export class BaristaClient {
   private _worker: Worker
   private _channelClient: ChannelClient
@@ -31,6 +38,7 @@ export class BaristaClient {
     heapBuffer: SharedArrayBuffer
   ) {
     const requestId = Math.random().toString(36).substring(2)
+
     this._worker.postMessage({
       type: Lifecycle.InitSession,
       sessionId,
@@ -39,20 +47,13 @@ export class BaristaClient {
       heapBuffer,
       requestId,
     })
-    return new Promise((resolve, reject) => {
-      const handler = (e: MessageEvent) => {
-        const { type, resId } = e.data
-        if (resId === requestId) {
-          this._worker.removeEventListener('message', handler)
-          if (type === Lifecycle.InitSessionSuccess) {
-            resolve(true)
-          } else {
-            reject(new Error('Init session failed'))
-          }
-        }
-      }
-      this._worker.addEventListener('message', handler)
-    })
+
+    await this._waitForLifecycleResponse(
+      requestId,
+      Lifecycle.InitSessionSuccess,
+      Lifecycle.InitSessionError
+    )
+    return true
   }
 
   private _initIPC(port: MessagePort) {
@@ -66,6 +67,12 @@ export class BaristaClient {
   ) {
     this._messageChannel = new MessageChannel()
     const requestId = Math.random().toString(36).substring(2)
+    const response = this._waitForLifecycleResponse(
+      requestId,
+      Lifecycle.InitKernelSuccess,
+      Lifecycle.InitKernelError
+    )
+
     this._worker.postMessage(
       {
         type: Lifecycle.InitKernel,
@@ -76,16 +83,39 @@ export class BaristaClient {
       },
       [this._messageChannel.port2]
     )
+
+    const { payload } = await response
+    this._initIPC(this._messageChannel.port1)
+    return payload
+  }
+
+  private _waitForLifecycleResponse(
+    requestId: string,
+    successType: Lifecycle,
+    errorType: Lifecycle
+  ): Promise<LifecycleResponse> {
     return new Promise((resolve, reject) => {
-      this._worker.onmessage = (e: MessageEvent) => {
-        const { type, payload, resId } = e.data
-        if (type === Lifecycle.InitKernelSuccess && resId === requestId) {
-          this._initIPC(this._messageChannel.port1)
-          resolve(payload)
-        } else if (type === Lifecycle.InitKernelError && resId === requestId) {
-          reject(new Error(e.data.error || 'Init kernel failed'))
+      const handler = (e: MessageEvent<LifecycleResponse>) => {
+        const { type, resId, error } = e.data
+        if (resId !== requestId) {
+          return
         }
+
+        this._worker.removeEventListener('message', handler)
+        if (type === successType) {
+          resolve(e.data)
+          return
+        }
+
+        if (type === errorType) {
+          reject(new Error(String(error || 'Lifecycle request failed')))
+          return
+        }
+
+        reject(new Error(`Unexpected lifecycle response: ${String(type)}`))
       }
+
+      this._worker.addEventListener('message', handler)
     })
   }
 }

@@ -4,7 +4,12 @@ import BaristaWorker from '@latte-js/barista/worker?worker'
 import { Channels, type ILatteFile } from '@latte-js/bean'
 import { startWorkbench, type Workbench } from '@latte-js/counter'
 import { SceneGraph } from '@latte-js/espresso'
-import { EditorHost, InputService, LatteDocument } from '@latte-js/syrup'
+import {
+  EditorHost,
+  IInputService,
+  InputService,
+  LatteDocument,
+} from '@latte-js/syrup'
 
 import { TransformInteractionController } from './interactions/transformInteractionController'
 import { RendererInputHitTestProvider } from './input/rendererInputHitTestProvider'
@@ -108,7 +113,7 @@ export class EditorRuntime {
       this._renderer.canvas,
       new RendererInputHitTestProvider(this.editorHost, this._renderer)
     )
-    this.editorHost.registerService('inputService', this._inputService)
+    this.editorHost.registerService(IInputService, this._inputService)
 
     this._projection = new ProjectionSyncController(
       this.editorHost,
@@ -137,6 +142,10 @@ export class EditorRuntime {
     return this.projection.applyLoadedDocument(data, idMap)
   }
 
+  // FIXME(document-service): This is a transition helper while runtime owns
+  // BaristaClient and graph/session wiring. Move document open/close/switch
+  // orchestration to a typed main-thread EditorDocumentService or
+  // EditorSessionService once syrup has ServiceCollection/ServicesAccessor.
   public async openDocument(id: string, uri: string) {
     this._assertStarted()
 
@@ -147,8 +156,8 @@ export class EditorRuntime {
       doc.graph.allocator.buffer,
       doc.graph.heap.buffer
     )
-    this.baristaClient.setTargetSession(doc.id)
-    this.editorHost.addDocument(doc)
+    this.editorHost.addDocument(doc, false)
+    this.setActiveDocument(doc.id)
     return doc
   }
 
