@@ -1,27 +1,30 @@
-import { walkTree, type SceneGraph } from '@latte-js/espresso'
+import { readNodeName, walkTree } from '@latte-js/espresso'
 
-import { system, SystemBase, Systems } from './systems'
+import { System, SystemBase, Systems } from './systems'
 
 import type { IDType, NodeType } from '@latte-js/bean'
 
-@system
+interface IQuerySystemOptions {
+  readonly rootIndex?: number
+  readonly includeRoot?: boolean
+}
+
+@System
 export class QuerySystem extends SystemBase {
   public static readonly name = Systems.Query
 
-  constructor(sceneGraph: SceneGraph) {
-    super(sceneGraph)
-  }
-
-  /**
-   * @param predicate (index) => boolean
-   */
-  public query(
+  private _queryIds(
     predicate: (index: number) => boolean,
-    parentId?: number
+    options: IQuerySystemOptions = {}
   ): IDType[] {
+    const rootIndex = options.rootIndex ?? 0
+    const includeRoot = options.includeRoot ?? false
     const results: IDType[] = []
 
-    for (const idx of walkTree(this._sceneGraph, parentId)) {
+    for (const idx of walkTree(this._sceneGraph, rootIndex)) {
+      if (!includeRoot && idx === rootIndex) {
+        continue
+      }
       if (predicate(idx)) {
         const ID = this._sceneGraph.getUUID(idx)
         if (ID) {
@@ -33,17 +36,23 @@ export class QuerySystem extends SystemBase {
     return results
   }
 
-  public getElementByTagName(tag: NodeType, parentId?: number): IDType[] {
-    return this.query(idx => {
+  public getElementsByType(
+    type: NodeType,
+    options?: IQuerySystemOptions
+  ): IDType[] {
+    return this._queryIds(idx => {
       const nodeType = this._sceneGraph.type[idx]
-      return nodeType === tag
-    }, parentId)
+      return nodeType === type
+    }, options)
   }
 
-  public getElementByName(name: string, parentId?: number): IDType[] {
-    return this.query(idx => {
-      const n = this._sceneGraph.nameMap.get(idx)
+  public getElementsByName(
+    name: string,
+    options?: IQuerySystemOptions
+  ): IDType[] {
+    return this._queryIds(idx => {
+      const n = readNodeName(this._sceneGraph, idx)
       return n === name
-    }, parentId)
+    }, options)
   }
 }

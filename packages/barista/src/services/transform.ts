@@ -6,13 +6,39 @@ import {
   type vec2,
 } from '@latte-js/bean'
 
-import { service, ServiceBase, type IContext } from './serviceBase'
+import { Service, SystemBackedServiceBase, type IContext } from './serviceBase'
 
 import type { TransformSystem } from '../systems/transform'
+import { Systems } from '../systems'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
+import { TransactionLabel } from '../transactions/transactionLabels'
 
-@service
+const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
+
+const transformServiceMutationPolicies: MutationPolicyMap = {
+  beginTransform: {
+    kind: MutationPolicyKind.SessionBegin,
+    label: args =>
+      typeof args[1] === 'string' ? args[1] : TransactionLabel.TransformLayer,
+    ids: idsFromFirstArg,
+  },
+  commitTransform: { kind: MutationPolicyKind.SessionCommit },
+  cancelTransform: { kind: MutationPolicyKind.SessionCancel },
+  moveTo$: { kind: MutationPolicyKind.SessionMutation },
+  moveBy$: { kind: MutationPolicyKind.SessionMutation },
+  transformAround$: { kind: MutationPolicyKind.SessionMutation },
+  resize$: { kind: MutationPolicyKind.SessionMutation },
+}
+
+@Service({
+  system: Systems.Transform,
+  mutations: transformServiceMutationPolicies,
+})
 export class TransformService
-  extends ServiceBase<TransformSystem>
+  extends SystemBackedServiceBase<TransformSystem>
   implements ITransformService
 {
   public static readonly name = Channels.Transform
@@ -21,17 +47,14 @@ export class TransformService
     super(ctx)
   }
 
-  public async startSession(ids: IDType[]) {
-    return this.system.startSession(ids)
-  }
+  public async beginTransform(
+    _ids: IDType[],
+    _label = TransactionLabel.TransformLayer
+  ) {}
 
-  public async endSession() {
-    return this.system.endSession()
-  }
+  public async commitTransform() {}
 
-  public async abortSession() {
-    return this.system.endSession()
-  }
+  public async cancelTransform() {}
 
   public async moveTo(ids: IDType[], delta: vec2) {
     return this.system.moveTo(ids, delta)
@@ -63,5 +86,13 @@ export class TransformService
     pivot: vec2
   ) {
     return this.system.transformAround(ids, matrixPayload, pivot)
+  }
+
+  public async resize(ids: IDType[], width: number, height: number) {
+    return this.system.resize(ids, width, height)
+  }
+
+  public async resize$(ids: IDType[], width: number, height: number) {
+    return this.system.resize(ids, width, height)
   }
 }

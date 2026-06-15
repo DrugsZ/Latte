@@ -1,66 +1,42 @@
-当然可以，以下是将你提供的项目描述翻译成中文的版本：
+# Latte Apps
 
-# Latte
+本目录包含 Latte monorepo 的示例应用与产品集成入口。
 
-<!-- PROJECT SHIELDS -->
+## 当前应用
 
-[贡献者][contributors-url]
-[分支][forks-url]
-[星标][stars-url]
-[问题][issues-url]
-[MIT 许可证][license-url]
+| 应用   | 用途                                                                                       | 包名             |
+| ------ | ------------------------------------------------------------------------------------------ | ---------------- |
+| `cafe` | 用于验证 editor runtime、renderer、worker pipeline 与 UI shell 的集成示例和 smoke target。 | `@latte-js/cafe` |
 
-<!-- PROJECT LOGO -->
+本目录下的应用不作为可复用包发布。可复用代码应放在 `packages/*`。
 
-Canvas 驱动的设计工具
+## 开发
 
-Latte 旨在为任何网页端提供底层 2D 渲染能力，使任何开发者可以方便快捷地开发属于自己的图形编辑工具。
-`<br />`
-
-## 🛠️ 开发
-
-开始预览演示：
+在仓库根目录运行：
 
 ```bash
-  git clone git@github.com:DrugsZ/Latte.git
-  cd Latte
-  pnpm install
-  pnpm build
-  pnpm start
+pnpm install
+pnpm build
+pnpm dev
 ```
 
-### 运行测试用例
+打开 `http://localhost:5173`。
+
+常用应用检查：
 
 ```bash
-pnpm test
+pnpm --filter @latte-js/cafe build
+pnpm e2e
 ```
 
-## 如何贡献
+## SharedArrayBuffer 要求
 
-```markdown
-如果您对修复问题并直接向代码库贡献感兴趣，请参见[如何贡献](https://github.com/DrugsZ/Latte/blob/master/
-.md)。
+Latte 依赖 `SharedArrayBuffer`。本地预览和部署环境都需要设置 COOP/COEP headers，让页面处于 cross-origin isolated 状态。`cafe` 的 Vite 配置是本地开发的参考实现。
 
-感谢您的贡献！
-```
+## 贡献
 
-## 灵感来源
+请阅读 [../CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md)。应用层负责组装包和演示工作流，不应承载核心引擎行为。
 
-- [AntV G](https://github.com/antvis/G)
-- [Pixi.js](https://pixijs.com/)
-- [Figma](https://www.figma.com/)
-- [VSCode](https://github.com/microsoft/vscode)
-- [Fabric](http://fabricjs.com/)
+## 许可证
 
-<!-- links -->
-
-[contributors-shield]: https://img.shields.io/github/contributors/DrugsZ/Latte.svg?style=flat-square
-[contributors-url]: https://github.com/DrugsZ/Latte/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/DrugsZ/Latte.svg?style=flat-square
-[forks-url]: https://github.com/DrugsZ/Latte/network/members
-[stars-shield]: https://img.shields.io/github/stars/DrugsZ/Latte.svg?style=flat-square
-[stars-url]: https://github.com/DrugsZ/Latte/stargazers
-[issues-shield]: https://img.shields.io/github/issues/DrugsZ/Latte.svg?style=flat-square
-[issues-url]: https://github.com/DrugsZ/Latte/issues
-[license-shield]: https://img.shields.io/github/license/DrugsZ/Latte.svg?style=flat-square
-[license-url]: https://github.com/DrugsZ/Latte/blob/master/LICENSE.txt
+本目录下应用主要作为演示和产品集成入口。`apps/cafe` 为 `UNLICENSED` 且私有；可复用包的许可证以 `packages/*` 内各包为准。

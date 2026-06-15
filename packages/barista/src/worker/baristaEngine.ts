@@ -1,24 +1,32 @@
-import { type IDType, DEFAULT_SCENE_GRAPH_NAME } from '@latte-js/bean'
-import { SceneGraph } from '@latte-js/espresso'
+import {
+  type Channels,
+  DEFAULT_SCENE_GRAPH_NAME,
+  type ISceneDirtyPayload,
+} from '@latte-js/bean'
 
 import { ChannelServer, fromService } from '../ipc'
 import { createJsonRpcNotification } from '../ipc/ipc'
+import { DirtyBatch } from '../pipeline/dirtyBatch'
+import { NotificationPlanner } from '../pipeline/notificationPlanner'
+import { PipelineRunner } from '../pipeline/pipelineRunner'
 import { ServiceManager } from '../services'
-import { BaristaSystem, Systems } from '../systems'
+import { BaristaSystem } from '../systems'
+import { MutationGate } from '../transactions/mutationPolicy'
+import { BaristaSessionManager } from './baristaSessionManager'
 
 import type { IMessagePassingProtocol } from '../ipc/protocol/protocol'
-
-const PIPELINE_SYSTEMS: Systems[] = [Systems.Matrix, Systems.AABB]
+import type { IChannelCallContext, IServerChannel } from '../ipc'
 
 export class BaristaEngine {
-  private _graphs = new Map<string, SceneGraph>()
-  private _activeGraph: SceneGraph | null = null
-  private _activeSessionId: string | null = null
-  private _proxyGraph: SceneGraph
+  private _sessionManager = new BaristaSessionManager()
   private _systems: BaristaSystem
   private _serviceManager: ServiceManager
+  private _mutationGate: MutationGate
+  private _pipelineRunner: PipelineRunner
+  private _notificationPlanner: NotificationPlanner
   private _channelServer: ChannelServer | null = null
   private _isTickScheduled = false
+  private _pendingTickSessions = new Set<string>()
 
   constructor(
     buffer: SharedArrayBuffer,
@@ -26,58 +34,17 @@ export class BaristaEngine {
     allocBuffer: SharedArrayBuffer,
     heapBuffer: SharedArrayBuffer
   ) {
-    this._initKernelSession(buffer, allocBuffer, heapBuffer)
-    this._proxyGraph = this._createGraphProxy()
-    this._systems = new BaristaSystem(this._proxyGraph)
-    this._serviceManager = new ServiceManager(this._proxyGraph, this._systems)
-
-    this._initChannelServer()
-  }
-
-  private _initKernelSession(
-    buffer: SharedArrayBuffer,
-    allocBuffer: SharedArrayBuffer,
-    heapBuffer: SharedArrayBuffer
-  ) {
-    // Initial kernel session
-    const kernelGraph = this.initSession(
-      DEFAULT_SCENE_GRAPH_NAME,
-      buffer,
-      allocBuffer,
-      heapBuffer
+    // init kernel session and systems before starting the channel server to ensure that the engine is ready to handle incoming messages
+    this.initSession(DEFAULT_SCENE_GRAPH_NAME, buffer, allocBuffer, heapBuffer)
+    this._systems = new BaristaSystem(this._sessionManager)
+    this._mutationGate = new MutationGate(this._sessionManager)
+    this._pipelineRunner = new PipelineRunner(this._systems)
+    this._notificationPlanner = new NotificationPlanner(this._sessionManager)
+    this._serviceManager = new ServiceManager(
+      this._sessionManager,
+      this._systems
     )
-    this._activeGraph = kernelGraph
-    this._activeSessionId = DEFAULT_SCENE_GRAPH_NAME
-  }
-
-  private _createGraphProxy(): SceneGraph {
-    if (!this._activeGraph) {
-      throw new Error(
-        '[BaristaEngine] Cannot create graph proxy without an active graph'
-      )
-    }
-    return new Proxy({} as SceneGraph, {
-      get: (target, prop) => {
-        if (!this._activeGraph) {
-          throw new Error(
-            `[BaristaEngine] No active graph get for property: ${String(prop)}`
-          )
-        }
-        const value = Reflect.get(this._activeGraph, prop)
-        if (typeof value === 'function') {
-          return value.bind(this._activeGraph)
-        }
-        return value
-      },
-      set: (target, prop, value) => {
-        if (!this._activeGraph) {
-          throw new Error(
-            `[BaristaEngine] No active graph set for property: ${String(prop)}`
-          )
-        }
-        return Reflect.set(this._activeGraph, prop, value)
-      },
-    })
+    this._initChannelServer()
   }
 
   public initSession(
@@ -86,68 +53,105 @@ export class BaristaEngine {
     allocBuffer: SharedArrayBuffer,
     heapBuffer: SharedArrayBuffer
   ) {
-    const graph = new SceneGraph(buffer, allocBuffer, heapBuffer)
-    this._graphs.set(sessionId, graph)
-    return graph
+    return this._sessionManager.initSession(
+      sessionId,
+      buffer,
+      allocBuffer,
+      heapBuffer
+    ).sceneGraph
   }
 
   private _initChannelServer = () => {
     this._channelServer = new ChannelServer(this._protocol)
     this._channelServer.onMessage(this.scheduleTick, this)
-    this._channelServer.onBeforeCall(sessionId => {
-      const targetId = sessionId || DEFAULT_SCENE_GRAPH_NAME
-      this._activeSessionId = targetId
-      this._activeGraph = this._graphs.get(targetId) || null
+    this._channelServer.onValidateSession(sessionId => {
+      this._sessionManager.getSession(sessionId)
     })
 
-    this._serviceManager.forEachService((service, name) => {
-      this._channelServer!.registerChannel(name, fromService(service))
+    this._serviceManager.forEachService((_service, name) => {
+      this._channelServer!.registerChannel(
+        name,
+        this._createSessionChannel(name)
+      )
     })
   }
 
-  public scheduleTick() {
+  private _createSessionChannel(name: Channels): IServerChannel {
+    return {
+      call: (ctx: IChannelCallContext, command: string, ...args: any[]) => {
+        const context = this._sessionManager.getContext(ctx.sessionId)
+        return this._sessionManager.runWithContext(context, () => {
+          const service = this._serviceManager.getService(name)
+          return fromService(service as object, {
+            channelName: name,
+            mutationGate: this._mutationGate,
+          }).call({ sessionId: context.currentSessionId }, command, ...args)
+        })
+      },
+      listen: (ctx: IChannelCallContext, event: string) => {
+        const context = this._sessionManager.getContext(ctx.sessionId)
+        return this._sessionManager.runWithContext(context, () => {
+          const service = this._serviceManager.getService(name)
+          return fromService(service as object, {
+            channelName: name,
+            mutationGate: this._mutationGate,
+          }).listen({ sessionId: context.currentSessionId }, event)
+        })
+      },
+    }
+  }
+
+  public scheduleTick(sessionId = DEFAULT_SCENE_GRAPH_NAME) {
+    const normalizedSessionId = sessionId || DEFAULT_SCENE_GRAPH_NAME
+    this._pendingTickSessions.add(normalizedSessionId)
     if (this._isTickScheduled) return
 
     this._isTickScheduled = true
 
     queueMicrotask(() => {
-      this.tick()
-      this._isTickScheduled = false
+      try {
+        this.tick()
+      } finally {
+        this._isTickScheduled = false
+      }
     })
   }
 
   public tick() {
-    if (this._activeGraph && this._activeSessionId) {
-      this._tickCurrentSession(this._activeSessionId)
+    const sessionIds = Array.from(this._pendingTickSessions)
+    this._pendingTickSessions.clear()
+
+    for (const sessionId of sessionIds) {
+      this._tickSession(sessionId)
     }
   }
 
-  private _tickCurrentSession(sessionId: string) {
-    const dirtyMap = this._proxyGraph.tracker.flush()
+  private _tickSession(sessionId: string) {
+    const session = this._sessionManager.getSession(sessionId)
+    const context = this._sessionManager.getContext(sessionId)
+    this._sessionManager.runWithContext(context, () => {
+      const batch = DirtyBatch.from(session.sceneGraph.tracker.flush())
 
-    if (dirtyMap.size === 0) return
+      if (!batch.hasChanges) return
 
-    for (const name of PIPELINE_SYSTEMS) {
-      const system = this._systems.getSystem(name)
-      system?.process?.(dirtyMap)
-    }
+      this._pipelineRunner.process(batch)
 
-    this._sendRenderNotification(
-      sessionId,
-      Array.from(dirtyMap.keys())
-        .map(item => this._proxyGraph.getUUID(item))
-        .filter((item): item is IDType => !!item)
-    )
-  }
-
-  private _sendRenderNotification(sessionId: string, dirtyIds: IDType[]) {
-    this._protocol.send(
-      createJsonRpcNotification(
-        'scene.onDirty',
-        null,
-        { ids: dirtyIds },
-        sessionId
+      const payload = this._notificationPlanner.createDirtyPayload(
+        batch,
+        session.nextProjectionVersion()
       )
+      if (payload) {
+        this._sendDirtyNotification(sessionId, payload)
+      }
+    })
+  }
+
+  private _sendDirtyNotification(
+    sessionId: string,
+    payload: ISceneDirtyPayload
+  ) {
+    this._protocol.send(
+      createJsonRpcNotification('scene.onDirty', null, payload, sessionId)
     )
   }
 }

@@ -1,14 +1,26 @@
-# @latte-js/counter (The Counter)
+# @latte-js/counter
 
-**The Business Logic Workbench.**
-Contains all built-in features of the editor, existing as "Internal Extensions".
+Built-in workbench contributions for Latte.
 
-## Built-in Contribs
+## Responsibility
 
-- **Tools**: Selection Tool, Rect Tool, Pen Tool.
-- **Operations**: Align, Distribute, Delete, Clipboard.
-- **History**: Undo/Redo stack management.
+- Register built-in tools, commands and product behavior.
+- Own main-thread session services such as selection and tool state.
+- Bridge user intent from `@latte-js/syrup` platform services to runtime/domain services.
 
-## Architecture
+## Boundaries
 
-Connects `Syrup` (User Intent) with `Barista` (Engine Execution).
+- Does not own document model writes.
+- Does not own undo/redo stacks; history lives in `@latte-js/barista`.
+- Selection is UI/session state. Document mutations still go through service/RPC/worker paths.
+
+## Development
+
+```bash
+pnpm --filter @latte-js/counter type-check
+pnpm --filter @latte-js/counter build
+```
+
+## License
+
+`AGPL-3.0-or-later`, with commercial licensing available for the core/product edition.

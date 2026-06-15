@@ -1,5 +1,9 @@
 import { type IDType, NodeType } from '@latte-js/bean'
-import { type SceneGraph, NULL_INDEX } from '@latte-js/espresso'
+import {
+  readNodeGeometry,
+  type SceneGraph,
+  NULL_INDEX,
+} from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
 
 import { isPointInPolygon } from '../utils/geometry'
@@ -148,12 +152,7 @@ export class HitTester {
   }
 
   private _isPointInIrregularShape(index: number, localPoint: vec2): boolean {
-    const blobPtr = this._sceneGraph.blobIndexToPtr.get(index)
-    if (!blobPtr) return false
-
-    // Assuming blob data contains points for polygon/star/path
-    // This is a simplified assumption. Real implementation depends on data schema.
-    const data = this._sceneGraph.blobs.read<{ points: number[] }>(blobPtr)
+    const data = readNodeGeometry<{ points: number[] }>(this._sceneGraph, index)
     if (!data || !data.points) return false
 
     return isPointInPolygon(localPoint, data.points)

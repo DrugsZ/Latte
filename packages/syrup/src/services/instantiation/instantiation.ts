@@ -25,7 +25,7 @@ export const createDecorator = <T>(serviceId: string): ServiceIdentifier<T> => {
   if (serviceCollection.has(serviceId)) {
     return serviceCollection.get(serviceId)
   }
-  const decorator = ((target: Function, key: string, paramIndex: number) => {
+  const decorator = ((target: Function, _key: string, paramIndex: number) => {
     storeServiceDependency(serviceId, target, paramIndex)
   }) as ServiceIdentifier<T>
   decorator.toString = () => serviceId

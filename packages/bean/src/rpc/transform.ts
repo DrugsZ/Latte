@@ -2,29 +2,11 @@ import type { mat2d, vec2 } from '../math/matrix'
 import type { IDType } from '../schema/index'
 
 export interface ITransformService {
-  /**
-   * Starts a transformation session (Request).
-   *
-   * @param ids - Array of object IDs to be transformed.
-   * @returns A promise that resolves when the session has started.
-   */
-  startSession(ids: IDType[]): Promise<void>
+  beginTransform(ids: IDType[], label?: string): Promise<void>
 
-  /**
-   * Commits the session (Request).
-   * Cleans up the snapshot and records the changes to the Undo stack.
-   *
-   * @returns A promise that resolves when the session is committed.
-   */
-  endSession(): Promise<void>
+  commitTransform(): Promise<void>
 
-  /**
-   * Aborts the session (Request).
-   * Rolls back the data without recording to the Undo stack.
-   *
-   * @returns A promise that resolves when the session is aborted.
-   */
-  abortSession(): Promise<void>
+  cancelTransform(): Promise<void>
 
   /**
    * Moves the object to the specified position (Request).
@@ -38,7 +20,11 @@ export interface ITransformService {
   moveTo$(ids: IDType[], delta: vec2): void
 
   /**
-   * Moves the object by the specified delta (Request).
+   * Moves the object by the specified world-space delta (Request).
+   *
+   * During an active transform session, delta is the total offset from the
+   * session snapshot. Callers should send the latest target delta, not
+   * frame-to-frame increments.
    *
    * @param id - The ID of the object to move.
    * @param delta - The delta vector [dx, dy].
@@ -65,4 +51,8 @@ export interface ITransformService {
   ): Promise<void>
 
   transformAround$(ids: IDType[], matrixPayload: mat2d, pivot: vec2): void
+
+  resize(ids: IDType[], width: number, height: number): Promise<void>
+
+  resize$(ids: IDType[], width: number, height: number): void
 }

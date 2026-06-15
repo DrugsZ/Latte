@@ -25,7 +25,6 @@ interface CurrentChord {
 export class KeybindingService extends Disposable {
   private _currentChords: CurrentChord[] = []
   private _cacheResolver: KeybindingResolver | null
-  private _currentlyDispatchingCommandId: string | null
 
   public get inChordMode(): boolean {
     return this._currentChords.length > 0
@@ -37,7 +36,6 @@ export class KeybindingService extends Disposable {
   ) {
     super()
     this._registerKeyListeners()
-    this._currentlyDispatchingCommandId = null
   }
 
   private _keyListener = (e: KeyboardEvent) => {
@@ -95,22 +93,17 @@ export class KeybindingService extends Disposable {
             this._leaveChordMode()
           }
 
-          this._currentlyDispatchingCommandId = resolveResult.commandId
-          try {
-            if (typeof resolveResult.commandArgs === 'undefined') {
-              this._commandService
-                .executeCommand(resolveResult.commandId)
-                .then(undefined, err => console.error)
-            } else {
-              this._commandService
-                .executeCommand(
-                  resolveResult.commandId,
-                  resolveResult.commandArgs
-                )
-                .then(undefined, console.error)
-            }
-          } finally {
-            this._currentlyDispatchingCommandId = null
+          if (typeof resolveResult.commandArgs === 'undefined') {
+            this._commandService
+              .executeCommand(resolveResult.commandId)
+              .then(undefined, console.error)
+          } else {
+            this._commandService
+              .executeCommand(
+                resolveResult.commandId,
+                resolveResult.commandArgs
+              )
+              .then(undefined, console.error)
           }
         }
 

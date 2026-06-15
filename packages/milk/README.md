@@ -1,16 +1,26 @@
-# @latte-js/milk (Steamed Milk)
+# @latte-js/milk
 
-**The User Interface.**
-Provides all React UI components and Hooks for the editor.
+React UI components and panels for Latte.
 
-## Contents
+## Responsibility
 
-- **Components**: Primitives like `Button`, `Input`, `Dropdown`.
-- **Panels**: `PropertiesPanel`, `LayerTree`, `Toolbar`.
-- **Hooks**:
-  - `useNode(id)`: Subscribe to kernel data changes.
-  - `useSelection()`: Subscribe to selection changes.
+- Provide reusable UI components and editor panels.
+- Read projection/session state through runtime services and hooks.
+- Trigger user intent through commands or service facades.
 
-## Architecture Principles
+## Boundaries
 
-- **View Only**: Directly modifying data is prohibited. Components must trigger changes via `commands.execute`.
+- Must not write the document model directly.
+- Must not own worker, history or low-level data structures.
+- UI state may live here or in workbench services, but document state belongs to Espresso/Barista.
+
+## Development
+
+```bash
+pnpm --filter @latte-js/milk type-check
+pnpm --filter @latte-js/milk build
+```
+
+## License
+
+`MIT`.

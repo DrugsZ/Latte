@@ -140,6 +140,19 @@ describe('HierarchyOps', () => {
     expect(children).toEqual([c1, c2])
   })
 
+  it('getChildren should detect sibling cycles', () => {
+    const graph = new SceneGraph()
+    const parent = graph.createNode(NodeType.GROUP, 'test:p')
+    const child = graph.createNode(NodeType.FRAME, 'test:c')
+
+    graph.appendChild(parent, child)
+    graph.nextSibling[child] = child
+
+    expect(() => HierarchyOps.getChildren(graph, parent)).toThrow(
+      'Tree cycle detected'
+    )
+  })
+
   it('getChildren should return empty array if no children', () => {
     const graph = new SceneGraph()
     const parent = graph.createNode(NodeType.GROUP, 'test:p')

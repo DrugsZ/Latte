@@ -1,60 +1,118 @@
-import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
-import { Emitter } from '@latte-js/kit'
+import { Emitter, type Event } from '@latte-js/kit'
+import { System, SystemBase, Systems } from './systems'
 
-import { system, SystemBase, Systems } from './systems'
+import type { ICreateNodeOptions, IDType } from '@latte-js/bean'
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
+import { TransactionLabel } from '../transactions/transactionLabels'
 
-import type { IDType, NodeType } from '@latte-js/bean'
+export type NodeChange = [id: IDType, index: number]
 
-@system
+export interface INodeSystemChangeEvent {
+  readonly sessionId: string
+  readonly nodes: NodeChange[]
+}
+
+const nodeMutationPolicies: MutationPolicyMap = {
+  createNode: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.CreateLayer,
+    ids: args => [(args[0] as ICreateNodeOptions).id],
+  },
+  deleteNode: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.DeleteLayer,
+    ids: args => [args[0] as IDType],
+  },
+  appendChild: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.ReorderLayer,
+    ids: args => [args[1] as IDType],
+  },
+  insertBefore: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.ReorderLayer,
+    ids: args => [args[1] as IDType],
+  },
+  removeChild: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.DetachLayer,
+    ids: args => [args[1] as IDType],
+  },
+}
+
+@System({ mutations: nodeMutationPolicies })
 export class NodeSystem extends SystemBase {
   public static readonly name = Systems.Node
-  private _nodeCursor: NodeCursor
-  private _onCreate = new Emitter<[id: IDType, index: number][]>()
-  public readonly onCreate = this._onCreate.event
+  private readonly _onDidCreateNode = new Emitter<INodeSystemChangeEvent>()
+  public readonly onDidCreateNode: Event<INodeSystemChangeEvent> =
+    this._onDidCreateNode.event
 
-  private _onDelete = new Emitter<[id: IDType, index: number][]>()
-  public readonly onDelete = this._onDelete.event
+  private readonly _onDidDeleteNode = new Emitter<INodeSystemChangeEvent>()
+  public readonly onDidDeleteNode: Event<INodeSystemChangeEvent> =
+    this._onDidDeleteNode.event
 
-  constructor(sceneGraph: SceneGraph) {
-    super(sceneGraph)
-    this._nodeCursor = new NodeCursor(this._sceneGraph, 0)
+  private readonly _onDidMoveNode = new Emitter<INodeSystemChangeEvent>()
+  public readonly onDidMoveNode: Event<INodeSystemChangeEvent> =
+    this._onDidMoveNode.event
+
+  private get _nodeCursor() {
+    return this._getCursor('node', 0)
   }
 
-  async create(
-    id: IDType,
-    type: NodeType,
-    x: number,
-    y: number
-  ): Promise<IDType> {
-    const index = this._sceneGraph.createNode(type, id)
+  async createNode(options: ICreateNodeOptions): Promise<IDType> {
+    const index = this._mutationWriter.createNode(options.id, options.type)
     this._nodeCursor.to(index)
-    this._nodeCursor.x = x
-    this._nodeCursor.y = y
-    this._onCreate.fire([[id, index]])
-    this._nodeCursor.width = 100
-    this._nodeCursor.height = 100
-    return id
+    this._nodeCursor.x = options.x ?? 0
+    this._nodeCursor.y = options.y ?? 0
+    this._nodeCursor.width = options.width ?? 100
+    this._nodeCursor.height = options.height ?? 100
+    this._onDidCreateNode.fire({
+      sessionId: this._currentSessionId,
+      nodes: [[options.id, index]],
+    })
+    return options.id
   }
 
-  async remove(id: IDType): Promise<void> {
-    const index = this._sceneGraph.getIndex(id)
-    this._onDelete.fire([[id, index]])
-    this._sceneGraph.deleteNode(index)
+  async deleteNode(id: IDType): Promise<void> {
+    const deleted = this._mutationWriter.removeNode(id)
+    this._onDidDeleteNode.fire({
+      sessionId: this._currentSessionId,
+      nodes: deleted,
+    })
   }
 
-  async removeChild(child: IDType): Promise<void> {
-    const childIndex = this._sceneGraph.getIndex(child)
-    this._sceneGraph.detach(childIndex)
+  async appendChild(parent: IDType, child: IDType): Promise<IDType> {
+    const moved = this._mutationWriter.appendChild(parent, child)
+    this._fireDidMoveNode(moved)
+    return child
   }
 
-  async insertAfter(
+  async insertBefore(
     parent: IDType,
     child: IDType,
-    ref?: IDType
-  ): Promise<void> {
-    const parentIndex = this._sceneGraph.getIndex(parent)
-    const childIndex = this._sceneGraph.getIndex(child)
-    const refIndex = ref ? this._sceneGraph.getIndex(ref) : -1
-    this._sceneGraph.insertAfter(parentIndex, childIndex, refIndex)
+    ref: IDType | null
+  ): Promise<IDType> {
+    const moved = this._mutationWriter.insertBefore(parent, child, ref)
+    this._fireDidMoveNode(moved)
+    return child
+  }
+
+  async removeChild(parent: IDType, child: IDType): Promise<IDType> {
+    const moved = this._mutationWriter.removeChild(parent, child)
+    this._fireDidMoveNode(moved)
+    return child
+  }
+
+  private _fireDidMoveNode(node: NodeChange | null) {
+    if (!node) {
+      return
+    }
+    this._onDidMoveNode.fire({
+      sessionId: this._currentSessionId,
+      nodes: [node],
+    })
   }
 }

@@ -8,30 +8,38 @@ import {
   type JsonRpcListenMessage,
   type JsonRpcUnlistenMessage,
   JsonRpcMessageType,
+  LATTE_RPC_CAPABILITIES,
+  LATTE_RPC_PROTOCOL_VERSION,
   type IServiceMap,
 } from '@latte-js/bean'
+import type { IDisposable } from '@latte-js/kit'
+
+export type { IDisposable }
 
 export interface IChannel {
   call<T>(command: string, ...args: any[]): Promise<T> | void // if end with $, is mean fast, does not need return value to client
   listen(event: string, listener: (msg: JsonRpcMessage) => void): IDisposable
 }
 
+export interface IChannelCallContext {
+  readonly sessionId: string
+}
+
 export interface IServerChannel {
-  call<T>(ctx: string, command: string, ...args: any[]): Promise<T>
-  listen(ctx: string, event: string, ...args: any[]): any
+  call<T>(ctx: IChannelCallContext, command: string, ...args: any[]): Promise<T>
+  listen(ctx: IChannelCallContext, event: string, ...args: any[]): any
 }
 
 export interface IChannelClient {
-  getChannel<T extends keyof IServiceMap>(channelName: T): IChannel
-  getChannel(channelName: string): IChannel
+  getChannel<T extends keyof IServiceMap>(
+    channelName: T,
+    sessionId?: string | null
+  ): IChannel
+  getChannel(channelName: string, sessionId?: string | null): IChannel
 }
 
 export interface IChannelServer {
   registerChannel(channelName: string, channel: IServerChannel): void
-}
-
-export interface IDisposable {
-  dispose(): void
 }
 
 /**
@@ -48,6 +56,8 @@ export const createJsonRpcRequest = (
 ): JsonRpcRequest => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Request,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   method,
   params,
   id,
@@ -68,6 +78,8 @@ export const createJsonRpcNotification = (
 ): JsonRpcNotification => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Notification,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   method,
   params,
   id,
@@ -88,6 +100,8 @@ export const createJsonRpcListenMessage = (
 ): JsonRpcListenMessage => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Listen,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   method,
   params,
   id,
@@ -104,6 +118,8 @@ export const createJsonRpcUnlistenMessage = (
 ): JsonRpcUnlistenMessage => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.Unlisten,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   id,
   sessionId,
 })
@@ -120,6 +136,8 @@ export const createJsonRpcSuccessResponse = (
 ): JsonRpcSuccessResponse => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.ResponseSuccess,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   result,
   id,
   sessionId,
@@ -141,6 +159,8 @@ export const createJsonRpcErrorResponse = (
 ): JsonRpcErrorResponse => ({
   jsonrpc: '2.0',
   type: JsonRpcMessageType.ResponseError,
+  protocolVersion: LATTE_RPC_PROTOCOL_VERSION,
+  capabilities: LATTE_RPC_CAPABILITIES,
   error: {
     code,
     message,

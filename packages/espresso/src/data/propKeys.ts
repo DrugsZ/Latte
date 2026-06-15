@@ -13,6 +13,7 @@ export enum PropId {
   FILLS = 'fills',
   STROKES = 'strokes',
   STROKE_WEIGHT = 'strokeWeight',
+  STROKE_ALIGN = 'strokeAlign',
   STROKE_STYLE = 'strokeStyle',
   STROKE_JOIN = 'strokeJoin',
   DASH_CAP = 'dashCap',
@@ -22,5 +23,6 @@ export enum PropId {
 
   LOCKED = 'locked',
 
+  CREATE_SELF = 'createSelf',
   REMOVE_SELF = 'removeSelf',
 }

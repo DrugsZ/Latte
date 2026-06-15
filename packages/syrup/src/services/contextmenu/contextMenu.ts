@@ -11,7 +11,7 @@ export class ContextMenu {
     private readonly _menuService: MenuService
   ) {}
 
-  private _getMenuActions(hitResult?: HitResult) {
+  private _getMenuActions(_hitResult?: HitResult) {
     // We could use hitResult here to pick a different MenuId
     const menu = this._menuService.createMenu(MenuId.EditorContext)
     const groups = menu.getActions()

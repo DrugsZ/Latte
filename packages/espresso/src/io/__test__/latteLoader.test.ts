@@ -73,6 +73,81 @@ describe('LatteLoader', () => {
     expect(graph.lastChild[pIdx]).toBe(c2Idx)
   })
 
+  it('keeps file order stable when siblings have the same position', () => {
+    const json = {
+      elements: [
+        {
+          guid: '0:parent',
+          type: 'FRAME',
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+        {
+          guid: '0:child-a',
+          type: 'RECTANGLE',
+          parentIndex: { guid: '0:parent', position: '1' },
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+        {
+          guid: '0:child-b',
+          type: 'RECTANGLE',
+          parentIndex: { guid: '0:parent', position: '1' },
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+      ],
+    } as unknown as ILatteFile
+
+    loader.load(json)
+
+    const pIdx = graph.getIndex('0:parent')
+    const aIdx = graph.getIndex('0:child-a')
+    const bIdx = graph.getIndex('0:child-b')
+
+    expect(graph.firstChild[pIdx]).toBe(aIdx)
+    expect(graph.nextSibling[aIdx]).toBe(bIdx)
+    expect(graph.lastChild[pIdx]).toBe(bIdx)
+  })
+
+  it('rejects loading while history mutation recording is active', () => {
+    graph.setMutationRecorder({
+      recordMutation() {},
+    } as any)
+
+    expect(() =>
+      loader.load({ elements: [] } as unknown as ILatteFile)
+    ).toThrow('[LatteLoader] load must run outside history mutation recording')
+  })
+
+  it('should map document nodes to the built-in root index', () => {
+    const json = {
+      elements: [
+        {
+          guid: '0:doc',
+          type: 'DOCUMENT',
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+        {
+          guid: '0:page',
+          type: 'CANVAS',
+          parentIndex: { guid: '0:doc', position: '1' },
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+      ],
+    } as unknown as ILatteFile
+
+    loader.load(json)
+
+    const docIdx = graph.getIndex('0:doc')
+    const pageIdx = graph.getIndex('0:page')
+
+    expect(docIdx).toBe(0)
+    expect(graph.parent[0]).toBe(-1)
+    expect(graph.prevSibling[0]).toBe(-1)
+    expect(graph.nextSibling[0]).toBe(-1)
+    expect(graph.parent[pageIdx]).toBe(0)
+    expect(graph.firstChild[0]).toBe(pageIdx)
+    expect(graph.lastChild[0]).toBe(pageIdx)
+  })
+
   it('should handle numeric type in JSON for backward compatibility', () => {
     const json = {
       elements: [{ guid: '0:rect-num', type: NodeType.RECTANGLE }],

@@ -1,92 +1,129 @@
-# ☕️ Latte 引擎
+# Latte Engine
 
 <p align="center">
-  <strong>面向未来的 Web 可编程图形引擎。</strong><br>
-  <em>Figma 的极致性能 · VSCode 的极致扩展 · 原生无头架构</em>
+  <strong>面向 Web 的可编程图形编辑器引擎。</strong><br>
+  <em>Figma 级画布语义 · VSCode 风格扩展平台 · Worker 优先架构</em>
 </p>
 
 <p align="center">
-  <a href="./README.md">🇺🇸 English</a> •
-  <a href="#-架构设计-咖啡全家桶">架构设计</a> •
-  <a href="#-快速开始">快速开始</a> •
+  <a href="./README.md">English</a> ·
+  <a href="./docs/roadmap.zh-CN.md">RoadMap</a> ·
+  <a href="./docs/architecture-blueprint.zh-CN.md">架构蓝图</a> ·
   <a href="./CONTRIBUTING.zh-CN.md">贡献指南</a>
 </p>
 
----
+## 当前状态
 
-## 🚀 愿景 (Vision)
+Latte 仍处于 1.0 之前。当前重点是编辑器内核：共享内存数据布局、worker 侧权威写入、主线程只读渲染投影、变换数学、事务/历史边界，以及开源项目治理。
 
-**Latte** 不仅仅是另一个 Canvas 绘图库。它是为 AI 时代设计的**图形基础设施**。
+## 愿景
 
-Figma 是为*设计师*打造的，而 Latte 是为**开发者**打造的。它旨在解决传统 DOM/SVG 编辑器的性能瓶颈，同时提供一套“设计即代码 (Design-as-Code)”的 API 界面。
+Latte 目标是成为一个设计编辑器平台，结合：
 
-### 核心特性
+- Figma 类画布编辑：高性能图层、变换、布局、组件、变量、检查与导出。
+- VSCode 类平台架构：服务、命令、快捷键、上下文、贡献点、配置和插件运行时。
+- 面向未来的 native 性能路线：Rust/WASM 内核可在不破坏 worker/service 边界的前提下承接几何、存储、snapshot/diff 与 replay 热路径。
+- 适合商业化的开源策略：monorepo 采用包级许可证，核心/产品包使用 AGPL + 商业授权，协议/SDK/基础设施包保持宽松协议。
 
-- **⚡️ 工业级性能**: 基于 `SharedArrayBuffer`、**面向数据设计 (DOD)** 和 **Web Workers** 构建。支持 **10万+** 图层在 60 FPS 下流畅操作。
-- **🤖 无头模式 (Headless)**: 核心引擎可完全脱离浏览器，在 Node.js 中运行。完美支持服务端图片生成、AI 自动布局 Agent 以及自动化测试。
-- **🔌 一切皆插件**: 采用 VSCode 的扩展模型。即使是核心功能（如“矩形工具”或“自动布局”）也仅仅是内置插件。
-- **🛡️ 数据主权**: 支持私有化部署 (Self-hosted)。您的设计数据永远在您自己的服务器上。
+## 架构
 
----
+Latte 使用 pnpm/Turborepo monorepo，并采用 worker 优先的编辑模型：
 
-## 🏛 架构设计 (咖啡全家桶)
+```text
+UI / Tool / Command / Plugin
+  -> 主线程 service facade
+  -> RPC
+  -> worker service
+  -> MutationGate
+  -> System / Manager
+  -> NodeCursor
+  -> SharedArrayBuffer / SoA
+  -> renderer 和 UI 只读投影
+```
 
-Latte 采用严格的 Monorepo 结构，由 **Turborepo** 管理。包命名沿用“咖啡主题”隐喻：
+| 包                   | 角色           | 职责                                                                                      |
+| -------------------- | -------------- | ----------------------------------------------------------------------------------------- |
+| `@latte-js/bean`     | 协议层         | 类型、节点枚举、文件 schema 类型与 RPC contract。                                         |
+| `@latte-js/espresso` | 数据内核       | `SharedArrayBuffer`、SoA 布局、SceneGraph、NodeCursor、loader/serializer 与临时 shared heap/blob 存储。 |
+| `@latte-js/barista`  | Worker 引擎    | Worker services、systems、mutation policy、事务、历史、undo/redo 与未来 Rust/WASM 计算桥接。 |
+| `@latte-js/crema`    | Runtime 组装   | Editor runtime、worker client、projection sync 与 interaction controller。                |
+| `@latte-js/art`      | 渲染层         | 只读 renderer、camera、hit test、RTree 与 render backends。                               |
+| `@latte-js/syrup`    | 主线程平台     | Editor host、DI、commands、menus、keybindings、input 与未来 contribution registry。       |
+| `@latte-js/counter`  | Workbench 贡献 | 内置工具、selection、commands 与产品行为。                                                |
+| `@latte-js/milk`     | UI 层          | 通过 service 操作的 React 面板与 UI 组件。                                                |
+| `@latte-js/kit`      | 工具包         | Events、lifecycle、平台工具与共享数据结构。                                               |
+| `apps/cafe`          | 示例应用       | 集成示例、本地 smoke target 与产品 playground。                                           |
 
-| 包名 (Package)           | 角色       | 隐喻说明                                                                               |
-| :----------------------- | :--------- | :------------------------------------------------------------------------------------- |
-| **`@latte-js/bean`**     | **协议层** | **咖啡豆**。纯类型定义、JSON 结构、RPC 协议。无运行时依赖，是一切的原材料。            |
-| **`@latte-js/espresso`** | **内核层** | **浓缩基底**。基于 `SharedArrayBuffer` 的内存数据库。管理 SoA 内存布局与 LCRS 树结构。 |
-| **`@latte-js/barista`**  | **引擎层** | **咖啡师**。逻辑调度与计算中心。负责自动布局、吸附计算。通常运行在 **Web Worker** 中。 |
-| **`@latte-js/art`**      | **渲染层** | **拉花**。视觉呈现。读取 _Espresso_ 数据并绘制到 Canvas/WebGL。负责高性能点击检测。    |
-| **`@latte-js/syrup`**    | **基建层** | **糖浆**。微内核基础设施。管理命令系统、快捷键服务、插件沙箱。                         |
-| **`@latte-js/counter`**  | **业务层** | **吧台**。内置的业务逻辑与工具集（如选择工具、对齐命令）。_(原 Workbench)_             |
-| **`@latte-js/cup`**      | **组件库** | **杯子**。无业务逻辑的 Headless UI 组件库（输入框、按钮）。                            |
-| **`@latte-js/milk`**     | **UI 层**  | **牛奶**。React 业务组件（属性面板、图层树）。仅作为数据的投影。                       |
+### Runtime 与 Host 边界
 
----
+Latte 会刻意保留 `@latte-js/syrup` 与 `@latte-js/crema` 的分层：
 
-## 🛠 快速开始
+- `syrup` 提供主线程平台基础设施：host scope、commands、input、keybindings、menus 和未来 typed DI。
+- `crema` 是 runtime composition root：创建 worker client、renderer、projection sync、input bridge 和 workbench wiring。
+- `EditorHost` 应定型为单个 editor instance 的 scope，而不是 service locator 或插件公开 API。
+- worker RPC services 后续应注册到 typed `ServiceCollection` identifier 中，让调用方不关心能力来自本地还是远端。
+
+## 快速开始
 
 ### 环境要求
 
-- **Node.js**: >= 18.0.0
-- **pnpm**: >= 9.0.0
+- Node.js >= 18
+- pnpm 10.x，与根 `package.json` 的 `packageManager` 字段保持一致
 
 ### 安装运行
 
 ```bash
-# 1. 克隆仓库
 git clone https://github.com/DrugsZ/Latte.git
 cd Latte
-
-# 2. 安装依赖
 pnpm install
-
-# 3. 构建核心包
 pnpm build
-
-# 4. 启动编辑器 (开发模式)
 pnpm dev
 ```
 
-访问 `http://localhost:5173` 开始体验。
+打开 `http://localhost:5173`。
 
----
+### 常用命令
 
-## 🗺 路线图 (Roadmap)
+```bash
+pnpm release:check
+```
 
-- [ ] **Phase 1: 创世纪 (Genesis)** - 共享内存架构与数据加载器。
-- [ ] **Phase 2: 可视化 (Visualization)** - Canvas 渲染器与 React 桥接。
-- [ ] **Phase 3: 交互 (Interaction)** - 命令系统、选择与变换工具。
-- [ ] **Phase 4: 进化 (Evolution)** - 计算逻辑 Worker 化与 Rust/Wasm 集成。
-- [ ] **Phase 5: 生态 (Ecosystem)** - 插件 API 与市场。
+`pnpm release:check` 会执行本地 release gate：许可证元数据、lint、type-check、单元测试、`apps/cafe` 构建、Playwright 浏览器准备、smoke/e2e，以及 `git diff --check`。
 
----
+## RoadMap
 
-## 📄 许可证 (License)
+详版计划见 [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md)。
 
-- **核心引擎** (`espresso`, `barista`, `art`): **AGPL-3.0** (开源，强传染性)。
-- **生态组件** (`bean`, `cup`, `syrup`): **MIT** (宽松协议)。
+- P0：稳定内核、投影、变换、历史边界与发布门禁。
+- P1：补齐 projection 一致性、typed DI/service collection、shared metadata、style/node/query services 与结构历史。
+- P2：实现 Figma 对齐的几何与布局语义：constraints、auto layout、group auto-bounds。
+- P3：建设 VSCode 风格平台能力：context keys、configuration、contribution registry、plugin manifest。
+- P4：补齐设计语义：components、instances、variants、variables、styles、text/vector 与 libraries。
+- P5：引入 extension host、插件公开 API、权限和运行时校验。
+- P6：补齐 Dev Mode、inspect、codegen、export 与 headless automation。
+- P7：推进协同、版本历史、生产部署与性能基线。
+- P8：评估 Rust/WASM native kernel，承接被性能基线证明必要的存储与几何热路径。
 
-_如果您希望在不开源您代码的情况下将 Latte 用于商业产品（如 SaaS、内部工具），请联系我们购买 **商业授权 (Commercial License)**。_
+## 文档
+
+- [架构蓝图](./docs/architecture-blueprint.zh-CN.md)
+- [详细 RoadMap](./docs/roadmap.zh-CN.md)
+- [Figma layout/resize 计划](./docs/figma-layout-resize-plan.zh-CN.md)
+- [工程治理与许可证策略](./docs/governance-and-licensing.zh-CN.md)
+- [贡献指南](./CONTRIBUTING.zh-CN.md)
+
+## 贡献
+
+提交 PR 前请阅读 [CONTRIBUTING.zh-CN.md](./CONTRIBUTING.zh-CN.md)。最重要的架构规则是：document model 写入必须经过 worker 侧 services/systems 和 `NodeCursor`；renderer 与 UI 只读 projection，不直接修改模型。
+
+## 许可证
+
+本 monorepo 采用包级许可证。二次分发前请以各包 `package.json` 与 `LICENSE` 为准。
+
+| 范围                 | 包                                               | 许可证                              |
+| -------------------- | ------------------------------------------------ | ----------------------------------- |
+| 核心/产品包          | `espresso`、`barista`、`crema`、`art`、`counter` | `AGPL-3.0-or-later`，可提供商业授权 |
+| 协议/SDK/UI 基础设施 | `bean`、`kit`、`syrup`、`milk`                   | `MIT`                               |
+| 示例应用             | `apps/cafe`                                      | `UNLICENSED`，不作为可复用包发布    |
+
+如需在不承担 AGPL 义务的情况下用于商业产品，请联系维护者获取商业授权。

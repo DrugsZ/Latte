@@ -1,154 +1,214 @@
 import {
-  type SceneGraph,
-  DIRTY_AABB,
+  DIRTY_WORLD_BOUNDS,
   DIRTY_SUBTREE_MATRIX,
-  DIRTY_TRANSFORM,
-  NodeCursor,
+  MATRIX_AFFECTING_FLAGS,
+  MAT_SIZE,
+  MAX_NODES,
+  NULL_INDEX,
 } from '@latte-js/espresso'
-import { mat2d } from 'gl-matrix'
 
-import { system, SystemBase, Systems } from './systems'
+import type { DirtyBatch } from '../pipeline/dirtyBatch'
+import { ScheduleStage, System, SystemBase, Systems } from './systems'
+
+const MATRIX_SCHEDULE_READS = MATRIX_AFFECTING_FLAGS | DIRTY_SUBTREE_MATRIX
+
+enum MatrixTraversalPhase {
+  Enter = 'enter',
+  Exit = 'exit',
+}
+
+interface MatrixTraversalFrame {
+  readonly index: number
+  readonly parentUpdated: boolean
+  readonly phase: MatrixTraversalPhase
+}
 
 /**
  * MatrixSystem - Computes world transform matrices using DIRTY_SUBTREE_MATRIX pruning.
  *
- * Traverses top-down (pre-order), skipping subtrees without transform changes.
- * Marks updated nodes with DIRTY_AABB for AABBSystem to process.
+ * Traverses top-down, skipping subtrees without transform changes.
+ * Marks updated nodes with DIRTY_WORLD_BOUNDS for AABBSystem to process.
  */
-@system
+@System({
+  schedule: {
+    stage: ScheduleStage.Matrix,
+    reads: MATRIX_SCHEDULE_READS,
+    writes: DIRTY_WORLD_BOUNDS,
+  },
+})
 export class MatrixSystem extends SystemBase {
   public static readonly name = Systems.Matrix
-  private _cursor: NodeCursor
-  private _tempMatrix = mat2d.create()
 
-  constructor(sceneGraph: SceneGraph) {
-    super(sceneGraph)
-    this._cursor = new NodeCursor(this._sceneGraph, -1)
+  public process(batch: DirtyBatch) {
+    if (!batch.hasChanges) return
+
+    const roots = this._collectTraversalRoots(batch)
+    const visited = new Set<number>()
+    const visiting = new Set<number>()
+
+    for (const root of roots) {
+      this._processFromRoot(root, batch, visited, visiting)
+    }
   }
 
-  public process(dirtyMap: Map<number, number>) {
-    if (dirtyMap.size === 0) return
+  private _collectTraversalRoots(batch: DirtyBatch) {
+    const candidates = new Set(batch.keysByMask(MATRIX_SCHEDULE_READS))
+    const roots: number[] = []
 
-    const processed = new Set<number>()
-
-    for (const nodeIndex of dirtyMap.keys()) {
-      if (!processed.has(nodeIndex)) {
-        this._processNodeWithAncestors(nodeIndex, dirtyMap, processed)
+    for (const index of candidates) {
+      this._sceneGraph.assertNodeIndexAlive(index, 'MatrixSystem.process')
+      const parent = this._sceneGraph.parent[index]
+      if (parent === NULL_INDEX || !candidates.has(parent)) {
+        roots.push(index)
       }
     }
-  }
 
-  private _processNodeWithAncestors(
-    index: number,
-    dirtyMap: Map<number, number>,
-    processed: Set<number>
-  ) {
-    if (processed.has(index)) return
-
-    this._cursor.to(index)
-    const parent = this._cursor.parent
-
-    if (
-      parent !== null &&
-      dirtyMap.has(parent.index) &&
-      !processed.has(parent.index)
-    ) {
-      this._processNodeWithAncestors(parent.index, dirtyMap, processed)
+    if (roots.length === 0 && candidates.size > 0) {
+      throw new Error('Tree cycle detected in matrix traversal roots')
     }
 
-    const parentDirty = parent !== null && processed.has(parent.index)
-    this._processSubtree(index, parentDirty, dirtyMap, processed)
+    return roots
   }
 
-  private _processSubtree(
-    index: number,
-    parentDirty: boolean,
-    dirtyMap: Map<number, number>,
-    processed: Set<number>
+  private _processFromRoot(
+    root: number,
+    batch: DirtyBatch,
+    visited: Set<number>,
+    visiting: Set<number>
   ) {
-    const flags = dirtyMap.get(index) || 0
-    const hasDirtyTransform = (flags & DIRTY_TRANSFORM) !== 0
-    const hasDirtySubtree = (flags & DIRTY_SUBTREE_MATRIX) !== 0
+    const stack: MatrixTraversalFrame[] = [
+      {
+        index: root,
+        parentUpdated: false,
+        phase: MatrixTraversalPhase.Enter,
+      },
+    ]
 
-    if (!parentDirty && !hasDirtyTransform && !hasDirtySubtree) {
+    while (stack.length > 0) {
+      const frame = stack.pop()!
+
+      if (frame.phase === MatrixTraversalPhase.Exit) {
+        visiting.delete(frame.index)
+        continue
+      }
+
+      this._enterNode(frame, batch, stack, visited, visiting)
+    }
+  }
+
+  private _enterNode(
+    frame: MatrixTraversalFrame,
+    batch: DirtyBatch,
+    stack: MatrixTraversalFrame[],
+    visited: Set<number>,
+    visiting: Set<number>
+  ) {
+    const { index, parentUpdated } = frame
+
+    if (visiting.has(index) || visiting.size > MAX_NODES) {
+      throw new Error(`Tree cycle detected at node ${index}`)
+    }
+    if (visited.has(index)) {
       return
     }
 
-    this._cursor.to(index)
-    processed.add(index)
+    this._sceneGraph.assertNodeIndexAlive(index, 'MatrixSystem.traverse')
+    visiting.add(index)
+    visited.add(index)
 
-    const mustUpdate = hasDirtyTransform || parentDirty
+    const flags = batch.getFlags(index)
+    const hasMatrixInputChange = (flags & MATRIX_AFFECTING_FLAGS) !== 0
+    const hasDirtySubtree = (flags & DIRTY_SUBTREE_MATRIX) !== 0
 
-    if (mustUpdate) {
-      this._updateWorldTransform()
-      // Mark for AABB recalculation
-      const currentFlags = dirtyMap.get(index) || 0
-      dirtyMap.set(index, currentFlags | DIRTY_AABB)
+    if (!parentUpdated && !hasMatrixInputChange && !hasDirtySubtree) {
+      visiting.delete(index)
+      return
     }
 
+    const mustUpdate = hasMatrixInputChange || parentUpdated
+
+    if (mustUpdate) {
+      this._updateWorldTransform(index)
+      batch.markDerived(index, DIRTY_WORLD_BOUNDS)
+    }
+
+    stack.push({ index, parentUpdated, phase: MatrixTraversalPhase.Exit })
+
     if (hasDirtySubtree || mustUpdate) {
-      for (const child of this._cursor.children()) {
-        this._processSubtree(child.index, mustUpdate, dirtyMap, processed)
-      }
+      this._pushChildren(index, mustUpdate, batch, stack)
     }
   }
 
-  private _updateWorldTransform() {
-    const parent = this._cursor.parent
+  private _pushChildren(
+    index: number,
+    parentUpdated: boolean,
+    batch: DirtyBatch,
+    stack: MatrixTraversalFrame[]
+  ) {
+    const children: number[] = []
+    const visitedChildren = new Set<number>()
+    let child = this._sceneGraph.firstChild[index]
 
-    if (parent === null) {
-      this._cursor.worldTransform = mat2d.clone(this._cursor.transform)
-    } else {
-      const p = parent.worldTransform
-      const c = this._cursor.transform
+    while (child !== NULL_INDEX) {
+      if (visitedChildren.has(child) || visitedChildren.size > MAX_NODES) {
+        throw new Error(`Tree cycle detected at node ${child}`)
+      }
 
-      // Manually multiply to separate rotation/scale and translation
-      // This ensures clearer logic and avoids potential issues with standard matrix multiplication
-      // if we ever need custom handling for position vs rotation.
+      this._sceneGraph.assertNodeIndexAlive(child, 'MatrixSystem.child')
+      visitedChildren.add(child)
 
-      // 1. Rotation/Scale part (2x2 matrix multiplication)
-      // | a b |   | a' b' |
-      // | c d | * | c' d' |
-      const a = p[0] * c[0] + p[2] * c[1]
-      const b = p[1] * c[0] + p[3] * c[1]
-      const c_val = p[0] * c[2] + p[2] * c[3]
-      const d = p[1] * c[2] + p[3] * c[3]
+      if (parentUpdated || batch.hasFlags(child, MATRIX_SCHEDULE_READS)) {
+        children.push(child)
+      }
 
-      // 2. Translation part
-      // Apply parent's transform (rotation/scale) to child's local position, then add parent's position
-      // The child's position (c[4], c[5]) is relative to the parent's center (originX, originY).
-      // We first convert it to be relative to the parent's top-left corner (standard local space),
-      // then apply the parent's world matrix.
-
-      const originX = parent.width / 2
-      const originY = parent.height / 2
-
-      // 1. Calculate Parent Center in World Space
-      // The p[4], p[5] already represents the translation.
-      // Since we rotate around the center, we simply add the center offset to the translation
-      // without applying the rotation matrix to the center offset itself again.
-      const parentCenterX = p[4] + originX
-      const parentCenterY = p[5] + originY
-
-      // 2. Calculate Child Offset Vector (rotated/scaled by Parent)
-      // Offset_world = Parent_Rotation_Scale * Child_Translation_Local
-      // Note: c[4], c[5] are treated as offsets relative to parent center
-      const xWithOrigin = c[4] - originX
-      const yWithOrigin = c[5] - originY
-      const offsetX = p[0] * xWithOrigin + p[2] * yWithOrigin
-      const offsetY = p[1] * xWithOrigin + p[3] * yWithOrigin
-
-      // 3. Final World Position = Parent Center World + Rotated Offset
-      const tx = parentCenterX + offsetX
-      const ty = parentCenterY + offsetY
-
-      this._tempMatrix[0] = a
-      this._tempMatrix[1] = b
-      this._tempMatrix[2] = c_val
-      this._tempMatrix[3] = d
-      this._tempMatrix[4] = tx
-      this._tempMatrix[5] = ty
-      this._cursor.worldTransform = this._tempMatrix
+      child = this._sceneGraph.nextSibling[child]
     }
+
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      stack.push({
+        index: children[i],
+        parentUpdated,
+        phase: MatrixTraversalPhase.Enter,
+      })
+    }
+  }
+
+  private _updateWorldTransform(index: number) {
+    const graph = this._sceneGraph
+    const parent = graph.parent[index]
+    const local = index * MAT_SIZE
+    const world = index * MAT_SIZE
+
+    if (parent === NULL_INDEX) {
+      graph.worldMatrix[world + 0] = graph.matrix[local + 0]
+      graph.worldMatrix[world + 1] = graph.matrix[local + 1]
+      graph.worldMatrix[world + 2] = graph.matrix[local + 2]
+      graph.worldMatrix[world + 3] = graph.matrix[local + 3]
+      graph.worldMatrix[world + 4] = graph.matrix[local + 4]
+      graph.worldMatrix[world + 5] = graph.matrix[local + 5]
+      return
+    }
+
+    graph.assertNodeIndexAlive(parent, 'MatrixSystem.parent')
+    const parentWorld = parent * MAT_SIZE
+    const pa = graph.worldMatrix[parentWorld + 0]
+    const pb = graph.worldMatrix[parentWorld + 1]
+    const pc = graph.worldMatrix[parentWorld + 2]
+    const pd = graph.worldMatrix[parentWorld + 3]
+    const ptx = graph.worldMatrix[parentWorld + 4]
+    const pty = graph.worldMatrix[parentWorld + 5]
+    const la = graph.matrix[local + 0]
+    const lb = graph.matrix[local + 1]
+    const lc = graph.matrix[local + 2]
+    const ld = graph.matrix[local + 3]
+    const ltx = graph.matrix[local + 4]
+    const lty = graph.matrix[local + 5]
+
+    graph.worldMatrix[world + 0] = pa * la + pc * lb
+    graph.worldMatrix[world + 1] = pb * la + pd * lb
+    graph.worldMatrix[world + 2] = pa * lc + pc * ld
+    graph.worldMatrix[world + 3] = pb * lc + pd * ld
+    graph.worldMatrix[world + 4] = pa * ltx + pc * lty + ptx
+    graph.worldMatrix[world + 5] = pb * ltx + pd * lty + pty
   }
 }

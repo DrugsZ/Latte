@@ -5,7 +5,15 @@ export * from './keybinding/keybindingService'
 export * from './keybinding/keybindingsRegistry'
 export * from './menu/menuService'
 export * from './menu/menuRegistry'
-export * from './contextmenu/contextMenuService'
+export {
+  ContextMenuService,
+  IContextMenuService,
+  type IContextMenuShowOptions as IContextMenuServiceShowOptions,
+} from './contextmenu/contextMenuService'
 export * from './contextmenu/contextMenu'
-export * from './contextview/contextViewService'
-export * from './proxies/proxies'
+export {
+  ContextViewService,
+  IContextViewService,
+  type IContextMenuShowOptions as IContextViewMenuShowOptions,
+} from './contextview/contextViewService'
+export * from './editor/editorService'

@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsgo --noEmit",
     "dev": "tsup src/index.ts --watch",
     "clean": "rm -rf dist"
   },
@@ -29,7 +29,7 @@
     "plugin"
   ],
   "author": "FateLee",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "homepage": "https://github.com/DrugsZ/Latte#readme",
   "exports": {
     ".": {
@@ -52,12 +52,11 @@
   },
   "dependencies": {
     "@latte-js/bean": "workspace:*",
-    "@latte-js/barista": "workspace:*",
     "@latte-js/kit": "workspace:*",
     "mitt": "^3.0.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.9.3"
   }
 }

@@ -4,16 +4,45 @@ export { LatteLoader } from './io/latteLoader'
 export { Serializer } from './io/serializer'
 export { NodeCursor } from './data/nodeCursor'
 export {
-  DIRTY_TRANSFORM,
-  DIRTY_STYLE,
-  DIRTY_STRUCTURE,
-  DIRTY_AABB,
+  captureNodeSnapshot,
+  getChildPosition,
+  getNodeLifecyclePayload,
+  getNodePlacement,
+  type INodeLifecyclePayload,
+  type INodePlacement,
+} from './data/nodeSnapshot'
+export {
+  readNodeFills,
+  readNodeGeometry,
+  readNodeName,
+  readNodeStrokes,
+  writeNodeFills,
+  writeNodeGeometry,
+  writeNodeName,
+  writeNodeStrokes,
+  type INodeGeometryPayload,
+} from './data/nodeProps'
+export {
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_PAINT,
+  DIRTY_TREE,
+  DIRTY_WORLD_BOUNDS,
+  DIRTY_METADATA,
+  DIRTY_GEOMETRY,
+  DIRTY_LAYOUT,
+  DIRTY_EFFECT,
+  DIRTY_TEXT,
   DIRTY_SUBTREE_MATRIX,
   MATRIX_AFFECTING_FLAGS,
   BOUNDS_AFFECTING_FLAGS,
+  RENDER_AFFECTING_FLAGS,
+  LAYOUT_AFFECTING_FLAGS,
   NULL_INDEX,
   MAX_NODES,
   DEFAULT_HEAP_SIZE,
+  MAT_SIZE,
+  NODE_LIFECYCLE_ALLOCATED_MASK,
+  NodeLifecycle,
 } from './data/config'
 export {
   applyStretchToMatrix,
@@ -24,3 +53,11 @@ export {
 } from './math/transform'
 export { TransformOps } from './data/ops/transformOps'
 export { walkTree } from './query/treeWalker'
+export { PropId } from './data/propKeys'
+export type {
+  IMutationRecorder,
+  INodeMutationRecord,
+} from './data/mutationRecorder'
+export { MutationScopeKind } from './data/mutationScope'
+export type { IMutationScope } from './data/mutationScope'
+export type { ISceneGraphMutationAuthority } from './data/mutationAuthority'

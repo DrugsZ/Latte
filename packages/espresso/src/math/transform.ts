@@ -1,8 +1,12 @@
 import { mat2, mat2d, vec2 } from 'gl-matrix'
 
-import { type NodeCursor } from 'src/data/nodeCursor'
-
-import { DIRTY_AABB, DIRTY_TRANSFORM, NULL_INDEX } from '../data/config'
+import {
+  DIRTY_GEOMETRY,
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_WORLD_BOUNDS,
+  NULL_INDEX,
+} from '../data/config'
+import { type NodeCursor } from '../data/nodeCursor'
 import { type SceneGraph } from '../data/sceneGraph'
 /**
  * Apply stretch (scale) to matrix and size, baking the result.
@@ -518,9 +522,6 @@ export function applyDistributiveScale(
   //
   //       Let's implement this "World Axis Scale Extraction".
 
-  const sx = Math.hypot(newLocal[0], newLocal[1])
-  const sy = Math.hypot(newLocal[2], newLocal[3])
-
   // --- NEW LOGIC START ---
   // To ensure visual correctness of width/height properties (User Request),
   // we extract scale based on World Space axis deformation, not Local Space.
@@ -602,7 +603,10 @@ export function applyDistributiveScale(
   cursor.x = newLocal[4]
   cursor.y = newLocal[5]
 
-  graph.markDirty(index, DIRTY_TRANSFORM | DIRTY_AABB)
+  graph.markDirty(
+    index,
+    DIRTY_LOCAL_MATRIX | DIRTY_GEOMETRY | DIRTY_WORLD_BOUNDS
+  )
 
   // 6. Recurse
   // The current node's New World Transform becomes the Parent New World for its children.

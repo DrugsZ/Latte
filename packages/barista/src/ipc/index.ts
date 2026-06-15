@@ -3,9 +3,10 @@ export {
   WebWorkerMessagePassingProtocol,
 } from './protocol/ipcWorker'
 export { ChannelServer } from './channelServer'
-export { ChannelClient } from './channelClient'
+export { ChannelClient, ChannelClientError } from './channelClient'
 export type {
   IChannel,
+  IChannelCallContext,
   IServerChannel,
   IChannelClient,
   IChannelServer,

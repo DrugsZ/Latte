@@ -9,7 +9,7 @@
     "strict": true,
     "skipLibCheck": true,
     "sourceMap": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "experimentalDecorators": true,
     "allowJs": true,
@@ -19,17 +19,17 @@
     "jsx": "react-jsx",
     "declaration": true,
     "declarationMap": true,
-    "baseUrl": ".",
     "paths": {
-      "@latte-js/bean": ["packages/bean/src/index.ts"],
-      "@latte-js/art": ["packages/art/src/index.ts"],
-      "@latte-js/espresso": ["packages/espresso/src/index.ts"],
-      "@latte-js/barista": ["packages/barista/src/index.ts"],
-      "@latte-js/barista/worker": ["packages/barista/src/worker/index.ts"],
-      "@latte-js/syrup": ["packages/syrup/src/index.ts"],
-      "@latte-js/counter": ["packages/counter/src/index.ts"],
-      "@latte-js/milk": ["packages/milk/src/index.ts"],
-      "@cafe/*": ["apps/cafe/src/*"]
+      "@latte-js/bean": ["./packages/bean/src/index.ts"],
+      "@latte-js/art": ["./packages/art/src/index.ts"],
+      "@latte-js/espresso": ["./packages/espresso/src/index.ts"],
+      "@latte-js/barista": ["./packages/barista/src/index.ts"],
+      "@latte-js/barista/worker": ["./packages/barista/src/worker/index.ts"],
+      "@latte-js/syrup": ["./packages/syrup/src/index.ts"],
+      "@latte-js/crema": ["./packages/crema/src/index.ts"],
+      "@latte-js/counter": ["./packages/counter/src/index.ts"],
+      "@latte-js/milk": ["./packages/milk/src/index.ts"],
+      "@cafe/*": ["./apps/cafe/src/*"]
     }
   }
 }

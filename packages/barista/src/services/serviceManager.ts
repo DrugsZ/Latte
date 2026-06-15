@@ -6,15 +6,15 @@ import {
   type ServiceConstructor,
 } from './serviceBase'
 
-import type { SceneGraph } from '@latte-js/espresso'
 import type { BaristaSystem } from '../systems/systems'
 import type { IContext } from './types'
+import type { ISceneGraphContext } from '../context/sceneGraphContext'
 
 export class ServiceManager implements IContext {
   private _services = new Map<Channels, ServiceBase>()
 
   constructor(
-    public readonly sceneGraph: SceneGraph,
+    private readonly _sceneGraphContext: ISceneGraphContext,
     public readonly accessSystem: BaristaSystem
   ) {
     this._initServices()
@@ -30,6 +30,18 @@ export class ServiceManager implements IContext {
 
   public getService<T extends Channels>(name: T): IServiceMap[T] {
     return this._services.get(name) as unknown as IServiceMap[T]
+  }
+
+  public get sceneGraph() {
+    return this._sceneGraphContext.sceneGraph
+  }
+
+  public get mutationAuthority() {
+    return this._sceneGraphContext.mutationAuthority
+  }
+
+  public get currentSessionId() {
+    return this._sceneGraphContext.currentSessionId
   }
 
   public forEachService(

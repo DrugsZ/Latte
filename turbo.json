@@ -21,9 +21,7 @@
         "src/**/*.ts",
         "test/**/*.ts"
       ],
-      "outputs": [
-        "coverage/**"
-      ]
+      "outputs": []
     },
     "e2e": {
       "dependsOn": [

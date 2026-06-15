@@ -1,5 +1,5 @@
 import { NodeType } from '@latte-js/bean'
-import { SceneGraph, NULL_INDEX } from '@latte-js/espresso'
+import { SceneGraph, NULL_INDEX, writeNodeGeometry } from '@latte-js/espresso'
 import { describe, it, expect, beforeEach } from 'vitest'
 
 import { Camera } from '../../core/camera'
@@ -154,11 +154,9 @@ describe('HitTester', () => {
     sceneGraph.size[polyIndex * 2] = 100
     sceneGraph.size[polyIndex * 2 + 1] = 100
 
-    // Write Blob Data
-    const ptr = sceneGraph.blobs.write({
+    writeNodeGeometry(sceneGraph, polyIndex, {
       points: [0, 0, 100, 0, 50, 100],
     })
-    sceneGraph.blobIndexToPtr.set(polyIndex, ptr)
 
     // World Matrix (Identity, at 0,0)
     const matPtr = polyIndex * 6

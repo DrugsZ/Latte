@@ -1,43 +1,95 @@
-import { NodeCursor, type SceneGraph } from '@latte-js/espresso'
+import { NodeCursor, NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
+
 import type { IDType } from '@latte-js/bean'
 
 export class SelectionService {
   private _selectChange = new Emitter<IDType[]>()
   public readonly onSelectChange = this._selectChange.event
-  private _selectedIndices = new Set<IDType>()
+  private _selectedIds = new Set<IDType>()
+  private _activeId: IDType | null = null
+  private _anchorId: IDType | null = null
 
-  constructor(private readonly _sceneGraph: SceneGraph) {}
+  constructor(private _sceneGraph: SceneGraph) {}
 
-  select(indices: IDType[]) {
-    this._selectedIndices.clear()
-    indices.forEach(i => this._selectedIndices.add(i))
-    this._selectChange.fire(this.indices)
-  }
-  clear() {
-    this._selectedIndices.clear()
-    this._selectChange.fire(this.indices)
-  }
-  toggle(index: IDType) {
-    if (this._selectedIndices.has(index)) {
-      this._selectedIndices.delete(index)
-    } else {
-      this._selectedIndices.add(index)
+  setGraph(graph: SceneGraph) {
+    if (this._sceneGraph === graph) {
+      return
     }
-    this._selectChange.fire(this.indices)
+    this._sceneGraph = graph
+    this.clear()
   }
 
-  get indices() {
-    return Array.from(this._selectedIndices)
+  select(ids: readonly IDType[]) {
+    this._selectedIds.clear()
+    ids.forEach(id => this._selectedIds.add(id))
+    this._activeId = ids[ids.length - 1] ?? null
+    this._anchorId = ids[0] ?? null
+    this._fireChange()
   }
+
+  clear() {
+    if (this._selectedIds.size === 0) {
+      return
+    }
+    this._selectedIds.clear()
+    this._activeId = null
+    this._anchorId = null
+    this._fireChange()
+  }
+
+  toggle(id: IDType) {
+    if (this._selectedIds.has(id)) {
+      this._selectedIds.delete(id)
+      if (this._activeId === id) {
+        this._activeId = Array.from(this._selectedIds).at(-1) ?? null
+      }
+      if (this._anchorId === id) {
+        this._anchorId = this._selectedIds.values().next().value ?? null
+      }
+    } else {
+      this._selectedIds.add(id)
+      this._activeId = id
+      this._anchorId ??= id
+    }
+    this._fireChange()
+  }
+
+  has(id: IDType): boolean {
+    return this._selectedIds.has(id)
+  }
+
+  get ids(): IDType[] {
+    return Array.from(this._selectedIds)
+  }
+
+  get indices(): number[] {
+    const indices: number[] = []
+    for (const id of this._selectedIds) {
+      const index = this._sceneGraph.getIndex(id)
+      if (index !== NULL_INDEX) {
+        indices.push(index)
+      }
+    }
+    return indices
+  }
+
+  get activeId(): IDType | null {
+    return this._activeId
+  }
+
+  get anchorId(): IDType | null {
+    return this._anchorId
+  }
+
   get isEmpty(): boolean {
-    return this._selectedIndices.size === 0
+    return this._selectedIds.size === 0
   }
 
   forEach(fn: (cursor: NodeCursor) => void) {
     const cursor = new NodeCursor(this._sceneGraph, 0)
-    for (const index of this._selectedIndices) {
-      cursor.toID(index)
+    for (const index of this.indices) {
+      cursor.to(index)
       fn(cursor)
     }
   }
@@ -45,10 +97,14 @@ export class SelectionService {
   map<T>(fn: (cursor: NodeCursor) => T): T[] {
     const result: T[] = []
     const cursor = new NodeCursor(this._sceneGraph, 0)
-    for (const index of this._selectedIndices) {
-      cursor.toID(index)
+    for (const index of this.indices) {
+      cursor.to(index)
       result.push(fn(cursor))
     }
     return result
+  }
+
+  private _fireChange() {
+    this._selectChange.fire(this.ids)
   }
 }

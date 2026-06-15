@@ -1,5 +1,3 @@
-import { HitTester } from '@latte-js/art'
-import { NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
 import { Disposable, Emitter, type Event } from '@latte-js/kit'
 
 import {
@@ -7,8 +5,8 @@ import {
   StandardWheelEvent,
   type IPoint,
 } from '../../dom/mouseEvent'
+import { createDecorator } from '../instantiation/instantiation'
 
-import type { Renderer } from '@latte-js/art'
 import type { HitResult, ILatteEvent, IMouseWheelEvent } from '@latte-js/bean'
 
 export enum EventResult {
@@ -19,6 +17,17 @@ export enum EventResult {
 export interface IInputService {
   readonly onKeyDown: Event<KeyboardEvent>
   readonly onKeyUp: Event<KeyboardEvent>
+}
+
+export const IInputService = createDecorator<IInputService>('inputService')
+
+export interface IInputHitTestResult {
+  hitResult: HitResult | undefined
+  client: IPoint
+}
+
+export interface IInputHitTestProvider {
+  hitTest(clientX: number, clientY: number): IInputHitTestResult
 }
 
 export class InputMouseEvent extends StandardMouseEvent implements ILatteEvent {
@@ -49,7 +58,6 @@ export interface IInputMouseHandler {
 
 export class InputService extends Disposable implements IInputService {
   private _handlers: IInputMouseHandler[] = []
-  private _hitTester: HitTester
 
   private readonly _onKeyDown = this._register(new Emitter<KeyboardEvent>())
   public readonly onKeyDown = this._onKeyDown.event
@@ -58,24 +66,23 @@ export class InputService extends Disposable implements IInputService {
   public readonly onKeyUp = this._onKeyUp.event
 
   constructor(
-    private _renderer: Renderer,
-    private _sceneGraph: SceneGraph
+    private readonly _target: HTMLElement,
+    private _hitTestProvider: IInputHitTestProvider,
+    private readonly _keyTarget: Window = window
   ) {
     super()
-    this._hitTester = new HitTester(this._sceneGraph, this._renderer.camera)
-    const canvas = this._renderer.canvas
-    canvas.addEventListener('pointerdown', this._handleRaw)
-    canvas.addEventListener('pointermove', this._handleRaw)
-    canvas.addEventListener('pointerup', this._handleRaw)
-    canvas.addEventListener('wheel', this._handleRaw, { passive: false })
-    canvas.addEventListener('contextmenu', this._handleRaw)
-    window.addEventListener('keydown', this._handleKeyDown)
-    window.addEventListener('keyup', this._handleKeyUp)
+    this._target.addEventListener('pointerdown', this._handleRaw)
+    this._target.addEventListener('pointermove', this._handleRaw)
+    this._target.addEventListener('pointerup', this._handleRaw)
+    this._target.addEventListener('dblclick', this._handleRaw)
+    this._target.addEventListener('wheel', this._handleRaw, { passive: false })
+    this._target.addEventListener('contextmenu', this._handleRaw)
+    this._keyTarget.addEventListener('keydown', this._handleKeyDown)
+    this._keyTarget.addEventListener('keyup', this._handleKeyUp)
   }
 
-  public setGraph(graph: SceneGraph) {
-    this._sceneGraph = graph
-    this._hitTester.setGraph(graph)
+  public setHitTestProvider(provider: IInputHitTestProvider) {
+    this._hitTestProvider = provider
   }
 
   public registerHandler(handler: IInputMouseHandler) {
@@ -88,8 +95,14 @@ export class InputService extends Disposable implements IInputService {
   }
 
   public override dispose() {
-    window.removeEventListener('keydown', this._handleKeyDown)
-    window.removeEventListener('keyup', this._handleKeyUp)
+    this._target.removeEventListener('pointerdown', this._handleRaw)
+    this._target.removeEventListener('pointermove', this._handleRaw)
+    this._target.removeEventListener('pointerup', this._handleRaw)
+    this._target.removeEventListener('dblclick', this._handleRaw)
+    this._target.removeEventListener('wheel', this._handleRaw)
+    this._target.removeEventListener('contextmenu', this._handleRaw)
+    this._keyTarget.removeEventListener('keydown', this._handleKeyDown)
+    this._keyTarget.removeEventListener('keyup', this._handleKeyUp)
     super.dispose()
   }
 
@@ -102,43 +115,7 @@ export class InputService extends Disposable implements IInputService {
   }
 
   private _handleRaw = (rawEvent: MouseEvent | WheelEvent) => {
-    let hitResult: HitResult | undefined
-    if (this._renderer.activeRootId) {
-      const x = rawEvent.clientX
-      const y = rawEvent.clientY
-
-      const rTreeHits = this._renderer.rTree.search({
-        minX: x,
-        minY: y,
-        maxX: x,
-        maxY: y,
-      })
-
-      const candidates = new Set<number>()
-      for (const item of rTreeHits) {
-        let curr = (item as any).id
-        while (curr !== NULL_INDEX) {
-          if (candidates.has(curr)) break
-          candidates.add(curr)
-          curr = this._sceneGraph.parent[curr]
-        }
-      }
-
-      const idx = this._hitTester.hitTest(
-        x,
-        y,
-        this._renderer.activeRootId,
-        candidates
-      )
-      if (idx !== NULL_INDEX) {
-        hitResult = {
-          nodeIndex: idx,
-          nodeId: this._sceneGraph.getUUID(idx) || undefined,
-        }
-      }
-    }
-
-    const worldPos = this._renderer.camera.toWorld(
+    const { hitResult, client } = this._hitTestProvider.hitTest(
       rawEvent.clientX,
       rawEvent.clientY
     )
@@ -149,10 +126,10 @@ export class InputService extends Disposable implements IInputService {
       event = new InputWheelEvent(
         rawEvent as IMouseWheelEvent,
         hitResult,
-        worldPos
+        client
       )
     } else {
-      event = new InputMouseEvent(rawEvent, hitResult, worldPos)
+      event = new InputMouseEvent(rawEvent as PointerEvent, hitResult, client)
     }
 
     for (const handler of this._handlers) {

@@ -9,7 +9,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsgo --noEmit",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -33,7 +33,7 @@
     "performance"
   ],
   "author": "FateLee",
-  "license": "GPL-3.0-or-later",
+  "license": "AGPL-3.0-or-later",
   "homepage": "https://github.com/DrugsZ/Latte#readme",
   "exports": {
     ".": {
@@ -62,7 +62,7 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
     "tsup": "^8.0.0",
-    "typescript": "^5.3.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
 }

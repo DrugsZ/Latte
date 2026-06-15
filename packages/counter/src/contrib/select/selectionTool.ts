@@ -20,13 +20,13 @@ export class SelectionTool implements IInputMouseHandler {
 
   private _handlePointerDown(e: InputMouseEvent): EventResult {
     const isMultiSelect = e.ctrlKey || e.metaKey || e.shiftKey
-    const hitNodeIndex = e.hitResult?.nodeId
+    const hitNodeId = e.hitResult?.nodeId
 
-    if (hitNodeIndex !== undefined) {
+    if (hitNodeId !== undefined) {
       if (isMultiSelect) {
-        this._selectionService.toggle(hitNodeIndex)
+        this._selectionService.toggle(hitNodeId)
       } else {
-        this._selectionService.select([hitNodeIndex])
+        this._selectionService.select([hitNodeId])
       }
       return EventResult.CONSUMED
     } else {

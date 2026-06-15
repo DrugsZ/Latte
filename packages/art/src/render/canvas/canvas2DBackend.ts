@@ -40,6 +40,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   > = new Map()
   private _renderTargets: Map<number, HTMLCanvasElement> = new Map()
   private _renderTargetIdCounter: number = 1
+  private _currentRenderTarget: number | null = null
 
   // Performance statistics
   private _stats = {
@@ -666,7 +667,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._images.delete(imageId)
   }
 
-  createRenderTarget(width: number, height: number, samples?: number): number {
+  createRenderTarget(width: number, height: number, _samples?: number): number {
     // Attempt to create a new canvas of the same type as the main canvas
     let offscreenCanvas: any
 
@@ -700,6 +701,9 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   }
 
   setRenderTarget(targetId: number | null): void {
+    if (this._currentRenderTarget === targetId) {
+      return
+    }
     if (targetId === null) {
       this._currentRenderTarget = null
       if (this._canvas) {
@@ -769,14 +773,14 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     pathId: number,
     x: number,
     y: number,
-    transform?: Float32Array,
+    _transform?: Float32Array,
     fillRule: 'nonzero' | 'evenodd' = 'nonzero'
   ): boolean {
     if (!this._ctx) return false
     const path = this._paths.get(pathId)
     if (!path) return false
 
-    if (transform) {
+    if (_transform) {
       return this._ctx.isPointInPath(path, x, y, fillRule)
     }
 
@@ -787,7 +791,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     pathId: number,
     x: number,
     y: number,
-    transform?: Float32Array,
+    _transform?: Float32Array,
     strokeWidth?: number
   ): boolean {
     if (!this._ctx) return false

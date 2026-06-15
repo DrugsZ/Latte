@@ -1,3 +1,4 @@
+import { NodeType } from '@latte-js/bean'
 import { SceneGraph } from '@latte-js/espresso'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -14,28 +15,36 @@ describe('SelectionService', () => {
 
   it('should start empty', () => {
     expect(selectionService.isEmpty).toBe(true)
+    expect(selectionService.ids).toEqual([])
     expect(selectionService.indices).toEqual([])
   })
 
-  it('should select indices', () => {
+  it('should select ids', () => {
     const spy = vi.fn()
     selectionService.onSelectChange(spy)
 
-    selectionService.select([1, 2, 3])
+    selectionService.select(['test:a', 'test:b', 'test:c'])
 
     expect(selectionService.isEmpty).toBe(false)
-    expect(selectionService.indices).toEqual(expect.arrayContaining([1, 2, 3]))
-    expect(spy).toHaveBeenCalledWith(expect.arrayContaining([1, 2, 3]))
+    expect(selectionService.ids).toEqual(
+      expect.arrayContaining(['test:a', 'test:b', 'test:c'])
+    )
+    expect(selectionService.activeId).toBe('test:c')
+    expect(selectionService.anchorId).toBe('test:a')
+    expect(spy).toHaveBeenCalledWith(
+      expect.arrayContaining(['test:a', 'test:b', 'test:c'])
+    )
   })
 
   it('should clear selection', () => {
-    selectionService.select([1, 2])
+    selectionService.select(['test:a', 'test:b'])
     const spy = vi.fn()
     selectionService.onSelectChange(spy)
 
     selectionService.clear()
 
     expect(selectionService.isEmpty).toBe(true)
+    expect(selectionService.ids).toEqual([])
     expect(selectionService.indices).toEqual([])
     expect(spy).toHaveBeenCalledWith([])
   })
@@ -44,38 +53,47 @@ describe('SelectionService', () => {
     const spy = vi.fn()
     selectionService.onSelectChange(spy)
 
-    // Select 1
-    selectionService.toggle(1)
-    expect(selectionService.indices).toEqual([1])
+    selectionService.toggle('test:a')
+    expect(selectionService.ids).toEqual(['test:a'])
     expect(spy).toHaveBeenCalledTimes(1)
 
-    // Deselect 1
-    selectionService.toggle(1)
-    expect(selectionService.indices).toEqual([])
+    selectionService.toggle('test:a')
+    expect(selectionService.ids).toEqual([])
     expect(spy).toHaveBeenCalledTimes(2)
   })
 
   it('should iterate over selected cursors', () => {
-    // We need actual nodes in sceneGraph for cursor to work effectively?
-    // NodeCursor just wraps index, so it might work even if empty,
-    // but let's be safe and assume valid indices.
-    // However, SelectionService just sets indices.
-
-    selectionService.select([10, 20])
+    const a = sceneGraph.createNode(NodeType.RECTANGLE, 'test:a')
+    const b = sceneGraph.createNode(NodeType.FRAME, 'test:b')
+    selectionService.select(['test:a', 'test:b'])
 
     const indices: number[] = []
     selectionService.forEach(cursor => {
       indices.push(cursor.index)
     })
 
-    expect(indices).toEqual(expect.arrayContaining([10, 20]))
+    expect(indices).toEqual(expect.arrayContaining([a, b]))
   })
 
   it('should map selected cursors', () => {
-    selectionService.select([10, 20])
+    const a = sceneGraph.createNode(NodeType.RECTANGLE, 'test:a')
+    const b = sceneGraph.createNode(NodeType.FRAME, 'test:b')
+    selectionService.select(['test:a', 'test:b'])
 
     const result = selectionService.map(cursor => cursor.index * 2)
 
-    expect(result).toEqual(expect.arrayContaining([20, 40]))
+    expect(result).toEqual(expect.arrayContaining([a * 2, b * 2]))
+  })
+
+  it('resolves indices from the current graph and clears on graph switch', () => {
+    const a = sceneGraph.createNode(NodeType.RECTANGLE, 'test:a')
+    selectionService.select(['test:a'])
+
+    expect(selectionService.indices).toEqual([a])
+
+    selectionService.setGraph(new SceneGraph())
+
+    expect(selectionService.ids).toEqual([])
+    expect(selectionService.indices).toEqual([])
   })
 })

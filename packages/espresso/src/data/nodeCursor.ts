@@ -1,13 +1,17 @@
 import {
-  DIRTY_AABB,
-  DIRTY_NOT_EFFECT,
-  DIRTY_STRUCTURE,
-  DIRTY_TRANSFORM,
-  MAX_NODES,
+  DIRTY_GEOMETRY,
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_METADATA,
+  DIRTY_PAINT,
+  DIRTY_TREE,
+  DIRTY_WORLD_BOUNDS,
   NULL_INDEX,
 } from './config'
+import { readNodeName, writeNodeName } from './nodeProps'
+import { getNodeLifecyclePayload, getNodePlacement } from './nodeSnapshot'
 import { HierarchyOps, StyleOps, TransformOps } from './ops'
 import { PropId } from './propKeys'
+import { iterateChildIndices } from './treeTraversal'
 
 import type {
   DashCapKey,
@@ -19,6 +23,34 @@ import type {
 } from '@latte-js/bean'
 import { mat2d } from 'gl-matrix'
 import type { SceneGraph } from './sceneGraph'
+
+const cloneMutationValue = (value: unknown): unknown => {
+  if (ArrayBuffer.isView(value)) {
+    const view = value as ArrayBufferView & {
+      readonly length?: number
+      [index: number]: number
+    }
+    if (typeof view.length === 'number') {
+      return Array.from(view as ArrayLike<number>)
+    }
+    return Array.from(
+      new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+    )
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => cloneMutationValue(item))
+  }
+
+  if (value && typeof value === 'object') {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(value)
+    }
+    return JSON.parse(JSON.stringify(value))
+  }
+
+  return value
+}
 
 export class NodeCursor {
   private _index: number
@@ -36,7 +68,7 @@ export class NodeCursor {
   }
 
   private _checkAlive() {
-    if (!this._graph.allocator.isValid(this._index, this._generation)) {
+    if (!this._graph.isNodeIndexAlive(this._index, this._generation)) {
       throw new Error(`[NodeCursor] Accessing dead node: ${this._index}`)
     }
   }
@@ -68,12 +100,31 @@ export class NodeCursor {
   }
 
   private _mutate(prop: PropId, dirtyFlag: number, executor: () => void) {
-    const oldVal = this[prop]
+    this._assertCanMutate(prop)
+    const id = this.id
+    if (id === null) {
+      throw new Error(
+        `[NodeCursor] Cannot mutate node without id: ${this.index}`
+      )
+    }
+
+    const oldVal = cloneMutationValue(this[prop])
     executor()
-    const newValue = this[prop]
-    this._graph.notifyObservers(this.id!, prop, oldVal, newValue)
+    const newValue = cloneMutationValue(this[prop])
+    this._graph.recordMutation({
+      id,
+      index: this.index,
+      prop,
+      oldValue: oldVal,
+      newValue,
+      dirtyFlag,
+    })
 
     this._graph.markDirty(this.index, dirtyFlag)
+  }
+
+  private _assertCanMutate(prop: PropId | string) {
+    this._graph.assertMutationAllowed(`NodeCursor.${String(prop)}`)
   }
 
   get index() {
@@ -92,34 +143,27 @@ export class NodeCursor {
 
   get name() {
     this._checkAlive()
-    return this._graph.nameMap.get(this._index) || 'Layer'
+    return readNodeName(this._graph, this._index)
   }
   set name(v: string) {
     this._checkAlive()
-    this._mutate(PropId.NAME, DIRTY_NOT_EFFECT, () => {
-      this._graph.nameMap.set(this._index, v)
+    this._mutate(PropId.NAME, DIRTY_METADATA, () => {
+      writeNodeName(this._graph, this._index, v)
     })
   }
   public *children(flyweight = true) {
     this._checkAlive()
 
-    let curr = this._graph.firstChild[this._index]
-    let safeguard = 0
-
     if (flyweight) {
       const scratch = new NodeCursor(this._graph, this._index)
-      while (curr !== NULL_INDEX) {
-        if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
-        yield scratch.to(curr)
-        curr = this._graph.nextSibling[curr]
+      for (const child of iterateChildIndices(this._graph, this._index)) {
+        yield scratch.to(child)
       }
       return
     }
 
-    while (curr !== NULL_INDEX) {
-      if (safeguard++ > MAX_NODES) throw new Error('Tree cycle detected')
-      yield new NodeCursor(this._graph, curr)
-      curr = this._graph.nextSibling[curr]
+    for (const child of iterateChildIndices(this._graph, this._index)) {
+      yield new NodeCursor(this._graph, child)
     }
   }
 
@@ -131,7 +175,7 @@ export class NodeCursor {
   }
   set x(v: number) {
     this._checkAlive()
-    this._mutate(PropId.X, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.X, DIRTY_LOCAL_MATRIX, () => {
       TransformOps.setX(this._graph, this._index, v)
     })
   }
@@ -142,7 +186,7 @@ export class NodeCursor {
   }
   set y(v: number) {
     this._checkAlive()
-    this._mutate(PropId.Y, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.Y, DIRTY_LOCAL_MATRIX, () => {
       TransformOps.setY(this._graph, this._index, v)
     })
   }
@@ -153,7 +197,7 @@ export class NodeCursor {
   }
   set width(v: number) {
     this._checkAlive()
-    this._mutate(PropId.WIDTH, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.WIDTH, DIRTY_GEOMETRY, () => {
       TransformOps.setWidth(this._graph, this._index, v)
     })
   }
@@ -164,7 +208,7 @@ export class NodeCursor {
   }
   set height(v: number) {
     this._checkAlive()
-    this._mutate(PropId.HEIGHT, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.HEIGHT, DIRTY_GEOMETRY, () => {
       TransformOps.setHeight(this._graph, this._index, v)
     })
   }
@@ -174,7 +218,7 @@ export class NodeCursor {
   }
 
   set transform(mat: mat2d) {
-    this._mutate(PropId.TRANSFORM, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.TRANSFORM, DIRTY_LOCAL_MATRIX, () => {
       TransformOps.setMatrix(this._graph, this._index, mat)
     })
   }
@@ -191,7 +235,7 @@ export class NodeCursor {
 
   set worldTransform(mat: mat2d) {
     this._checkAlive()
-    this._mutate(PropId.WORLD_TRANSFORM, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.WORLD_TRANSFORM, DIRTY_WORLD_BOUNDS, () => {
       TransformOps.setWorldMatrix(this._graph, this._index, mat)
     })
   }
@@ -211,7 +255,7 @@ export class NodeCursor {
 
   set locked(v: boolean) {
     this._checkAlive()
-    this._mutate(PropId.LOCKED, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.LOCKED, DIRTY_METADATA, () => {
       StyleOps.setLocked(this._graph, this._index, v)
     })
   }
@@ -223,7 +267,7 @@ export class NodeCursor {
 
   set visible(v: boolean) {
     this._checkAlive()
-    this._mutate(PropId.VISIBLE, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.VISIBLE, DIRTY_PAINT, () => {
       StyleOps.setVisible(this._graph, this._index, v)
     })
   }
@@ -235,7 +279,7 @@ export class NodeCursor {
 
   set opacity(v: number) {
     this._checkAlive()
-    this._mutate(PropId.OPACITY, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.OPACITY, DIRTY_PAINT, () => {
       StyleOps.setOpacity(this._graph, this._index, v)
     })
   }
@@ -248,35 +292,59 @@ export class NodeCursor {
 
   public appendChild(child: NodeCursor) {
     this._checkAlive()
-    const oldParent = child.parent?.id ?? null
+    this._assertCanMutate(PropId.PARENT)
+    const oldValue = getNodePlacement(this._graph, child.index)
     HierarchyOps.appendChild(this._graph, this._index, child.index)
-    const newParent = child.parent?.id ?? null
-    this._graph.notifyObservers(child.id!, PropId.PARENT, oldParent, newParent)
-    this._graph.markDirty(child.index, DIRTY_TRANSFORM)
-    this._graph.markDirty(this._index, DIRTY_STRUCTURE)
+    const newValue = getNodePlacement(this._graph, child.index)
+    this._graph.recordMutation({
+      id: child.id!,
+      index: child.index,
+      prop: PropId.PARENT,
+      oldValue,
+      newValue,
+      dirtyFlag: DIRTY_TREE,
+    })
+    this._graph.markDirty(child.index, DIRTY_TREE)
+    this._graph.markDirty(this._index, DIRTY_TREE)
   }
 
   public removeChild(child: NodeCursor) {
+    this._assertCanMutate(PropId.PARENT)
     if (child.parent?.index !== this._index) {
       throw new Error('[NodeCursor] removeChild: not a child of this node')
     }
     this._checkAlive()
+    const oldValue = getNodePlacement(this._graph, child.index)
     HierarchyOps.detach(this._graph, child.index)
-    this._graph.notifyObservers(child.id!, PropId.PARENT, this.id, null)
-    this._graph.markDirty(this._index, DIRTY_STRUCTURE)
+    this._graph.recordMutation({
+      id: child.id!,
+      index: child.index,
+      prop: PropId.PARENT,
+      oldValue,
+      newValue: null,
+      dirtyFlag: DIRTY_TREE,
+    })
+    this._graph.markDirty(this._index, DIRTY_TREE)
     return child
   }
 
   public delete() {
     this._checkAlive()
+    this._assertCanMutate(PropId.REMOVE_SELF)
     const myId = this.id
     const parent = this.parent
+    const oldValue = getNodeLifecyclePayload(this._graph, this._index)
     HierarchyOps.remove(this._graph, this._index)
-    //FIXME：json serialization
-    const nodeJSON = ''
-    this._graph.notifyObservers(myId!, PropId.REMOVE_SELF, nodeJSON, null)
+    this._graph.recordMutation({
+      id: myId!,
+      index: this._index,
+      prop: PropId.REMOVE_SELF,
+      oldValue,
+      newValue: null,
+      dirtyFlag: DIRTY_TREE,
+    })
     if (parent) {
-      this._graph.markDirty(parent.index, DIRTY_STRUCTURE)
+      this._graph.markDirty(parent.index, DIRTY_TREE)
     }
   }
 
@@ -285,7 +353,7 @@ export class NodeCursor {
   }
 
   set fills(style: IPaint[]) {
-    this._mutate(PropId.FILLS, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.FILLS, DIRTY_PAINT, () => {
       StyleOps.setFills(this._graph, this._index, style)
     })
   }
@@ -295,7 +363,7 @@ export class NodeCursor {
   }
 
   set strokes(style: IPaint[]) {
-    this._mutate(PropId.STROKES, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.STROKES, DIRTY_PAINT, () => {
       StyleOps.setStrokes(this._graph, this._index, style)
     })
   }
@@ -307,7 +375,7 @@ export class NodeCursor {
 
   set cornerRadius(v: [number, number, number, number]) {
     this._checkAlive()
-    this._mutate(PropId.CORNER_RADIUS, DIRTY_AABB, () => {
+    this._mutate(PropId.CORNER_RADIUS, DIRTY_GEOMETRY, () => {
       StyleOps.setCornerRadius(this._graph, this._index, v)
     })
   }
@@ -325,7 +393,7 @@ export class NodeCursor {
 
   set strokeWeight(v: number) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_WEIGHT, DIRTY_AABB, () => {
+    this._mutate(PropId.STROKE_WEIGHT, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setStrokeWeight(this._graph, this._index, v)
     })
   }
@@ -337,7 +405,7 @@ export class NodeCursor {
 
   set strokeAlign(v: StrokeAlignKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKES, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.STROKE_ALIGN, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setStrokeAlign(this._graph, this._index, v)
     })
   }
@@ -349,7 +417,7 @@ export class NodeCursor {
 
   set strokeJoin(v: StrokeJoinKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_JOIN, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.STROKE_JOIN, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setStrokeJoin(this._graph, this._index, v)
     })
   }
@@ -361,7 +429,7 @@ export class NodeCursor {
 
   set strokeStyle(v: StrokeStyleKey) {
     this._checkAlive()
-    this._mutate(PropId.STROKE_STYLE, DIRTY_NOT_EFFECT, () => {
+    this._mutate(PropId.STROKE_STYLE, DIRTY_PAINT, () => {
       StyleOps.setStrokeStyle(this._graph, this._index, v)
     })
   }
@@ -373,7 +441,7 @@ export class NodeCursor {
 
   set dashCap(v: DashCapKey) {
     this._checkAlive()
-    this._mutate(PropId.DASH_CAP, DIRTY_TRANSFORM, () => {
+    this._mutate(PropId.DASH_CAP, DIRTY_GEOMETRY | DIRTY_PAINT, () => {
       StyleOps.setDashCap(this._graph, this._index, v)
     })
   }

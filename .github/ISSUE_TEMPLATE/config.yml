@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: RoadMap
+    url: https://github.com/DrugsZ/Latte/blob/main/docs/roadmap.zh-CN.md
+    about: Review the current architecture and product direction.
+  - name: Contributing
+    url: https://github.com/DrugsZ/Latte/blob/main/CONTRIBUTING.md
+    about: Read the contribution guide before opening a pull request.

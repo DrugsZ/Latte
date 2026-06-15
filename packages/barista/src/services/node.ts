@@ -1,17 +1,20 @@
 import {
   Channels,
+  type ICreateNodeOptions,
+  type INodeLifecycleEvent,
+  type INodeMoveEvent,
   type IDType,
   type INodeService,
-  type NodeType,
 } from '@latte-js/bean'
 
-import { service, ServiceBase, type IContext } from './serviceBase'
+import { Service, SystemBackedServiceBase, type IContext } from './serviceBase'
 
 import type { NodeSystem } from '../systems/node'
+import { Systems } from '../systems'
 
-@service
+@Service({ system: Systems.Node })
 export class NodeService
-  extends ServiceBase<NodeSystem>
+  extends SystemBackedServiceBase<NodeSystem>
   implements INodeService
 {
   public static readonly name = Channels.Node
@@ -20,35 +23,54 @@ export class NodeService
     super(ctx)
   }
 
-  async create(
-    id: IDType,
-    type: NodeType,
-    x: number,
-    y: number
-  ): Promise<IDType> {
-    return this.system.create(id, type, x, y)
-  }
-  async remove(id: IDType): Promise<void> {
-    return this.system.remove(id)
+  async createNode(options: ICreateNodeOptions): Promise<IDType> {
+    return this.system.createNode(options)
   }
 
-  async removeChild(child: IDType): Promise<void> {
-    return this.system.removeChild(child)
+  async appendChild(parent: IDType, child: IDType): Promise<IDType> {
+    return this.system.appendChild(parent, child)
   }
 
-  async insertAfter(
+  async insertBefore(
     parent: IDType,
     child: IDType,
-    ref?: IDType
-  ): Promise<void> {
-    return this.system.insertAfter(parent, child, ref)
+    ref: IDType | null
+  ): Promise<IDType> {
+    return this.system.insertBefore(parent, child, ref)
   }
 
-  onCreate(callback: (nodes: [id: IDType, index: number][]) => void) {
-    return this.system.onCreate(callback)
+  async removeChild(parent: IDType, child: IDType): Promise<IDType> {
+    return this.system.removeChild(parent, child)
   }
 
-  onDelete(callback: (nodes: [id: IDType, index: number][]) => void) {
-    return this.system.onDelete(callback)
+  async deleteNode(id: IDType): Promise<void> {
+    return this.system.deleteNode(id)
+  }
+
+  onDidCreateNode(callback: (event: INodeLifecycleEvent) => void) {
+    const sessionId = this.currentSessionId
+    return this.system.onDidCreateNode(event => {
+      if (event.sessionId === sessionId) {
+        callback({ nodes: event.nodes })
+      }
+    })
+  }
+
+  onDidDeleteNode(callback: (event: INodeLifecycleEvent) => void) {
+    const sessionId = this.currentSessionId
+    return this.system.onDidDeleteNode(event => {
+      if (event.sessionId === sessionId) {
+        callback({ nodes: event.nodes })
+      }
+    })
+  }
+
+  onDidMoveNode(callback: (event: INodeMoveEvent) => void) {
+    const sessionId = this.currentSessionId
+    return this.system.onDidMoveNode(event => {
+      if (event.sessionId === sessionId) {
+        callback({ nodes: event.nodes })
+      }
+    })
   }
 }

@@ -1,35 +1,50 @@
 import { DEFAULT_HEAP_SIZE, LITTLE_ENDIAN } from './config.js'
 
+interface HeapManagerOptions {
+  resizable?: boolean
+}
+
 export class HeapManager {
   public buffer: SharedArrayBuffer
   public view: Uint8Array
-  private _cursor: number = 0
+  private _cursor: Int32Array
+  private _resizable: boolean
 
-  constructor(existingBuffer?: SharedArrayBuffer) {
+  constructor(
+    existingBuffer?: SharedArrayBuffer,
+    options: HeapManagerOptions = {}
+  ) {
     if (existingBuffer) {
       this.buffer = existingBuffer
     } else {
       this.buffer = new SharedArrayBuffer(DEFAULT_HEAP_SIZE)
     }
     this.view = new Uint8Array(this.buffer)
+    this._cursor = new Int32Array(this.buffer, 0, 1)
+    this._resizable = options.resizable ?? true
+
+    if (Atomics.load(this._cursor, 0) === 0) {
+      Atomics.store(this._cursor, 0, 4)
+    }
   }
 
   public alloc(size: number): number {
-    if (this._cursor + size > this.buffer.byteLength) {
+    const alignedSize = this._align(size)
+    let ptr = Atomics.load(this._cursor, 0)
+
+    if (ptr + alignedSize > this.buffer.byteLength) {
+      if (!this._resizable) {
+        throw new Error(
+          `[HeapManager] Out of shared heap memory: ${ptr + alignedSize}/${this.buffer.byteLength}`
+        )
+      }
       this._resize(
-        Math.max(this.buffer.byteLength * 2, this._cursor + size + 1024)
+        Math.max(this.buffer.byteLength * 2, ptr + alignedSize + 1024)
       )
+      ptr = Atomics.load(this._cursor, 0)
     }
 
-    const ptr = this._cursor
-
-    this._cursor += size
-
-    const padding = this._cursor % 4
-    if (padding !== 0) {
-      this._cursor += LITTLE_ENDIAN - padding
-    }
-
+    Atomics.store(this._cursor, 0, ptr + alignedSize)
     return ptr
   }
 
@@ -41,6 +56,24 @@ export class HeapManager {
     view.setUint32(0, contentLen, true)
     this.view.set(data, ptr + 4)
     return ptr
+  }
+
+  public free(ptr: number): boolean {
+    if (
+      !Number.isInteger(ptr) ||
+      ptr <= 0 ||
+      ptr + 4 > this.buffer.byteLength
+    ) {
+      return false
+    }
+
+    const view = new DataView(this.buffer, ptr, 4)
+    if (view.getUint32(0, true) === 0) {
+      return false
+    }
+
+    view.setUint32(0, 0, true)
+    return true
   }
 
   public read(ptr: number): Uint8Array | null {
@@ -68,5 +101,14 @@ export class HeapManager {
 
     this.buffer = newBuffer
     this.view = newView
+    this._cursor = new Int32Array(this.buffer, 0, 1)
+  }
+
+  private _align(size: number) {
+    const padding = size % 4
+    if (padding === 0) {
+      return size
+    }
+    return size + (LITTLE_ENDIAN - padding)
   }
 }

@@ -1,15 +1,26 @@
-# @latte-js/bean (Coffee Beans)
+# @latte-js/bean
 
-**The Origin of Everything.**
-The pure type definition library for the Latte Engine. Contains zero runtime logic.
+Protocol and type contracts for Latte.
 
-## Responsibilities
+## Responsibility
 
-- Define `JSON Schema` for file persistence.
-- Define core enums like `NodeType` and `Constraint`.
-- Define `RPC Messages` interfaces for Worker communication.
+- Define shared TypeScript types and enums.
+- Define file schema types and RPC contract types.
+- Provide dependency-light contracts used by main thread, worker, renderer and future plugins.
 
-## Features
+## Boundaries
 
-- **Zero Runtime**: Compiles to nothing but types.
-- **Zero Dependency**: Depends on no other packages.
+- No runtime engine logic.
+- No UI, worker host, renderer, service implementation or data storage.
+- Keep dependencies minimal so downstream SDK/plugin packages can depend on it safely.
+
+## Development
+
+```bash
+pnpm --filter @latte-js/bean type-check
+pnpm --filter @latte-js/bean build
+```
+
+## License
+
+`MIT`.

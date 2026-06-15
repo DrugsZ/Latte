@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Shared runtime utilities and infrastructure (Events, Lifecycle, Async)",
   "private": true,
+  "license": "MIT",
   "sideEffects": false,
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -32,10 +33,13 @@
       }
     }
   },
+  "dependencies": {
+    "@latte-js/bean": "workspace:*"
+  },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
     "tsup": "^8.0.0",
-    "typescript": "^5.3.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
 }

@@ -1,20 +1,72 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
+  checks: write
+  statuses: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  release-gate:
+    name: Release Gate
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run release gate
+        run: pnpm release:check
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload Cafe dist
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-apps-cafe
+          path: apps/cafe/dist
+          retention-days: 7
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,33 +78,51 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "pnpm"
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
+      - name: Run audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
 
-      - name: Type Check
-        run: pnpm type-check
-
-      - name: Test
-        run: pnpm test:coverage
-
-      - name: Build
-        run: pnpm build
-
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
+  deploy-production:
+    name: Deploy to Production
+    needs: [release-gate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download Cafe dist
+        uses: actions/download-artifact@v4
         with:
-          name: coverage
-          path: "**/coverage/"
+          name: dist-apps-cafe
+          path: apps/cafe/dist
 
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: deployment
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./apps/cafe/dist
           force_orphan: true
+
+  release:
+    name: Release
+    needs: [release-gate]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}

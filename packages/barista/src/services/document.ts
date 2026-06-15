@@ -7,9 +7,19 @@ import {
 import { LatteLoader, Serializer } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
 
-import { service, ServiceBase, type IContext } from './serviceBase'
+import { Service, ServiceBase, type IContext } from './serviceBase'
 
-@service
+import {
+  MutationPolicyKind,
+  type MutationPolicyMap,
+} from '../transactions/mutationPolicy'
+
+const documentMutationPolicies: MutationPolicyMap = {
+  load: { kind: MutationPolicyKind.WriteNoHistory },
+  save: { kind: MutationPolicyKind.Readonly },
+}
+
+@Service({ mutations: documentMutationPolicies })
 export class DocumentService extends ServiceBase implements IDocumentService {
   public static readonly name = Channels.Document
 

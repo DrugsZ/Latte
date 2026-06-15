@@ -20,9 +20,28 @@ class MockMessageChannel {
 
 // Mock Worker
 class MockWorker {
-  onmessage: ((e: MessageEvent) => void) | null = null
+  private readonly _listeners = new Set<(e: MessageEvent) => void>()
   postMessage = vi.fn()
   terminate = vi.fn()
+
+  addEventListener = vi.fn(
+    (_type: string, listener: (e: MessageEvent) => void) => {
+      this._listeners.add(listener)
+    }
+  )
+
+  removeEventListener = vi.fn(
+    (_type: string, listener: (e: MessageEvent) => void) => {
+      this._listeners.delete(listener)
+    }
+  )
+
+  dispatchMessage(data: unknown) {
+    const event = { data } as MessageEvent
+    for (const listener of this._listeners) {
+      listener(event)
+    }
+  }
 }
 
 // Mock ChannelClient
@@ -47,19 +66,20 @@ describe('BaristaClient', () => {
     client = new BaristaClient(mockWorker as any)
 
     // Mock global MessageChannel
-    originalMessageChannel = global.MessageChannel
-    global.MessageChannel = MockMessageChannel as any
+    originalMessageChannel = globalThis.MessageChannel
+    globalThis.MessageChannel = MockMessageChannel as any
   })
 
   afterEach(() => {
-    global.MessageChannel = originalMessageChannel
+    globalThis.MessageChannel = originalMessageChannel
   })
 
   it('should initialize successfully', async () => {
     const sharedBuffer = new SharedArrayBuffer(1024)
     const allocBuffer = new SharedArrayBuffer(1024)
+    const heapBuffer = new SharedArrayBuffer(1024)
 
-    const initPromise = client.init(sharedBuffer, allocBuffer)
+    const initPromise = client.init(sharedBuffer, allocBuffer, heapBuffer)
 
     // Expect worker.postMessage to be called with InitKernel
     expect(mockWorker.postMessage).toHaveBeenCalledWith(
@@ -67,6 +87,7 @@ describe('BaristaClient', () => {
         type: Lifecycle.InitKernel,
         buffer: sharedBuffer,
         allocBuffer,
+        heapBuffer,
       }),
       expect.any(Array) // port2
     )
@@ -76,15 +97,11 @@ describe('BaristaClient', () => {
     const { requestId } = callArgs
 
     // Simulate worker response
-    if (mockWorker.onmessage) {
-      mockWorker.onmessage({
-        data: {
-          type: Lifecycle.InitKernelSuccess,
-          resId: requestId,
-          payload: 'success',
-        },
-      } as MessageEvent)
-    }
+    mockWorker.dispatchMessage({
+      type: Lifecycle.InitKernelSuccess,
+      resId: requestId,
+      payload: 'success',
+    })
 
     const result = await initPromise
     expect(result).toBe('success')
@@ -108,5 +125,19 @@ describe('BaristaClient', () => {
     const service = client.getService(Channels.Node)
     expect(service).toBeDefined()
     expect(mockChannelClient.getChannel).toHaveBeenCalledWith(Channels.Node)
+  })
+
+  it('should get a service bound to an explicit session', () => {
+    const mockChannelClient = {
+      getChannel: vi.fn().mockReturnValue({}),
+    }
+    ;(client as any)._channelClient = mockChannelClient
+
+    const service = client.getService(Channels.Node, 'doc:a')
+    expect(service).toBeDefined()
+    expect(mockChannelClient.getChannel).toHaveBeenCalledWith(
+      Channels.Node,
+      'doc:a'
+    )
   })
 })

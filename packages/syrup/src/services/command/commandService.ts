@@ -1,32 +1,20 @@
-import { Emitter } from '@latte-js/kit'
+import { Disposable, Emitter } from '@latte-js/kit'
 
 import { CommandsRegistry } from './commandsRegistry'
 
 import type { Event } from '@latte-js/kit'
 import type { ICommandEvent, ICommandService } from './commandsRegistry'
 
-export class Disposable {
-  protected _disposables: { dispose(): void }[] = []
-
-  dispose(): void {
-    this._disposables.forEach(d => d.dispose())
-    this._disposables = []
-  }
-
-  protected _register<T extends { dispose(): void }>(t: T): T {
-    this._disposables.push(t)
-    return t
-  }
-}
-
 export class CommandService extends Disposable implements ICommandService {
-  private readonly _onWillExecuteCommand: Emitter<ICommandEvent> =
+  private readonly _onWillExecuteCommand = this._register(
     new Emitter<ICommandEvent>()
+  )
   public readonly onWillExecuteCommand: Event<ICommandEvent> =
     this._onWillExecuteCommand.event
 
-  private readonly _onDidExecuteCommand: Emitter<ICommandEvent> =
+  private readonly _onDidExecuteCommand = this._register(
     new Emitter<ICommandEvent>()
+  )
   public readonly onDidExecuteCommand: Event<ICommandEvent> =
     this._onDidExecuteCommand.event
 

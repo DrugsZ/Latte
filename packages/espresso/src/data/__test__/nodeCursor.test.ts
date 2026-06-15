@@ -1,10 +1,20 @@
 import { BlendModeType, NodeType } from '@latte-js/bean'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import {
+  DIRTY_GEOMETRY,
+  DIRTY_LOCAL_MATRIX,
+  DIRTY_METADATA,
+  DIRTY_PAINT,
+  NodeLifecycle,
+} from '../config'
+import { MutationScopeKind } from '../mutationScope'
 import { NodeCursor } from '../nodeCursor'
+import { PropId } from '../propKeys'
 import { SceneGraph } from '../sceneGraph'
 
 import type { IPaint } from '@latte-js/bean'
+import type { INodeMutationRecord } from '../mutationRecorder'
 
 describe('NodeCursor', () => {
   let graph: SceneGraph
@@ -21,11 +31,12 @@ describe('NodeCursor', () => {
       expect(root.type).toBe(NodeType.DOCUMENT)
     })
 
-    it('should throw error when accessing dead node', () => {
+    it('should throw error when accessing finalized node', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:rect')
       const cursor = new NodeCursor(graph, idx)
 
       graph.deleteNode(idx)
+      graph.finalizeTombstoneSubtree(idx)
 
       expect(() => cursor.type).toThrow('[NodeCursor] Accessing dead node')
     })
@@ -37,14 +48,13 @@ describe('NodeCursor', () => {
       expect(root.id).toBe('test:frame')
     })
 
-    // it('to(idx) should revert index on error', () => {
-    //   const idx1 = graph.createNode(NodeType.RECTANGLE, 'test:r1')
-    //   const cursor = new NodeCursor(graph, idx1)
+    it('to(idx) should revert index on unallocated index error', () => {
+      const idx1 = graph.createNode(NodeType.RECTANGLE, 'test:r1')
+      const cursor = new NodeCursor(graph, idx1)
 
-    //   // index 9999 is invalid/dead
-    //   expect(() => cursor.to(9999)).toThrow('Accessing dead node')
-    //   expect(cursor.index).toBe(idx1)
-    // })
+      expect(() => cursor.to(9999)).toThrow('Accessing dead node')
+      expect(cursor.index).toBe(idx1)
+    })
   })
 
   describe('Property Accessors', () => {
@@ -104,11 +114,32 @@ describe('NodeCursor', () => {
       expect(graph.type[cIdx]).toBe(NodeType.RECTANGLE)
     })
 
-    it('delete should remove node from graph', () => {
+    it('delete should tombstone node outside the active graph', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:r')
       const cursor = new NodeCursor(graph, idx)
       cursor.delete()
-      expect(() => cursor.type).toThrow('Accessing dead node')
+      expect(graph.getIndex('test:r')).toBe(-1)
+      expect(graph.getTombstoneIndex('test:r')).toBe(idx)
+      expect(graph.isNodeIndexTombstoned(idx)).toBe(true)
+      expect(graph.lifecycle[idx]).toBe(NodeLifecycle.Tombstone)
+      expect(cursor.type).toBe(NodeType.RECTANGLE)
+    })
+
+    it('allows delete in history scope by tombstoning the node', () => {
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:history-delete')
+      const cursor = new NodeCursor(graph, idx)
+
+      graph.runWithMutationScope(
+        { kind: MutationScopeKind.History, source: 'test' },
+        () => {
+          cursor.delete()
+        }
+      )
+
+      expect(cursor.type).toBe(NodeType.RECTANGLE)
+      expect(graph.getIndex('test:history-delete')).toBe(-1)
+      expect(graph.getTombstoneIndex('test:history-delete')).toBe(idx)
+      expect(graph.lifecycle[idx]).toBe(NodeLifecycle.Tombstone)
     })
 
     it('should navigate to parent', () => {
@@ -228,6 +259,112 @@ describe('NodeCursor', () => {
 
       cursor.dashCap = 'ROUND'
       expect(cursor.dashCap).toBe('ROUND')
+    })
+  })
+
+  describe('Mutation Recording', () => {
+    it('rejects guarded mutations outside a declared mutation scope', () => {
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:guarded')
+      const cursor = new NodeCursor(graph, idx)
+      graph.setMutationGuardEnabled(true)
+
+      expect(() => {
+        cursor.x = 42
+      }).toThrow('Mutation outside permitted scope')
+    })
+
+    it('allows guarded mutations inside a declared mutation scope', () => {
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:scoped')
+      const cursor = new NodeCursor(graph, idx)
+      const authority = graph.createMutationAuthority('test')
+      graph.setMutationGuardEnabled(true)
+
+      graph.runWithMutationScope(
+        authority,
+        { kind: MutationScopeKind.WriteNoHistory, source: 'test' },
+        () => {
+          cursor.x = 42
+        }
+      )
+
+      expect(cursor.x).toBe(42)
+    })
+
+    it('records property mutations through the graph recorder', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:r')
+      const cursor = new NodeCursor(graph, idx)
+
+      cursor.x = 42
+
+      expect(records).toHaveLength(1)
+      expect(records[0]).toMatchObject({
+        id: 'test:r',
+        index: idx,
+        prop: PropId.X,
+        oldValue: 0,
+        newValue: 42,
+      })
+    })
+
+    it('records downstream dirty flags by invalidation target', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:dirty-targets')
+      const cursor = new NodeCursor(graph, idx)
+
+      cursor.name = 'Renamed'
+      cursor.x = 10
+      cursor.width = 100
+      cursor.opacity = 0.5
+
+      expect(records.map(record => [record.prop, record.dirtyFlag])).toEqual([
+        [PropId.NAME, DIRTY_METADATA],
+        [PropId.X, DIRTY_LOCAL_MATRIX],
+        [PropId.WIDTH, DIRTY_GEOMETRY],
+        [PropId.OPACITY, DIRTY_PAINT],
+      ])
+    })
+
+    it('clones matrix mutation values before and after writes', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const idx = graph.createNode(NodeType.RECTANGLE, 'test:r')
+      const cursor = new NodeCursor(graph, idx)
+
+      cursor.transform = [1, 0, 0, 1, 10, 20]
+
+      expect(records[0].oldValue).toEqual([1, 0, 0, 1, 0, 0])
+      expect(records[0].newValue).toEqual([1, 0, 0, 1, 10, 20])
+    })
+
+    it('records hierarchy mutations through the graph recorder', () => {
+      const records: INodeMutationRecord[] = []
+      graph.setMutationRecorder({
+        recordMutation: record => records.push(record),
+      })
+      const pIdx = graph.createNode(NodeType.GROUP, 'test:p')
+      const cIdx = graph.createNode(NodeType.RECTANGLE, 'test:c')
+      const parent = new NodeCursor(graph, pIdx)
+      const child = new NodeCursor(graph, cIdx)
+
+      parent.appendChild(child)
+
+      expect(records).toHaveLength(1)
+      expect(records[0]).toMatchObject({
+        id: 'test:c',
+        index: cIdx,
+        prop: PropId.PARENT,
+        oldValue: { parentId: null, position: 0 },
+        newValue: { parentId: 'test:p', position: 1 },
+      })
     })
   })
 })
