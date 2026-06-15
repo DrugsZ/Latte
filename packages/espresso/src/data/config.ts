@@ -46,6 +46,15 @@ export const VISIBLE_SIZE = 1
 export const OPACITY_SIZE = 1
 export const TEXT_PTR_SIZE = 1
 
+export enum NodeLifecycle {
+  Free = 0,
+  Active = 1 << 0,
+  Tombstone = 1 << 1,
+}
+
+export const NODE_LIFECYCLE_ALLOCATED_MASK =
+  NodeLifecycle.Active | NodeLifecycle.Tombstone
+
 // Dirty flags describe which downstream pipeline needs invalidation.
 // PropId/mutation records describe what changed.
 export const DIRTY_LOCAL_MATRIX = 1 << 0 // local matrix changed

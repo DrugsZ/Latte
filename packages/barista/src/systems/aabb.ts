@@ -7,7 +7,7 @@ import {
 } from '@latte-js/espresso'
 
 import type { DirtyBatch } from '../pipeline/dirtyBatch'
-import { ScheduleStage, system, SystemBase, Systems } from './systems'
+import { ScheduleStage, System, SystemBase, Systems } from './systems'
 
 /**
  * AABBSystem - Computes hierarchy AABB (self ∪ all children) for affected nodes.
@@ -16,7 +16,7 @@ import { ScheduleStage, system, SystemBase, Systems } from './systems'
  * parent reads fresh AABBs from affected children and cached AABBs from
  * unaffected children.
  */
-@system({
+@System({
   schedule: {
     stage: ScheduleStage.Bounds,
     reads: BOUNDS_AFFECTING_FLAGS,

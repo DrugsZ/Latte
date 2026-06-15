@@ -126,4 +126,18 @@ describe('BaristaClient', () => {
     expect(service).toBeDefined()
     expect(mockChannelClient.getChannel).toHaveBeenCalledWith(Channels.Node)
   })
+
+  it('should get a service bound to an explicit session', () => {
+    const mockChannelClient = {
+      getChannel: vi.fn().mockReturnValue({}),
+    }
+    ;(client as any)._channelClient = mockChannelClient
+
+    const service = client.getService(Channels.Node, 'doc:a')
+    expect(service).toBeDefined()
+    expect(mockChannelClient.getChannel).toHaveBeenCalledWith(
+      Channels.Node,
+      'doc:a'
+    )
+  })
 })

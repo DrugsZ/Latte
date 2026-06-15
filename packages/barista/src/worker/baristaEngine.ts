@@ -64,7 +64,7 @@ export class BaristaEngine {
   private _initChannelServer = () => {
     this._channelServer = new ChannelServer(this._protocol)
     this._channelServer.onMessage(this.scheduleTick, this)
-    this._channelServer.onBeforeCall(sessionId => {
+    this._channelServer.onValidateSession(sessionId => {
       this._sessionManager.getSession(sessionId)
     })
 

@@ -1,5 +1,8 @@
 import { DEFAULT_SCENE_GRAPH_NAME } from '@latte-js/bean'
-import type { SceneGraph } from '@latte-js/espresso'
+import type {
+  ISceneGraphMutationAuthority,
+  SceneGraph,
+} from '@latte-js/espresso'
 
 import { HistoryManager } from '../history/historyManager'
 import { TransactionManager } from './transactionManager'
@@ -32,11 +35,16 @@ export const getTransactionManager = (
   return manager
 }
 
-export const getHistoryManager = (sceneGraph: SceneGraph) => {
+export const getHistoryManager = (
+  sceneGraph: SceneGraph,
+  mutationAuthority?: ISceneGraphMutationAuthority
+) => {
   let manager = historyManagers.get(sceneGraph)
   if (!manager) {
-    manager = new HistoryManager(sceneGraph)
+    manager = new HistoryManager(sceneGraph, mutationAuthority)
     historyManagers.set(sceneGraph, manager)
+  } else if (mutationAuthority) {
+    manager.setMutationAuthority(mutationAuthority)
   }
   return manager
 }

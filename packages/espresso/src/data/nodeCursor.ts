@@ -8,6 +8,7 @@ import {
   NULL_INDEX,
 } from './config'
 import { readNodeName, writeNodeName } from './nodeProps'
+import { getNodeLifecyclePayload, getNodePlacement } from './nodeSnapshot'
 import { HierarchyOps, StyleOps, TransformOps } from './ops'
 import { PropId } from './propKeys'
 import { iterateChildIndices } from './treeTraversal'
@@ -110,7 +111,6 @@ export class NodeCursor {
     const oldVal = cloneMutationValue(this[prop])
     executor()
     const newValue = cloneMutationValue(this[prop])
-    this._graph.notifyObservers(id, prop, oldVal, newValue)
     this._graph.recordMutation({
       id,
       index: this.index,
@@ -293,16 +293,15 @@ export class NodeCursor {
   public appendChild(child: NodeCursor) {
     this._checkAlive()
     this._assertCanMutate(PropId.PARENT)
-    const oldParent = child.parent?.id ?? null
+    const oldValue = getNodePlacement(this._graph, child.index)
     HierarchyOps.appendChild(this._graph, this._index, child.index)
-    const newParent = child.parent?.id ?? null
-    this._graph.notifyObservers(child.id!, PropId.PARENT, oldParent, newParent)
+    const newValue = getNodePlacement(this._graph, child.index)
     this._graph.recordMutation({
       id: child.id!,
       index: child.index,
       prop: PropId.PARENT,
-      oldValue: oldParent,
-      newValue: newParent,
+      oldValue,
+      newValue,
       dirtyFlag: DIRTY_TREE,
     })
     this._graph.markDirty(child.index, DIRTY_TREE)
@@ -315,13 +314,13 @@ export class NodeCursor {
       throw new Error('[NodeCursor] removeChild: not a child of this node')
     }
     this._checkAlive()
+    const oldValue = getNodePlacement(this._graph, child.index)
     HierarchyOps.detach(this._graph, child.index)
-    this._graph.notifyObservers(child.id!, PropId.PARENT, this.id, null)
     this._graph.recordMutation({
       id: child.id!,
       index: child.index,
       prop: PropId.PARENT,
-      oldValue: this.id,
+      oldValue,
       newValue: null,
       dirtyFlag: DIRTY_TREE,
     })
@@ -334,16 +333,13 @@ export class NodeCursor {
     this._assertCanMutate(PropId.REMOVE_SELF)
     const myId = this.id
     const parent = this.parent
-    const parentId = parent?.id ?? null
+    const oldValue = getNodeLifecyclePayload(this._graph, this._index)
     HierarchyOps.remove(this._graph, this._index)
-    //FIXME：json serialization
-    const nodeJSON = ''
-    this._graph.notifyObservers(myId!, PropId.REMOVE_SELF, nodeJSON, null)
     this._graph.recordMutation({
       id: myId!,
       index: this._index,
       prop: PropId.REMOVE_SELF,
-      oldValue: { parentId, nodeJSON },
+      oldValue,
       newValue: null,
       dirtyFlag: DIRTY_TREE,
     })

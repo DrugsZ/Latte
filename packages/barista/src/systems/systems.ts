@@ -4,6 +4,7 @@ import {
   type ISceneGraphContext,
   type SceneGraphContextSource,
 } from '../context/sceneGraphContext'
+import { SceneGraphMutationWriter } from '../mutations/sceneGraphMutationWriter'
 import type { DirtyBatch } from '../pipeline/dirtyBatch'
 import type { MutationPolicyMap } from '../transactions/mutationPolicy'
 
@@ -34,9 +35,11 @@ export abstract class SystemBase {
   static readonly schedule?: ISystemScheduleDescriptor
   private _cursors = new WeakMap<SceneGraph, Map<string, NodeCursor>>()
   protected readonly _context: ISceneGraphContext
+  protected readonly _mutationWriter: SceneGraphMutationWriter
 
   constructor(source: SceneGraphContextSource) {
     this._context = toSceneGraphContext(source)
+    this._mutationWriter = new SceneGraphMutationWriter(this._context)
   }
 
   public getScheduleDescriptor() {
@@ -104,11 +107,11 @@ function registerSystem(
   systemRegistry.push(ctor)
 }
 
-export function system(ctor: SystemConstructor): void
-export function system(
+export function System(ctor: SystemConstructor): void
+export function System(
   options: ISystemRegistrationOptions
 ): (ctor: SystemConstructor) => void
-export function system(arg: SystemConstructor | ISystemRegistrationOptions) {
+export function System(arg: SystemConstructor | ISystemRegistrationOptions) {
   if (typeof arg === 'function') {
     registerSystem(arg)
     return

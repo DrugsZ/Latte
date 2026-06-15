@@ -92,9 +92,9 @@ describe('BaristaEngine', () => {
 
     await protocol.receive(
       createJsonRpcRequest(
-        `${Channels.Node}.create`,
+        `${Channels.Node}.createNode`,
         1,
-        ['node:missing', NodeType.RECTANGLE, 10, 20],
+        [{ id: 'node:missing', type: NodeType.RECTANGLE, x: 10, y: 20 }],
         'session:missing'
       )
     )
@@ -118,17 +118,17 @@ describe('BaristaEngine', () => {
 
     await protocol.receive(
       createJsonRpcRequest(
-        `${Channels.Node}.create`,
+        `${Channels.Node}.createNode`,
         1,
-        ['node:a', NodeType.RECTANGLE, 10, 20],
+        [{ id: 'node:a', type: NodeType.RECTANGLE, x: 10, y: 20 }],
         'doc:a'
       )
     )
     await protocol.receive(
       createJsonRpcRequest(
-        `${Channels.Node}.create`,
+        `${Channels.Node}.createNode`,
         2,
-        ['node:b', NodeType.RECTANGLE, 30, 40],
+        [{ id: 'node:b', type: NodeType.RECTANGLE, x: 30, y: 40 }],
         'doc:b'
       )
     )
@@ -147,6 +147,47 @@ describe('BaristaEngine', () => {
     ])
     expect((dirtyNotifications[0] as any).params.allIds).toEqual(['node:a'])
     expect((dirtyNotifications[1] as any).params.allIds).toEqual(['node:b'])
+  })
+
+  it('keeps session context isolated for queued concurrent RPC messages', async () => {
+    const { engine, protocol } = createEngineWithProtocol()
+    const docA = createSessionBuffers()
+    const docB = createSessionBuffers()
+
+    engine.initSession('doc:a', docA.buffer, docA.allocBuffer, docA.heapBuffer)
+    engine.initSession('doc:b', docB.buffer, docB.allocBuffer, docB.heapBuffer)
+
+    await Promise.all([
+      protocol.receive(
+        createJsonRpcRequest(
+          `${Channels.Node}.createNode`,
+          1,
+          [{ id: 'node:a', type: NodeType.RECTANGLE }],
+          'doc:a'
+        )
+      ),
+      protocol.receive(
+        createJsonRpcRequest(
+          `${Channels.Node}.createNode`,
+          2,
+          [{ id: 'node:b', type: NodeType.RECTANGLE }],
+          'doc:b'
+        )
+      ),
+    ])
+
+    const dirtyNotifications = protocol.send.mock.calls
+      .map(([message]) => message as JsonRpcMessage)
+      .filter(
+        message =>
+          message.type === JsonRpcMessageType.Notification &&
+          message.method === 'scene.onDirty'
+      )
+
+    expect(dirtyNotifications.map(message => message.sessionId)).toEqual([
+      'doc:a',
+      'doc:b',
+    ])
   })
 })
 

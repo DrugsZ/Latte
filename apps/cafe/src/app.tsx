@@ -12,7 +12,7 @@ const CanvasArea = () => {
     const runtime = new EditorRuntime()
     runtimeRef.current = runtime
     await runtime.startup(container)
-    await runtime.loadDocument(sampleData)
+    await runtime.openDocument('latte://sample', sampleData)
   }
 
   useEffect(() => {

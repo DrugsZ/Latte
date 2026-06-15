@@ -1,11 +1,4 @@
-import {
-  NodeType,
-  StrokeAlign,
-  type IDType,
-  type IDisposable,
-} from '@latte-js/bean'
-
-import { type IGraphObserver } from '../typing'
+import { NodeType, StrokeAlign, type IDType } from '@latte-js/bean'
 
 import { Allocator } from './allocator'
 import { BlobManager } from './blobManager'
@@ -16,21 +9,24 @@ import {
   MAT_D,
   MAT_SIZE,
   MAX_NODES,
+  NODE_LIFECYCLE_ALLOCATED_MASK,
+  NodeLifecycle,
   NULL_INDEX,
 } from './config'
 import { HeapManager } from './heapManager'
 import { LAYOUT_DEF, TOTAL_MEMORY_BYTES } from './memoryLayout'
-import { MutationScopeKind } from './mutationScope'
+import {
+  createSceneGraphMutationAuthority,
+  isSceneGraphMutationAuthority,
+  type ISceneGraphMutationAuthority,
+} from './mutationAuthority'
 import { MutationTracker } from './mutationTracker'
 import { collectSubtreeIndices } from './treeTraversal'
 
 import type { IMutationRecorder, INodeMutationRecord } from './mutationRecorder'
-import type { IMutationScope } from './mutationScope'
-import { PropId } from './propKeys'
+import { MutationScopeKind, type IMutationScope } from './mutationScope'
 
 export class SceneGraph {
-  private _observers: IGraphObserver[] = []
-
   public readonly tracker = new MutationTracker()
 
   public readonly buffer: SharedArrayBuffer
@@ -49,6 +45,7 @@ export class SceneGraph {
   public readonly size!: Float32Array
 
   public readonly type!: Uint8Array
+  public readonly lifecycle!: Uint8Array
   public readonly visible!: Uint8Array
   public readonly opacity!: Float32Array
   public readonly textPtr!: Int32Array
@@ -71,9 +68,13 @@ export class SceneGraph {
 
   private _uuidToIndex = new Map<IDType, number>()
   private _indexToUuid = new Map<number, IDType>()
+  private _tombstoneUuidToIndex = new Map<IDType, number>()
   private _mutationRecorder: IMutationRecorder | null = null
   private _mutationGuardEnabled = false
+  private _mutationAuthorities = new WeakSet<object>()
   private _mutationScopes: IMutationScope[] = []
+  private _mutationDirtyVersion = 0
+  private _mutationRecordVersion = 0
 
   constructor(
     existingBuffer?: SharedArrayBuffer,
@@ -139,50 +140,18 @@ export class SceneGraph {
     this.fillPtr.fill(NULL_INDEX)
     this.strokePtr.fill(NULL_INDEX)
 
+    this.lifecycle.fill(NodeLifecycle.Free)
     this.strokeWeight.fill(1)
     this.strokeAlign.fill(StrokeAlign.CENTER)
     this.type[0] = NodeType.DOCUMENT
+    this.lifecycle[0] = NodeLifecycle.Active
     this.matrix[MAT_A] = 1
     this.matrix[MAT_D] = 1
     this.worldMatrix[MAT_A] = 1
     this.worldMatrix[MAT_D] = 1
   }
 
-  public addObserver(obs: IGraphObserver): IDisposable {
-    this._observers.push(obs)
-    let isDisposed = false
-
-    return {
-      dispose: () => {
-        if (isDisposed) {
-          return
-        }
-        isDisposed = true
-        const index = this._observers.indexOf(obs)
-        if (index !== -1) {
-          this._observers.splice(index, 1)
-        }
-      },
-    }
-  }
-
-  public setObserver(obs: IGraphObserver): IDisposable {
-    return this.addObserver(obs)
-  }
-
-  public notifyObservers<T>(
-    id: IDType,
-    prop: PropId,
-    oldValue: T,
-    newValue: T
-  ) {
-    for (const obs of this._observers) {
-      obs.update(id, prop, oldValue, newValue)
-    }
-  }
-
   public dispose() {
-    this._observers = []
     this._mutationRecorder = null
     this._mutationScopes = []
     this.blobs.dispose()
@@ -199,10 +168,21 @@ export class SceneGraph {
   }
 
   public recordMutation(record: INodeMutationRecord) {
-    this._mutationRecorder?.recordMutation(record)
+    this.assertMutationAllowed('SceneGraph.recordMutation')
+    if (!this._mutationRecorder) {
+      return
+    }
+
+    this._mutationRecorder.recordMutation(record)
+    if (this._shouldAuditHistoryMutation()) {
+      this._mutationRecordVersion += 1
+    }
   }
 
   public setMutationGuardEnabled(enabled: boolean) {
+    if (this._mutationGuardEnabled && !enabled) {
+      throw new Error('[SceneGraph] Mutation guard cannot be disabled')
+    }
     this._mutationGuardEnabled = enabled
   }
 
@@ -214,12 +194,23 @@ export class SceneGraph {
     return this._mutationScopes[this._mutationScopes.length - 1] ?? null
   }
 
+  public createMutationAuthority(owner: string): ISceneGraphMutationAuthority {
+    if (this._mutationGuardEnabled) {
+      throw new Error(
+        `[SceneGraph] Cannot create mutation authority after guard is enabled: ${owner}`
+      )
+    }
+    const authority = createSceneGraphMutationAuthority(owner)
+    this._mutationAuthorities.add(authority)
+    return authority
+  }
+
   public isNodeIndexAlive(index: number, expectedGeneration?: number): boolean {
     if (!Number.isInteger(index) || index < 0 || index >= MAX_NODES) {
       return false
     }
 
-    if (index !== 0 && this.type[index] === 0) {
+    if ((this.lifecycle[index] & NODE_LIFECYCLE_ALLOCATED_MASK) === 0) {
       return false
     }
 
@@ -231,6 +222,15 @@ export class SceneGraph {
     }
 
     return true
+  }
+
+  public isNodeIndexTombstoned(index: number): boolean {
+    return (
+      Number.isInteger(index) &&
+      index >= 0 &&
+      index < MAX_NODES &&
+      (this.lifecycle[index] & NodeLifecycle.Tombstone) !== 0
+    )
   }
 
   public assertNodeIndexAlive(
@@ -245,7 +245,31 @@ export class SceneGraph {
     throw new Error(`[SceneGraph] Invalid node index ${index}: ${source}`)
   }
 
-  public runWithMutationScope<T>(scope: IMutationScope, callback: () => T): T {
+  public runWithMutationScope<T>(
+    authority: ISceneGraphMutationAuthority,
+    scope: IMutationScope,
+    callback: () => T
+  ): T
+  public runWithMutationScope<T>(scope: IMutationScope, callback: () => T): T
+  public runWithMutationScope<T>(
+    authorityOrScope: ISceneGraphMutationAuthority | IMutationScope,
+    scopeOrCallback: IMutationScope | (() => T),
+    maybeCallback?: () => T
+  ): T {
+    const hasAuthority = isSceneGraphMutationAuthority(authorityOrScope)
+    const authority = hasAuthority ? authorityOrScope : null
+    const scope = hasAuthority
+      ? (scopeOrCallback as IMutationScope)
+      : authorityOrScope
+    const callback = hasAuthority ? maybeCallback : (scopeOrCallback as () => T)
+
+    if (!callback) {
+      throw new Error('[SceneGraph] Mutation scope callback is required')
+    }
+    if (this._mutationGuardEnabled) {
+      this._assertMutationAuthority(authority, scope.source ?? 'unknown')
+    }
+
     this._mutationScopes.push(scope)
     let popped = false
     const pop = () => {
@@ -282,7 +306,53 @@ export class SceneGraph {
   }
 
   public markDirty(index: number, flag: number) {
+    this.assertMutationAllowed('SceneGraph.markDirty')
     this.tracker.mark(index, flag)
+    if (this._shouldAuditHistoryMutation()) {
+      this._mutationDirtyVersion += 1
+    }
+  }
+
+  public getMutationAuditSnapshot() {
+    return {
+      dirtyVersion: this._mutationDirtyVersion,
+      recordVersion: this._mutationRecordVersion,
+    }
+  }
+
+  public assertMutationRecordsCovered(
+    snapshot: ReturnType<SceneGraph['getMutationAuditSnapshot']>,
+    source: string
+  ) {
+    if (
+      this._mutationDirtyVersion !== snapshot.dirtyVersion &&
+      this._mutationRecordVersion === snapshot.recordVersion
+    ) {
+      throw new Error(
+        `[SceneGraph] Dirty mutation without history record: ${source}`
+      )
+    }
+  }
+
+  private _shouldAuditHistoryMutation() {
+    return (
+      this._mutationRecorder !== null &&
+      this.activeMutationScope?.kind === MutationScopeKind.History
+    )
+  }
+
+  private _assertMutationAuthority(
+    authority: ISceneGraphMutationAuthority | null,
+    source: string
+  ) {
+    if (authority && this._mutationAuthorities.has(authority)) {
+      return
+    }
+
+    const owner = authority?.owner ?? 'missing'
+    throw new Error(
+      `[SceneGraph] Invalid mutation authority for ${source}: ${owner}`
+    )
   }
 
   public registerIdMap(uuid: IDType, index: number) {
@@ -326,7 +396,7 @@ export class SceneGraph {
 
   public createNode(type: NodeType, uuid: IDType): number {
     this.assertMutationAllowed('SceneGraph.createNode')
-    if (this._uuidToIndex.has(uuid)) {
+    if (this._uuidToIndex.has(uuid) || this._tombstoneUuidToIndex.has(uuid)) {
       throw new Error(`[SceneGraph] Duplicate node id: ${uuid}`)
     }
 
@@ -342,12 +412,14 @@ export class SceneGraph {
   }
 
   public deleteNode(index: number) {
-    this._assertDeleteNodeSupportedInActiveScope()
     this.assertMutationAllowed('SceneGraph.deleteNode')
     this.assertNodeIndexAlive(index, 'SceneGraph.deleteNode')
 
     if (index === 0) {
       throw new Error('[SceneGraph] Cannot delete root document node')
+    }
+    if (this.isNodeIndexTombstoned(index)) {
+      return []
     }
 
     const subtree = collectSubtreeIndices(this, index)
@@ -360,33 +432,78 @@ export class SceneGraph {
       if (uuid) {
         deleted.push([uuid, nodeIndex])
         this._uuidToIndex.delete(uuid)
+        this._tombstoneUuidToIndex.set(uuid, nodeIndex)
       }
-      this._indexToUuid.delete(nodeIndex)
+      this.lifecycle[nodeIndex] = NodeLifecycle.Tombstone
     }
 
-    for (const nodeIndex of subtree.reverse()) {
+    for (const nodeIndex of subtree) {
       this.tracker.clear(nodeIndex)
-      this._clearMemory(nodeIndex)
-      this.allocator.free(nodeIndex)
     }
 
     return deleted
   }
 
-  private _assertDeleteNodeSupportedInActiveScope() {
-    if (this.activeMutationScope?.kind !== MutationScopeKind.History) {
+  public activateTombstoneSubtree(index: number): boolean {
+    this.assertMutationAllowed('SceneGraph.activateTombstoneSubtree')
+    this.assertNodeIndexAlive(index, 'SceneGraph.activateTombstoneSubtree')
+
+    if (!this.isNodeIndexTombstoned(index)) {
+      return false
+    }
+
+    const subtree = collectSubtreeIndices(this, index)
+    for (const nodeIndex of subtree) {
+      const uuid = this._indexToUuid.get(nodeIndex)
+      if (!uuid) {
+        continue
+      }
+
+      const activeIndex = this._uuidToIndex.get(uuid)
+      if (activeIndex !== undefined && activeIndex !== nodeIndex) {
+        throw new Error(`[SceneGraph] Duplicate node id: ${uuid}`)
+      }
+    }
+
+    for (const nodeIndex of subtree) {
+      const uuid = this._indexToUuid.get(nodeIndex)
+      if (uuid) {
+        this._tombstoneUuidToIndex.delete(uuid)
+        this._uuidToIndex.set(uuid, nodeIndex)
+      }
+      this.lifecycle[nodeIndex] = NodeLifecycle.Active
+      this._markNodeStructureChanged(nodeIndex)
+    }
+    return true
+  }
+
+  public finalizeTombstoneSubtree(index: number) {
+    this.assertMutationAllowed('SceneGraph.finalizeTombstoneSubtree')
+    this.assertNodeIndexAlive(index, 'SceneGraph.finalizeTombstoneSubtree')
+    if (!this.isNodeIndexTombstoned(index)) {
       return
     }
 
-    throw new Error(
-      `[SceneGraph] ${PropId.REMOVE_SELF} history is not supported until serialized node snapshots are implemented`
-    )
+    const subtree = collectSubtreeIndices(this, index)
+    for (const nodeIndex of subtree.reverse()) {
+      const uuid = this._indexToUuid.get(nodeIndex)
+      if (uuid) {
+        this._uuidToIndex.delete(uuid)
+        this._tombstoneUuidToIndex.delete(uuid)
+      }
+      this._indexToUuid.delete(nodeIndex)
+      this.tracker.clear(nodeIndex)
+      this._clearMemory(nodeIndex)
+      this.allocator.free(nodeIndex)
+    }
   }
 
   public appendChild(parent: number, child: number) {
     this.assertMutationAllowed('SceneGraph.appendChild')
     this.assertNodeIndexAlive(parent, 'SceneGraph.appendChild parent')
     this.assertNodeIndexAlive(child, 'SceneGraph.appendChild child')
+    this._assertNodeNotTombstoned(parent, 'SceneGraph.appendChild parent')
+    this._assertNodeNotTombstoned(child, 'SceneGraph.appendChild child')
     if (parent === child) throw new Error('Cycle: Append self')
     this._assertCanReparent(parent, child)
 
@@ -415,6 +532,8 @@ export class SceneGraph {
     this.assertMutationAllowed('SceneGraph.insertAfter')
     this.assertNodeIndexAlive(parent, 'SceneGraph.insertAfter parent')
     this.assertNodeIndexAlive(child, 'SceneGraph.insertAfter child')
+    this._assertNodeNotTombstoned(parent, 'SceneGraph.insertAfter parent')
+    this._assertNodeNotTombstoned(child, 'SceneGraph.insertAfter child')
     if (parent === child) throw new Error('Cycle: Insert self')
     if (child === refNode) throw new Error('Cycle: Insert after self')
     this._assertCanReparent(parent, child)
@@ -425,6 +544,7 @@ export class SceneGraph {
     }
 
     this.assertNodeIndexAlive(refNode, 'SceneGraph.insertAfter refNode')
+    this._assertNodeNotTombstoned(refNode, 'SceneGraph.insertAfter refNode')
     if (this.parent[refNode] !== parent) {
       throw new Error('[SceneGraph] insertAfter refNode is not child of parent')
     }
@@ -448,9 +568,56 @@ export class SceneGraph {
     this._markHierarchyChanged(parent, child)
   }
 
+  public insertChildAt(parent: number, child: number, position: number) {
+    this.assertMutationAllowed('SceneGraph.insertChildAt')
+    this.assertNodeIndexAlive(parent, 'SceneGraph.insertChildAt parent')
+    this.assertNodeIndexAlive(child, 'SceneGraph.insertChildAt child')
+    this._assertNodeNotTombstoned(parent, 'SceneGraph.insertChildAt parent')
+    this._assertNodeNotTombstoned(child, 'SceneGraph.insertChildAt child')
+    if (parent === child) throw new Error('Cycle: Insert self')
+    this._assertCanReparent(parent, child)
+
+    const normalizedPosition = Number.isFinite(position)
+      ? Math.max(1, Math.floor(position))
+      : Number.MAX_SAFE_INTEGER
+
+    if (this.parent[child] !== NULL_INDEX) {
+      this._detach(child)
+    }
+
+    if (normalizedPosition <= 1 || this.firstChild[parent] === NULL_INDEX) {
+      const first = this.firstChild[parent]
+      this.parent[child] = parent
+      this.prevSibling[child] = NULL_INDEX
+      this.nextSibling[child] = first
+      this.firstChild[parent] = child
+      if (first !== NULL_INDEX) {
+        this.prevSibling[first] = child
+      } else {
+        this.lastChild[parent] = child
+      }
+      this._markHierarchyChanged(parent, child)
+      return
+    }
+
+    let refNode = this.firstChild[parent]
+    let currentPosition = 1
+    while (
+      refNode !== NULL_INDEX &&
+      this.nextSibling[refNode] !== NULL_INDEX &&
+      currentPosition < normalizedPosition - 1
+    ) {
+      refNode = this.nextSibling[refNode]
+      currentPosition += 1
+    }
+
+    this.insertAfter(parent, child, refNode)
+  }
+
   public detach(child: number) {
     this.assertMutationAllowed('SceneGraph.detach')
     this.assertNodeIndexAlive(child, 'SceneGraph.detach child')
+    this._assertNodeNotTombstoned(child, 'SceneGraph.detach child')
     this._detach(child)
   }
 
@@ -486,6 +653,9 @@ export class SceneGraph {
   public getIndex(uuid: IDType) {
     return this._uuidToIndex.get(uuid) ?? NULL_INDEX
   }
+  public getTombstoneIndex(uuid: IDType) {
+    return this._tombstoneUuidToIndex.get(uuid) ?? NULL_INDEX
+  }
   public getUUID(index: number): IDType | null {
     return this._indexToUuid.get(index) ?? null
   }
@@ -505,6 +675,12 @@ export class SceneGraph {
     }
   }
 
+  private _assertNodeNotTombstoned(index: number, source: string) {
+    if (this.isNodeIndexTombstoned(index)) {
+      throw new Error(`[SceneGraph] Tombstoned node cannot be used: ${source}`)
+    }
+  }
+
   private _markNodeStructureChanged(index: number) {
     this.markDirty(index, DIRTY_TREE | DIRTY_LOCAL_MATRIX)
   }
@@ -518,6 +694,7 @@ export class SceneGraph {
     this._releaseNodeBlobs(i)
 
     this.type[i] = 0
+    this.lifecycle[i] = NodeLifecycle.Free
 
     this.parent[i] = NULL_INDEX
     this.firstChild[i] = NULL_INDEX
@@ -559,6 +736,7 @@ export class SceneGraph {
 
   private _resetMemory(i: number, type: NodeType) {
     this.type[i] = type
+    this.lifecycle[i] = NodeLifecycle.Active
     this.visible[i] = 1
     this.opacity[i] = 1.0
 

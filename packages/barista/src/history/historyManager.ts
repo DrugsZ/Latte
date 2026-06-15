@@ -1,8 +1,14 @@
-import type { INodeMutationRecord, SceneGraph } from '@latte-js/espresso'
+import {
+  MutationScopeKind,
+  type ISceneGraphMutationAuthority,
+  type INodeMutationRecord,
+  type SceneGraph,
+} from '@latte-js/espresso'
 
 import { MutationRecordApplier } from './mutationRecordApplier'
 import { MutationRecordCompressor } from './mutationRecordCompressor'
 import { invertRecords } from './mutationRecords'
+import { TransactionLabel } from '../transactions/transactionLabels'
 
 import type { ICommittedTransaction } from '../transactions/transactionManager'
 
@@ -31,6 +37,7 @@ export class HistoryManager {
 
   constructor(
     private readonly _sceneGraph: SceneGraph,
+    private _mutationAuthority?: ISceneGraphMutationAuthority,
     compressor?: MutationRecordCompressor,
     applier?: MutationRecordApplier
   ) {
@@ -46,6 +53,10 @@ export class HistoryManager {
     return this._getStack(resourceId).redoStack.length > 0
   }
 
+  public setMutationAuthority(authority: ISceneGraphMutationAuthority) {
+    this._mutationAuthority = authority
+  }
+
   public push(resourceId: string, transaction: ICommittedTransaction | null) {
     resourceId = normalizeResourceId(resourceId)
     if (!transaction || transaction.records.length === 0) {
@@ -58,6 +69,7 @@ export class HistoryManager {
     }
 
     const stack = this._getStack(resourceId)
+    this._finalizeEntries(stack.redoStack)
     stack.undoStack.push({
       label: transaction.label,
       records,
@@ -103,7 +115,12 @@ export class HistoryManager {
   }
 
   public removeResource(resourceId: string) {
-    this._stacks.delete(normalizeResourceId(resourceId))
+    resourceId = normalizeResourceId(resourceId)
+    const stack = this._stacks.get(resourceId)
+    if (stack) {
+      this._finalizeEntries([...stack.undoStack, ...stack.redoStack])
+    }
+    this._stacks.delete(resourceId)
   }
 
   private _getStack(resourceId: string): IHistoryStack {
@@ -122,5 +139,38 @@ export class HistoryManager {
         `[HistoryManager] Cannot ${action} while another mutation recorder is active`
       )
     }
+  }
+
+  private _finalizeEntries(entries: readonly IHistoryEntry[]) {
+    if (entries.length === 0) {
+      return
+    }
+
+    this._sceneGraph.runWithMutationScope(
+      this._getMutationAuthority('HistoryManager.finalizeEntries'),
+      {
+        kind: MutationScopeKind.WriteNoHistory,
+        label: TransactionLabel.FinalizeHistoryTombstones,
+        source: 'HistoryManager.finalizeEntries',
+      },
+      () => {
+        for (const entry of entries) {
+          this._applier.finalizeTombstones(entry.records)
+          this._applier.finalizeTombstones(entry.inverseRecords)
+        }
+      }
+    )
+  }
+
+  private _getMutationAuthority(source: string) {
+    if (this._mutationAuthority) {
+      return this._mutationAuthority
+    }
+    if (this._sceneGraph.mutationGuardEnabled) {
+      throw new Error(
+        `[HistoryManager] Missing mutation authority for ${source}`
+      )
+    }
+    return this._sceneGraph.createMutationAuthority(source)
   }
 }

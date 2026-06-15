@@ -23,5 +23,6 @@ export enum PropId {
 
   LOCKED = 'locked',
 
+  CREATE_SELF = 'createSelf',
   REMOVE_SELF = 'removeSelf',
 }

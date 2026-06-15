@@ -1,10 +1,15 @@
 import { BlendModeType, FillType, NodeType, StrokeAlign } from '@latte-js/bean'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
-import { type IGraphObserver } from '../../typing'
-import { DIRTY_TREE, MAT_A, MAT_D, MAT_SIZE, NULL_INDEX } from '../config'
+import {
+  DIRTY_TREE,
+  MAT_A,
+  MAT_D,
+  MAT_SIZE,
+  NodeLifecycle,
+  NULL_INDEX,
+} from '../config'
 import { MutationScopeKind } from '../mutationScope'
-import { PropId } from '../propKeys'
 import {
   writeNodeFills,
   writeNodeGeometry,
@@ -38,6 +43,8 @@ describe('SceneGraph', () => {
       expect(newGraph.locked[1]).toBe(0)
       expect(newGraph.strokeWeight[1]).toBe(1)
       expect(newGraph.strokeAlign[1]).toBe(StrokeAlign.CENTER)
+      expect(newGraph.lifecycle[0]).toBe(NodeLifecycle.Active)
+      expect(newGraph.lifecycle[1]).toBe(NodeLifecycle.Free)
     })
 
     it('should initialize identity matrix values', () => {
@@ -147,17 +154,21 @@ describe('SceneGraph', () => {
       const index = sceneGraph.createNode(NodeType.RECTANGLE, 'test:rect-1')
       expect(index).toBeGreaterThan(0)
       expect(sceneGraph.type[index]).toBe(NodeType.RECTANGLE)
+      expect(sceneGraph.lifecycle[index]).toBe(NodeLifecycle.Active)
       expect(sceneGraph.getUUID(index)).toBe('test:rect-1')
     })
 
-    it('should delete a node and its UUID mapping', () => {
+    it('should tombstone a deleted node and remove its active UUID mapping', () => {
       const index = sceneGraph.createNode(NodeType.RECTANGLE, 'test:rect-1')
       sceneGraph.deleteNode(index)
       expect(sceneGraph.getIndex('test:rect-1')).toBe(NULL_INDEX)
-      expect(sceneGraph.type[index]).toBe(0)
+      expect(sceneGraph.getTombstoneIndex('test:rect-1')).toBe(index)
+      expect(sceneGraph.isNodeIndexTombstoned(index)).toBe(true)
+      expect(sceneGraph.lifecycle[index]).toBe(NodeLifecycle.Tombstone)
+      expect(sceneGraph.type[index]).toBe(NodeType.RECTANGLE)
     })
 
-    it('should delete a subtree without leaving child UUID mappings', () => {
+    it('should tombstone a subtree without leaving active child UUID mappings', () => {
       const parent = sceneGraph.createNode(NodeType.GROUP, 'test:parent')
       const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:child')
       const grandchild = sceneGraph.createNode(
@@ -172,12 +183,15 @@ describe('SceneGraph', () => {
       expect(sceneGraph.getIndex('test:parent')).toBe(NULL_INDEX)
       expect(sceneGraph.getIndex('test:child')).toBe(NULL_INDEX)
       expect(sceneGraph.getIndex('test:grandchild')).toBe(NULL_INDEX)
-      expect(sceneGraph.type[parent]).toBe(0)
-      expect(sceneGraph.type[child]).toBe(0)
-      expect(sceneGraph.type[grandchild]).toBe(0)
+      expect(sceneGraph.isNodeIndexTombstoned(parent)).toBe(true)
+      expect(sceneGraph.isNodeIndexTombstoned(child)).toBe(true)
+      expect(sceneGraph.isNodeIndexTombstoned(grandchild)).toBe(true)
+      expect(sceneGraph.lifecycle[parent]).toBe(NodeLifecycle.Tombstone)
+      expect(sceneGraph.lifecycle[child]).toBe(NodeLifecycle.Tombstone)
+      expect(sceneGraph.lifecycle[grandchild]).toBe(NodeLifecycle.Tombstone)
     })
 
-    it('should release blob metadata when deleting a node', () => {
+    it('should release blob metadata when finalizing a tombstone', () => {
       const index = sceneGraph.createNode(NodeType.RECTANGLE, 'test:rect-blob')
       const textPtr = sceneGraph.blobs.write('Text content')
       sceneGraph.textPtr[index] = textPtr
@@ -205,12 +219,30 @@ describe('SceneGraph', () => {
       ])
 
       sceneGraph.deleteNode(index)
+      sceneGraph.finalizeTombstoneSubtree(index)
 
       expect(sceneGraph.blobs.read(textPtr, true)).toBeNull()
       expect(sceneGraph.blobs.read(namePtr, true)).toBeNull()
       expect(sceneGraph.blobs.read(geometryPtr)).toBeNull()
       expect(sceneGraph.blobs.read(fillPtr)).toBeNull()
       expect(sceneGraph.blobs.read(strokePtr)).toBeNull()
+      expect(sceneGraph.lifecycle[index]).toBe(NodeLifecycle.Free)
+    })
+
+    it('should activate a tombstone subtree without reattaching it', () => {
+      const parent = sceneGraph.createNode(NodeType.GROUP, 'test:parent')
+      const child = sceneGraph.createNode(NodeType.RECTANGLE, 'test:child')
+      sceneGraph.appendChild(parent, child)
+
+      sceneGraph.deleteNode(parent)
+      sceneGraph.activateTombstoneSubtree(parent)
+
+      expect(sceneGraph.getIndex('test:parent')).toBe(parent)
+      expect(sceneGraph.getIndex('test:child')).toBe(child)
+      expect(sceneGraph.lifecycle[parent]).toBe(NodeLifecycle.Active)
+      expect(sceneGraph.lifecycle[child]).toBe(NodeLifecycle.Active)
+      expect(sceneGraph.parent[parent]).toBe(NULL_INDEX)
+      expect(sceneGraph.firstChild[parent]).toBe(child)
     })
 
     it('should clear dirty entries for deleted subtree indices', () => {
@@ -256,23 +288,24 @@ describe('SceneGraph', () => {
       expect(() => sceneGraph.deleteNode(idx)).not.toThrow()
     })
 
-    it('rejects deleteNode in history scope before mutating graph state', () => {
+    it('allows deleteNode in history scope by tombstoning graph state', () => {
       const idx = sceneGraph.createNode(
         NodeType.RECTANGLE,
         'test:history-delete'
       )
+      const authority = sceneGraph.createMutationAuthority('test')
 
       sceneGraph.runWithMutationScope(
+        authority,
         { kind: MutationScopeKind.History, source: 'test' },
         () => {
-          expect(() => sceneGraph.deleteNode(idx)).toThrow(
-            'removeSelf history is not supported'
-          )
+          sceneGraph.deleteNode(idx)
         }
       )
 
       expect(sceneGraph.getUUID(idx)).toBe('test:history-delete')
-      expect(sceneGraph.getIndex('test:history-delete')).toBe(idx)
+      expect(sceneGraph.getIndex('test:history-delete')).toBe(NULL_INDEX)
+      expect(sceneGraph.getTombstoneIndex('test:history-delete')).toBe(idx)
       expect(
         sceneGraph.allocator.isValid(idx, sceneGraph.allocator.generations[idx])
       ).toBe(true)
@@ -355,10 +388,39 @@ describe('SceneGraph', () => {
       )
     })
 
+    it('rejects mutation scopes without a graph-local authority when guarded', () => {
+      sceneGraph.setMutationGuardEnabled(true)
+
+      expect(() =>
+        sceneGraph.runWithMutationScope(
+          { kind: MutationScopeKind.WriteNoHistory, source: 'test' },
+          () => {}
+        )
+      ).toThrow('Invalid mutation authority')
+    })
+
+    it('does not allow mutation guard to be disabled after enabling', () => {
+      sceneGraph.setMutationGuardEnabled(true)
+
+      expect(() => sceneGraph.setMutationGuardEnabled(false)).toThrow(
+        'Mutation guard cannot be disabled'
+      )
+    })
+
+    it('does not allow late mutation authority creation after enabling guard', () => {
+      sceneGraph.setMutationGuardEnabled(true)
+
+      expect(() => sceneGraph.createMutationAuthority('late')).toThrow(
+        'Cannot create mutation authority after guard is enabled'
+      )
+    })
+
     it('allows guarded structural mutations inside a declared mutation scope', () => {
+      const authority = sceneGraph.createMutationAuthority('test')
       sceneGraph.setMutationGuardEnabled(true)
 
       sceneGraph.runWithMutationScope(
+        authority,
         { kind: MutationScopeKind.WriteNoHistory, source: 'test' },
         () => {
           const parent = sceneGraph.createNode(NodeType.GROUP, 'test:p')
@@ -437,63 +499,6 @@ describe('SceneGraph', () => {
       dirty = sceneGraph.tracker.flush()
       expect(dirty.get(parent)! & DIRTY_TREE).toBeTruthy()
       expect(dirty.get(child)! & DIRTY_TREE).toBeTruthy()
-    })
-  })
-
-  describe('Observers and Notifications', () => {
-    it('should notify observers on change', () => {
-      const observer: IGraphObserver = {
-        update: vi.fn(),
-      }
-      sceneGraph.setObserver(observer)
-
-      sceneGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
-
-      expect(observer.update).toHaveBeenCalledWith(
-        'test:uuid-1',
-        PropId.NAME,
-        'old',
-        'new'
-      )
-    })
-
-    it('should handle notification without observers', () => {
-      const emptyGraph = new SceneGraph()
-      expect(() =>
-        emptyGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
-      ).not.toThrow()
-    })
-
-    it('should allow multiple observers', () => {
-      const obs1 = { update: vi.fn() }
-      const obs2 = { update: vi.fn() }
-      sceneGraph.setObserver(obs1)
-      sceneGraph.setObserver(obs2)
-
-      sceneGraph.notifyObservers('test:uuid-1', PropId.X, 'v1', 'v2')
-      expect(obs1.update).toHaveBeenCalledTimes(1)
-      expect(obs2.update).toHaveBeenCalledTimes(1)
-    })
-
-    it('should stop notifying disposed observers', () => {
-      const observer = { update: vi.fn() }
-      const disposable = sceneGraph.setObserver(observer)
-
-      disposable.dispose()
-      disposable.dispose()
-      sceneGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
-
-      expect(observer.update).not.toHaveBeenCalled()
-    })
-
-    it('should clear observers on dispose', () => {
-      const observer = { update: vi.fn() }
-      sceneGraph.setObserver(observer)
-
-      sceneGraph.dispose()
-      sceneGraph.notifyObservers('test:uuid-1', PropId.NAME, 'old', 'new')
-
-      expect(observer.update).not.toHaveBeenCalled()
     })
   })
 

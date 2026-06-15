@@ -6,6 +6,7 @@ import {
   DIRTY_LOCAL_MATRIX,
   DIRTY_METADATA,
   DIRTY_PAINT,
+  NodeLifecycle,
 } from '../config'
 import { MutationScopeKind } from '../mutationScope'
 import { NodeCursor } from '../nodeCursor'
@@ -30,11 +31,12 @@ describe('NodeCursor', () => {
       expect(root.type).toBe(NodeType.DOCUMENT)
     })
 
-    it('should throw error when accessing dead node', () => {
+    it('should throw error when accessing finalized node', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:rect')
       const cursor = new NodeCursor(graph, idx)
 
       graph.deleteNode(idx)
+      graph.finalizeTombstoneSubtree(idx)
 
       expect(() => cursor.type).toThrow('[NodeCursor] Accessing dead node')
     })
@@ -112,28 +114,32 @@ describe('NodeCursor', () => {
       expect(graph.type[cIdx]).toBe(NodeType.RECTANGLE)
     })
 
-    it('delete should remove node from graph', () => {
+    it('delete should tombstone node outside the active graph', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:r')
       const cursor = new NodeCursor(graph, idx)
       cursor.delete()
-      expect(() => cursor.type).toThrow('Accessing dead node')
+      expect(graph.getIndex('test:r')).toBe(-1)
+      expect(graph.getTombstoneIndex('test:r')).toBe(idx)
+      expect(graph.isNodeIndexTombstoned(idx)).toBe(true)
+      expect(graph.lifecycle[idx]).toBe(NodeLifecycle.Tombstone)
+      expect(cursor.type).toBe(NodeType.RECTANGLE)
     })
 
-    it('rejects delete in history scope before removing the node', () => {
+    it('allows delete in history scope by tombstoning the node', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:history-delete')
       const cursor = new NodeCursor(graph, idx)
 
       graph.runWithMutationScope(
         { kind: MutationScopeKind.History, source: 'test' },
         () => {
-          expect(() => cursor.delete()).toThrow(
-            'removeSelf history is not supported'
-          )
+          cursor.delete()
         }
       )
 
       expect(cursor.type).toBe(NodeType.RECTANGLE)
-      expect(graph.getIndex('test:history-delete')).toBe(idx)
+      expect(graph.getIndex('test:history-delete')).toBe(-1)
+      expect(graph.getTombstoneIndex('test:history-delete')).toBe(idx)
+      expect(graph.lifecycle[idx]).toBe(NodeLifecycle.Tombstone)
     })
 
     it('should navigate to parent', () => {
@@ -270,9 +276,11 @@ describe('NodeCursor', () => {
     it('allows guarded mutations inside a declared mutation scope', () => {
       const idx = graph.createNode(NodeType.RECTANGLE, 'test:scoped')
       const cursor = new NodeCursor(graph, idx)
+      const authority = graph.createMutationAuthority('test')
       graph.setMutationGuardEnabled(true)
 
       graph.runWithMutationScope(
+        authority,
         { kind: MutationScopeKind.WriteNoHistory, source: 'test' },
         () => {
           cursor.x = 42
@@ -354,8 +362,8 @@ describe('NodeCursor', () => {
         id: 'test:c',
         index: cIdx,
         prop: PropId.PARENT,
-        oldValue: null,
-        newValue: 'test:p',
+        oldValue: { parentId: null, position: 0 },
+        newValue: { parentId: 'test:p', position: 1 },
       })
     })
   })

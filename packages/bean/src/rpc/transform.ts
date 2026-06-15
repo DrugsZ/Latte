@@ -51,4 +51,8 @@ export interface ITransformService {
   ): Promise<void>
 
   transformAround$(ids: IDType[], matrixPayload: mat2d, pivot: vec2): void
+
+  resize(ids: IDType[], width: number, height: number): Promise<void>
+
+  resize$(ids: IDType[], width: number, height: number): void
 }

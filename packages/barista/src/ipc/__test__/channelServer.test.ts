@@ -158,7 +158,7 @@ describe('ChannelServer', () => {
     const server = new ChannelServer(protocol)
     const call = vi.fn()
 
-    server.onBeforeCall(() => {
+    server.onValidateSession(() => {
       throw new Error('Unknown session: missing-session')
     })
     server.registerChannel('test', {

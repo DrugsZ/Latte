@@ -73,6 +73,50 @@ describe('LatteLoader', () => {
     expect(graph.lastChild[pIdx]).toBe(c2Idx)
   })
 
+  it('keeps file order stable when siblings have the same position', () => {
+    const json = {
+      elements: [
+        {
+          guid: '0:parent',
+          type: 'FRAME',
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+        {
+          guid: '0:child-a',
+          type: 'RECTANGLE',
+          parentIndex: { guid: '0:parent', position: '1' },
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+        {
+          guid: '0:child-b',
+          type: 'RECTANGLE',
+          parentIndex: { guid: '0:parent', position: '1' },
+          transform: [1, 0, 0, 1, 0, 0],
+        },
+      ],
+    } as unknown as ILatteFile
+
+    loader.load(json)
+
+    const pIdx = graph.getIndex('0:parent')
+    const aIdx = graph.getIndex('0:child-a')
+    const bIdx = graph.getIndex('0:child-b')
+
+    expect(graph.firstChild[pIdx]).toBe(aIdx)
+    expect(graph.nextSibling[aIdx]).toBe(bIdx)
+    expect(graph.lastChild[pIdx]).toBe(bIdx)
+  })
+
+  it('rejects loading while history mutation recording is active', () => {
+    graph.setMutationRecorder({
+      recordMutation() {},
+    } as any)
+
+    expect(() =>
+      loader.load({ elements: [] } as unknown as ILatteFile)
+    ).toThrow('[LatteLoader] load must run outside history mutation recording')
+  })
+
   it('should map document nodes to the built-in root index', () => {
     const json = {
       elements: [

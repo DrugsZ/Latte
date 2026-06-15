@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SCENE_GRAPH_NAME,
   JsonRpcMessageType,
   type IServiceMap,
   type JsonRpcId,
@@ -40,7 +41,7 @@ export class ChannelClient implements IChannelClient {
   >()
   private _listeners = new Map<
     string,
-    Map<number, (msg: JsonRpcMessage) => void>
+    Map<number, { sessionId: string; listener: (msg: JsonRpcMessage) => void }>
   >()
   private _nextId = 0
   private _targetSessionId: string | null = null
@@ -90,22 +91,22 @@ export class ChannelClient implements IChannelClient {
   private _addListener(
     channelName: string,
     method: string,
-    listener: (msg: JsonRpcMessage) => void
+    listener: (msg: JsonRpcMessage) => void,
+    sessionId?: string | null
   ): IDisposable {
     const id = this._nextId++
     const eventId = `${channelName}.${method}`
+    const listenerSessionId = this._normalizeSessionId(sessionId)
     if (!this._listeners.has(eventId)) {
       this._listeners.set(eventId, new Map())
     }
-    this._listeners.get(eventId)!.set(id, listener)
+    this._listeners.get(eventId)!.set(id, {
+      sessionId: listenerSessionId,
+      listener,
+    })
 
     this._protocol.send(
-      createJsonRpcListenMessage(
-        eventId,
-        id,
-        undefined,
-        this._targetSessionId || undefined
-      )
+      createJsonRpcListenMessage(eventId, id, undefined, listenerSessionId)
     )
 
     return {
@@ -117,21 +118,26 @@ export class ChannelClient implements IChannelClient {
             this._listeners.delete(eventId)
           }
         }
-        this._protocol.send(
-          createJsonRpcUnlistenMessage(id, this._targetSessionId || undefined)
-        )
+        this._protocol.send(createJsonRpcUnlistenMessage(id, listenerSessionId))
       },
     }
   }
 
-  public getChannel<T extends keyof IServiceMap>(channelName: T): IChannel
-  public getChannel(channelName: string): IChannel
-  public getChannel(channelName: string) {
+  public getChannel<T extends keyof IServiceMap>(
+    channelName: T,
+    sessionId?: string | null
+  ): IChannel
+  public getChannel(channelName: string, sessionId?: string | null): IChannel
+  public getChannel(channelName: string, sessionId?: string | null) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const that = this
+    const hasFixedSession = arguments.length >= 2
+    const resolveSessionId = () =>
+      hasFixedSession ? sessionId : that._targetSessionId
     const channel = {
       call<T>(method: string, ...args: any[]) {
         const isNotification = method.endsWith('$')
+        const callSessionId = resolveSessionId()
         if (isNotification) {
           const id = that._nextId++
           that._protocol.send(
@@ -139,17 +145,26 @@ export class ChannelClient implements IChannelClient {
               `${channelName}.${method}`,
               id,
               args,
-              that._targetSessionId || undefined
+              callSessionId || undefined
             )
           )
           return
         }
-        return that._request<T>(channelName, method, args)
+        return that._request<T>(
+          channelName,
+          method,
+          args,
+          callSessionId || undefined
+        )
       },
       listen: (method: string, listener: (msg: JsonRpcMessage) => void) =>
-        that._addListener(channelName, method, listener),
+        that._addListener(channelName, method, listener, resolveSessionId()),
     }
     return channel
+  }
+
+  private _normalizeSessionId(sessionId: string | null | undefined) {
+    return sessionId || DEFAULT_SCENE_GRAPH_NAME
   }
 
   private _handleMessage(msg: JsonRpcMessage) {
@@ -171,7 +186,12 @@ export class ChannelClient implements IChannelClient {
       const eventId = msg.method
       const listeners = this._listeners.get(eventId)
       if (listeners) {
-        listeners.forEach(listener => listener(msg))
+        const messageSessionId = this._normalizeSessionId(msg.sessionId)
+        listeners.forEach(entry => {
+          if (entry.sessionId === messageSessionId) {
+            entry.listener(msg)
+          }
+        })
       } else if (eventId === 'rpc.onError') {
         console.error('[IPC] Notification error:', msg.params)
       }

@@ -36,6 +36,10 @@ export class ServiceManager implements IContext {
     return this._sceneGraphContext.sceneGraph
   }
 
+  public get mutationAuthority() {
+    return this._sceneGraphContext.mutationAuthority
+  }
+
   public get currentSessionId() {
     return this._sceneGraphContext.currentSessionId
   }

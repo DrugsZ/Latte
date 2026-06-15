@@ -1,2 +1,2 @@
-export { Workbench, startWorkbench } from './workbench'
+export { Workbench } from './workbench'
 export type { WorkbenchOptions } from './workbench'

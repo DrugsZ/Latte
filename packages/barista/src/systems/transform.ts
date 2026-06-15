@@ -7,36 +7,47 @@ import {
 import { mat2d, vec2 } from 'gl-matrix'
 
 import { getTransactionManager } from '../transactions/transactionRegistry'
-import { system, SystemBase, Systems } from './systems'
+import { System, SystemBase, Systems } from './systems'
 
 import type { IDType } from '@latte-js/bean'
 import {
   MutationPolicyKind,
   type MutationPolicyMap,
 } from '../transactions/mutationPolicy'
+import { TransactionLabel } from '../transactions/transactionLabels'
 
 const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
 const EPSILON = 1e-6
 
+interface TransformTarget {
+  readonly id: IDType
+  readonly index: number
+}
+
 const transformMutationPolicies: MutationPolicyMap = {
   moveTo: {
     kind: MutationPolicyKind.Atomic,
-    label: 'Move Layer',
+    label: TransactionLabel.MoveLayer,
     ids: idsFromFirstArg,
   },
   moveBy: {
     kind: MutationPolicyKind.Atomic,
-    label: 'Move Layer',
+    label: TransactionLabel.MoveLayer,
     ids: idsFromFirstArg,
   },
   transformAround: {
     kind: MutationPolicyKind.Atomic,
-    label: 'Transform Layer',
+    label: TransactionLabel.TransformLayer,
+    ids: idsFromFirstArg,
+  },
+  resize: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.ResizeLayer,
     ids: idsFromFirstArg,
   },
 }
 
-@system({ mutations: transformMutationPolicies })
+@System({ mutations: transformMutationPolicies })
 export class TransformSystem extends SystemBase {
   public static readonly name = Systems.Transform
 
@@ -54,6 +65,56 @@ export class TransformSystem extends SystemBase {
 
   private _getSnapshot(id: IDType) {
     return this._transactions.getSnapshot(id)
+  }
+
+  private _prepareTargets(ids: readonly IDType[], source: string) {
+    const targets = this._resolveTransformTargets(ids, source)
+    this._transactions.capture(targets.map(target => target.id))
+    return targets
+  }
+
+  private _resolveTransformTargets(
+    ids: readonly IDType[],
+    source: string
+  ): TransformTarget[] {
+    const seenIds = new Set<IDType>()
+    const targets: TransformTarget[] = []
+
+    for (const id of ids) {
+      if (seenIds.has(id)) {
+        continue
+      }
+      seenIds.add(id)
+
+      const index = this._sceneGraph.getIndex(id)
+      if (index === NULL_INDEX) {
+        throw new Error(`[TransformSystem] Node not found for ${source}: ${id}`)
+      }
+
+      targets.push({ id, index })
+    }
+
+    const targetIndexes = new Set(targets.map(target => target.index))
+    return targets.filter(
+      target => !this._hasSelectedAncestor(target.index, targetIndexes)
+    )
+  }
+
+  private _hasSelectedAncestor(index: number, targetIndexes: Set<number>) {
+    let current = this._sceneGraph.parent[index]
+    let depth = 0
+
+    while (current !== NULL_INDEX) {
+      if (targetIndexes.has(current)) {
+        return true
+      }
+      if (depth++ > MAX_NODES) {
+        throw new Error(`Tree cycle detected at node ${current}`)
+      }
+      current = this._sceneGraph.parent[current]
+    }
+
+    return false
   }
 
   private _getLocalMatrix(index: number, out: mat2d = mat2d.create()): mat2d {
@@ -135,7 +196,9 @@ export class TransformSystem extends SystemBase {
   ) {
     const parentWorldInv = mat2d.invert(mat2d.create(), parentWorld)
     if (parentWorldInv === null) {
-      return mat2d.copy(out, world)
+      throw new Error(
+        '[TransformSystem] Cannot convert world transform through a non-invertible parent matrix'
+      )
     }
     return mat2d.multiply(out, parentWorldInv, world)
   }
@@ -166,18 +229,17 @@ export class TransformSystem extends SystemBase {
     this._markTransformDirty(index)
   }
 
-  private _moveTo(id: IDType, worldPos: vec2) {
-    const index = this._sceneGraph.getIndex(id)
-    if (index === NULL_INDEX) return
-
-    const targetWorld = this._getBaseWorldMatrix(index)
+  private _moveTo(target: TransformTarget, worldPos: vec2) {
+    const targetWorld = this._getBaseWorldMatrix(target.index)
     targetWorld[4] = worldPos[0]
     targetWorld[5] = worldPos[1]
-    this._applyTargetWorldMatrix(index, targetWorld)
+    this._applyTargetWorldMatrix(target.index, targetWorld)
   }
 
   public moveTo(ids: IDType[], worldPos: vec2) {
-    ids.forEach(id => this._moveTo(id, worldPos))
+    this._assertFiniteVec2(worldPos, 'moveTo')
+    const targets = this._prepareTargets(ids, 'moveTo')
+    targets.forEach(target => this._moveTo(target, worldPos))
   }
 
   /**
@@ -185,14 +247,11 @@ export class TransformSystem extends SystemBase {
    * With an active transaction: delta is absolute from the transaction's
    * captured world position. Without one, delta is incremental.
    */
-  private _moveBy(id: IDType, worldDelta: vec2) {
-    const index = this._sceneGraph.getIndex(id)
-    if (index === NULL_INDEX) return
-
-    const baseWorld = this._getBaseWorldMatrix(index)
+  private _moveBy(target: TransformTarget, worldDelta: vec2) {
+    const baseWorld = this._getBaseWorldMatrix(target.index)
 
     this._moveTo(
-      id,
+      target,
       vec2.fromValues(
         baseWorld[4] + worldDelta[0],
         baseWorld[5] + worldDelta[1]
@@ -201,7 +260,9 @@ export class TransformSystem extends SystemBase {
   }
 
   public moveBy(ids: IDType[], worldDelta: vec2) {
-    ids.forEach(id => this._moveBy(id, worldDelta))
+    this._assertFiniteVec2(worldDelta, 'moveBy')
+    const targets = this._prepareTargets(ids, 'moveBy')
+    targets.forEach(target => this._moveBy(target, worldDelta))
   }
 
   /**
@@ -217,24 +278,28 @@ export class TransformSystem extends SystemBase {
    * 3. Compute new world: W_new = transformStep * W_old
    * 4. Convert to local: L_new = parentWorld^-1 * W_new
    */
-  private _transformAround(id: IDType, matrixPayload: mat2d, pivot: vec2) {
-    const index = this._sceneGraph.getIndex(id)
-    if (index === NULL_INDEX) return
-
-    const currentWorld = this._getBaseWorldMatrix(index)
+  private _transformAround(
+    target: TransformTarget,
+    matrixPayload: mat2d,
+    pivot: vec2
+  ) {
+    const currentWorld = this._getBaseWorldMatrix(target.index)
     const worldStep = this._buildPivotedWorldStep(matrixPayload, pivot)
     const newWorld = mat2d.multiply(mat2d.create(), worldStep, currentWorld)
-    this._applyTargetWorldMatrix(index, newWorld)
+    this._applyTargetWorldMatrix(target.index, newWorld)
   }
 
   public transformAround(ids: IDType[], matrixPayload: mat2d, pivot: vec2) {
-    ids.forEach(id => this._transformAround(id, matrixPayload, pivot))
+    this._assertFiniteMatrix(matrixPayload, 'transformAround matrix')
+    this._assertFiniteVec2(pivot, 'transformAround pivot')
+    const targets = this._prepareTargets(ids, 'transformAround')
+    targets.forEach(target =>
+      this._transformAround(target, matrixPayload, pivot)
+    )
   }
 
-  private _resize(id: IDType, width: number, height: number) {
-    const index = this._sceneGraph.getIndex(id)
-    if (index === NULL_INDEX) return
-    this._resizeByIndex(id, index, width, height)
+  private _resize(target: TransformTarget, width: number, height: number) {
+    this._resizeByIndex(target.id, target.index, width, height)
   }
 
   private _resizeByIndex(
@@ -260,7 +325,9 @@ export class TransformSystem extends SystemBase {
     const baseWorldInv = mat2d.invert(mat2d.create(), baseWorld)
 
     if (baseWorldInv === null) {
-      return
+      throw new Error(
+        `[TransformSystem] Cannot resize through a non-invertible world matrix: ${id}`
+      )
     }
 
     const scaleInNodeWorld = mat2d.fromScaling(mat2d.create(), [scaleX, scaleY])
@@ -337,6 +404,12 @@ export class TransformSystem extends SystemBase {
 
       const id = this._sceneGraph.getUUID(item.index)
       if (!id) {
+        const baseLocal = this._getBaseLocalMatrix(item.index)
+        this._pushChildrenForWorldStep(
+          stack,
+          item.index,
+          mat2d.multiply(mat2d.create(), item.parentTargetWorld, baseLocal)
+        )
         continue
       }
 
@@ -363,14 +436,25 @@ export class TransformSystem extends SystemBase {
       this._cursor.transform = finalLocal
       this._markTransformDirty(item.index)
 
-      let nextChild = this._sceneGraph.firstChild[item.index]
-      while (nextChild !== NULL_INDEX) {
-        stack.push({
-          index: nextChild,
-          parentTargetWorld: mat2d.clone(nextParentTargetWorld),
-        })
-        nextChild = this._sceneGraph.nextSibling[nextChild]
-      }
+      this._pushChildrenForWorldStep(stack, item.index, nextParentTargetWorld)
+    }
+  }
+
+  private _pushChildrenForWorldStep(
+    stack: Array<{
+      index: number
+      parentTargetWorld: mat2d
+    }>,
+    index: number,
+    parentTargetWorld: mat2d
+  ) {
+    let nextChild = this._sceneGraph.firstChild[index]
+    while (nextChild !== NULL_INDEX) {
+      stack.push({
+        index: nextChild,
+        parentTargetWorld: mat2d.clone(parentTargetWorld),
+      })
+      nextChild = this._sceneGraph.nextSibling[nextChild]
     }
   }
 
@@ -413,6 +497,36 @@ export class TransformSystem extends SystemBase {
   }
 
   public resize(ids: IDType[], width: number, height: number) {
-    ids.forEach(id => this._resize(id, width, height))
+    this._assertValidSize(width, height)
+    const targets = this._prepareTargets(ids, 'resize')
+    targets.forEach(target => this._resize(target, width, height))
+  }
+
+  private _assertFiniteVec2(value: vec2, source: string) {
+    if (Number.isFinite(value[0]) && Number.isFinite(value[1])) {
+      return
+    }
+    throw new Error(`[TransformSystem] Invalid ${source} vector`)
+  }
+
+  private _assertFiniteMatrix(value: mat2d, source: string) {
+    for (let i = 0; i < 6; i += 1) {
+      if (!Number.isFinite(value[i])) {
+        throw new Error(`[TransformSystem] Invalid ${source}`)
+      }
+    }
+  }
+
+  private _assertValidSize(width: number, height: number) {
+    if (
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      width >= 0 &&
+      height >= 0
+    ) {
+      return
+    }
+
+    throw new Error('[TransformSystem] Invalid resize dimensions')
   }
 }

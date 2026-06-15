@@ -1,3 +1,4 @@
+import { Channels, DEFAULT_SCENE_GRAPH_NAME, NodeType } from '@latte-js/bean'
 import { SceneGraph } from '@latte-js/espresso'
 import { describe, expect, it } from 'vitest'
 
@@ -7,16 +8,19 @@ import { NodeService } from '../node'
 import { QueryService } from '../query'
 import {
   collectMutationPolicyCoverageIssues,
-  getRegisteredServices,
-} from '../serviceBase'
+  getServiceCallMethodNames,
+} from '../serviceAudit'
+import { getRegisteredServices, ServiceBase } from '../serviceBase'
 import { TransformService } from '../transform'
 import { UndoRedoService } from '../undoRedo'
 import { MutationPolicyKind } from '../../transactions/mutationPolicy'
+import { TransactionLabel } from '../../transactions/transactionLabels'
 
 const createContext = (graph: SceneGraph) => ({
   sceneGraph: graph,
+  mutationAuthority: graph.createMutationAuthority('test'),
   accessSystem: new BaristaSystem(graph),
-  currentSessionId: '',
+  currentSessionId: DEFAULT_SCENE_GRAPH_NAME,
   getService: () => {
     throw new Error('getService is not used in mutation policy tests')
   },
@@ -40,19 +44,57 @@ describe('service mutation policies', () => {
       transform.getMutationPolicy('moveBy', [['test:rect']])
     ).toMatchObject({
       kind: MutationPolicyKind.Atomic,
-      label: 'Move Layer',
+      label: TransactionLabel.MoveLayer,
     })
-    expect(node.getMutationPolicy('create', [])).toMatchObject({
-      kind: MutationPolicyKind.WriteNoHistory,
+    expect(
+      node.getMutationPolicy('createNode', [{ id: 'test:rect' }])
+    ).toMatchObject({
+      kind: MutationPolicyKind.Atomic,
+      label: TransactionLabel.CreateLayer,
     })
   })
 
-  it('defaults unspecified methods to readonly', () => {
+  it('resolves explicitly declared readonly policies', () => {
     const query = new QueryService(createContext(new SceneGraph()))
 
-    expect(query.getMutationPolicy('getElementByName', [])).toMatchObject({
+    expect(query.getMutationPolicy('getElementsByName', [])).toMatchObject({
       kind: MutationPolicyKind.Readonly,
     })
+  })
+
+  it('rejects methods without a declared mutation policy', () => {
+    const query = new QueryService(createContext(new SceneGraph()))
+
+    expect(() => query.getMutationPolicy('missingMethod', [])).toThrow(
+      'Missing mutation policy'
+    )
+  })
+
+  it('rejects query options with a missing root id', async () => {
+    const query = new QueryService(createContext(new SceneGraph()))
+
+    await expect(
+      query.getElementsByType(NodeType.RECTANGLE, {
+        rootId: 'test:missing',
+      })
+    ).rejects.toThrow('[QueryService] Root node not found: test:missing')
+  })
+
+  it('only filters explicit event-style service methods from audit', () => {
+    class AuditService extends ServiceBase {
+      public static readonly name = Channels.Document
+
+      onboard() {}
+      online() {}
+      _resolveSomething() {}
+      onDidChange() {}
+      onWillSave() {}
+    }
+
+    expect(getServiceCallMethodNames(AuditService)).toEqual([
+      'onboard',
+      'online',
+    ])
   })
 
   it('declares mutation policy coverage for every registered call method', () => {

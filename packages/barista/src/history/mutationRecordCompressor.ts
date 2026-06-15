@@ -2,7 +2,11 @@ import { PropId, type INodeMutationRecord } from '@latte-js/espresso'
 
 import { cloneRecord, cloneHistoryValue } from './mutationRecords'
 
-const STRUCTURAL_PROPS = new Set<PropId>([PropId.PARENT, PropId.REMOVE_SELF])
+const STRUCTURAL_PROPS = new Set<PropId>([
+  PropId.CREATE_SELF,
+  PropId.PARENT,
+  PropId.REMOVE_SELF,
+])
 
 const recordKey = (record: INodeMutationRecord) =>
   `${record.id}:${String(record.prop)}`

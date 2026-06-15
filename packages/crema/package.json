@@ -55,6 +55,7 @@
     "@latte-js/bean": "workspace:*",
     "@latte-js/counter": "workspace:*",
     "@latte-js/espresso": "workspace:*",
+    "@latte-js/kit": "workspace:*",
     "@latte-js/syrup": "workspace:*"
   },
   "devDependencies": {

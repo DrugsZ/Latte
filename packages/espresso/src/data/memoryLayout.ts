@@ -13,6 +13,7 @@ export const LAYOUT_DEF = [
   { name: 'size', type: Float32Array, size: MAX_NODES * SIZE_SIZE },
 
   { name: 'type', type: Uint8Array, size: MAX_NODES },
+  { name: 'lifecycle', type: Uint8Array, size: MAX_NODES },
   { name: 'visible', type: Uint8Array, size: MAX_NODES },
   { name: 'locked', type: Uint8Array, size: MAX_NODES },
   { name: 'opacity', type: Float32Array, size: MAX_NODES },

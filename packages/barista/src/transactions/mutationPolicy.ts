@@ -310,7 +310,10 @@ export class MutationGate {
         command,
         invoke
       )
-      getHistoryManager(this._sceneGraph).push(sessionId, manager.commit())
+      getHistoryManager(this._sceneGraph, this._context.mutationAuthority).push(
+        sessionId,
+        manager.commit()
+      )
       this._activeSessions.delete(sessionId)
       return result
     } catch (error) {
@@ -395,12 +398,35 @@ export class MutationGate {
     invoke: () => T | Promise<T>
   ): T | Promise<T> {
     return this._sceneGraph.runWithMutationScope(
+      this._context.mutationAuthority,
       {
         kind,
         label,
         source: `${serviceName}.${command}`,
       },
-      invoke
+      () => {
+        const auditStart = this._sceneGraph.getMutationAuditSnapshot()
+        const recorder = this._sceneGraph.getMutationRecorder()
+        const result = invoke()
+        const assertCovered = () => {
+          if (kind === MutationScopeKind.History && recorder) {
+            this._sceneGraph.assertMutationRecordsCovered(
+              auditStart,
+              `${serviceName}.${command}`
+            )
+          }
+        }
+
+        if (result && typeof (result as Promise<T>).then === 'function') {
+          return Promise.resolve(result).then(value => {
+            assertCovered()
+            return value
+          }) as T
+        }
+
+        assertCovered()
+        return result
+      }
     )
   }
 
@@ -417,8 +443,16 @@ export class MutationGate {
     const manager = getTransactionManager(this._sceneGraph, sessionId)
     manager.begin(label, ids)
     try {
+      const auditStart = this._sceneGraph.getMutationAuditSnapshot()
       const result = await invoke()
-      getHistoryManager(this._sceneGraph).push(sessionId, manager.commit())
+      this._sceneGraph.assertMutationRecordsCovered(
+        auditStart,
+        `${label} (${sessionId})`
+      )
+      getHistoryManager(this._sceneGraph, this._context.mutationAuthority).push(
+        sessionId,
+        manager.commit()
+      )
       return result
     } catch (error) {
       manager.abort()

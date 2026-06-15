@@ -1,9 +1,13 @@
 import { DEFAULT_SCENE_GRAPH_NAME } from '@latte-js/bean'
-import type { SceneGraph } from '@latte-js/espresso'
+import type {
+  ISceneGraphMutationAuthority,
+  SceneGraph,
+} from '@latte-js/espresso'
 
 export interface ISceneGraphContext {
   readonly sceneGraph: SceneGraph
   readonly currentSessionId: string
+  readonly mutationAuthority: ISceneGraphMutationAuthority
 }
 
 export interface ISceneGraphContextScope extends ISceneGraphContext {
@@ -21,6 +25,9 @@ export const createStaticSceneGraphContext = (
 ): ISceneGraphContext => ({
   sceneGraph,
   currentSessionId,
+  mutationAuthority: sceneGraph.createMutationAuthority(
+    `StaticSceneGraphContext:${currentSessionId}`
+  ),
 })
 
 export const toSceneGraphContext = (

@@ -4,6 +4,14 @@ export { LatteLoader } from './io/latteLoader'
 export { Serializer } from './io/serializer'
 export { NodeCursor } from './data/nodeCursor'
 export {
+  captureNodeSnapshot,
+  getChildPosition,
+  getNodeLifecyclePayload,
+  getNodePlacement,
+  type INodeLifecyclePayload,
+  type INodePlacement,
+} from './data/nodeSnapshot'
+export {
   readNodeFills,
   readNodeGeometry,
   readNodeName,
@@ -33,6 +41,8 @@ export {
   MAX_NODES,
   DEFAULT_HEAP_SIZE,
   MAT_SIZE,
+  NODE_LIFECYCLE_ALLOCATED_MASK,
+  NodeLifecycle,
 } from './data/config'
 export {
   applyStretchToMatrix,
@@ -50,3 +60,4 @@ export type {
 } from './data/mutationRecorder'
 export { MutationScopeKind } from './data/mutationScope'
 export type { IMutationScope } from './data/mutationScope'
+export type { ISceneGraphMutationAuthority } from './data/mutationAuthority'

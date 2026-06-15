@@ -3,6 +3,7 @@ import { NodeCursor, PropId, SceneGraph } from '@latte-js/espresso'
 import { describe, expect, it } from 'vitest'
 
 import { HistoryManager } from '../historyManager'
+import { TransactionLabel } from '../../transactions/transactionLabels'
 import { TransactionManager } from '../../transactions/transactionManager'
 
 const RESOURCE_ID = 'doc:test'
@@ -36,7 +37,7 @@ describe('HistoryManager', () => {
     cursor.x = 10
     cursor.y = 20
 
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
     cursor.x = 50
     cursor.y = 60
     history.push(RESOURCE_ID, transactions.commit())
@@ -58,7 +59,7 @@ describe('HistoryManager', () => {
     const cursor = new NodeCursor(graph, index)
     const { transactions, history } = createManagers(graph)
 
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
     cursor.x = 50
     history.push(RESOURCE_ID, transactions.commit())
     history.undo(RESOURCE_ID)
@@ -85,7 +86,7 @@ describe('HistoryManager', () => {
     graph.createNode(NodeType.RECTANGLE, 'test:rect')
     const { transactions, history } = createManagers(graph)
 
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
 
     expect(() => history.undo(RESOURCE_ID)).toThrow(
       'Cannot undo while another mutation recorder is active'
@@ -130,7 +131,7 @@ describe('HistoryManager', () => {
     const cursor = new NodeCursor(graph, index)
     const { transactions, history } = createManagers(graph)
 
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
     cursor.x = 10
     cursor.x = 20
     cursor.x = 30

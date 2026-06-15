@@ -1,14 +1,12 @@
 import {
-  NodeType,
-  type IDisposable,
   type IDType,
-  type ILatteFile,
   type INodeService,
   type ISceneDirtyNode,
   type ISceneDirtyPayload,
   type ISceneService,
 } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
+import { Disposable, DisposableStore, Emitter, type Event } from '@latte-js/kit'
 
 import type { EditorHost } from '@latte-js/syrup'
 
@@ -17,8 +15,19 @@ type DirtyPayload = IDType[] | Partial<ISceneDirtyPayload>
 
 interface NormalizedDirtyPayload {
   renderIds: IDType[]
-  allIds: IDType[]
+  affectedIds: IDType[]
   nodes: ISceneDirtyNode[]
+}
+
+export interface IProjectionDirtyEvent {
+  readonly renderIds: IDType[]
+  readonly affectedIds: IDType[]
+  readonly nodes: ISceneDirtyNode[]
+}
+
+export interface IProjectionSyncServices {
+  getNodeService(sessionId: string | null): INodeService
+  getSceneService(sessionId: string | null): ISceneService
 }
 
 const normalizeDirtyPayload = (
@@ -27,7 +36,7 @@ const normalizeDirtyPayload = (
   if (Array.isArray(payload)) {
     return {
       renderIds: payload,
-      allIds: payload,
+      affectedIds: payload,
       nodes: [],
     }
   }
@@ -36,38 +45,46 @@ const normalizeDirtyPayload = (
 
   return {
     renderIds,
-    allIds: payload.allIds ?? payload.ids ?? renderIds,
+    affectedIds: payload.allIds ?? payload.ids ?? renderIds,
     nodes: payload.nodes ?? [],
   }
 }
 
-// FIXME(projection-events): Split projection state sync from render invalidation
-// once metadata/outline panels or multi-session projection consumers need
-// explicit events instead of this controller directly calling renderer.
-export class ProjectionSyncController {
-  private _disposables: IDisposable[] = []
+// FIXME(projection-events): Promote projection dirty events to a broader
+// projection event model once outline, selection, or inspector consumers need
+// targeted updates beyond render invalidation.
+export class ProjectionSyncController extends Disposable {
+  private readonly _sessionDisposables = this._register(new DisposableStore())
+  private readonly _onDidMarkDirty = this._register(
+    new Emitter<IProjectionDirtyEvent>()
+  )
+  public readonly onDidMarkDirty: Event<IProjectionDirtyEvent> =
+    this._onDidMarkDirty.event
+
   private _started = false
+  private _sessionId: string | null | undefined
   private _version = 0
-  private _dirtyIds: IDType[] = []
-  private _allDirtyIds: IDType[] = []
+  private _renderDirtyIds: IDType[] = []
+  private _affectedDirtyIds: IDType[] = []
   private _dirtyNodes: ISceneDirtyNode[] = []
 
   constructor(
     private readonly _host: EditorHost<SceneGraph>,
-    private readonly _nodeService: INodeService,
-    private readonly _sceneService: ISceneService
-  ) {}
+    private readonly _services: IProjectionSyncServices
+  ) {
+    super()
+  }
 
   public get version() {
     return this._version
   }
 
-  public get dirtyIds() {
-    return [...this._dirtyIds]
+  public get renderDirtyIds() {
+    return [...this._renderDirtyIds]
   }
 
-  public get allDirtyIds() {
-    return [...this._allDirtyIds]
+  public get affectedDirtyIds() {
+    return [...this._affectedDirtyIds]
   }
 
   public get dirtyNodes() {
@@ -79,38 +96,20 @@ export class ProjectionSyncController {
       return
     }
 
-    this._disposables.push(
-      this._nodeService.onCreate(nodes => {
-        this.applyCreated(nodes)
+    this._register(
+      this._host.onDidChangeActiveDocument(doc => {
+        this._bindSession(doc?.id ?? null)
       })
     )
-    this._disposables.push(
-      this._nodeService.onDelete(nodes => {
-        this.applyDeleted(nodes)
-      })
-    )
-
-    this._disposables.push(
-      this._sceneService.onDirty(payload => {
-        this.markDirty(payload as DirtyPayload)
-      })
-    )
+    this._bindSession(this._host.activeDocument?.id ?? null)
 
     this._started = true
   }
 
-  public applyLoadedDocument(data: ILatteFile, idMap: Map<IDType, number>) {
-    this._host.graph.resetUUIDMap(idMap)
-
-    const activeRootId = this._findActiveRootId(data)
-    if (activeRootId && this._host.renderer) {
-      this._host.renderer.setActiveRootId(activeRootId)
-      this._host.renderer.fitToContent(activeRootId)
-    }
-
-    this._host.renderer?.requestRender()
+  public applyLoadedDocument(idMap: Map<IDType, number>, graph: SceneGraph) {
+    graph.resetUUIDMap(idMap)
     this._version++
-    return { idMap, activeRootId }
+    return { idMap }
   }
 
   public applyCreated(nodes: NodeIdMapPayload) {
@@ -134,39 +133,52 @@ export class ProjectionSyncController {
   public markDirty(payload: DirtyPayload) {
     const normalized = normalizeDirtyPayload(payload)
 
-    this._dirtyIds = [...normalized.renderIds]
-    this._allDirtyIds = [...normalized.allIds]
+    this._renderDirtyIds = [...normalized.renderIds]
+    this._affectedDirtyIds = [...normalized.affectedIds]
     this._dirtyNodes = [...normalized.nodes]
     this._version++
 
-    if (normalized.renderIds.length > 0) {
-      this._host.renderer?.requestRender()
-    }
+    this._onDidMarkDirty.fire({
+      renderIds: this.renderDirtyIds,
+      affectedIds: this.affectedDirtyIds,
+      nodes: this.dirtyNodes,
+    })
   }
 
   public dispose() {
-    for (const disposable of this._disposables.splice(0)) {
-      disposable.dispose()
-    }
-    this._dirtyIds = []
-    this._allDirtyIds = []
+    super.dispose()
+    this._sessionId = undefined
+    this._renderDirtyIds = []
+    this._affectedDirtyIds = []
     this._dirtyNodes = []
     this._started = false
   }
 
-  private _findActiveRootId(data: ILatteFile): IDType | undefined {
-    const page = data.elements.find(node => {
-      const type = node.type as string | number
-      return type === 'CANVAS' || type === NodeType.CANVAS
-    })
-    if (page) {
-      return page.guid
+  private _bindSession(sessionId: string | null) {
+    if (this._sessionId === sessionId) {
+      return
     }
 
-    const document = data.elements.find(node => {
-      const type = node.type as string | number
-      return type === 'DOCUMENT' || type === NodeType.DOCUMENT
-    })
-    return document?.guid
+    this._sessionDisposables.clear()
+    this._sessionId = sessionId
+
+    const nodeService = this._services.getNodeService(sessionId)
+    const sceneService = this._services.getSceneService(sessionId)
+
+    this._sessionDisposables.add(
+      nodeService.onDidCreateNode(event => {
+        this.applyCreated(event.nodes)
+      })
+    )
+    this._sessionDisposables.add(
+      nodeService.onDidDeleteNode(event => {
+        this.applyDeleted(event.nodes)
+      })
+    )
+    this._sessionDisposables.add(
+      sceneService.onDirty(payload => {
+        this.markDirty(payload as DirtyPayload)
+      })
+    )
   }
 }

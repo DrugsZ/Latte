@@ -1,6 +1,11 @@
 import type { IDType, NodeType } from '../schema'
 
+export interface IQueryOptions {
+  readonly rootId?: IDType
+  readonly includeRoot?: boolean
+}
+
 export interface IQueryService {
-  getElementByTagName(tag: NodeType, parentID?: IDType): Promise<IDType[]>
-  getElementByName(name: string, parentID?: IDType): Promise<IDType[]>
+  getElementsByType(type: NodeType, options?: IQueryOptions): Promise<IDType[]>
+  getElementsByName(name: string, options?: IQueryOptions): Promise<IDType[]>
 }

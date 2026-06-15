@@ -1,26 +1,28 @@
 import {
   Channels,
   type IDType,
+  type IQueryOptions,
   type IQueryService,
   type NodeType,
 } from '@latte-js/bean'
 
-import { service, ServiceBase, type IContext } from './serviceBase'
+import { Service, SystemBackedServiceBase, type IContext } from './serviceBase'
 
 import type { QuerySystem } from '../systems/query'
+import { Systems } from '../systems'
 import {
   MutationPolicyKind,
   type MutationPolicyMap,
 } from '../transactions/mutationPolicy'
 
 const queryMutationPolicies: MutationPolicyMap = {
-  getElementByTagName: { kind: MutationPolicyKind.Readonly },
-  getElementByName: { kind: MutationPolicyKind.Readonly },
+  getElementsByType: { kind: MutationPolicyKind.Readonly },
+  getElementsByName: { kind: MutationPolicyKind.Readonly },
 }
 
-@service({ mutations: queryMutationPolicies })
+@Service({ system: Systems.Query, mutations: queryMutationPolicies })
 export class QueryService
-  extends ServiceBase<QuerySystem>
+  extends SystemBackedServiceBase<QuerySystem>
   implements IQueryService
 {
   public static readonly name = Channels.Query
@@ -29,23 +31,33 @@ export class QueryService
     super(ctx)
   }
 
-  public async getElementByTagName(
-    tag: NodeType,
-    parentID?: IDType
+  public async getElementsByType(
+    type: NodeType,
+    options?: IQueryOptions
   ): Promise<IDType[]> {
-    const parentNumber = parentID
-      ? this.sceneGraph.getIndex(parentID)
-      : undefined
-    return this.system.getElementByTagName(tag, parentNumber)
+    return this.system.getElementsByType(type, this._resolveOptions(options))
   }
 
-  public async getElementByName(
+  public async getElementsByName(
     name: string,
-    parentID?: IDType
+    options?: IQueryOptions
   ): Promise<IDType[]> {
-    const parentNumber = parentID
-      ? this.sceneGraph.getIndex(parentID)
-      : undefined
-    return this.system.getElementByName(name, parentNumber)
+    return this.system.getElementsByName(name, this._resolveOptions(options))
+  }
+
+  private _resolveOptions(options?: IQueryOptions) {
+    if (!options?.rootId) {
+      return { includeRoot: options?.includeRoot }
+    }
+
+    const rootIndex = this.sceneGraph.getIndex(options.rootId)
+    if (rootIndex < 0) {
+      throw new Error(`[QueryService] Root node not found: ${options.rootId}`)
+    }
+
+    return {
+      rootIndex,
+      includeRoot: options.includeRoot,
+    }
   }
 }

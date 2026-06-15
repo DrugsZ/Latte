@@ -1,7 +1,7 @@
 import { Channels, type IUndoRedoService } from '@latte-js/bean'
 
 import { getHistoryManager } from '../transactions/transactionRegistry'
-import { service, ServiceBase, type IContext } from './serviceBase'
+import { Service, ServiceBase, type IContext } from './serviceBase'
 
 import {
   MutationPolicyKind,
@@ -15,7 +15,7 @@ const undoRedoMutationPolicies: MutationPolicyMap = {
   canRedo: { kind: MutationPolicyKind.Readonly },
 }
 
-@service({ mutations: undoRedoMutationPolicies })
+@Service({ mutations: undoRedoMutationPolicies })
 export class UndoRedoService extends ServiceBase implements IUndoRedoService {
   public static readonly name = Channels.UndoRedo
 
@@ -24,18 +24,26 @@ export class UndoRedoService extends ServiceBase implements IUndoRedoService {
   }
 
   public async undo() {
-    return getHistoryManager(this.sceneGraph).undo(this.currentSessionId)
+    return getHistoryManager(this.sceneGraph, this.mutationAuthority).undo(
+      this.currentSessionId
+    )
   }
 
   public async redo() {
-    return getHistoryManager(this.sceneGraph).redo(this.currentSessionId)
+    return getHistoryManager(this.sceneGraph, this.mutationAuthority).redo(
+      this.currentSessionId
+    )
   }
 
   public async canUndo() {
-    return getHistoryManager(this.sceneGraph).canUndo(this.currentSessionId)
+    return getHistoryManager(this.sceneGraph, this.mutationAuthority).canUndo(
+      this.currentSessionId
+    )
   }
 
   public async canRedo() {
-    return getHistoryManager(this.sceneGraph).canRedo(this.currentSessionId)
+    return getHistoryManager(this.sceneGraph, this.mutationAuthority).canRedo(
+      this.currentSessionId
+    )
   }
 }

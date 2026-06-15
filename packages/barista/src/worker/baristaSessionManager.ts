@@ -23,9 +23,12 @@ export class BaristaSessionManager implements ISceneGraphContextScope {
     }
 
     const sceneGraph = new SceneGraph(buffer, allocBuffer, heapBuffer)
+    const mutationAuthority = sceneGraph.createMutationAuthority(
+      `BaristaSession:${sessionId}`
+    )
     sceneGraph.setMutationGuardEnabled(true)
 
-    const session = new BaristaSession(sessionId, sceneGraph)
+    const session = new BaristaSession(sessionId, sceneGraph, mutationAuthority)
     this._sessions.set(sessionId, session)
     return session
   }
@@ -44,6 +47,7 @@ export class BaristaSessionManager implements ISceneGraphContextScope {
     return {
       currentSessionId: session.id,
       sceneGraph: session.sceneGraph,
+      mutationAuthority: session.mutationAuthority,
     }
   }
 
@@ -87,5 +91,9 @@ export class BaristaSessionManager implements ISceneGraphContextScope {
 
   public get sceneGraph() {
     return this._currentContext.sceneGraph
+  }
+
+  public get mutationAuthority() {
+    return this._currentContext.mutationAuthority
   }
 }

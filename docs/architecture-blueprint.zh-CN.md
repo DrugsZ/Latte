@@ -90,7 +90,7 @@ graph TD
     end
 
     subgraph Platform["Main-thread Platform"]
-        Syrup["@latte-js/syrup<br/>EditorHost / DI / Command / Menu / Keybinding / Input"]
+        Syrup["@latte-js/syrup<br/>EditorHost / Input / Command / future DI"]
     end
 
     subgraph Product["Built-in Product Contributions"]
@@ -162,18 +162,18 @@ graph TD
 | `espresso` | 数据内核 | SceneGraph、NodeCursor、SoA、SAB、临时 append-only heap/blob contract、loader/serializer | 业务 service、UI 状态、插件 API、完整 native allocator |
 | `barista` | worker 权威执行层 | Document/Node/Transform/Style/UndoRedo service、systems、MutationGate、HistoryManager、未来 native compute bridge | DOM、React、主线程 input、插件公开 facade |
 | `native` | 未来可选性能层 | Rust/WASM storage、geometry、snapshot/diff、replay kernels | 主线程 API、插件 API、业务 service 权威入口 |
-| `syrup` | 主线程平台层 | EditorHost、Input、Command、Menu、Keybinding、DI、ServiceCollection、本地 service 注册 | 具体工具业务、document 权威写入、插件稳定 API 全量 |
+| `syrup` | 主线程平台层 | EditorHost、Input、Command、Menu、Keybinding、未来 DI/ServiceCollection、本地 service 注册；平台能力必须由真实消费者驱动 | 具体工具业务、document 权威写入、插件稳定 API 全量 |
 | `crema` | runtime 组装层 | 启动 worker、初始化 editor、注册本地和 RPC service、load document、projection sync | 具体业务工具、SoA 数据结构细节 |
 | `counter` | workbench/内置产品贡献 | SelectionService、ToolService、SelectTool、内置命令、内置面板逻辑 | 平台 DI 内核、worker mutation 实现 |
 | `art` | 渲染和命中层 | renderer、camera、hit test、只读 projection 绘制 | document 写入、事务、history |
-| `milk` | UI 组件层 | React 组件、面板、控件、hooks | document 写入权威、worker 内部 service |
+| `milk` | UI 组件层 | React 组件、面板、控件、hooks；真实面板接入前只作为未来 UI 包占位 | document 写入权威、worker 内部 service |
 | `api` | 未来插件 facade | `ctx.nodes`、`ctx.commands`、`ctx.selection`、`ctx.workspace` | 内部 `Editor.getService()`、内部 service 实例直接泄漏 |
 
 ## 4. Syrup、Counter、Crema 的边界
 
 ### 4.1 Syrup：主线程平台，不是产品业务全集
 
-`syrup` 应该类似 VSCode 的 platform/workbench infrastructure：
+`syrup` 长期应该类似 VSCode 的 platform/workbench infrastructure，但当前阶段只应推进真实消费者已经需要的子集：
 
 - `CommandService`
 - `KeybindingService`
@@ -185,6 +185,8 @@ graph TD
 - `EditorHost`
 - local service registration
 - worker RPC service registration
+
+其中 `ServiceCollection`、`InstantiationService`、`ContextKeyService`、`MenuService` 和 `KeybindingService` 不应作为孤立模块继续扩张。它们必须由 P0/P1 的真实工具、属性面板、命令或菜单入口消费后再固化。
 
 `syrup` 不应该知道“选择工具如何画框”“矩形工具如何创建节点”“属性面板如何改 fill”。
 这些属于产品贡献。
@@ -432,6 +434,8 @@ Worker owns mutation.
 
 ## 8. Service / RPC / DI 目标模型
 
+本节描述长期目标模型，不代表当前 P0/P1 应继续扩张 DI。当前执行顺序是先完成可交互编辑闭环，再让真实工具、属性面板、命令和菜单入口驱动 DI/ServiceCollection 的迁移。
+
 ### 8.1 注册模型
 
 ```text
@@ -471,11 +475,16 @@ commandService.registerCommand('latte.node.moveBy', accessor => {
 - 绕过 ServiceCollection。
 - 把 worker channel 与主线程 service 混在一个隐式全局对象里。
 
-目标：
+长期目标：
 
 - 由 `crema` 在 runtime startup 时创建并注册 RPC service proxy。
 - 内置 workbench/contrib 通过 DI 获取 service。
 - 外部插件通过未来 public API facade 获取稳定能力。
+
+当前阶段约束：
+
+- P0/P1 只允许引入真实闭环需要的最小注册/装配能力。
+- `ServiceCollection`、`ServicesAccessor`、ContextKey、Menu、Keybinding、ContributionRegistry 必须有真实消费者后再固化。
 
 ## 9. 插件 API 目标
 
@@ -606,23 +615,37 @@ worker 负责判断某个 service method 是否需要自动事务。
 
 ## 13. 当前架构风险和下一步
 
+当前阶段的最大风险不是终局方向错误，而是过早扩张平台层。`syrup` 的 DI、menu、keybinding、context menu 等能力只有在真实工具、属性面板、命令和插件入口消费时才能被验证。
+
+因此下一步不再以“实现更多平台基础设施”为 P0/P1 验收目标，而是先收敛一个可交互单文档编辑闭环，再把平台能力接入真实消费者。
+
 ### 13.1 P0
 
-- 已去掉 `Editor.hydrateDocument(data)` 中无 `idMap` 时主线程 loader 写 graph 的长期主路径。
-- 已淘汰 `syrup/services/proxies` 的全局 singleton proxy。
-- 已将 `Editor` 收窄并改名为 `EditorHost`，作为内部 host/service scope。
-- 已让 `crema` 负责创建 Worker、BaristaClient、Renderer、InputService，并注册 worker RPC services。
-- 保证 `apps/cafe` 仍然可运行、可见、无运行时错误。
+- 清理 `apps/src` 废弃树，避免旧架构继续污染 review。
+- 让 cafe/demo 跑通真实编辑闭环：矩形工具创建节点、点选、拖动、属性面板修改、undo/redo、save/load。
+- 最小 `StyleService` 接入属性面板和 renderer。
+- 主线程 projection graph 开启只读写入纪律，防止绕过 worker authority。
+- 端到端验证以“用户能完成什么操作”为准，而不是以平台模块是否编译为准。
 
 ### 13.2 P1
 
-- 将 `counter` 明确整理为 workbench/contrib 包。
-- 给 `SelectionService`、`ToolService`、commands 使用 DI 注册。
-- 让 command handler 通过 `ServicesAccessor` 获取 service。
-- 补充 `StyleService`，避免样式变更绕过统一 mutation/history。
-- 建立 public API facade 草案。
+- 加固 P0 闭环：projection version/id map、derived freshness、metadata shared pointer、delete/reparent history。
+- 完整化 `StyleService`、`NodeService`、`QueryService`，让属性面板、renderer、serializer 和 history 读写一致。
+- 固化 release gate 和 cafe smoke/e2e。
+- 保持 `counter` 作为 workbench/contrib 包，但暂不强推完整 DI/Contribution 迁移。
 
 ### 13.3 P2
+
+- Figma 对齐的几何与布局：constraints、Frame resize、auto layout 子集、group auto-bounds。
+- 自由变换继续保持独立，测试以 rendered world corners 或明确布局结果为准。
+
+### 13.4 P3
+
+- 在 P0/P1 有真实消费者后，再推进 Typed DI / ServiceCollection。
+- ContextKey、Configuration、Contribution Registry、Menu、Keybinding 必须绑定真实工具、属性面板、命令或插件入口。
+- 建立 public API facade 草案，但不暴露内部 `EditorHost.getService()` 或 raw service instance。
+
+### 13.5 P4+
 
 - 设计 extension host 和 sandbox。
 - 建立 command 权限、插件贡献点、manifest schema。

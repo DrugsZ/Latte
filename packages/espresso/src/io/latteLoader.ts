@@ -1,4 +1,9 @@
-import { NodeType, type ILatteFile, type ILatteNode } from '@latte-js/bean'
+import {
+  NodeType,
+  type IDType,
+  type ILatteFile,
+  type ILatteNode,
+} from '@latte-js/bean'
 
 import { DIRTY_LOCAL_MATRIX, DIRTY_TREE, NULL_INDEX } from '../data/config'
 import { NodeCursor } from '../data/nodeCursor'
@@ -18,13 +23,20 @@ export class LatteLoader {
     this._node = new NodeCursor(_graph, NULL_INDEX)
   }
   public load(json: ILatteFile) {
+    if (this._graph.getMutationRecorder()) {
+      throw new Error(
+        '[LatteLoader] load must run outside history mutation recording'
+      )
+    }
+
     const nodes = json.elements
 
-    const groups = new Map<string, ILatteNode[]>()
+    const groups = new Map<string, { node: ILatteNode; order: number }[]>()
 
     const idMap = new Map<string, number>()
 
-    for (const node of nodes) {
+    for (let order = 0; order < nodes.length; order++) {
+      const node = nodes[order]!
       const idx = this.convertNode(node)
       idMap.set(node.guid, idx)
 
@@ -33,25 +45,33 @@ export class LatteLoader {
         if (!groups.has(pid)) {
           groups.set(pid, [])
         }
-        groups.get(pid)!.push(node)
+        groups.get(pid)!.push({ node, order })
       }
     }
 
     for (const [parentIdStr, childrenNodes] of groups) {
-      const parentIdx = idMap.get(parentIdStr) ?? NULL_INDEX
+      const parentId = parentIdStr as IDType
+      const parentIdx = idMap.get(parentId) ?? this._graph.getIndex(parentId)
       if (parentIdx === NULL_INDEX) continue
 
       childrenNodes.sort((a, b) => {
-        const aPosition = Number(a.parentIndex!.position)
-        const bPosition = Number(b.parentIndex!.position)
+        const aPosition = Number(a.node.parentIndex!.position)
+        const bPosition = Number(b.node.parentIndex!.position)
         if (Number.isFinite(aPosition) && Number.isFinite(bPosition)) {
-          return aPosition - bPosition
+          return aPosition - bPosition || a.order - b.order
         }
-        return a.parentIndex!.position.localeCompare(b.parentIndex!.position)
+        if (Number.isFinite(aPosition) !== Number.isFinite(bPosition)) {
+          return Number.isFinite(aPosition) ? -1 : 1
+        }
+        return (
+          a.node.parentIndex!.position.localeCompare(
+            b.node.parentIndex!.position
+          ) || a.order - b.order
+        )
       })
 
       for (let i = 0; i < childrenNodes.length; i++) {
-        const childNode = childrenNodes[i]
+        const childNode = childrenNodes[i].node
         const childIdx = idMap.get(childNode.guid)!
 
         this._graph.appendChild(parentIdx, childIdx)

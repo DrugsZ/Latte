@@ -6,29 +6,34 @@ import {
   type InputMouseEvent,
   type InputWheelEvent,
 } from '@latte-js/syrup'
+import { Disposable, toDisposable } from '@latte-js/kit'
 
 import type { ITool } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
 
-export class ToolService implements IInputMouseHandler {
+export class ToolService extends Disposable implements IInputMouseHandler {
   public readonly id = 'tool-service'
   public priority = Number.MAX_SAFE_INTEGER
 
   private _tools: Map<string, ITool> = new Map()
   private _activeTool: ITool | null = null
-  private readonly _commandDisposables: (() => void)[] = []
 
   constructor(private readonly _editor: EditorHost<SceneGraph>) {
-    this._commandDisposables.push(
-      CommandsRegistry.registerCommand(
-        'editor.tool.active',
-        this._handleActivateToolCommand.bind(this)
+    super()
+    this._register(
+      toDisposable(
+        CommandsRegistry.registerCommand(
+          'editor.tool.active',
+          this._handleActivateToolCommand.bind(this)
+        )
       )
     )
-    this._commandDisposables.push(
-      CommandsRegistry.registerCommand(
-        'editor.tool.deactivate',
-        this.deactivateCurrentTool.bind(this)
+    this._register(
+      toDisposable(
+        CommandsRegistry.registerCommand(
+          'editor.tool.deactivate',
+          this.deactivateCurrentTool.bind(this)
+        )
       )
     )
   }
@@ -87,9 +92,7 @@ export class ToolService implements IInputMouseHandler {
 
   public dispose() {
     this.deactivateCurrentTool()
-    for (const dispose of this._commandDisposables.splice(0)) {
-      dispose()
-    }
+    super.dispose()
   }
 
   get activeTool(): ITool | null {

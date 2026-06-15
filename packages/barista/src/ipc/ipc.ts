@@ -12,6 +12,9 @@ import {
   LATTE_RPC_PROTOCOL_VERSION,
   type IServiceMap,
 } from '@latte-js/bean'
+import type { IDisposable } from '@latte-js/kit'
+
+export type { IDisposable }
 
 export interface IChannel {
   call<T>(command: string, ...args: any[]): Promise<T> | void // if end with $, is mean fast, does not need return value to client
@@ -28,16 +31,15 @@ export interface IServerChannel {
 }
 
 export interface IChannelClient {
-  getChannel<T extends keyof IServiceMap>(channelName: T): IChannel
-  getChannel(channelName: string): IChannel
+  getChannel<T extends keyof IServiceMap>(
+    channelName: T,
+    sessionId?: string | null
+  ): IChannel
+  getChannel(channelName: string, sessionId?: string | null): IChannel
 }
 
 export interface IChannelServer {
   registerChannel(channelName: string, channel: IServerChannel): void
-}
-
-export interface IDisposable {
-  dispose(): void
 }
 
 /**

@@ -21,10 +21,15 @@ export class BaristaClient {
     this._worker = worker
   }
 
-  public getService<T extends Channels>(channelId: T): IServiceMap[T] {
-    return toService(
-      this._channelClient.getChannel(channelId)
-    ) as IServiceMap[T]
+  public getService<T extends Channels>(
+    channelId: T,
+    sessionId?: string | null
+  ): IServiceMap[T] {
+    const channel =
+      arguments.length >= 2
+        ? this._channelClient.getChannel(channelId, sessionId)
+        : this._channelClient.getChannel(channelId)
+    return toService(channel) as IServiceMap[T]
   }
 
   public setTargetSession(sessionId: string | null) {

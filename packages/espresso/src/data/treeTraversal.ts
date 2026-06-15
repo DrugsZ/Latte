@@ -55,12 +55,12 @@ export function* walkTreeIndices(
     visited.add(current)
     yield current
 
-    for (const child of iterateChildIndices(
-      graph,
-      current,
-      `${source} child`
-    )) {
-      stack.push(child)
+    const children = Array.from(
+      iterateChildIndices(graph, current, `${source} child`)
+    )
+
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      stack.push(children[i])
     }
   }
 }

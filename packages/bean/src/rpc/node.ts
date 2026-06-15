@@ -2,15 +2,36 @@ import { type IDType, type NodeType } from '../schema'
 
 import { type IDisposable } from './ipc'
 
+export interface ICreateNodeOptions {
+  readonly id: IDType
+  readonly type: NodeType
+  readonly x?: number
+  readonly y?: number
+  readonly width?: number
+  readonly height?: number
+}
+
+export type NodeChange = [id: IDType, index: number]
+
+export interface INodeLifecycleEvent {
+  readonly nodes: NodeChange[]
+}
+
+export interface INodeMoveEvent {
+  readonly nodes: NodeChange[]
+}
+
 export interface INodeService {
-  create(id: IDType, type: NodeType, x: number, y: number): Promise<IDType>
-  remove(id: IDType): Promise<void>
-  removeChild(child: IDType): Promise<void>
-  insertAfter(parent: IDType, child: IDType, ref?: IDType): Promise<void>
-  onCreate(
-    callback: (nodes: [id: IDType, index: number][]) => void
-  ): IDisposable
-  onDelete(
-    callback: (nodes: [id: IDType, index: number][]) => void
-  ): IDisposable
+  createNode(options: ICreateNodeOptions): Promise<IDType>
+  appendChild(parent: IDType, child: IDType): Promise<IDType>
+  insertBefore(
+    parent: IDType,
+    child: IDType,
+    ref: IDType | null
+  ): Promise<IDType>
+  removeChild(parent: IDType, child: IDType): Promise<IDType>
+  deleteNode(id: IDType): Promise<void>
+  onDidCreateNode(callback: (event: INodeLifecycleEvent) => void): IDisposable
+  onDidDeleteNode(callback: (event: INodeLifecycleEvent) => void): IDisposable
+  onDidMoveNode(callback: (event: INodeMoveEvent) => void): IDisposable
 }

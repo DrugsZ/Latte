@@ -1,39 +1,59 @@
 import { NodeType } from '@latte-js/bean'
 import { SceneGraph } from '@latte-js/espresso'
-import { EditorHost } from '@latte-js/syrup'
+import { EditorHost, LatteDocument } from '@latte-js/syrup'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ProjectionSyncController } from '../projectionSyncController'
 
-import type { IDType, ILatteFile, ISceneDirtyPayload } from '@latte-js/bean'
+import type {
+  IDType,
+  INodeLifecycleEvent,
+  ISceneDirtyPayload,
+} from '@latte-js/bean'
 
 const createHarness = () => {
   const editor = new EditorHost(new SceneGraph())
   const requestRender = vi.fn()
-  const disposables = [vi.fn(), vi.fn(), vi.fn()]
-  const createListeners: ((nodes: [IDType, number][]) => void)[] = []
-  const deleteListeners: ((nodes: [IDType, number][]) => void)[] = []
-  const dirtyListeners: ((
-    payload: IDType[] | Partial<ISceneDirtyPayload>
-  ) => void)[] = []
+  const disposables: ReturnType<typeof vi.fn>[] = []
+  const createListeners: {
+    sessionId: string | null
+    listener: (event: INodeLifecycleEvent) => void
+  }[] = []
+  const deleteListeners: {
+    sessionId: string | null
+    listener: (event: INodeLifecycleEvent) => void
+  }[] = []
+  const dirtyListeners: {
+    sessionId: string | null
+    listener: (payload: IDType[] | Partial<ISceneDirtyPayload>) => void
+  }[] = []
 
-  const nodeService = {
-    onCreate: vi.fn((listener: (nodes: [IDType, number][]) => void) => {
-      createListeners.push(listener)
-      return { dispose: disposables[0] }
-    }),
-    onDelete: vi.fn((listener: (nodes: [IDType, number][]) => void) => {
-      deleteListeners.push(listener)
-      return { dispose: disposables[1] }
-    }),
+  const createDisposable = () => {
+    const dispose = vi.fn()
+    disposables.push(dispose)
+    return { dispose }
   }
-  const sceneService = {
-    onDirty: vi.fn(
-      (listener: (payload: IDType[] | Partial<ISceneDirtyPayload>) => void) => {
-        dirtyListeners.push(listener)
-        return { dispose: disposables[2] }
-      }
-    ),
+
+  const services = {
+    getNodeService: vi.fn((sessionId: string | null) => ({
+      onDidCreateNode: (listener: (event: INodeLifecycleEvent) => void) => {
+        createListeners.push({ sessionId, listener })
+        return createDisposable()
+      },
+      onDidDeleteNode: (listener: (event: INodeLifecycleEvent) => void) => {
+        deleteListeners.push({ sessionId, listener })
+        return createDisposable()
+      },
+      onDidMoveNode: vi.fn(),
+    })),
+    getSceneService: vi.fn((sessionId: string | null) => ({
+      onDirty: (
+        listener: (payload: IDType[] | Partial<ISceneDirtyPayload>) => void
+      ) => {
+        dirtyListeners.push({ sessionId, listener })
+        return createDisposable()
+      },
+    })),
   }
   editor.setRenderer({
     setGraph: vi.fn(),
@@ -49,11 +69,8 @@ const createHarness = () => {
     createListeners,
     deleteListeners,
     dirtyListeners,
-    projection: new ProjectionSyncController(
-      editor,
-      nodeService as any,
-      sceneService as any
-    ),
+    services,
+    projection: new ProjectionSyncController(editor, services as any),
   }
 }
 
@@ -64,22 +81,26 @@ describe('ProjectionSyncController', () => {
     const index = editor.graph.createNode(NodeType.RECTANGLE, 'test:rect')
 
     projection.start()
-    createListeners[0]([['test:rect', index]])
+    createListeners[0].listener({ nodes: [['test:rect', index]] })
 
     expect(editor.graph.getIndex('test:rect')).toBe(index)
     expect(projection.version).toBe(1)
 
-    deleteListeners[0]([['test:rect', index]])
+    deleteListeners[0].listener({ nodes: [['test:rect', index]] })
 
     expect(editor.graph.getIndex('test:rect')).toBe(-1)
     expect(projection.version).toBe(2)
   })
 
-  it('tracks dirty ids and requests a render for projection updates', () => {
+  it('tracks render and affected dirty ids and emits dirty events', () => {
     const { projection, requestRender, dirtyListeners } = createHarness()
+    const dirtyEvents: unknown[] = []
 
     projection.start()
-    dirtyListeners[0]({
+    projection.onDidMarkDirty(event => {
+      dirtyEvents.push(event)
+    })
+    dirtyListeners[0].listener({
       version: 1,
       ids: ['test:rect'],
       renderIds: ['test:rect'],
@@ -87,18 +108,29 @@ describe('ProjectionSyncController', () => {
       nodes: [{ id: 'test:rect', flags: 1 }],
     })
 
-    expect(projection.dirtyIds).toEqual(['test:rect'])
-    expect(projection.allDirtyIds).toEqual(['test:rect'])
+    expect(projection.renderDirtyIds).toEqual(['test:rect'])
+    expect(projection.affectedDirtyIds).toEqual(['test:rect'])
     expect(projection.dirtyNodes).toEqual([{ id: 'test:rect', flags: 1 }])
     expect(projection.version).toBe(1)
-    expect(requestRender).toHaveBeenCalledTimes(1)
+    expect(dirtyEvents).toEqual([
+      {
+        renderIds: ['test:rect'],
+        affectedIds: ['test:rect'],
+        nodes: [{ id: 'test:rect', flags: 1 }],
+      },
+    ])
+    expect(requestRender).not.toHaveBeenCalled()
   })
 
   it('keeps projection version for non-render dirty payloads without rendering', () => {
     const { projection, requestRender, dirtyListeners } = createHarness()
+    const dirtyEvents: unknown[] = []
 
     projection.start()
-    dirtyListeners[0]({
+    projection.onDidMarkDirty(event => {
+      dirtyEvents.push(event)
+    })
+    dirtyListeners[0].listener({
       version: 1,
       ids: [],
       renderIds: [],
@@ -106,21 +138,40 @@ describe('ProjectionSyncController', () => {
       nodes: [{ id: 'test:rect', flags: 32 }],
     })
 
-    expect(projection.dirtyIds).toEqual([])
-    expect(projection.allDirtyIds).toEqual(['test:rect'])
+    expect(projection.renderDirtyIds).toEqual([])
+    expect(projection.affectedDirtyIds).toEqual(['test:rect'])
     expect(projection.version).toBe(1)
+    expect(dirtyEvents).toEqual([
+      {
+        renderIds: [],
+        affectedIds: ['test:rect'],
+        nodes: [{ id: 'test:rect', flags: 32 }],
+      },
+    ])
     expect(requestRender).not.toHaveBeenCalled()
   })
 
-  it('applies loaded document projection and advances projection version', () => {
-    const { editor, projection } = createHarness()
-    const data = { elements: [] } as unknown as ILatteFile
+  it('applies loaded document id maps and advances projection version', () => {
+    const { editor, projection, requestRender } = createHarness()
     const idMap = new Map<IDType, number>([['test:doc', 0]])
-    expect(projection.applyLoadedDocument(data, idMap)).toEqual({
+    expect(projection.applyLoadedDocument(idMap, editor.graph)).toEqual({
       idMap,
-      activeRootId: undefined,
     })
     expect(editor.graph.getIndex('test:doc')).toBe(0)
+    expect(requestRender).not.toHaveBeenCalled()
+    expect(projection.version).toBe(1)
+  })
+
+  it('applies loaded document id maps to an explicit inactive graph without rendering', () => {
+    const { editor, projection, requestRender } = createHarness()
+    const graph = new SceneGraph()
+    const idMap = new Map<IDType, number>([['test:doc', 0]])
+
+    projection.applyLoadedDocument(idMap, graph)
+
+    expect(graph.getIndex('test:doc')).toBe(0)
+    expect(editor.graph.getIndex('test:doc')).toBe(-1)
+    expect(requestRender).not.toHaveBeenCalled()
     expect(projection.version).toBe(1)
   })
 
@@ -128,10 +179,31 @@ describe('ProjectionSyncController', () => {
     const { projection, disposables } = createHarness()
 
     projection.start()
+    const workerDisposables = [...disposables]
     projection.dispose()
 
-    disposables.forEach(dispose => {
+    workerDisposables.forEach(dispose => {
       expect(dispose).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('rebinds worker listeners when the active document changes', () => {
+    const { editor, projection, createListeners, disposables, services } =
+      createHarness()
+    const doc = new LatteDocument('doc:a', 'latte://doc-a', new SceneGraph())
+
+    projection.start()
+    expect(services.getNodeService).toHaveBeenLastCalledWith(null)
+
+    editor.addDocument(doc)
+
+    expect(disposables[0]).toHaveBeenCalledTimes(1)
+    expect(disposables[1]).toHaveBeenCalledTimes(1)
+    expect(disposables[2]).toHaveBeenCalledTimes(1)
+    expect(services.getNodeService).toHaveBeenLastCalledWith('doc:a')
+    expect(createListeners.map(entry => entry.sessionId)).toEqual([
+      null,
+      'doc:a',
+    ])
   })
 })

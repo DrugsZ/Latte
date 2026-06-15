@@ -30,14 +30,14 @@ export class ChannelServer implements IChannelServer {
   public readonly onMessage = this._onMessage.event
   private _messageQueue: Promise<void> = Promise.resolve()
 
-  protected _onBeforeCall: ((sessionId: string) => void) | null = null
+  protected _onValidateSession: ((sessionId: string) => void) | null = null
 
   constructor(private _protocol: IMessagePassingProtocol) {
     this._protocol.onMessage(this.handleMessage.bind(this))
   }
 
-  public onBeforeCall(callback: (sessionId: string) => void) {
-    this._onBeforeCall = callback
+  public onValidateSession(callback: (sessionId: string) => void) {
+    this._onValidateSession = callback
   }
 
   public registerChannel(name: string, channel: IServerChannel) {
@@ -66,9 +66,9 @@ export class ChannelServer implements IChannelServer {
       return
     }
 
-    if ('sessionId' in msg && this._onBeforeCall) {
+    if ('sessionId' in msg && this._onValidateSession) {
       try {
-        this._onBeforeCall(msg.sessionId || '')
+        this._onValidateSession(msg.sessionId || '')
       } catch (error) {
         this._sendError(
           msg,

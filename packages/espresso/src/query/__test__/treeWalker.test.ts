@@ -16,6 +16,25 @@ describe('walkTree', () => {
     expect(Array.from(walkTree(graph, parent))).toEqual([parent, child])
   })
 
+  it('walks siblings in document order', () => {
+    const graph = new SceneGraph()
+    const parent = graph.createNode(NodeType.GROUP, 'test:p')
+    const first = graph.createNode(NodeType.RECTANGLE, 'test:first')
+    const second = graph.createNode(NodeType.RECTANGLE, 'test:second')
+    const third = graph.createNode(NodeType.RECTANGLE, 'test:third')
+
+    graph.appendChild(parent, first)
+    graph.appendChild(parent, second)
+    graph.appendChild(parent, third)
+
+    expect(Array.from(walkTree(graph, parent))).toEqual([
+      parent,
+      first,
+      second,
+      third,
+    ])
+  })
+
   it('detects sibling cycles', () => {
     const graph = new SceneGraph()
     const parent = graph.createNode(NodeType.GROUP, 'test:p')

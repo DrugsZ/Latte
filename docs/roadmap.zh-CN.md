@@ -183,6 +183,25 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 - 过早引入 native allocator 会放大 SAB grow、调试、source map、CI、crossOriginIsolation 和 npm 发布复杂度。
 - 保持 `SceneGraph`/`NodeCursor`/service contract 稳定，未来才能平滑替换内部实现。
 
+### 2.11 先收敛，再扩张
+
+当前阶段的优先级不是继续扩张平台层，而是先跑通一个可交互、可保存、可撤销的单文档编辑闭环。
+
+执行规则：
+
+- 新增平台基础设施必须绑定真实消费者；没有消费者的 DI、Contribution、ContextKey、Menu、Keybinding 能力只进入 roadmap，不进入主干实现。
+- 给 AI 或贡献者拆任务时，优先使用端到端目标，而不是孤立模块目标。
+- 用“用户新增了什么可操作能力”衡量进度，而不是新增了多少模块、文档或代码行。
+- `apps/src` 这类旧架构废弃树应优先清理，避免继续污染搜索、review 和架构判断。
+- `milk` 在真实属性面板、工具栏或 inspector 接入前，只作为未来 UI 包占位，不计入已完成产品能力。
+
+推荐任务表达：
+
+```text
+优先：让矩形工具能在画布创建矩形，并支持选择、拖动、属性修改、undo/redo、save/load。
+避免：单独实现一个没有真实入口消费的 ContextMenuService、InstantiationService 或 ContributionRegistry。
+```
+
 ## 3. 当前基线
 
 ### 3.1 已形成的基础
@@ -191,16 +210,18 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 - `@latte-js/espresso`：SAB + SoA SceneGraph、NodeCursor、loader/serializer、临时 append-only shared heap/blob pointer columns。
 - `@latte-js/barista`：worker engine、ChannelServer/Client、MutationGate、TransactionManager、HistoryManager、UndoRedoService、Transform/Matrix/AABB/Query systems。
 - `@latte-js/crema`：EditorRuntime、Worker/BaristaClient/Renderer/Input 装配、ProjectionSyncController、TransformInteractionController。
-- `@latte-js/syrup`：EditorHost、Document、Input 抽象、Command、Menu、Keybinding、DI/Instantiation。
+- `@latte-js/syrup`：EditorHost、Document、Input 抽象，以及 Command、Menu、Keybinding、DI/Instantiation 等平台原型；其中平台原型当前必须等待真实消费者校准。
 - `@latte-js/counter`：内置 workbench/contrib、SelectionService、ToolService、SelectionTool。
 - `@latte-js/art`：只读 Renderer、Camera、HitTester、RTree、fitToContent。
-- `@latte-js/milk`：React UI 组件与面板承载层。
+- `@latte-js/milk`：未来 React UI 组件与面板承载层；当前不能视为已完成产品 UI 能力。
 - `apps/cafe`：集成样例、SAB/COOP/COEP smoke target。
 - TypeScript 工具链：type-check 已切到 Go native `tsgo`；JS `typescript`
   仍作为 `tsup`、Vite、ESLint 等工具的 API/peer dependency 保留。
 
 ### 3.2 仍缺的关键能力
 
+- 可交互单文档编辑闭环：创建矩形、选择、拖动、属性修改、undo/redo、save/load。
+- `apps/src` 废弃树清理，避免旧架构继续干扰 review。
 - 完整稳定的 release gate：type-check/test/build/e2e/license/diff-check 一键可信。
 - Projection version、graph switch、ID map、metadata shared pointer 的一致性测试。
 - delete/reparent 可逆历史。
@@ -212,68 +233,84 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 - 性能基线与生产部署模板。
 - Rust/WASM native engine 的基线评估、构建发布策略和替换边界。
 
-## 4. P0：收敛当前架构到可发布内核
+## 4. P0：可交互单文档编辑闭环
 
 ### 目标
 
-把当前 worker 写入、只读 projection、事务/历史、transform 的基础做成可 review、可测试、可发布的内核基线。
+在现有 worker authority、SAB projection、renderer 和 workbench 基础上，先跑通一个真实用户可验证的单文档编辑器闭环。
+
+这一步的价值不是“功能多”，而是让 barista / espresso / crema / counter / art 第一次接受真实交互压力检验。后续 DI、Contribution、插件和布局系统都必须建立在这个闭环之上。
 
 ### 要做什么
 
-1. Release gate 固化
-   - 固定入口：`pnpm release:check`。
-   - 覆盖：license metadata、lint、type-check、unit tests、`apps/cafe` build、Playwright browser setup、smoke/e2e、`git diff --check`。
-   - CI 使用同一个入口，避免本地 release gate 和 GitHub Actions 漂移。
+1. 清理旧架构噪音
+   - 移除或隔离 `apps/src` 废弃树。
+   - 明确 `milk` 当前是未来 UI 包占位，不把空壳计入产品完成度。
+   - 暂停新增没有真实消费者的平台基础设施。
 
-2. Espresso 稳定性
-   - serializer、nodeTypeConversion、SceneGraph、NodeCursor 测试稳定通过。
-   - external blank SAB 初始化有防御逻辑。
-   - tree traversal 有 cycle/depth guard。
+2. Cafe / demo 接线 Workbench
+   - cafe 首屏可见，可创建 editor runtime。
+   - Workbench 能激活选择工具和矩形工具。
+   - 矩形工具可以在画布创建一个 rectangle 节点。
+   - 创建节点必须走 worker `NodeService` / mutation policy / projection sync。
 
-3. Projection 一致性
-   - worker load/create/delete 后主线程 ID map 可同步。
-   - document switch/load/close 清理 projection state。
-   - dirty ids、scene version、render request 时序有测试约定。
+3. 基础选择与拖动
+   - 点选矩形后有 selection state 和基础 selection overlay。
+   - 拖动矩形走 `TransformInteractionController` / `TransformService`。
+   - 拖动可撤销，且连续拖动只产生合理 history entry。
 
-4. History 边界
-   - `TransactionManager` 只做事务生命周期。
-   - `HistoryManager` 管 undo/redo 栈和 inverse records。
-   - undo/redo replay 不直接读写 SAB，统一走 mutation applier -> NodeCursor。
-   - 在 delete/reparent 可逆快照完成前，禁止把不支持的结构变更放进 history。
+4. 最小属性面板
+   - 属性面板可编辑 `x/y/width/height/name/fill/opacity` 的最小子集。
+   - 手动输入走 atomic mutation。
+   - scrub/拖拽数值走 begin/update/commit session mutation。
+   - 属性变更统一进入 worker，不能主线程直接写 graph。
 
-5. Transform 基线
-   - move/rotate/scale 使用 world target 与 snapshot 计算。
-   - 多层嵌套、旋转父级、非等比缩放的渲染角点与预期一致。
-   - 高频交互使用 target-from-snapshot，不叠加逐帧增量。
+5. 最小 StyleService
+   - `fill/stroke/name/opacity/visible/locked/cornerRadius` 先实现可用子集。
+   - NodeCursor 写入、dirty、history record 完整。
+   - renderer 和属性面板能读到一致结果。
 
-6. 文档与开源治理
-   - 根 README、中文 README、包 README、apps README 与当前架构一致。
-   - 贡献指南更新 worker 写入、mutation policy、测试要求。
-   - 包级 license 和 README 许可证矩阵一致。
+6. Undo/Redo 与保存加载
+   - create、transform、style/property edit 可 undo/redo。
+   - save/load 后节点、层级、基础样式和 id map 可恢复。
+   - 删除/reparent 如果未完成完整 history，就必须显式受限或 `writeNoHistory`，不能伪装成完整可撤销能力。
+
+7. 主线程 projection 纪律
+   - 主线程 projection graph 开启 readonly/mutation guard。
+   - 主线程只允许 projection sync 更新 id map 和 renderer readback。
+   - 新增主线程 document model 写入必须失败或被测试捕获。
+
+8. 最小端到端验证
+   - 用集成测试或 Playwright 覆盖：创建矩形 -> 选择 -> 拖动 -> 属性修改 -> undo/redo -> save/load。
+   - `pnpm type-check`、相关 unit tests、cafe build、`git diff --check` 作为基本 gate。
 
 ### 为什么
 
-P0 是后续所有能力的地基。如果当前内核不能稳定加载、渲染、变换、撤销和回归测试，那么 layout、插件、协同都会把风险放大。
+没有这个闭环，DI、Contribution、插件、布局、协同都缺少真实反馈回路。平台代码会看起来完整，但无法证明它解决了真实编辑器问题。
 
 ### 交付物
 
-- 稳定通过的基础测试与 CI gate。
-- 当前架构 README 和详细 RoadMap。
-- worker-only write / readonly projection / history separation 的测试和文档。
+- 可运行 cafe/demo 编辑闭环。
+- 最小矩形工具、选择、拖动、属性面板、StyleService。
+- create/transform/style 的 undo/redo 与 save/load 验证。
+- `apps/src` 清理结果。
+- 主线程 readonly projection guard。
 
 ### 验收标准
 
 - Cafe 首屏可见，无 pageerror。
 - `crossOriginIsolated === true`，`SharedArrayBuffer` 可用。
-- Canvas 非空白。
-- 全量 type-check、unit test、cafe build、license check 通过。
+- 用户能完成：创建矩形、选择、拖动、属性修改、undo/redo、保存加载。
+- Canvas 非空白，且渲染结果能响应 worker mutation。
 - 主线程没有新增 document model 写入路径。
+- 新增平台基础设施必须至少有一个真实产品功能消费。
+- 相关 type-check、unit test、cafe build、diff-check 通过。
 
-## 5. P1：投影、样式与结构变更闭环
+## 5. P1：编辑闭环加固与数据一致性
 
 ### 目标
 
-让主线程读取 worker 写入后的可信投影，并补齐常见编辑操作的 service/API 边界。
+在 P0 的真实编辑闭环基础上，加固 projection、derived data、metadata、history 和常见 service/API 边界。
 
 ### 要做什么
 
@@ -297,46 +334,45 @@ P0 是后续所有能力的地基。如果当前内核不能稳定加载、渲�
    - 禁止 wrapper-private metadata Map 成为权威数据。
    - 当前 JS heap/blob 只做 append-only + tombstone release，不在 P1 里扩展成完整 allocator。
 
-4. Typed DI / ServiceCollection
-   - 在 `syrup` 中建立 VSCode 风格的 `ServiceIdentifier<T>`、`ServiceCollection`、`ServicesAccessor` 和基础 `InstantiationService`。
-   - 把 `EditorHost.registerService(string, unknown)` 收敛为内部过渡 API，不作为插件或长期平台 API 暴露。
-   - 由 `crema` 在 runtime startup 时显式注册本地 service 与 worker RPC proxy：`IInputService`、`ICommandService`、`INodeService`、`ITransformService`、`IStyleService`、`IDocumentService`、`IUndoRedoService` 等。
-   - `counter/workbench`、command handler、tool 和未来 public facade 通过 `ServicesAccessor` 获取能力，不直接依赖 channel string 或全局 singleton。
-   - RPC proxy 仍由 `baristaClient.getService(Channels.X)` 创建，但注册进主线程平台时必须映射成 typed service identifier。
-
-5. StyleService
+4. StyleService 完整化
    - fill/stroke/name/opacity/visibility/lock/cornerRadius 等修改走 worker。
    - NodeCursor 写入、dirty、history record 完整。
    - 高频样式 preview 与 commit 语义分开。
+   - 属性面板、renderer、serializer、history 读写一致。
 
-6. NodeService
+5. NodeService
    - create/delete/reparent/insert/reorder 的 RPC 与 mutation policy。
    - delete/reparent 增加 serialized node snapshot 与 sibling order inverse。
    - 不支持历史的结构操作必须显式 `writeNoHistory` 或拒绝。
 
-7. QueryService
+6. QueryService
    - bounds、world matrix、children、ancestor、descendant query。
    - 只读 RPC 可以后续并发化。
 
+7. Release gate 固化
+   - 固定入口：`pnpm release:check`。
+   - 覆盖：license metadata、lint、type-check、unit tests、`apps/cafe` build、Playwright smoke/e2e、`git diff --check`。
+   - CI 使用同一个入口，避免本地 release gate 和 GitHub Actions 漂移。
+
 ### 为什么
 
-Figma 类编辑器最容易坏在“主线程看见一套数据，worker 拥有另一套数据”。P1 要解决的就是数据可见性、ID 映射、metadata 和常规编辑 API 的一致性。
+P0 证明编辑器能用，P1 解决“能用以后是否可靠”。Figma 类编辑器最容易坏在“主线程看见一套数据，worker 拥有另一套数据”。这一阶段要把数据可见性、ID 映射、metadata、history 和派生 freshness 变成可测试契约。
 
 ### 交付物
 
 - Projection sync 测试矩阵。
 - DerivedScheduler / pipeline barrier 设计与 freshness 回归测试。
-- Typed DI / ServiceCollection 第一版实现和迁移文档。
 - StyleService/NodeService/QueryService 文档和单测。
 - delete/reparent history 设计和第一版实现。
+- release gate 文档与 CI 入口。
 
 ### 验收标准
 
 - worker load/create/delete 后主线程 query 与 renderer 都能读到一致结果。
 - 读取 `worldMatrix/aabb` 的 service/query/notification 路径有明确 fresh 保证。
 - 普通 mutation、undo、redo、插件命令最终共用同一写入收口。
-- workbench/command 不再通过 channel string 获取 worker service。
 - 删除、reparent 不再出现 history 回放硬失败。
+- P0 编辑闭环在多次 save/load、undo/redo、切 active document 后仍稳定。
 
 ## 6. P2：Figma 对齐的几何与布局系统
 
@@ -396,26 +432,37 @@ Figma 用户对 Frame、Group、Component、Auto Layout 的预期非常强。仅
 
 ### 要做什么
 
-1. ContextKeyService
+1. 消费者先行
+   - 只有 P0/P1 的真实工具、属性面板、菜单或 command handler 证明需要时，才推进平台抽象。
+   - Typed DI / ServiceCollection 必须迁移至少两个真实消费者，例如 tool activation、property panel command、delete command、context menu。
+   - 没有真实消费者的 registry、context key、contribution point 不进入主干。
+
+2. Typed DI / ServiceCollection
+   - 在 `syrup` 中建立 VSCode 风格的 `ServiceIdentifier<T>`、`ServiceCollection`、`ServicesAccessor` 和基础 `InstantiationService`。
+   - 把 `EditorHost.registerService(string, unknown)` 收敛为内部过渡 API，不作为插件或长期平台 API 暴露。
+   - 由 `crema` 在 runtime startup 时显式注册本地 service 与 worker RPC proxy。
+   - `counter/workbench`、command handler、tool、property panel 和未来 public facade 通过 `ServicesAccessor` 获取能力。
+
+3. ContextKeyService
    - `canvasFocus`、`selectionCount`、`activeTool`、`readonly`、`hasDocument` 等上下文键。
    - 菜单、快捷键、命令 enablement 统一基于 when clause。
 
-2. ConfigurationService
+4. ConfigurationService
    - workspace/user/default configuration。
    - schema、默认值、变更事件。
    - 快捷键、工具、渲染质量、实验开关可配置。
 
-3. Contribution Registry
+5. Contribution Registry
    - commands、menus、keybindings、tools、panels、inspect providers、export providers。
    - 内置功能也通过 contribution 注册，做到 everything is contribution。
 
-4. Plugin manifest
+6. Plugin manifest
    - manifest schema。
    - activation events。
    - capabilities/permissions。
    - contribution points。
 
-5. Public extension API facade
+7. Public extension API facade
    - `ctx.commands`、`ctx.selection`、`ctx.nodes`、`ctx.styles`、`ctx.workspace`。
    - 插件作者不直接拿内部 `editor.getService()` 和 raw service 实例。
 
@@ -428,12 +475,14 @@ VSCode 的强大不只是插件数量，而是它把菜单、命令、快捷键�
 - ContextKey/Configuration/Contribution 的 syrup 实现和测试。
 - 插件 manifest RFC 与 schema。
 - 内置 counter contributions 迁移到 registry。
+- 至少两个真实内置功能迁移到 DI/Contribution，而不是只完成基础设施单测。
 
 ### 验收标准
 
 - 新增工具不需要改 app 入口硬编码。
 - 菜单和快捷键能根据 context 自动启用/隐藏。
 - 插件 API 不泄漏内部 service 实例。
+- DI/Contribution 的每个新增能力都有真实消费者和端到端验证。
 
 ## 8. P4：设计语义系统
 
@@ -669,9 +718,9 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 | `@latte-js/native`   | 未来可选，Rust/WASM 存储、几何、snapshot/diff、replay 热路径                                | AGPL-3.0-or-later + commercial |
 | `@latte-js/crema`    | editor runtime assembly、worker client、projection sync、transform interaction controller   | AGPL-3.0-or-later + commercial |
 | `@latte-js/art`      | renderer、camera、hit test、RTree、render backends                                          | AGPL-3.0-or-later + commercial |
-| `@latte-js/syrup`    | main-thread platform、DI、commands、menus、keybindings、input、future contribution registry | MIT                            |
-| `@latte-js/counter`  | built-in workbench/contrib、tools、selection、built-in commands                             | AGPL-3.0-or-later + commercial |
-| `@latte-js/milk`     | React UI components and panels                                                              | MIT                            |
+| `@latte-js/syrup`    | main-thread platform、commands、menus、keybindings、input、future DI/contribution registry；平台能力必须由真实消费者驱动 | MIT                            |
+| `@latte-js/counter`  | built-in workbench/contrib、tools、selection、built-in commands、最小属性面板业务            | AGPL-3.0-or-later + commercial |
+| `@latte-js/milk`     | 未来 React UI components and panels；真实面板接入前视为占位包                               | MIT                            |
 | `@latte-js/kit`      | shared runtime utilities                                                                    | MIT                            |
 | `apps/cafe`          | integration demo and smoke target                                                           | UNLICENSED demo app            |
 
@@ -682,6 +731,8 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 - 主线程直接写 document model。
 - 完整 worker-side SelectionContext。
 - delete/reparent 没有快照前进入 history。
+- 没有真实消费者的 DI、Contribution、ContextKey、Menu、Keybinding 扩张。
+- 在 P0 编辑闭环之前推进插件宿主或完整平台迁移。
 - 全项目热路径 Zod 校验。
 - 插件 raw SAB 访问。
 - 协同编辑。
@@ -704,6 +755,8 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 - [ ] selection 没有污染 document graph。
 - [ ] transform/layout 测试验证视觉角点或明确布局结果。
 - [ ] 新增外部输入边界有 runtime validation 计划或实现。
+- [ ] 新增平台基础设施至少有一个真实消费者；否则只进入 roadmap。
+- [ ] PR 的价值可以用用户可完成的新操作或端到端可靠性改进描述。
 - [ ] Rust/WASM 相关改动没有绕开 worker service、NodeCursor 和 projection contract。
 - [ ] README、package README、license、contribution docs 与实际架构一致。
 

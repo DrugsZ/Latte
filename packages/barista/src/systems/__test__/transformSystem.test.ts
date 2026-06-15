@@ -12,6 +12,7 @@ import {
   getHistoryManager,
   getTransactionManager,
 } from '../../transactions/transactionRegistry'
+import { TransactionLabel } from '../../transactions/transactionLabels'
 import { DirtyBatch } from '../../pipeline/dirtyBatch'
 import { MatrixSystem } from '../matrix'
 import { TransformSystem } from '../transform'
@@ -70,7 +71,7 @@ describe('TransformSystem', () => {
 
     const system = new TransformSystem(graph)
     const transactions = getTransactionManager(graph)
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
 
     system.moveBy(['test:rect'], [5, -2])
     expect(cursor.x).toBe(15)
@@ -92,7 +93,7 @@ describe('TransformSystem', () => {
 
     const system = new TransformSystem(graph)
     const transactions = getTransactionManager(graph)
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
     system.moveBy(['test:rect'], [40, 30])
     cursor.width = 200
 
@@ -114,7 +115,7 @@ describe('TransformSystem', () => {
     const system = new TransformSystem(graph)
     const transactions = getTransactionManager(graph)
     const history = getHistoryManager(graph)
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
     system.moveBy(['test:rect'], [40, 30])
     history.push(RESOURCE_ID, transactions.commit())
 
@@ -132,7 +133,7 @@ describe('TransformSystem', () => {
     const system = new TransformSystem(graph)
     const transactions = getTransactionManager(graph)
     const history = getHistoryManager(graph)
-    transactions.begin('Move Layer', ['test:rect'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:rect'])
     system.moveBy(['test:rect'], [40, 30])
     history.push(RESOURCE_ID, transactions.commit())
 
@@ -167,7 +168,7 @@ describe('TransformSystem', () => {
 
     const system = new TransformSystem(graph)
     const transactions = getTransactionManager(graph)
-    transactions.begin('Move Layer', ['test:child'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:child'])
     system.moveTo(['test:child'], [100, 90])
 
     expect(Math.round(child.x)).toBe(40)
@@ -193,7 +194,7 @@ describe('TransformSystem', () => {
 
     const system = new TransformSystem(graph)
     const transactions = getTransactionManager(graph)
-    transactions.begin('Move Layer', ['test:child'])
+    transactions.begin(TransactionLabel.MoveLayer, ['test:child'])
 
     system.moveBy(['test:child'], [0, 20])
     expect(Math.round(child.x)).toBe(40)
@@ -202,6 +203,76 @@ describe('TransformSystem', () => {
     system.moveBy(['test:child'], [0, 30])
     expect(Math.round(child.x)).toBe(50)
     expect(Math.round(child.y)).toBe(0)
+  })
+
+  it('captures transform targets that were not part of beginTransform ids', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.x = 10
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.MoveLayer, [])
+
+    system.moveBy(['test:rect'], [5, 0])
+    expect(cursor.x).toBe(15)
+
+    system.moveBy(['test:rect'], [7, 0])
+    expect(cursor.x).toBe(17)
+  })
+
+  it('filters descendant targets when an ancestor is also transformed', () => {
+    const graph = new SceneGraph()
+    const parentIndex = graph.createNode(NodeType.GROUP, 'test:parent')
+    const childIndex = graph.createNode(NodeType.RECTANGLE, 'test:child')
+    graph.appendChild(0, parentIndex)
+    graph.appendChild(parentIndex, childIndex)
+
+    const parent = new NodeCursor(graph, parentIndex)
+    const child = new NodeCursor(graph, childIndex)
+    parent.x = 0
+    child.x = 5
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.MoveLayer, [
+      'test:parent',
+      'test:child',
+    ])
+
+    system.moveBy(['test:parent', 'test:child'], [10, 0])
+
+    expect(parent.x).toBe(10)
+    expect(child.x).toBe(5)
+    flushMatrix(graph)
+    expect(TransformOps.getWorldMatrix(graph, childIndex)[4]).toBe(15)
+  })
+
+  it('throws when transform targets cannot be found', () => {
+    const graph = new SceneGraph()
+    const system = new TransformSystem(graph)
+
+    expect(() => system.moveBy(['test:missing'], [1, 1])).toThrow(
+      '[TransformSystem] Node not found for moveBy: test:missing'
+    )
+  })
+
+  it('throws when converting through a non-invertible parent matrix', () => {
+    const graph = new SceneGraph()
+    const parentIndex = graph.createNode(NodeType.GROUP, 'test:parent')
+    const childIndex = graph.createNode(NodeType.RECTANGLE, 'test:child')
+    graph.appendChild(0, parentIndex)
+    graph.appendChild(parentIndex, childIndex)
+
+    const parent = new NodeCursor(graph, parentIndex)
+    parent.transform = mat2d.fromValues(0, 0, 0, 0, 0, 0)
+
+    const system = new TransformSystem(graph)
+
+    expect(() => system.moveTo(['test:child'], [1, 1])).toThrow(
+      'non-invertible parent matrix'
+    )
   })
 
   it('transformAround applies a world-space rotation around the provided pivot', () => {
@@ -340,6 +411,52 @@ describe('TransformSystem', () => {
     expect(child.y).toBe(15)
     expect(child.width).toBe(15)
     expect(child.height).toBe(7.5)
+  })
+
+  it('continues resizing descendants through intermediate nodes without ids', () => {
+    const graph = new SceneGraph()
+    const rootIndex = graph.createNode(NodeType.GROUP, 'test:root')
+    const middleIndex = graph.createNode(NodeType.GROUP, 'test:middle')
+    const leafIndex = graph.createNode(NodeType.RECTANGLE, 'test:leaf')
+    graph.appendChild(0, rootIndex)
+    graph.appendChild(rootIndex, middleIndex)
+    graph.appendChild(middleIndex, leafIndex)
+
+    const root = new NodeCursor(graph, rootIndex)
+    root.width = 100
+    root.height = 100
+
+    const middle = new NodeCursor(graph, middleIndex)
+    middle.width = 20
+    middle.height = 20
+
+    const leaf = new NodeCursor(graph, leafIndex)
+    leaf.x = 10
+    leaf.width = 10
+    leaf.height = 10
+    graph.unregisterIdMap('test:middle', middleIndex)
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin('Resize Group', ['test:root'])
+    system.resize(['test:root'], 200, 100)
+
+    expect(leaf.x).toBe(20)
+    expect(leaf.width).toBe(20)
+    expect(leaf.height).toBe(10)
+  })
+
+  it('rejects invalid resize dimensions', () => {
+    const graph = new SceneGraph()
+    graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const system = new TransformSystem(graph)
+
+    expect(() => system.resize(['test:rect'], -1, 10)).toThrow(
+      '[TransformSystem] Invalid resize dimensions'
+    )
+    expect(() => system.resize(['test:rect'], 10, Number.NaN)).toThrow(
+      '[TransformSystem] Invalid resize dimensions'
+    )
   })
 
   it('resize preserves rendered corners for deeply nested non-uniform world scaling', () => {

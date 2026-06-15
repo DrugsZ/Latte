@@ -2,6 +2,7 @@ import { NodeType } from '@latte-js/bean'
 import { NodeCursor, PropId, SceneGraph } from '@latte-js/espresso'
 import { describe, expect, it } from 'vitest'
 
+import { TransactionLabel } from '../transactionLabels'
 import { TransactionManager } from '../transactionManager'
 
 describe('TransactionManager', () => {
@@ -11,7 +12,7 @@ describe('TransactionManager', () => {
     const cursor = new NodeCursor(graph, index)
     const manager = new TransactionManager(graph)
 
-    manager.begin('Move Layer', ['test:rect'])
+    manager.begin(TransactionLabel.MoveLayer, ['test:rect'])
     cursor.x = 16
     cursor.y = 32
 
@@ -39,13 +40,13 @@ describe('TransactionManager', () => {
     const cursor = new NodeCursor(graph, index)
     const manager = new TransactionManager(graph)
 
-    manager.begin('Move Layer', ['test:rect'])
+    manager.begin(TransactionLabel.MoveLayer, ['test:rect'])
     cursor.x = 12
     expect(graph.getMutationRecorder()).toBe(manager)
 
     const committed = manager.commit()
     expect(graph.getMutationRecorder()).toBeNull()
-    expect(committed?.label).toBe('Move Layer')
+    expect(committed?.label).toBe(TransactionLabel.MoveLayer)
     expect(committed?.records).toMatchObject([
       {
         id: 'test:rect',
@@ -63,7 +64,7 @@ describe('TransactionManager', () => {
     const manager = new TransactionManager(graph)
     cursor.x = 10
 
-    manager.begin('Move Layer', ['test:rect'])
+    manager.begin(TransactionLabel.MoveLayer, ['test:rect'])
     cursor.x = 50
     manager.abort()
 

@@ -8,7 +8,7 @@ import {
 } from '@latte-js/espresso'
 
 import type { DirtyBatch } from '../pipeline/dirtyBatch'
-import { ScheduleStage, system, SystemBase, Systems } from './systems'
+import { ScheduleStage, System, SystemBase, Systems } from './systems'
 
 const MATRIX_SCHEDULE_READS = MATRIX_AFFECTING_FLAGS | DIRTY_SUBTREE_MATRIX
 
@@ -29,7 +29,7 @@ interface MatrixTraversalFrame {
  * Traverses top-down, skipping subtrees without transform changes.
  * Marks updated nodes with DIRTY_WORLD_BOUNDS for AABBSystem to process.
  */
-@system({
+@System({
   schedule: {
     stage: ScheduleStage.Matrix,
     reads: MATRIX_SCHEDULE_READS,

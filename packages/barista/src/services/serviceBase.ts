@@ -1,23 +1,30 @@
-import { DEFAULT_SCENE_GRAPH_NAME, type Channels } from '@latte-js/bean'
+import { type Channels } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
+
 import type {
   MutationPolicy,
   MutationPolicyMap,
 } from '../transactions/mutationPolicy'
-import { MutationPolicyKind } from '../transactions/mutationPolicy'
+import type { SystemBase, Systems } from '../systems/systems'
 import type { IContext } from './types'
-
-const readonlyMutationPolicy: MutationPolicy = {
-  kind: MutationPolicyKind.Readonly,
-}
 
 export interface IServiceRegistrationOptions {
   readonly mutations?: MutationPolicyMap
+  readonly system?: Systems
 }
 
-export abstract class ServiceBase<T = any> {
+type SystemConstructorMetadata = Function & {
+  mutationPolicies?: MutationPolicyMap
+}
+
+const getSystemMutationPolicies = (
+  system: SystemBase
+): MutationPolicyMap | undefined =>
+  (system.constructor as SystemConstructorMetadata).mutationPolicies
+
+export abstract class ServiceBase {
   static readonly name: Channels
-  static readonly mutationPolicies?: MutationPolicyMap
+  static mutationPolicies?: MutationPolicyMap
 
   constructor(protected readonly context: IContext) {}
 
@@ -25,45 +32,38 @@ export abstract class ServiceBase<T = any> {
     command: string,
     args: readonly unknown[]
   ): MutationPolicy {
-    const policy =
-      this._resolveMutationPolicy(
-        (this.constructor as ServiceConstructor).mutationPolicies,
-        command,
-        args
-      ) ??
-      this._resolveMutationPolicy(
-        this._getSystemMutationPolicies() as MutationPolicyMap | undefined,
-        command,
-        args
-      )
-    if (!policy) {
-      return readonlyMutationPolicy
+    const policy = this._resolveServiceMutationPolicy(command, args)
+    if (policy) {
+      return policy
     }
-    return policy
+
+    return this._throwMissingMutationPolicy(command)
   }
 
   protected get sceneGraph(): SceneGraph {
     return this.context.sceneGraph
   }
 
+  protected get mutationAuthority() {
+    return this.context.mutationAuthority
+  }
+
   protected get currentSessionId(): string {
-    return this.context.currentSessionId || DEFAULT_SCENE_GRAPH_NAME
+    return this.context.currentSessionId
   }
 
-  protected get system(): T {
-    return this.context.accessSystem.getSystem(
-      (this.constructor as ServiceConstructor).name as any
-    ) as T
+  protected _resolveServiceMutationPolicy(
+    command: string,
+    args: readonly unknown[]
+  ): MutationPolicy | undefined {
+    return this._resolveMutationPolicy(
+      this._getServiceConstructor().mutationPolicies,
+      command,
+      args
+    )
   }
 
-  private _getSystemMutationPolicies(): MutationPolicyMap | undefined {
-    const system = this.context.accessSystem.getSystem(
-      (this.constructor as ServiceConstructor).name as any
-    ) as any
-    return system?.constructor?.mutationPolicies
-  }
-
-  private _resolveMutationPolicy(
+  protected _resolveMutationPolicy(
     policies: MutationPolicyMap | undefined,
     command: string,
     args: readonly unknown[]
@@ -77,72 +77,79 @@ export abstract class ServiceBase<T = any> {
     }
     return policy
   }
+
+  protected _throwMissingMutationPolicy(command: string): never {
+    throw new Error(
+      `[ServiceBase] Missing mutation policy for ${this._getServiceConstructor().name}.${command}`
+    )
+  }
+
+  protected _getServiceConstructor(): ServiceConstructor {
+    const constructor = this.constructor as Partial<ServiceConstructor>
+    if (!constructor.name) {
+      throw new Error('[ServiceBase] Service constructor is missing name')
+    }
+    return constructor as ServiceConstructor
+  }
+}
+
+export abstract class SystemBackedServiceBase<
+  T extends SystemBase,
+> extends ServiceBase {
+  static systemName?: Systems
+
+  public override getMutationPolicy(
+    command: string,
+    args: readonly unknown[]
+  ): MutationPolicy {
+    const servicePolicy = this._resolveServiceMutationPolicy(command, args)
+    if (servicePolicy) {
+      return servicePolicy
+    }
+
+    const systemPolicy = this._resolveMutationPolicy(
+      this._getSystemMutationPolicies(),
+      command,
+      args
+    )
+    if (systemPolicy) {
+      return systemPolicy
+    }
+
+    return this._throwMissingMutationPolicy(command)
+  }
+
+  protected get system(): T {
+    const { systemName, name } = this._getSystemBackedServiceConstructor()
+    if (!systemName) {
+      throw new Error(`[ServiceBase] Missing system binding for ${name}`)
+    }
+    return this.context.accessSystem.getSystem(systemName) as T
+  }
+
+  private _getSystemMutationPolicies(): MutationPolicyMap | undefined {
+    return getSystemMutationPolicies(this.system)
+  }
+
+  private _getSystemBackedServiceConstructor(): SystemBackedServiceConstructor {
+    return this._getServiceConstructor() as SystemBackedServiceConstructor
+  }
 }
 
 export type ServiceConstructor = (new (context: IContext) => ServiceBase) & {
   readonly name: Channels
-  readonly mutationPolicies?: MutationPolicyMap
+  mutationPolicies?: MutationPolicyMap
+  systemName?: Systems
 }
 
-const registeredServices: ServiceConstructor[] = []
-
-export interface IMutationPolicyCoverageIssue {
-  readonly serviceName: string
-  readonly methodName: string
+export type SystemBackedServiceConstructor = ServiceConstructor & {
+  systemName?: Systems
 }
 
-export interface IMutationPolicyCoverageOptions {
-  readonly fallbackPoliciesByService?: ReadonlyMap<string, MutationPolicyMap>
-  readonly ignoredMethods?: readonly string[]
-}
+const registeredServices = new Map<Channels, ServiceConstructor>()
 
-export function getRegisteredServices() {
-  return registeredServices
-}
-
-export function collectMutationPolicyCoverageIssues(
-  options: IMutationPolicyCoverageOptions = {}
-): IMutationPolicyCoverageIssue[] {
-  const issues: IMutationPolicyCoverageIssue[] = []
-  const ignored = new Set(options.ignoredMethods ?? [])
-
-  for (const constructor of registeredServices) {
-    const servicePolicies = constructor.mutationPolicies ?? {}
-    const fallbackPolicies =
-      options.fallbackPoliciesByService?.get(constructor.name) ?? {}
-
-    for (const methodName of getServiceCallMethodNames(constructor)) {
-      if (
-        ignored.has(methodName) ||
-        servicePolicies[methodName] ||
-        fallbackPolicies[methodName]
-      ) {
-        continue
-      }
-
-      issues.push({
-        serviceName: constructor.name,
-        methodName,
-      })
-    }
-  }
-
-  return issues
-}
-
-export function getServiceCallMethodNames(
-  constructor: ServiceConstructor
-): string[] {
-  return Object.getOwnPropertyNames(constructor.prototype).filter(name => {
-    if (name === 'constructor' || name.startsWith('on')) {
-      return false
-    }
-    const descriptor = Object.getOwnPropertyDescriptor(
-      constructor.prototype,
-      name
-    )
-    return typeof descriptor?.value === 'function'
-  })
+export function getRegisteredServices(): readonly ServiceConstructor[] {
+  return Array.from(registeredServices.values())
 }
 
 function registerService(
@@ -150,16 +157,24 @@ function registerService(
   options?: IServiceRegistrationOptions
 ) {
   if (options?.mutations) {
-    ;(constructor as any).mutationPolicies = options.mutations
+    constructor.mutationPolicies = options.mutations
   }
-  registeredServices.push(constructor)
+  if (options?.system) {
+    constructor.systemName = options.system
+  }
+
+  const existing = registeredServices.get(constructor.name)
+  if (existing && existing !== constructor) {
+    throw new Error(`[ServiceBase] Duplicate service: ${constructor.name}`)
+  }
+  registeredServices.set(constructor.name, constructor)
 }
 
-export function service(constructor: ServiceConstructor): void
-export function service(
+export function Service(constructor: ServiceConstructor): void
+export function Service(
   options: IServiceRegistrationOptions
 ): (constructor: ServiceConstructor) => void
-export function service(arg: ServiceConstructor | IServiceRegistrationOptions) {
+export function Service(arg: ServiceConstructor | IServiceRegistrationOptions) {
   if (typeof arg === 'function') {
     registerService(arg)
     return

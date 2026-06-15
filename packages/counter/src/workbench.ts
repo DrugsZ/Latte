@@ -63,10 +63,7 @@ export class Workbench {
     this._inputService.removeHandler(this.toolService.id)
     this._inputService.removeHandler(this._selectionTool.id)
     this.toolService.dispose()
+    this.pageService.dispose()
     this.selectionService.clear()
   }
-}
-
-export const startWorkbench = (options: WorkbenchOptions) => {
-  return new Workbench(options)
 }

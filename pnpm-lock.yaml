@@ -240,6 +240,9 @@ importers:
       '@latte-js/espresso':
         specifier: workspace:*
         version: link:../espresso
+      '@latte-js/kit':
+        specifier: workspace:*
+        version: link:../kit
       '@latte-js/syrup':
         specifier: workspace:*
         version: link:../syrup

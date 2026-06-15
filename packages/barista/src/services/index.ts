@@ -4,4 +4,13 @@ export { QueryService } from './query'
 export { DocumentService } from './document'
 export { UndoRedoService } from './undoRedo'
 export { ServiceManager } from './serviceManager'
-export { ServiceBase, type IContext } from './serviceBase'
+export {
+  Service,
+  ServiceBase,
+  SystemBackedServiceBase,
+  type IContext,
+} from './serviceBase'
+export {
+  collectMutationPolicyCoverageIssues,
+  getServiceCallMethodNames,
+} from './serviceAudit'

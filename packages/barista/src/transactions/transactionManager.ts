@@ -24,6 +24,7 @@ interface IActiveTransaction {
   readonly label: string
   readonly snapshots: Map<IDType, ITransformSnapshot>
   readonly records: INodeMutationRecord[]
+  readonly auditStart: ReturnType<SceneGraph['getMutationAuditSnapshot']>
 }
 
 export interface ICommittedTransaction {
@@ -63,6 +64,7 @@ export class TransactionManager implements IMutationRecorder {
       label,
       snapshots: new Map(),
       records: [],
+      auditStart: this._sceneGraph.getMutationAuditSnapshot(),
     }
     this._sceneGraph.setMutationRecorder(this)
     this.capture(ids)
@@ -118,6 +120,10 @@ export class TransactionManager implements IMutationRecorder {
     }
 
     const active = this._active
+    this._sceneGraph.assertMutationRecordsCovered(
+      active.auditStart,
+      `TransactionManager.commit("${active.label}")`
+    )
     const records = this._active.records.map(cloneRecord)
 
     this._sceneGraph.setMutationRecorder(null)
