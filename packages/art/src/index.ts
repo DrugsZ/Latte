@@ -13,6 +13,8 @@ export type {
 
 export { Camera } from './core/camera'
 export { Renderer } from './core/render'
+export { RenderSceneIndex } from './core/renderSceneIndex'
+export type { RenderSceneBounds } from './core/renderSceneIndex'
 export { HitTester } from './interaction/hitTester'
 
 export * from './render/canvas/index'

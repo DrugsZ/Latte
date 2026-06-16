@@ -1,5 +1,10 @@
 import { NodeType } from '@latte-js/bean'
-import { SceneGraph, NULL_INDEX, writeNodeGeometry } from '@latte-js/espresso'
+import {
+  NodeLifecycle,
+  SceneGraph,
+  NULL_INDEX,
+  writeNodeGeometry,
+} from '@latte-js/espresso'
 import { describe, it, expect, beforeEach } from 'vitest'
 
 import { Camera } from '../../core/camera'
@@ -15,6 +20,38 @@ describe('HitTester', () => {
     camera = new Camera(1000, 1000)
     hitTester = new HitTester(sceneGraph, camera)
   })
+
+  const createRootWithRect = (rootType: NodeType = NodeType.GROUP) => {
+    const rootId = 'test:root' as const
+    const rootIndex = sceneGraph.createNode(rootType, rootId)
+    const rectIndex = sceneGraph.createNode(NodeType.RECTANGLE, 'test:rect')
+    sceneGraph.appendChild(rootIndex, rectIndex)
+
+    sceneGraph.size[rectIndex * 2] = 100
+    sceneGraph.size[rectIndex * 2 + 1] = 100
+
+    const matPtr = rectIndex * 6
+    sceneGraph.worldMatrix[matPtr] = 1
+    sceneGraph.worldMatrix[matPtr + 1] = 0
+    sceneGraph.worldMatrix[matPtr + 2] = 0
+    sceneGraph.worldMatrix[matPtr + 3] = 1
+    sceneGraph.worldMatrix[matPtr + 4] = 10
+    sceneGraph.worldMatrix[matPtr + 5] = 10
+
+    const aabbPtr = rectIndex * 4
+    sceneGraph.aabb[aabbPtr] = 10
+    sceneGraph.aabb[aabbPtr + 1] = 10
+    sceneGraph.aabb[aabbPtr + 2] = 110
+    sceneGraph.aabb[aabbPtr + 3] = 110
+
+    const rootAabbPtr = rootIndex * 4
+    sceneGraph.aabb[rootAabbPtr] = -1000
+    sceneGraph.aabb[rootAabbPtr + 1] = -1000
+    sceneGraph.aabb[rootAabbPtr + 2] = 1000
+    sceneGraph.aabb[rootAabbPtr + 3] = 1000
+
+    return { rootId, rootIndex, rectIndex }
+  }
 
   it('should hit test a simple rectangle', () => {
     const rootId = 'test:root'
@@ -183,5 +220,35 @@ describe('HitTester', () => {
 
     const resultMiss = hitTester.hitTest(510, 590, rootId)
     expect(resultMiss).toBe(NULL_INDEX)
+  })
+
+  it('should ignore invisible and tombstoned nodes', () => {
+    let setup = createRootWithRect()
+    sceneGraph.visible[setup.rectIndex] = 0
+
+    expect(hitTester.hitTest(560, 560, setup.rootId)).toBe(NULL_INDEX)
+
+    sceneGraph = new SceneGraph()
+    hitTester.setGraph(sceneGraph)
+    setup = createRootWithRect()
+    sceneGraph.lifecycle[setup.rectIndex] = NodeLifecycle.Tombstone
+
+    expect(hitTester.hitTest(560, 560, setup.rootId)).toBe(NULL_INDEX)
+  })
+
+  it('should ignore nodes with non-invertible world matrices', () => {
+    const { rootId, rectIndex } = createRootWithRect()
+    const matPtr = rectIndex * 6
+    sceneGraph.worldMatrix.fill(0, matPtr, matPtr + 6)
+
+    expect(hitTester.hitTest(560, 560, rootId)).toBe(NULL_INDEX)
+  })
+
+  it('should allow document and canvas roots through candidate pruning', () => {
+    const { rootId, rectIndex } = createRootWithRect(NodeType.CANVAS)
+
+    expect(hitTester.hitTest(560, 560, rootId, new Set([rectIndex]))).toBe(
+      rectIndex
+    )
   })
 })

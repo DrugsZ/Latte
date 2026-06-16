@@ -174,6 +174,7 @@ export class EditorRuntime {
     )
     const idMap = await documentService.load(data)
     const projection = this.projection.applyLoadedDocument(idMap, doc.graph)
+    this._renderer?.rebuildSceneIndex()
     const activeRootId = this.documentViewState.applyLoadedDocument(
       doc.id,
       data,

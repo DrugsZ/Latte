@@ -60,12 +60,16 @@ export class DocumentViewStateController extends Disposable {
     documentId: string,
     options: IApplyDocumentViewStateOptions = {}
   ) {
-    const activeRootId = this._activeRootIds.get(documentId)
-    if (!activeRootId || !this._host.renderer) {
+    if (!this._host.renderer) {
       return
     }
 
+    const activeRootId = this._activeRootIds.get(documentId)
     this._host.renderer.setActiveRootId(activeRootId)
+    if (!activeRootId) {
+      return
+    }
+
     if (options.fitToContent) {
       this._host.renderer.fitToContent(activeRootId)
       return

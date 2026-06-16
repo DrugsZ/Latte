@@ -3,12 +3,13 @@ import {
   MAT_SIZE,
   MAX_NODES,
   NodeCursor,
+  NodeLifecycle,
   NULL_INDEX,
 } from '@latte-js/espresso'
 import { mat2d } from 'gl-matrix'
-import RBush from 'rbush'
 
 import { Camera } from './camera'
+import { RenderSceneIndex } from './renderSceneIndex'
 import { getRenderer } from './rendererRegistry'
 
 import { NodeType, type IDType } from '@latte-js/bean'
@@ -18,9 +19,10 @@ export class Renderer {
   private _shouldRender = false
   private _camera: Camera
   private _tempMatrix: mat2d = mat2d.create()
-  private _rTree = new RBush()
+  private _sceneIndex: RenderSceneIndex
   private _canvas: HTMLCanvasElement
   private _frameId: number | null = null
+  private _resizeObserver: ResizeObserver | null = null
   private _disposed = false
 
   constructor(
@@ -42,20 +44,20 @@ export class Renderer {
     this._initCamera()
     this._initRenderBackend()
     this._initObserver(canvas)
-    this._buildRTree()
+    this._sceneIndex = new RenderSceneIndex(this._sceneGraph)
     this.start()
   }
 
-  public get rTree() {
-    return this._rTree
+  public get sceneIndex() {
+    return this._sceneIndex
   }
 
   public get canvas() {
     return this._canvas
   }
 
-  public setActiveRootId(rootId: IDType) {
-    this._activeRootId = rootId
+  public setActiveRootId(rootId?: IDType | null) {
+    this._activeRootId = rootId ?? undefined
     this.requestRender()
   }
 
@@ -81,7 +83,7 @@ export class Renderer {
 
   public setGraph(graph: SceneGraph) {
     this._sceneGraph = graph
-    this._buildRTree()
+    this._sceneIndex.setGraph(graph)
     this.requestRender()
   }
 
@@ -101,6 +103,7 @@ export class Renderer {
       this.resize(width, height)
     })
     observer.observe(container)
+    this._resizeObserver = observer
   }
 
   private _initCamera() {
@@ -128,8 +131,23 @@ export class Renderer {
     this._shouldRender = true
   }
 
-  private _buildRTree() {
-    this._rTree = new RBush()
+  public rebuildSceneIndex() {
+    this._sceneIndex.rebuild()
+  }
+
+  public updateSceneIndexByIds(ids: Iterable<IDType>) {
+    this._sceneIndex.updateByIds(ids)
+  }
+
+  public queryHitTestCandidates(
+    worldX: number,
+    worldY: number,
+    rootId: IDType = this._activeRootId!
+  ) {
+    if (!rootId) {
+      return []
+    }
+    return this._sceneIndex.queryPoint(worldX, worldY, rootId)
   }
 
   private _computeContentBounds(rootIndex: number) {
@@ -153,6 +171,9 @@ export class Renderer {
       }
 
       visited.add(index)
+      if (!this._isRenderableNode(index)) {
+        continue
+      }
 
       const local = this._sceneGraph.matrix.subarray(
         index * MAT_SIZE,
@@ -216,47 +237,20 @@ export class Renderer {
     return { minX, minY, maxX, maxY }
   }
 
-  private _getAllVisibleNodeIds() {
-    const visibleNodes: number[] = []
-    const stack: number[] = []
-    if (!this._activeRootId) return visibleNodes
-
-    const rootIndex = this._sceneGraph.getIndex(this._activeRootId)
-    if (rootIndex === NULL_INDEX) return visibleNodes
-
-    stack.push(rootIndex)
-    const visited = new Set<number>()
-    let current
-
-    while (stack.length) {
-      current = stack.pop()!
-      if (visited.has(current)) continue
-      visited.add(current)
-
-      visibleNodes.push(current)
-
-      let childIdx = this._sceneGraph.firstChild[current]
-      const children: number[] = []
-      const childVisited = new Set<number>()
-      while (
-        childIdx !== NULL_INDEX &&
-        childIdx !== undefined &&
-        !childVisited.has(childIdx)
-      ) {
-        childVisited.add(childIdx)
-        children.push(childIdx)
-        childIdx = this._sceneGraph.nextSibling[childIdx]
-      }
-      if (children.length) {
-        stack.push(...children.reverse())
-      }
-    }
-
-    return visibleNodes
+  private _collectRenderableNodeIndicesInViewport() {
+    return this._sceneIndex.queryViewport(
+      this._camera.getViewportBounds(),
+      this._activeRootId
+    )
   }
 
   private _render() {
-    if (this._shouldRender === false || !this._activeRootId) {
+    if (this._shouldRender === false) {
+      return
+    }
+    if (!this._activeRootId) {
+      this._clearFrame()
+      this._shouldRender = false
       return
     }
     this._actualRender()
@@ -269,19 +263,12 @@ export class Renderer {
 
     this._backend.beginFrame()
 
-    const visibleNodeIds = this._getAllVisibleNodeIds()
+    const renderableNodeIndices = this._collectRenderableNodeIndicesInViewport()
     const node = new NodeCursor(this._sceneGraph, -1)
-    this._rTree.clear()
-    const rTreeItems: {
-      minX: number
-      minY: number
-      maxX: number
-      maxY: number
-      id: number
-    }[] = []
-    for (const id of visibleNodeIds) {
+    for (const id of renderableNodeIndices) {
       node.to(id)
-      const { width, height, worldTransform: wt } = node
+      const { worldTransform: wt } = node
+      const type = node.type
       const a = wt[0]
       const b = wt[1]
       const c = wt[2]
@@ -291,46 +278,15 @@ export class Renderer {
 
       mat2d.set(this._tempMatrix, a, b, c, d, tx, ty)
 
-      let minX = Infinity
-      let minY = Infinity
-      let maxX = -Infinity
-      let maxY = -Infinity
-      const corners = [
-        [0, 0],
-        [width, 0],
-        [width, height],
-        [0, height],
-      ]
-      for (const [lx, ly] of corners) {
-        const wx = a * lx + c * ly + tx
-        const wy = b * lx + d * ly + ty
-        minX = Math.min(minX, wx)
-        minY = Math.min(minY, wy)
-        maxX = Math.max(maxX, wx)
-        maxY = Math.max(maxY, wy)
-      }
-
-      rTreeItems.push({
-        minX,
-        minY,
-        maxX,
-        maxY,
-        id,
-      })
-
       // Combine with camera matrix for rendering
       mat2d.multiply(this._tempMatrix, matrix, this._tempMatrix)
 
       this._backend.setTransform(new Float32Array(this._tempMatrix))
 
-      const renderer = getRenderer(node.type)
+      const renderer = getRenderer(type)
       if (renderer) {
         renderer.render(this._backend, node)
       }
-    }
-
-    if (rTreeItems.length > 0) {
-      this._rTree.load(rTreeItems)
     }
 
     // this._backend.drawRect(
@@ -374,8 +330,11 @@ export class Renderer {
       cancelAnimationFrame(this._frameId)
       this._frameId = null
     }
+    this._resizeObserver?.disconnect()
+    this._resizeObserver = null
     this._shouldRender = false
     this._backend.dispose()
+    this._canvas.remove()
   }
 
   private _clearRect() {
@@ -384,6 +343,18 @@ export class Renderer {
       0,
       this._backend.getWidth(),
       this._backend.getHeight()
+    )
+  }
+
+  private _clearFrame() {
+    this._backend.setTransform(new Float32Array([1, 0, 0, 1, 0, 0]))
+    this._clearRect()
+  }
+
+  private _isRenderableNode(index: number) {
+    return (
+      (this._sceneGraph.lifecycle[index] & NodeLifecycle.Active) !== 0 &&
+      this._sceneGraph.visible[index] === 1
     )
   }
 

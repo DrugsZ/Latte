@@ -18,34 +18,42 @@ export class RendererInputHitTestProvider implements IInputHitTestProvider {
   public hitTest(clientX: number, clientY: number) {
     this._syncGraph()
 
-    const client = this._renderer.camera.toWorld(clientX, clientY)
+    const rect = this._renderer.canvas.getBoundingClientRect()
+    const localX = clientX - rect.left
+    const localY = clientY - rect.top
+    const client = this._renderer.camera.toWorld(localX, localY)
     const activeRootId = this._renderer.activeRootId
     if (!activeRootId) {
       return { hitResult: undefined, client }
     }
 
-    const x = client.x
-    const y = client.y
-    const rTreeHits = this._renderer.rTree.search({
-      minX: x,
-      minY: y,
-      maxX: x,
-      maxY: y,
-    })
+    const indexedCandidates = this._renderer.queryHitTestCandidates(
+      client.x,
+      client.y,
+      activeRootId
+    )
 
-    const candidates = new Set<number>()
-    for (const item of rTreeHits) {
-      let curr = (item as any).id
-      while (curr !== NULL_INDEX) {
-        if (candidates.has(curr)) {
-          break
+    let candidates: Set<number> | undefined
+    if (indexedCandidates.length > 0) {
+      candidates = new Set<number>()
+      for (const index of indexedCandidates) {
+        let curr = index
+        while (curr !== NULL_INDEX) {
+          if (candidates.has(curr)) {
+            break
+          }
+          candidates.add(curr)
+          curr = this._graph.parent[curr]
         }
-        candidates.add(curr)
-        curr = this._graph.parent[curr]
       }
     }
 
-    const nodeIndex = this._hitTester.hitTest(x, y, activeRootId, candidates)
+    const nodeIndex = this._hitTester.hitTest(
+      localX,
+      localY,
+      activeRootId,
+      candidates
+    )
     if (nodeIndex === NULL_INDEX) {
       return { hitResult: undefined, client }
     }

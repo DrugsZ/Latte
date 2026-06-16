@@ -30,6 +30,8 @@ export class PageService {
     this._activePageId = allPages.length > 0 ? allPages[0] : null
     if (this._activePageId) {
       this._renderer.setActiveRootId(this._activePageId)
+    } else {
+      this._renderer.setActiveRootId(null)
     }
   }
 

@@ -84,4 +84,20 @@ describe('DocumentViewStateController', () => {
     expect(renderer.setActiveRootId).not.toHaveBeenCalled()
     expect(controller.getActiveRootId(doc.id)).toBeUndefined()
   })
+
+  it('clears the renderer active root when the active document has no root', () => {
+    const editor = new EditorHost(new SceneGraph())
+    const renderer = createRenderer()
+    editor.setRenderer(renderer)
+    const controller = new DocumentViewStateController(editor)
+    const doc = new LatteDocument('doc:a', 'latte://a', new SceneGraph())
+
+    editor.addDocument(doc)
+    renderer.setActiveRootId.mockClear()
+    controller.applyActiveRoot(doc.id)
+
+    expect(renderer.setActiveRootId).toHaveBeenCalledWith(undefined)
+    expect(renderer.fitToContent).not.toHaveBeenCalled()
+    expect(renderer.requestRender).not.toHaveBeenCalled()
+  })
 })

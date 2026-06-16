@@ -56,6 +56,9 @@ export interface IInputMouseHandler {
   onEvent(e: InputMouseEvent | InputWheelEvent): EventResult
 }
 
+// TODO(input-runtime): Move this DOM-bound implementation out of syrup once
+// the shared input contracts are stable. Crema or a dedicated input package is
+// a better long-term home for browser target wiring and hit-test adaptation.
 export class InputService extends Disposable implements IInputService {
   private _handlers: IInputMouseHandler[] = []
 
