@@ -86,4 +86,19 @@ describe('RenderSceneIndex', () => {
       index.queryViewport({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, 'test:page')
     ).toEqual([rect])
   })
+
+  it('keeps the previous index when rebuild fails', () => {
+    const graph = new SceneGraph()
+    const page = graph.createNode(NodeType.CANVAS, 'test:page')
+    graph.appendChild(0, page)
+    const rect = createRect(graph, page, 'test:rect', [0, 0, 100, 100])
+    const index = new RenderSceneIndex(graph)
+
+    graph.nextSibling[rect] = rect
+
+    expect(() => index.rebuild()).toThrow('Tree cycle detected')
+    expect(
+      index.queryViewport({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, 'test:page')
+    ).toEqual([rect])
+  })
 })

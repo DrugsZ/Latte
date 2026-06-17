@@ -19,6 +19,19 @@ interface RenderSceneIndexItem extends RenderSceneBounds {
   order: number
 }
 
+export interface RenderSceneCandidate {
+  readonly index: number
+  readonly order: number
+}
+
+interface RenderSceneIndexState {
+  tree: RBush<RenderSceneIndexItem>
+  items: Map<number, RenderSceneIndexItem>
+  idToIndex: Map<IDType, number>
+  order: Map<number, number>
+  subtreeEnd: Map<number, number>
+}
+
 const normalizeBounds = (bounds: RenderSceneBounds): RenderSceneBounds => ({
   minX: Math.min(bounds.minX, bounds.maxX),
   minY: Math.min(bounds.minY, bounds.maxY),
@@ -28,10 +41,10 @@ const normalizeBounds = (bounds: RenderSceneBounds): RenderSceneBounds => ({
 
 export class RenderSceneIndex {
   private _tree = new RBush<RenderSceneIndexItem>()
-  private readonly _items = new Map<number, RenderSceneIndexItem>()
-  private readonly _idToIndex = new Map<IDType, number>()
-  private readonly _order = new Map<number, number>()
-  private readonly _subtreeEnd = new Map<number, number>()
+  private _items = new Map<number, RenderSceneIndexItem>()
+  private _idToIndex = new Map<IDType, number>()
+  private _order = new Map<number, number>()
+  private _subtreeEnd = new Map<number, number>()
 
   constructor(private _sceneGraph: SceneGraph) {
     this.rebuild()
@@ -47,17 +60,14 @@ export class RenderSceneIndex {
   }
 
   public clear() {
-    this._tree.clear()
-    this._items.clear()
-    this._idToIndex.clear()
-    this._order.clear()
-    this._subtreeEnd.clear()
+    this._commitState(this._createEmptyState())
   }
 
   public rebuild() {
-    this.clear()
+    const next = this._createEmptyState()
 
     if (!this._isActiveNode(0)) {
+      this._commitState(next)
       return
     }
 
@@ -74,7 +84,7 @@ export class RenderSceneIndex {
       const { index } = current
 
       if (current.phase === 'exit') {
-        this._subtreeEnd.set(index, order)
+        next.subtreeEnd.set(index, order)
         visiting.delete(index)
         continue
       }
@@ -91,15 +101,15 @@ export class RenderSceneIndex {
 
       visiting.add(index)
       visited.add(index)
-      this._order.set(index, order)
+      next.order.set(index, order)
       const id = this._sceneGraph.getUUID(index)
       if (id) {
-        this._idToIndex.set(id, index)
+        next.idToIndex.set(id, index)
       }
 
       const item = this._createItem(index, order)
       if (item) {
-        this._items.set(index, item)
+        next.items.set(index, item)
         items.push(item)
       }
       order += 1
@@ -124,8 +134,10 @@ export class RenderSceneIndex {
     }
 
     if (items.length > 0) {
-      this._tree.load(items)
+      next.tree.load(items)
     }
+
+    this._commitState(next)
   }
 
   public updateByIds(ids: Iterable<IDType>) {
@@ -155,17 +167,40 @@ export class RenderSceneIndex {
   }
 
   public queryViewport(bounds: RenderSceneBounds, rootId?: IDType | null) {
+    return this.filterRenderableCandidates(
+      this.queryViewportCandidates(bounds),
+      rootId
+    )
+  }
+
+  public queryPoint(x: number, y: number, rootId?: IDType | null) {
+    return this.queryViewport({ minX: x, minY: y, maxX: x, maxY: y }, rootId)
+  }
+
+  public queryViewportCandidates(bounds: RenderSceneBounds) {
+    const normalized = normalizeBounds(bounds)
+    return this._tree.search(normalized).map(item => this._toCandidate(item))
+  }
+
+  public queryPointCandidates(x: number, y: number) {
+    return this.queryViewportCandidates({
+      minX: x,
+      minY: y,
+      maxX: x,
+      maxY: y,
+    })
+  }
+
+  public filterRenderableCandidates(
+    candidates: readonly RenderSceneCandidate[],
+    rootId?: IDType | null
+  ) {
     const rootIndex = this._resolveRootIndex(rootId)
     if (rootIndex === NULL_INDEX) {
       return []
     }
 
-    const normalized = normalizeBounds(bounds)
-    return this._filterAndSort(this._tree.search(normalized), rootIndex)
-  }
-
-  public queryPoint(x: number, y: number, rootId?: IDType | null) {
-    return this.queryViewport({ minX: x, minY: y, maxX: x, maxY: y }, rootId)
+    return this._filterAndSort(candidates, rootIndex)
   }
 
   private _resolveRootIndex(rootId?: IDType | null) {
@@ -175,22 +210,25 @@ export class RenderSceneIndex {
     return this._sceneGraph.getIndex(rootId)
   }
 
-  private _filterAndSort(items: RenderSceneIndexItem[], rootIndex: number) {
+  private _filterAndSort(
+    candidates: readonly RenderSceneCandidate[],
+    rootIndex: number
+  ) {
     const rootOrder = this._order.get(rootIndex)
     const rootEnd = this._subtreeEnd.get(rootIndex)
     if (rootOrder === undefined || rootEnd === undefined) {
       return []
     }
 
-    return items
+    return [...candidates]
       .filter(
-        item =>
-          item.order >= rootOrder &&
-          item.order < rootEnd &&
-          this._isRenderableInTree(item.id, rootIndex)
+        candidate =>
+          candidate.order >= rootOrder &&
+          candidate.order < rootEnd &&
+          this._isRenderableInTree(candidate.index, rootIndex)
       )
       .sort((a, b) => a.order - b.order)
-      .map(item => item.id)
+      .map(candidate => candidate.index)
   }
 
   private _isRenderableInTree(index: number, rootIndex: number) {
@@ -263,5 +301,30 @@ export class RenderSceneIndex {
 
   private _isActiveNode(index: number) {
     return (this._sceneGraph.lifecycle[index] & NodeLifecycle.Active) !== 0
+  }
+
+  private _toCandidate(item: RenderSceneIndexItem): RenderSceneCandidate {
+    return {
+      index: item.id,
+      order: item.order,
+    }
+  }
+
+  private _createEmptyState(): RenderSceneIndexState {
+    return {
+      tree: new RBush<RenderSceneIndexItem>(),
+      items: new Map(),
+      idToIndex: new Map(),
+      order: new Map(),
+      subtreeEnd: new Map(),
+    }
+  }
+
+  private _commitState(state: RenderSceneIndexState) {
+    this._tree = state.tree
+    this._items = state.items
+    this._idToIndex = state.idToIndex
+    this._order = state.order
+    this._subtreeEnd = state.subtreeEnd
   }
 }

@@ -13,8 +13,18 @@ export type {
 
 export { Camera } from './core/camera'
 export { Renderer } from './core/render'
+export { RenderFrameBuilder } from './core/renderFrameBuilder'
+export type {
+  RenderFrame,
+  RenderFrameBuildOptions,
+} from './core/renderFrameBuilder'
+export { RenderReason, RenderScheduler } from './core/renderScheduler'
+export type { RenderRequestReason } from './core/renderScheduler'
 export { RenderSceneIndex } from './core/renderSceneIndex'
-export type { RenderSceneBounds } from './core/renderSceneIndex'
+export type {
+  RenderSceneBounds,
+  RenderSceneCandidate,
+} from './core/renderSceneIndex'
 export { HitTester } from './interaction/hitTester'
 
 export * from './render/canvas/index'

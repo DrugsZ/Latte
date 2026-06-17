@@ -9,6 +9,8 @@ import {
 import { mat2d } from 'gl-matrix'
 
 import { Camera } from './camera'
+import { RenderFrameBuilder, type RenderFrame } from './renderFrameBuilder'
+import { RenderReason, RenderScheduler } from './renderScheduler'
 import { RenderSceneIndex } from './renderSceneIndex'
 import { getRenderer } from './rendererRegistry'
 
@@ -16,10 +18,12 @@ import { NodeType, type IDType } from '@latte-js/bean'
 import type { IRenderBackend } from '../contract/renderBackend'
 
 export class Renderer {
-  private _shouldRender = false
   private _camera: Camera
   private _tempMatrix: mat2d = mat2d.create()
   private _sceneIndex: RenderSceneIndex
+  private _frameBuilder: RenderFrameBuilder
+  private _renderScheduler = new RenderScheduler()
+  private _lastFrame: RenderFrame | null = null
   private _canvas: HTMLCanvasElement
   private _frameId: number | null = null
   private _resizeObserver: ResizeObserver | null = null
@@ -45,6 +49,7 @@ export class Renderer {
     this._initRenderBackend()
     this._initObserver(canvas)
     this._sceneIndex = new RenderSceneIndex(this._sceneGraph)
+    this._frameBuilder = new RenderFrameBuilder(this._sceneIndex)
     this.start()
   }
 
@@ -58,7 +63,6 @@ export class Renderer {
 
   public setActiveRootId(rootId?: IDType | null) {
     this._activeRootId = rootId ?? undefined
-    this.requestRender()
   }
 
   public fitToContent(rootId: IDType = this._activeRootId!, padding = 0.1) {
@@ -77,24 +81,29 @@ export class Renderer {
       bounds.maxY,
       padding
     )
-    this.requestRender()
+    this.requestRender(RenderReason.CameraChanged)
     return true
   }
 
   public setGraph(graph: SceneGraph) {
     this._sceneGraph = graph
     this._sceneIndex.setGraph(graph)
-    this.requestRender()
+    this.requestRender(RenderReason.GraphChanged)
   }
 
   get activeRootId() {
     return this._activeRootId
   }
 
+  public get lastFrame() {
+    return this._lastFrame
+  }
+
   public resize(width: number, height: number) {
     this._backend.resize(width, height, window.devicePixelRatio)
 
     this.camera.resize(width, height)
+    this.requestRender(RenderReason.Resize)
   }
 
   private _initObserver(container: HTMLCanvasElement) {
@@ -112,7 +121,7 @@ export class Renderer {
     this._camera.fitBounds(-100, -100, rect.right * 2, rect.bottom * 2, 0)
 
     this._camera.onDidChange(() => {
-      this.requestRender()
+      this.requestRender(RenderReason.CameraChanged)
     })
   }
 
@@ -127,8 +136,8 @@ export class Renderer {
     this._backend.resize(rect.width, rect.height, dpr)
   }
 
-  public requestRender() {
-    this._shouldRender = true
+  public requestRender(reason: RenderReason | string = RenderReason.Manual) {
+    this._renderScheduler.request(reason)
   }
 
   public rebuildSceneIndex() {
@@ -147,7 +156,10 @@ export class Renderer {
     if (!rootId) {
       return []
     }
-    return this._sceneIndex.queryPoint(worldX, worldY, rootId)
+    return this._sceneIndex.filterRenderableCandidates(
+      this._sceneIndex.queryPointCandidates(worldX, worldY),
+      rootId
+    )
   }
 
   private _computeContentBounds(rootIndex: number) {
@@ -237,35 +249,41 @@ export class Renderer {
     return { minX, minY, maxX, maxY }
   }
 
-  private _collectRenderableNodeIndicesInViewport() {
-    return this._sceneIndex.queryViewport(
-      this._camera.getViewportBounds(),
-      this._activeRootId
-    )
-  }
-
   private _render() {
-    if (this._shouldRender === false) {
+    if (!this._renderScheduler.hasPending) {
       return
     }
+
+    const reasons = this._renderScheduler.consume()
     if (!this._activeRootId) {
       this._clearFrame()
-      this._shouldRender = false
+      this._lastFrame = null
       return
     }
-    this._actualRender()
+
+    const frame = this._frameBuilder.build({
+      activeRootId: this._activeRootId,
+      viewportBounds: this._camera.getViewportBounds(),
+      reasons,
+    })
+    if (!frame) {
+      this._clearFrame()
+      this._lastFrame = null
+      return
+    }
+
+    this._actualRender(frame)
   }
 
-  private _actualRender() {
+  private _actualRender(frame: RenderFrame) {
     const matrix = this._camera.getMatrix()
     this._backend.setTransform(new Float32Array([1, 0, 0, 1, 0, 0]))
     this._clearRect()
 
     this._backend.beginFrame()
 
-    const renderableNodeIndices = this._collectRenderableNodeIndicesInViewport()
     const node = new NodeCursor(this._sceneGraph, -1)
-    for (const id of renderableNodeIndices) {
+    for (const id of frame.nodeIndices) {
       node.to(id)
       const { worldTransform: wt } = node
       const type = node.type
@@ -312,11 +330,11 @@ export class Renderer {
     // this._backend.drawRect(-1, -10, 2, 20, 0, 0xff0000ff)
     this._backend.setTransform(new Float32Array(matrix))
     this._backend.endFrame()
-    this._shouldRender = false
+    this._lastFrame = frame
   }
 
   public renderFrame() {
-    this._shouldRender = true
+    this.requestRender(RenderReason.Manual)
   }
 
   public start() {
@@ -332,7 +350,8 @@ export class Renderer {
     }
     this._resizeObserver?.disconnect()
     this._resizeObserver = null
-    this._shouldRender = false
+    this._renderScheduler.clear()
+    this._lastFrame = null
     this._backend.dispose()
     this._canvas.remove()
   }

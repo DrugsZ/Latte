@@ -1,3 +1,4 @@
+import { RenderReason } from '@latte-js/art'
 import { DIRTY_TREE, type SceneGraph } from '@latte-js/espresso'
 import { Disposable } from '@latte-js/kit'
 import type { EditorHost } from '@latte-js/syrup'
@@ -30,7 +31,7 @@ export class RenderInvalidationController extends Disposable {
           } else {
             renderer.updateSceneIndexByIds?.(event.affectedIds)
           }
-          renderer.requestRender()
+          renderer.requestRender(RenderReason.SceneDirty)
         }
       })
     )

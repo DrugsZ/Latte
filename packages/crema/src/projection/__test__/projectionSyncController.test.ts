@@ -57,7 +57,6 @@ const createHarness = () => {
   }
   editor.setRenderer({
     setGraph: vi.fn(),
-    setActiveRootId: vi.fn(),
     fitToContent: vi.fn().mockReturnValue(true),
     requestRender,
   })

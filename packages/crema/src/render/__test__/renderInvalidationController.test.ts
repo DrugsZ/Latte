@@ -1,3 +1,4 @@
+import { RenderReason } from '@latte-js/art'
 import { DIRTY_TREE, SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
 import { EditorHost } from '@latte-js/syrup'
@@ -16,7 +17,6 @@ const createHarness = () => {
 
   editor.setRenderer({
     setGraph: vi.fn(),
-    setActiveRootId: vi.fn(),
     rebuildSceneIndex,
     updateSceneIndexByIds,
     fitToContent: vi.fn().mockReturnValue(true),
@@ -47,7 +47,7 @@ describe('RenderInvalidationController', () => {
     })
 
     expect(updateSceneIndexByIds).toHaveBeenCalledWith(['test:rect'])
-    expect(requestRender).toHaveBeenCalledTimes(1)
+    expect(requestRender).toHaveBeenCalledWith(RenderReason.SceneDirty)
   })
 
   it('rebuilds the scene index for tree changes before rendering', () => {
@@ -62,7 +62,7 @@ describe('RenderInvalidationController', () => {
 
     expect(rebuildSceneIndex).toHaveBeenCalledTimes(1)
     expect(updateSceneIndexByIds).not.toHaveBeenCalled()
-    expect(requestRender).toHaveBeenCalledTimes(1)
+    expect(requestRender).toHaveBeenCalledWith(RenderReason.SceneDirty)
   })
 
   it('does not render for non-render projection changes', () => {

@@ -3,7 +3,7 @@ import { SelectionService } from './services/selection/selectionService'
 import { ToolService } from './services/tools/toolService'
 import { PageService } from './services/page/pageService'
 
-import type { EditorHost, IEditorRenderer, InputService } from '@latte-js/syrup'
+import type { EditorHost, InputService } from '@latte-js/syrup'
 import type { SceneGraph } from '@latte-js/espresso'
 import type {
   IDocumentService,
@@ -14,7 +14,6 @@ import type {
 export interface WorkbenchOptions {
   editor: EditorHost<SceneGraph>
   inputService: InputService
-  renderer: IEditorRenderer<SceneGraph>
   documentService: IDocumentService
   queryService: IQueryService
 }
@@ -37,8 +36,7 @@ export class Workbench {
     this.toolService = new ToolService(this._editor)
     this.pageService = new PageService(
       options.documentService,
-      options.queryService,
-      options.renderer
+      options.queryService
     )
     this._registerDefaultTools()
   }

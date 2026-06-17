@@ -139,12 +139,14 @@ export class EditorRuntime {
       this.editorHost,
       this._projection
     )
-    this._documentViewState = new DocumentViewStateController(this.editorHost)
+    this._documentViewState = new DocumentViewStateController(
+      this.editorHost,
+      this._renderer
+    )
 
     this._workbench = new Workbench({
       editor: this.editorHost,
       inputService: this._inputService,
-      renderer: this._renderer,
       documentService: this._baristaClient.getService(Channels.Document),
       queryService: this._baristaClient.getService(Channels.Query),
     })
