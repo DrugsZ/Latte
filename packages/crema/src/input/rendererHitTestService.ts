@@ -1,15 +1,16 @@
 import { HitTester, type Renderer } from '@latte-js/art'
 import { NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
 
-import type { EditorHost, IInputHitTestProvider } from '@latte-js/syrup'
+import type { EditorHost, IHitTestService } from '@latte-js/syrup'
 
-export class RendererInputHitTestProvider implements IInputHitTestProvider {
+export class RendererHitTestService implements IHitTestService {
   private _graph: SceneGraph
   private readonly _hitTester: HitTester
 
   constructor(
     private readonly _host: EditorHost<SceneGraph>,
-    private readonly _renderer: Renderer
+    private readonly _renderer: Renderer,
+    private readonly _viewport: HTMLElement
   ) {
     this._graph = this._host.graph
     this._hitTester = new HitTester(this._graph, this._renderer.camera)
@@ -18,18 +19,19 @@ export class RendererInputHitTestProvider implements IInputHitTestProvider {
   public hitTest(clientX: number, clientY: number) {
     this._syncGraph()
 
-    const rect = this._renderer.canvas.getBoundingClientRect()
+    const rect = this._viewport.getBoundingClientRect()
     const localX = clientX - rect.left
     const localY = clientY - rect.top
-    const client = this._renderer.camera.toWorld(localX, localY)
+    const viewport = { x: localX, y: localY }
+    const world = this._renderer.camera.toWorld(localX, localY)
     const activeRootId = this._renderer.activeRootId
     if (!activeRootId) {
-      return { hitResult: undefined, client }
+      return { hitResult: undefined, viewport, world }
     }
 
     const indexedCandidates = this._renderer.queryHitTestCandidates(
-      client.x,
-      client.y,
+      world.x,
+      world.y,
       activeRootId
     )
 
@@ -55,7 +57,7 @@ export class RendererInputHitTestProvider implements IInputHitTestProvider {
       candidates
     )
     if (nodeIndex === NULL_INDEX) {
-      return { hitResult: undefined, client }
+      return { hitResult: undefined, viewport, world }
     }
 
     return {
@@ -63,7 +65,8 @@ export class RendererInputHitTestProvider implements IInputHitTestProvider {
         nodeIndex,
         nodeId: this._graph.getUUID(nodeIndex) || undefined,
       },
-      client,
+      viewport,
+      world,
     }
   }
 

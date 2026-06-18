@@ -1,4 +1,4 @@
-import { Canvas2DRender, Renderer } from '@latte-js/art'
+import { Canvas2DRender, Renderer, type RenderSurfaceSize } from '@latte-js/art'
 import { BaristaClient } from '@latte-js/barista'
 import BaristaWorker from '@latte-js/barista/worker?worker'
 import { Channels, type ILatteFile } from '@latte-js/bean'
@@ -6,6 +6,7 @@ import { Workbench } from '@latte-js/counter'
 import { SceneGraph } from '@latte-js/espresso'
 import {
   EditorHost,
+  IHitTestService,
   IInputService,
   InputService,
   LatteDocument,
@@ -13,7 +14,7 @@ import {
 
 import { DocumentViewStateController } from './document/documentViewStateController'
 import { TransformInteractionController } from './interactions/transformInteractionController'
-import { RendererInputHitTestProvider } from './input/rendererInputHitTestProvider'
+import { RendererHitTestService } from './input/rendererHitTestService'
 import { ProjectionSyncController } from './projection/projectionSyncController'
 import { RenderInvalidationController } from './render/renderInvalidationController'
 
@@ -38,6 +39,8 @@ export class EditorRuntime {
   private _worker: Worker | null = null
   private _baristaClient: BaristaClient | null = null
   private _renderer: Renderer | null = null
+  private _renderCanvas: HTMLCanvasElement | null = null
+  private _resizeObserver: ResizeObserver | null = null
   private _inputService: InputService | null = null
   private _workbench: Workbench | null = null
   private _nextDocumentId = 1
@@ -115,17 +118,19 @@ export class EditorRuntime {
     )
 
     this._registerWorkerServices()
-    this._renderer = new Renderer(
-      this.editorHost.graph,
-      new Canvas2DRender(),
-      container
-    )
+    const canvas = this._createRenderCanvas(container)
+    this._renderer = new Renderer(this.editorHost.graph, new Canvas2DRender(), {
+      surface: { type: 'html-canvas', canvas },
+      size: this._getRenderSurfaceSize(canvas),
+    })
+    this._startRenderResizeObserver(canvas)
     this.editorHost.setRenderer(this._renderer)
 
-    this._inputService = new InputService(
-      this._renderer.canvas,
-      new RendererInputHitTestProvider(this.editorHost, this._renderer)
+    const hitTestService = this.editorHost.registerService(
+      IHitTestService,
+      new RendererHitTestService(this.editorHost, this._renderer, canvas)
     )
+    this._inputService = new InputService(canvas, hitTestService)
     this.editorHost.registerService(IInputService, this._inputService)
 
     this._projection = new ProjectionSyncController(this.editorHost, {
@@ -230,6 +235,12 @@ export class EditorRuntime {
     this._renderer?.dispose()
     this._renderer = null
 
+    this._resizeObserver?.disconnect()
+    this._resizeObserver = null
+
+    this._renderCanvas?.remove()
+    this._renderCanvas = null
+
     this.editorHost.setRenderer(null)
     this._worker?.terminate()
     this._worker = null
@@ -243,6 +254,36 @@ export class EditorRuntime {
         channel,
         this.baristaClient.getService(channel)
       )
+    }
+  }
+
+  private _createRenderCanvas(container: HTMLDivElement) {
+    const canvas = document.createElement('canvas')
+    canvas.style.position = 'absolute'
+    canvas.style.top = '0'
+    canvas.style.left = '0'
+    canvas.style.width = '100%'
+    canvas.style.height = '100%'
+    canvas.style.display = 'block'
+    container.appendChild(canvas)
+    this._renderCanvas = canvas
+    return canvas
+  }
+
+  private _startRenderResizeObserver(canvas: HTMLCanvasElement) {
+    const observer = new ResizeObserver(() => {
+      this._renderer?.resize(this._getRenderSurfaceSize(canvas))
+    })
+    observer.observe(canvas)
+    this._resizeObserver = observer
+  }
+
+  private _getRenderSurfaceSize(canvas: HTMLCanvasElement): RenderSurfaceSize {
+    const rect = canvas.getBoundingClientRect()
+    return {
+      width: rect.width,
+      height: rect.height,
+      dpr: window.devicePixelRatio || 1,
     }
   }
 

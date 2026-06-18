@@ -1,22 +1,21 @@
 /**
- * Path command enumeration for drawPath
- * Maps to Canvas API actions
+ * Backend-neutral path command stream.
+ *
+ * This mirrors the shape of SkPath closely enough for CanvasKit/Skia and can
+ * still be consumed by Canvas2D, WebGL/WebGPU tessellators, or Rust/WASM.
  */
 export enum PathCmd {
   MOVE_TO = 0,
   LINE_TO = 1,
-  QUAD_TO = 2, // Quadratic Bezier
-  CUBIC_TO = 3, // Cubic Bezier
-  CLOSE = 4,
-  ARC = 5, // Arc
+  QUAD_TO = 2,
+  CUBIC_TO = 3,
+  CONIC_TO = 4,
+  CLOSE = 5,
+  ARC = 6,
 }
 
-/**
- * Blending mode enumeration
- * Maps to Canvas globalCompositeOperation and WebGL blending
- */
 export enum BlendMode {
-  NORMAL = 0, // source-over
+  NORMAL = 0,
   MULTIPLY = 1,
   SCREEN = 2,
   OVERLAY = 3,
@@ -28,325 +27,369 @@ export enum BlendMode {
   SOFT_LIGHT = 9,
   DIFFERENCE = 10,
   EXCLUSION = 11,
-  ADD = 12, // lighter
+  ADD = 12,
   SUBTRACT = 13,
+  HUE = 14,
+  SATURATION = 15,
+  COLOR = 16,
+  LUMINOSITY = 17,
 }
 
-/**
- * Line cap styles
- */
 export enum LineCap {
   BUTT = 0,
   ROUND = 1,
   SQUARE = 2,
 }
 
-/**
- * Line join styles
- */
 export enum LineJoin {
   MITER = 0,
   ROUND = 1,
   BEVEL = 2,
 }
 
-/**
- * Gradient types
- */
-export enum GradientType {
-  LINEAR = 0,
-  RADIAL = 1,
-  CONIC = 2,
+export enum ShaderType {
+  LINEAR_GRADIENT = 0,
+  RADIAL_GRADIENT = 1,
+  CONIC_GRADIENT = 2,
+  IMAGE = 3,
+  RUNTIME_EFFECT = 4,
 }
 
-/**
- * Gradient color stop
- */
 export interface GradientStop {
-  offset: number // 0.0 - 1.0
-  color: number // 0xRRGGBBAA format
+  offset: number
+  color: number
 }
 
-/**
- * Text measurement results
- */
-export interface TextMetrics {
-  width: number
-  height: number
-  actualBoundingBoxAscent?: number
-  actualBoundingBoxDescent?: number
+export interface GradientShader {
+  readonly type:
+    | ShaderType.LINEAR_GRADIENT
+    | ShaderType.RADIAL_GRADIENT
+    | ShaderType.CONIC_GRADIENT
+  readonly stops: readonly GradientStop[]
+  /**
+   * Linear: [x0, y0, x1, y1]
+   * Radial: [x0, y0, r0, x1, y1, r1]
+   * Conic: [cx, cy, angle]
+   */
+  readonly coords: Float32Array
 }
 
-/**
- * Gradient definition
- */
-export interface Gradient {
-  type: GradientType
-  stops: GradientStop[]
-  // Linear: [x0, y0, x1, y1]
-  // Radial: [x0, y0, r0, x1, y1, r1]
-  // Conic: [cx, cy, angle]
-  coords: Float32Array
+export interface ImageShader {
+  readonly type: ShaderType.IMAGE
+  readonly imageId: string
+  readonly transform?: Float32Array
+  readonly repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat'
 }
 
-/**
- * Abstract interface for canvas-like objects (HTMLCanvasElement, OffscreenCanvas, Node-Canvas)
- */
-export interface CanvasLike {
-  width: number
-  height: number
-  getContext(
-    contextId: '2d',
-    options?: CanvasRenderingContext2DSettings
-  ): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null
-  toDataURL?(type?: string, encoderOptions?: number): string
-  toBlob?(
-    callback: (blob: Blob | null) => void,
-    type?: string,
-    quality?: number
-  ): void
-  convertToBlob?(options?: { type?: string; quality?: number }): Promise<Blob>
+export interface RuntimeEffectShader {
+  readonly type: ShaderType.RUNTIME_EFFECT
+  readonly effectId: string
+  readonly uniforms?: Float32Array
 }
 
-export interface IRenderBackend {
-  // ==========================================
-  // 1. Lifecycle
-  // ==========================================
+export type Shader = GradientShader | ImageShader | RuntimeEffectShader
 
+export interface ShaderRef {
+  readonly id: number
+}
+
+export enum PaintStyle {
+  Fill = 'fill',
+  Stroke = 'stroke',
+}
+
+export interface StrokeStyle {
+  readonly width: number
+  readonly cap?: LineCap
+  readonly join?: LineJoin
+  readonly miterLimit?: number
+  readonly dash?: readonly number[]
+  readonly dashOffset?: number
+}
+
+export interface PaintEffect {
+  readonly type: 'drop-shadow' | 'inner-shadow' | 'blur'
+  readonly offsetX?: number
+  readonly offsetY?: number
+  readonly blur?: number
+  readonly color?: number
+}
+
+export interface Paint {
+  readonly style: PaintStyle
+  readonly color?: number
+  readonly shader?: ShaderRef
+  readonly alpha?: number
+  readonly blendMode?: BlendMode
+  readonly stroke?: StrokeStyle
+  readonly effects?: readonly PaintEffect[]
+}
+
+export enum RenderBackendType {
+  Canvas2D = 'canvas2d',
+  WebGL = 'webgl',
+  WebGL2 = 'webgl2',
+  WebGPU = 'webgpu',
+  CanvasKit = 'canvaskit',
+  Wasm = 'wasm',
+}
+
+export type HtmlCanvasRenderSurface = {
+  readonly type: 'html-canvas'
+  readonly canvas: HTMLCanvasElement
+}
+
+export type OffscreenCanvasRenderSurface = {
+  readonly type: 'offscreen-canvas'
+  readonly canvas: OffscreenCanvas
+}
+
+export type WasmRenderSurface = {
+  readonly type: 'wasm-surface'
+  readonly handle: number
+}
+
+export type RenderSurface =
+  | HtmlCanvasRenderSurface
+  | OffscreenCanvasRenderSurface
+  | WasmRenderSurface
+
+export interface RenderSurfaceSize {
   /**
-   * Initialize the backend with a canvas instance
-   * @param canvas The canvas element or offscreen canvas
-   * @param dpr Initial device pixel ratio
+   * CSS-space width and height. The backend owns backing-store scaling.
    */
-  init(canvas: CanvasLike, dpr?: number): void
+  readonly width: number
+  readonly height: number
+  readonly dpr: number
+}
 
-  /**
-   * Respond to canvas size changes
-   * @param width Physical width (css width * dpr)
-   * @param height Physical height
-   * @param dpr Device pixel ratio
-   */
-  resize(width: number, height: number, dpr: number): void
+export interface RenderBackendOptions {
+  readonly dpr?: number
+}
 
-  clearRect(x: number, y: number, w: number, h: number): void
+export interface RenderCapabilities {
+  readonly conicGradient: boolean
+  readonly softShadow: boolean
+  readonly offscreenSurface: boolean
+  readonly pathHitTest: boolean
+  readonly clipPath: boolean
+  readonly textBasic: boolean
+  readonly textShaping: boolean
+  readonly image: boolean
+  readonly imageShader: boolean
+  readonly runtimeEffect: boolean
+  readonly blendModes: ReadonlySet<BlendMode>
+}
 
-  getWidth(): number
+export const DEFAULT_RENDER_CAPABILITIES: RenderCapabilities = {
+  conicGradient: false,
+  softShadow: false,
+  offscreenSurface: false,
+  pathHitTest: false,
+  clipPath: false,
+  textBasic: false,
+  textShaping: false,
+  image: false,
+  imageShader: false,
+  runtimeEffect: false,
+  blendModes: new Set([BlendMode.NORMAL]),
+}
 
-  getHeight(): number
+export interface RenderPassClear {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+  readonly color?: number
+}
 
-  /**
-   * Destroy resources (unbind events, release WebGL context, etc.)
-   */
-  dispose(): void
+export interface RenderPass {
+  readonly clear?: RenderPassClear
+}
 
-  // ==========================================
-  // 2. Frame Control
-  // ==========================================
+export enum RenderCommandType {
+  DrawRect = 'draw-rect',
+  DrawEllipse = 'draw-ellipse',
+  DrawPath = 'draw-path',
+  DrawText = 'draw-text',
+  DrawImage = 'draw-image',
+  PushClipRect = 'push-clip-rect',
+  PushClipPath = 'push-clip-path',
+  PushLayer = 'push-layer',
+  Pop = 'pop',
+}
 
-  /**
-   * Start a new frame
-   * Clears the canvas, resets batch buffers, and state stack
-   */
-  beginFrame(): void
+export interface RenderCommandBase {
+  readonly type: RenderCommandType
+}
 
-  /**
-   * End the current frame
-   * Submits remaining batches (WebGL) or performs cleanup
-   */
-  endFrame(): void
+export interface TransformedRenderCommand extends RenderCommandBase {
+  readonly transform: Float32Array
+}
 
-  // ==========================================
-  // 3. State Management
-  // ==========================================
+export interface DrawGeometryCommand extends TransformedRenderCommand {
+  readonly paint: Paint
+}
 
-  /**
-   * Set absolute transform matrix
-   * @param matrix [a, b, c, d, tx, ty]
-   */
-  setTransform(matrix: Float32Array): void
+export interface DrawRectCommand extends DrawGeometryCommand {
+  readonly type: RenderCommandType.DrawRect
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+  readonly cornerRadius: number | Float32Array
+}
 
-  /**
-   * Reset transform to identity matrix
-   */
-  resetTransform(): void
+export interface DrawEllipseCommand extends DrawGeometryCommand {
+  readonly type: RenderCommandType.DrawEllipse
+  readonly cx: number
+  readonly cy: number
+  readonly rx: number
+  readonly ry: number
+  readonly rotation: number
+}
 
-  /**
-   * Set global alpha
-   * @param alpha 0.0 - 1.0
-   *
-   * Note: Alpha is typically hierarchical (parent 0.5 * child 0.5 = 0.25).
-   * Either the renderer calculates final alpha, or the backend maintains an alpha stack.
-   */
-  setGlobalAlpha(alpha: number): void
+export interface DrawPathCommand extends DrawGeometryCommand {
+  readonly type: RenderCommandType.DrawPath
+  readonly pathId: number
+}
 
-  /**
-   * Push clipping region (Masking)
-   */
-  pushClip(x: number, y: number, w: number, h: number): void
+export interface DrawTextCommand extends TransformedRenderCommand {
+  readonly type: RenderCommandType.DrawText
+  readonly text: string
+  readonly x: number
+  readonly y: number
+  readonly fontId: string
+  readonly fontSize: number
+  readonly paint: Paint
+  readonly align?: 'left' | 'center' | 'right'
+  readonly baseline?: 'top' | 'middle' | 'bottom' | 'alphabetic'
+  readonly maxWidth?: number
+}
 
-  /**
-   * Pop clipping region
-   */
-  popClip(): void
+export interface DrawImageCommand extends TransformedRenderCommand {
+  readonly type: RenderCommandType.DrawImage
+  readonly imageId: string
+  readonly dx: number
+  readonly dy: number
+  readonly dw: number
+  readonly dh: number
+  readonly sx?: number
+  readonly sy?: number
+  readonly sw?: number
+  readonly sh?: number
+  readonly paint?: Paint
+}
 
-  /**
-   * Set blending mode
-   * @param mode Blending mode enum
-   */
-  setBlendMode(mode: BlendMode): void
+export interface PushClipRectCommand extends TransformedRenderCommand {
+  readonly type: RenderCommandType.PushClipRect
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
 
-  /**
-   * Set shadow parameters
-   * @param offsetX Shadow offset X
-   * @param offsetY Shadow offset Y
-   * @param blur Blur radius
-   * @param color Shadow color (0xRRGGBBAA)
-   * @returns boolean indicating if the feature is supported
-   */
-  setShadow(
-    offsetX: number,
-    offsetY: number,
-    blur: number,
-    color: number
-  ): boolean
+export interface PushClipPathCommand extends TransformedRenderCommand {
+  readonly type: RenderCommandType.PushClipPath
+  readonly pathId: number
+}
 
-  /**
-   * Clear shadow settings
-   */
-  clearShadow(): void
+export interface PushLayerCommand extends RenderCommandBase {
+  readonly type: RenderCommandType.PushLayer
+  readonly alpha?: number
+  readonly blendMode?: BlendMode
+  readonly bounds?: RenderPassClear
+}
 
-  /**
-   * Set line style parameters
-   * @param width Stroke width
-   * @param cap Line cap style
-   * @param join Line join style
-   * @param miterLimit Miter limit (only for MITER join)
-   */
-  setLineStyle(
-    width: number,
-    cap: LineCap,
-    join: LineJoin,
-    miterLimit?: number
-  ): void
+export interface PopCommand extends RenderCommandBase {
+  readonly type: RenderCommandType.Pop
+}
 
-  /**
-   * Set line dash pattern
-   * @param segments Dash segments (e.g., [5, 10] for 5px dash, 10px gap)
-   * @param offset Dash offset
-   */
-  setLineDash(segments: number[], offset?: number): void
+export type RenderCommand =
+  | DrawRectCommand
+  | DrawEllipseCommand
+  | DrawPathCommand
+  | DrawTextCommand
+  | DrawImageCommand
+  | PushClipRectCommand
+  | PushClipPathCommand
+  | PushLayerCommand
+  | PopCommand
 
-  /**
-   * Clear line dash pattern
-   */
-  clearLineDash(): void
+export class RenderCommandBuffer {
+  private readonly _commands: RenderCommand[] = []
+  private readonly _shaders = new Map<number, Shader>()
+  private _shaderId = 1
+  private _pass: RenderPass = {}
 
-  /**
-   * Draw a rectangle (supports rounded corners)
-   * @param cornerRadius Corner radius or per-corner radii [tl, tr, br, bl]
-   * @param fill Fill color or gradient ID
-   * @param stroke Stroke color or gradient ID
-   */
+  public get commands(): readonly RenderCommand[] {
+    return this._commands
+  }
+
+  public get shaders(): ReadonlyMap<number, Shader> {
+    return this._shaders
+  }
+
+  public get pass(): RenderPass {
+    return this._pass
+  }
+
+  public setClear(clear: RenderPassClear) {
+    this._pass = { ...this._pass, clear }
+  }
+
+  public push(command: RenderCommand) {
+    this._commands.push(command)
+  }
+
+  public createShader(shader: Shader): ShaderRef {
+    const id = this._shaderId++
+    this._shaders.set(id, shader)
+    return { id }
+  }
+
+  public getShader(id: number) {
+    return this._shaders.get(id) ?? null
+  }
+
+  public reset() {
+    this._commands.length = 0
+    this._shaders.clear()
+    this._shaderId = 1
+    this._pass = {}
+  }
+}
+
+export interface IRenderCommandEncoder {
+  createShader(shader: Shader): ShaderRef
   drawRect(
     x: number,
     y: number,
-    w: number,
-    h: number,
+    width: number,
+    height: number,
     cornerRadius: number | Float32Array,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number
+    paint: Paint
   ): void
-
-  /**
-   * Draw an ellipse or circle
-   */
   drawEllipse(
     cx: number,
     cy: number,
     rx: number,
     ry: number,
     rotation: number,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number
+    paint: Paint
   ): void
-
-  // ==========================================
-  // 4. Vector Paths
-  // ==========================================
-
-  /**
-   * Create a path resource
-   * @returns Unique path ID
-   */
-  createPath(commands: Uint8Array, data: Float32Array): number
-
-  /**
-   * Delete a path resource
-   */
-  deletePath(pathId: number): void
-
-  /**
-   * Draw a vector path
-   * @param pathId Resource ID of the path
-   */
-  drawPath(
-    pathId: number,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number
-  ): void
-
-  // ==========================================
-  // 5. Advanced Objects
-  // ==========================================
-
-  /**
-   * Draw text
-   * @param text Text content
-   * @param fontId Font resource ID
-   * @param fontSize Font size
-   * @param fill Fill color or gradient
-   * @param align Horizontal alignment
-   * @param baseline Vertical alignment baseline
-   *
-   * Note: Text rendering is complex. Canvas2D supports it natively;
-   * WebGL/WebGPU requires Glyph Atlas or SDF implementation.
-   */
+  drawPath(pathId: number, paint: Paint): void
   drawText(
     text: string,
     x: number,
     y: number,
     fontId: string,
     fontSize: number,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number,
+    paint: Paint,
     align?: 'left' | 'center' | 'right',
     baseline?: 'top' | 'middle' | 'bottom' | 'alphabetic',
     maxWidth?: number
   ): void
-
-  /**
-   * Measure text dimensions
-   * @returns Text metrics for layout calculation
-   */
-  measureText(text: string, fontId: string, fontSize: number): TextMetrics
-
-  /**
-   * Draw an image
-   * @param imageId Image resource ID
-   * @param dx Destination X
-   * @param dy Destination Y
-   * @param dw Destination width
-   * @param dh Destination height
-   * @param sx Source X (for sprite/cropping)
-   * @param sy Source Y
-   * @param sw Source width
-   * @param sh Source height
-   * @param opacity Opacity (0-1)
-   */
   drawImage(
     imageId: string,
     dx: number,
@@ -357,121 +400,81 @@ export interface IRenderBackend {
     sy?: number,
     sw?: number,
     sh?: number,
-    opacity?: number
+    paint?: Paint
   ): void
-
-  /**
-   * Draw a rectangle with pattern fill
-   * @param imageId Pattern image resource ID
-   * @param repetition Pattern repetition mode
-   */
-  drawPattern(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    imageId: string,
-    repetition: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat'
+  pushClipRect(x: number, y: number, width: number, height: number): void
+  pushClipPath(pathId: number): void
+  pushLayer(
+    alpha?: number,
+    blendMode?: BlendMode,
+    bounds?: RenderPassClear
   ): void
+  pop(): void
+}
 
-  // ==========================================
-  // 6. Resource Management
-  // ==========================================
+export interface RenderStats {
+  drawCalls: number
+  triangles: number
+  vertices: number
+  textures: number
+}
 
-  /**
-   * Create a gradient resource
-   * @returns Unique gradient ID
-   */
-  createGradient(gradient: Gradient): number
+export interface IRenderBackendDriver {
+  readonly type: RenderBackendType | string
+  readonly capabilities: RenderCapabilities
+  init(
+    surface: RenderSurface,
+    options?: RenderBackendOptions
+  ): void | Promise<void>
+  resize(size: RenderSurfaceSize): void
+  submit(commandBuffer: RenderCommandBuffer): void
+  getSize(): RenderSurfaceSize
+  dispose(): void
+  getStats(): RenderStats
+  resetStats(): void
+}
 
-  /**
-   * Delete a gradient resource
-   */
-  deleteGradient(gradientId: number): void
+export interface PathResourceManager {
+  createPath(commands: Uint8Array, data: Float32Array): number
+  deletePath(pathId: number): void
+}
 
-  /**
-   * Upload image source to GPU (async)
-   * @param imageId Image ID
-   * @param source Image source (HTMLImageElement, Canvas, etc.)
-   */
+export interface ImageResourceManager {
   uploadImage(imageId: string, source: TexImageSource): Promise<void>
-
-  /**
-   * Delete an image resource
-   */
   deleteImage(imageId: string): void
+}
 
-  // ==========================================
-  // 7. Offscreen Rendering & Post-processing
-  // ==========================================
+export interface TextMeasureBackend {
+  measureText(
+    text: string,
+    fontId: string,
+    fontSize: number
+  ): {
+    width: number
+    height: number
+    actualBoundingBoxAscent?: number
+    actualBoundingBoxDescent?: number
+  }
+}
 
-  /**
-   * Create an offscreen render target (FBO / OffscreenCanvas)
-   * @param width Target width
-   * @param height Target height
-   * @param samples MSAA sample count (WebGL/WebGPU only)
-   * @returns Target ID
-   */
-  createRenderTarget(width: number, height: number, samples?: number): number
-
-  /**
-   * Delete a render target
-   */
-  deleteRenderTarget(targetId: number): void
-
-  /**
-   * Set current render target (null for main canvas)
-   */
-  setRenderTarget(targetId: number | null): void
-
-  /**
-   * Blit a render target to the current destination
-   * @param targetId Source target ID
-   */
-  blitRenderTarget(
-    targetId: number,
+export interface RenderSurfaceManager {
+  createOffscreenSurface(
+    width: number,
+    height: number,
+    samples?: number
+  ): number
+  deleteOffscreenSurface(surfaceId: number): void
+  setSurface(surfaceId: number | null): void
+  blitSurface(
+    surfaceId: number,
     dx: number,
     dy: number,
     dw: number,
     dh: number
   ): void
+}
 
-  // ==========================================
-  // 8. Performance & Debugging
-  // ==========================================
-
-  /**
-   * Get rendering statistics
-   */
-  getStats(): {
-    drawCalls: number
-    triangles: number
-    vertices: number
-    textures: number
-  }
-
-  /**
-   * Reset rendering statistics
-   */
-  resetStats(): void
-
-  /**
-   * Draw a debug bounding box
-   */
-  drawDebugRect(x: number, y: number, w: number, h: number, color: number): void
-
-  // ==========================================
-  // 9. Interaction Support
-  // ==========================================
-
-  /**
-   * Hit test: check if a point is within a path
-   * @param pathId Resource ID
-   * @param x Coordinate X
-   * @param y Coordinate Y
-   * @param transform Path transformation matrix
-   * @param fillRule Fill rule for hit testing
-   */
+export interface PathHitTestBackend {
   isPointInPath(
     pathId: number,
     x: number,
@@ -479,10 +482,6 @@ export interface IRenderBackend {
     transform?: Float32Array,
     fillRule?: 'nonzero' | 'evenodd'
   ): boolean
-
-  /**
-   * Hit test: check if a point is on the path stroke
-   */
   isPointInStroke(
     pathId: number,
     x: number,
@@ -490,10 +489,4 @@ export interface IRenderBackend {
     transform?: Float32Array,
     strokeWidth?: number
   ): boolean
-
-  /**
-   * Get backend type identifier
-   * @returns 'canvas2d' | 'webgl' | 'webgl2' | 'webgpu'
-   */
-  getBackendType(): string
 }

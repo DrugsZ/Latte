@@ -1,23 +1,90 @@
 import {
   BlendMode,
-  GradientType,
+  DEFAULT_RENDER_CAPABILITIES,
   LineCap,
   LineJoin,
+  PaintStyle,
   PathCmd,
+  RenderBackendType,
+  RenderCommandType,
+  ShaderType,
 } from '../../contract/renderBackend'
 
 import type {
-  CanvasLike,
-  Gradient,
-  IRenderBackend,
-  TextMetrics,
+  DrawEllipseCommand,
+  DrawImageCommand,
+  DrawPathCommand,
+  DrawRectCommand,
+  DrawTextCommand,
+  GradientShader,
+  ImageResourceManager,
+  IRenderBackendDriver,
+  Paint,
+  PathHitTestBackend,
+  PathResourceManager,
+  RenderBackendOptions,
+  RenderCapabilities,
+  RenderCommandBuffer,
+  RenderStats,
+  RenderSurfaceManager,
+  RenderSurface,
+  RenderSurfaceSize,
+  Shader,
+  TextMeasureBackend,
 } from '../../contract/renderBackend'
+
+type Canvas2DSurface = HTMLCanvasElement | OffscreenCanvas
 
 /**
  * Canvas2D implementation of the render backend
  */
-export class Canvas2DRenderBackend implements IRenderBackend {
-  private _canvas: CanvasLike | null = null
+export class Canvas2DRenderBackend
+  implements
+    IRenderBackendDriver,
+    PathResourceManager,
+    ImageResourceManager,
+    RenderSurfaceManager,
+    PathHitTestBackend,
+    TextMeasureBackend
+{
+  public readonly type = RenderBackendType.Canvas2D
+  public readonly capabilities: RenderCapabilities = {
+    ...DEFAULT_RENDER_CAPABILITIES,
+    conicGradient:
+      typeof CanvasRenderingContext2D !== 'undefined' &&
+      typeof CanvasRenderingContext2D.prototype.createConicGradient ===
+        'function',
+    softShadow: true,
+    offscreenSurface: true,
+    pathHitTest: true,
+    clipPath: true,
+    textBasic: true,
+    textShaping: false,
+    image: true,
+    imageShader: true,
+    runtimeEffect: false,
+    blendModes: new Set([
+      BlendMode.NORMAL,
+      BlendMode.MULTIPLY,
+      BlendMode.SCREEN,
+      BlendMode.OVERLAY,
+      BlendMode.DARKEN,
+      BlendMode.LIGHTEN,
+      BlendMode.COLOR_DODGE,
+      BlendMode.COLOR_BURN,
+      BlendMode.HARD_LIGHT,
+      BlendMode.SOFT_LIGHT,
+      BlendMode.DIFFERENCE,
+      BlendMode.EXCLUSION,
+      BlendMode.ADD,
+      BlendMode.HUE,
+      BlendMode.SATURATION,
+      BlendMode.COLOR,
+      BlendMode.LUMINOSITY,
+    ]),
+  }
+
+  private _canvas: Canvas2DSurface | null = null
   private _ctx:
     | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D
@@ -27,20 +94,16 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   // CPU state stack
   private _currentMatrix: Float32Array = new Float32Array([1, 0, 0, 1, 0, 0])
   private _clipStackDepth: number = 0
-  private _globalAlpha: number = 1
-
   // Resource management
-  private _gradients: Map<number, CanvasGradient> = new Map()
-  private _gradientIdCounter: number = 1
   private _paths: Map<number, Path2D> = new Map()
   private _pathIdCounter: number = 1
   private _images: Map<
     string,
     HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas
   > = new Map()
-  private _renderTargets: Map<number, HTMLCanvasElement> = new Map()
-  private _renderTargetIdCounter: number = 1
-  private _currentRenderTarget: number | null = null
+  private _offscreenSurfaces: Map<number, Canvas2DSurface> = new Map()
+  private _offscreenSurfaceIdCounter: number = 1
+  private _currentSurface: number | null = null
 
   // Performance statistics
   private _stats = {
@@ -54,7 +117,13 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   // 1. Lifecycle
   // ==========================================
 
-  init(canvas: CanvasLike, dpr: number = 1): void {
+  init(surface: RenderSurface, options: RenderBackendOptions = {}): void {
+    if (surface.type === 'wasm-surface') {
+      throw new Error('Canvas2D backend cannot initialize a WASM surface')
+    }
+
+    const canvas = surface.canvas
+    const dpr = options.dpr ?? 1
     if (!canvas || typeof canvas.getContext !== 'function') {
       throw new Error('Invalid canvas instance')
     }
@@ -76,12 +145,13 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._ctx.scale(this._dpr, this._dpr)
   }
 
-  resize(width: number, height: number, dpr: number): void {
+  resize(size: RenderSurfaceSize): void {
     if (!this._canvas || !this._ctx) return
 
+    const { width, height, dpr } = size
     this._dpr = dpr
 
-    // Set physical pixel size
+    // Input size is CSS-space. Canvas2D owns backing-store scaling.
     this._canvas.width = width * dpr
     this._canvas.height = height * dpr
 
@@ -90,17 +160,39 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._ctx.scale(dpr, dpr)
   }
 
-  clearRect(x: number, y: number, w: number, h: number): void {
+  private _clearRect(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    color?: number
+  ): void {
     if (!this._ctx) return
-    this._ctx.clearRect(x, y, w, h)
+    if (color === undefined) {
+      this._ctx.clearRect(x, y, w, h)
+      return
+    }
+
+    const previousStyle = this._ctx.fillStyle
+    this._ctx.fillStyle = this._colorToStyle(color)
+    this._ctx.fillRect(x, y, w, h)
+    this._ctx.fillStyle = previousStyle
   }
 
-  getWidth(): number {
+  private _getWidth(): number {
     return this._canvas ? this._canvas.width / this._dpr : 0
   }
 
-  getHeight(): number {
+  private _getHeight(): number {
     return this._canvas ? this._canvas.height / this._dpr : 0
+  }
+
+  getSize(): RenderSurfaceSize {
+    return {
+      width: this._getWidth(),
+      height: this._getHeight(),
+      dpr: this._dpr,
+    }
   }
 
   dispose(): void {
@@ -112,35 +204,89 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   // 2. Frame Control
   // ==========================================
 
-  beginFrame(): void {
+  private _beginFrame(): void {
     if (!this._ctx || !this._canvas) return
-
-    this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height)
 
     this._currentMatrix = new Float32Array([1, 0, 0, 1, 0, 0])
     this._clipStackDepth = 0
-    this._globalAlpha = 1
-
     this._ctx.setTransform(1, 0, 0, 1, 0, 0)
     this._ctx.scale(this._dpr, this._dpr)
+    this._ctx.globalAlpha = 1
+    this._ctx.globalCompositeOperation = 'source-over'
+    this._ctx.shadowOffsetX = 0
+    this._ctx.shadowOffsetY = 0
+    this._ctx.shadowBlur = 0
+    this._ctx.shadowColor = 'transparent'
+    this._ctx.setLineDash([])
+    this._ctx.lineDashOffset = 0
   }
 
-  endFrame(): void {
+  private _endFrame(): void {
     if (this._clipStackDepth > 0) {
       console.warn('Backend stack imbalance detected at endFrame')
     }
+  }
+
+  submit(commandBuffer: RenderCommandBuffer): void {
+    if (!this._ctx) return
+
+    this.resetStats()
+    this._beginFrame()
+
+    const clear = commandBuffer.pass.clear
+    if (clear) {
+      this._resetTransform()
+      this._clearRect(clear.x, clear.y, clear.width, clear.height, clear.color)
+    }
+
+    const shaderCache = new Map<number, CanvasGradient | CanvasPattern>()
+    for (const command of commandBuffer.commands) {
+      switch (command.type) {
+        case RenderCommandType.DrawRect:
+          this._drawRectCommand(command, commandBuffer, shaderCache)
+          break
+        case RenderCommandType.DrawEllipse:
+          this._drawEllipseCommand(command, commandBuffer, shaderCache)
+          break
+        case RenderCommandType.DrawPath:
+          this._drawPathCommand(command, commandBuffer, shaderCache)
+          break
+        case RenderCommandType.DrawText:
+          this._drawTextCommand(command, commandBuffer, shaderCache)
+          break
+        case RenderCommandType.DrawImage:
+          this._drawImageCommand(command)
+          break
+        case RenderCommandType.PushClipRect:
+          this._setTransform(command.transform)
+          this._pushClip(command.x, command.y, command.width, command.height)
+          break
+        case RenderCommandType.PushClipPath:
+          this._setTransform(command.transform)
+          this._pushPathClip(command.pathId)
+          break
+        case RenderCommandType.PushLayer:
+          this._pushLayer(command.alpha, command.blendMode)
+          break
+        case RenderCommandType.Pop:
+          this._popState()
+          break
+      }
+    }
+
+    this._endFrame()
   }
 
   // ==========================================
   // 3. State Management
   // ==========================================
 
-  setTransform(matrix: Float32Array): void {
+  private _setTransform(matrix: Float32Array): void {
     this._currentMatrix = new Float32Array(matrix)
     this._syncTransform()
   }
 
-  resetTransform(): void {
+  private _resetTransform(): void {
     this._currentMatrix = new Float32Array([1, 0, 0, 1, 0, 0])
     this._syncTransform()
   }
@@ -157,13 +303,12 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     )
   }
 
-  setGlobalAlpha(alpha: number): void {
+  private _setGlobalAlpha(alpha: number): void {
     if (!this._ctx) return
-    this._globalAlpha = alpha
     this._ctx.globalAlpha = alpha
   }
 
-  pushClip(x: number, y: number, w: number, h: number): void {
+  private _pushClip(x: number, y: number, w: number, h: number): void {
     if (!this._ctx) return
 
     this._ctx.save()
@@ -174,17 +319,35 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._ctx.clip()
   }
 
-  popClip(): void {
+  private _pushPathClip(pathId: number): void {
+    if (!this._ctx) return
+    const path = this._paths.get(pathId)
+    if (!path) return
+
+    this._ctx.save()
+    this._clipStackDepth++
+    this._ctx.clip(path)
+  }
+
+  private _pushLayer(alpha = 1, blendMode: BlendMode = BlendMode.NORMAL): void {
+    if (!this._ctx) return
+
+    this._ctx.save()
+    this._clipStackDepth++
+    this._ctx.globalAlpha *= alpha
+    this._setBlendMode(blendMode)
+  }
+
+  private _popState(): void {
     if (!this._ctx || this._clipStackDepth === 0) return
 
     this._ctx.restore()
     this._clipStackDepth--
 
     this._syncTransform()
-    this._ctx.globalAlpha = this._globalAlpha
   }
 
-  setBlendMode(mode: BlendMode): void {
+  private _setBlendMode(mode: BlendMode): void {
     if (!this._ctx) return
 
     const blendModeMap: Record<BlendMode, GlobalCompositeOperation> = {
@@ -201,13 +364,17 @@ export class Canvas2DRenderBackend implements IRenderBackend {
       [BlendMode.DIFFERENCE]: 'difference',
       [BlendMode.EXCLUSION]: 'exclusion',
       [BlendMode.ADD]: 'lighter',
-      [BlendMode.SUBTRACT]: 'difference',
+      [BlendMode.SUBTRACT]: 'source-over',
+      [BlendMode.HUE]: 'hue',
+      [BlendMode.SATURATION]: 'saturation',
+      [BlendMode.COLOR]: 'color',
+      [BlendMode.LUMINOSITY]: 'luminosity',
     }
 
     this._ctx.globalCompositeOperation = blendModeMap[mode]
   }
 
-  setShadow(
+  private _setShadow(
     offsetX: number,
     offsetY: number,
     blur: number,
@@ -223,7 +390,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     return true
   }
 
-  clearShadow(): void {
+  private _clearShadow(): void {
     if (!this._ctx) return
 
     this._ctx.shadowOffsetX = 0
@@ -232,7 +399,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._ctx.shadowColor = 'transparent'
   }
 
-  setLineStyle(
+  private _setLineStyle(
     width: number,
     cap: LineCap,
     join: LineJoin,
@@ -261,14 +428,14 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     }
   }
 
-  setLineDash(segments: number[], offset: number = 0): void {
+  private _setLineDash(segments: number[], offset: number = 0): void {
     if (!this._ctx) return
 
     this._ctx.setLineDash(segments)
     this._ctx.lineDashOffset = offset
   }
 
-  clearLineDash(): void {
+  private _clearLineDash(): void {
     if (!this._ctx) return
 
     this._ctx.setLineDash([])
@@ -276,106 +443,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   }
 
   // ==========================================
-  // 4. Basic Shapes
-  // ==========================================
-
-  drawRect(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    cornerRadius: number | Float32Array,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number
-  ): void {
-    if (!this._ctx) return
-
-    this._ctx.beginPath()
-    if (typeof (this._ctx as any).roundRect === 'function') {
-      if (typeof cornerRadius === 'number') {
-        ;(this._ctx as any).roundRect(x, y, w, h, cornerRadius)
-      } else if (cornerRadius instanceof Float32Array) {
-        ;(this._ctx as any).roundRect(x, y, w, h, Array.from(cornerRadius))
-      } else {
-        this._ctx.rect(x, y, w, h)
-      }
-    } else {
-      if (typeof cornerRadius === 'number' && cornerRadius > 0) {
-        const r = Math.min(cornerRadius, w / 2, h / 2)
-        this._ctx.moveTo(x + r, y)
-        this._ctx.lineTo(x + w - r, y)
-        this._ctx.arcTo(x + w, y, x + w, y + r, r)
-        this._ctx.lineTo(x + w, y + h - r)
-        this._ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
-        this._ctx.lineTo(x + r, y + h)
-        this._ctx.arcTo(x, y + h, x, y + h - r, r)
-        this._ctx.lineTo(x, y + r)
-        this._ctx.arcTo(x, y, x + r, y, r)
-      } else if (cornerRadius instanceof Float32Array) {
-        const [tl, tr, br, bl] = Array.from(cornerRadius)
-        this._ctx.moveTo(x + tl, y)
-        this._ctx.lineTo(x + w - tr, y)
-        if (tr > 0) this._ctx.arcTo(x + w, y, x + w, y + tr, tr)
-        this._ctx.lineTo(x + w, y + h - br)
-        if (br > 0) this._ctx.arcTo(x + w, y + h, x + w - br, y + h, br)
-        this._ctx.lineTo(x + bl, y + h)
-        if (bl > 0) this._ctx.arcTo(x, y + h, x, y + h - bl, bl)
-        this._ctx.lineTo(x, y + tl)
-        if (tl > 0) this._ctx.arcTo(x, y, x + tl, y, tl)
-      } else {
-        this._ctx.rect(x, y, w, h)
-      }
-    }
-
-    this._ctx.closePath()
-
-    if (fill !== undefined) {
-      this._ctx.fillStyle = this._paintIdToStyle(fill)
-      this._ctx.fill()
-    }
-
-    if (stroke !== undefined && strokeWidth && strokeWidth > 0) {
-      this._ctx.strokeStyle = this._paintIdToStyle(stroke)
-      this._ctx.lineWidth = strokeWidth
-      this._ctx.stroke()
-    }
-
-    this._stats.drawCalls++
-  }
-
-  drawEllipse(
-    cx: number,
-    cy: number,
-    rx: number,
-    ry: number,
-    rotation: number,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number
-  ): void {
-    if (!this._ctx) return
-
-    this._ctx.beginPath()
-    this._ctx.ellipse(cx, cy, rx, ry, rotation, 0, Math.PI * 2)
-    this._ctx.closePath()
-
-    if (fill !== undefined) {
-      this._ctx.fillStyle = this._paintIdToStyle(fill)
-      this._ctx.fill()
-    }
-
-    if (stroke !== undefined && strokeWidth && strokeWidth > 0) {
-      this._ctx.strokeStyle = this._paintIdToStyle(stroke)
-      this._ctx.lineWidth = strokeWidth
-      this._ctx.stroke()
-    }
-
-    this._stats.drawCalls++
-  }
-
-  // ==========================================
-  // 5. Vector Paths
+  // 4. Vector path resources
   // ==========================================
 
   createPath(commands: Uint8Array, data: Float32Array): number {
@@ -413,6 +481,15 @@ export class Canvas2DRenderBackend implements IRenderBackend {
           )
           dataIndex += 6
           break
+        case PathCmd.CONIC_TO:
+          path.quadraticCurveTo(
+            data[dataIndex],
+            data[dataIndex + 1],
+            data[dataIndex + 2],
+            data[dataIndex + 3]
+          )
+          dataIndex += 5
+          break
         case PathCmd.ARC:
           path.arc(
             data[dataIndex],
@@ -439,76 +516,20 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._paths.delete(pathId)
   }
 
-  drawPath(
-    pathId: number,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number
-  ): void {
-    if (!this._ctx) return
-    const path = this._paths.get(pathId)
-    if (!path) return
-
-    if (fill !== undefined) {
-      this._ctx.fillStyle = this._paintIdToStyle(fill)
-      this._ctx.fill(path)
-    }
-
-    if (stroke !== undefined && strokeWidth && strokeWidth > 0) {
-      this._ctx.strokeStyle = this._paintIdToStyle(stroke)
-      this._ctx.lineWidth = strokeWidth
-      this._ctx.stroke(path)
-    }
-
-    this._stats.drawCalls++
-  }
-
   // ==========================================
-  // 6. High-level Objects
+  // 5. Text and image resources
   // ==========================================
 
-  drawText(
+  measureText(
     text: string,
-    x: number,
-    y: number,
     fontId: string,
-    fontSize: number,
-    fill?: number,
-    stroke?: number,
-    strokeWidth?: number,
-    align: 'left' | 'center' | 'right' = 'left',
-    baseline: 'top' | 'middle' | 'bottom' | 'alphabetic' = 'alphabetic',
-    maxWidth?: number
-  ): void {
-    if (!this._ctx) return
-
-    this._ctx.font = `${fontSize}px ${fontId}`
-    this._ctx.textAlign = align
-    this._ctx.textBaseline = baseline
-
-    if (fill !== undefined) {
-      this._ctx.fillStyle = this._paintIdToStyle(fill)
-      if (maxWidth !== undefined) {
-        this._ctx.fillText(text, x, y, maxWidth)
-      } else {
-        this._ctx.fillText(text, x, y)
-      }
-    }
-
-    if (stroke !== undefined && strokeWidth && strokeWidth > 0) {
-      this._ctx.strokeStyle = this._paintIdToStyle(stroke)
-      this._ctx.lineWidth = strokeWidth
-      if (maxWidth !== undefined) {
-        this._ctx.strokeText(text, x, y, maxWidth)
-      } else {
-        this._ctx.strokeText(text, x, y)
-      }
-    }
-
-    this._stats.drawCalls++
-  }
-
-  measureText(text: string, fontId: string, fontSize: number): TextMetrics {
+    fontSize: number
+  ): {
+    width: number
+    height: number
+    actualBoundingBoxAscent?: number
+    actualBoundingBoxDescent?: number
+  } {
     if (!this._ctx) {
       return { width: 0, height: 0 }
     }
@@ -526,7 +547,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     }
   }
 
-  drawImage(
+  private _drawImage(
     imageId: string,
     dx: number,
     dy: number,
@@ -536,7 +557,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     sy?: number,
     sw?: number,
     sh?: number,
-    opacity: number = 1
+    paint?: Paint
   ): void {
     if (!this._ctx) return
 
@@ -546,8 +567,10 @@ export class Canvas2DRenderBackend implements IRenderBackend {
       return
     }
 
-    const prevAlpha = this._ctx.globalAlpha
-    this._ctx.globalAlpha = opacity
+    this._ctx.save()
+    if (paint) {
+      this._applyPaintState(paint)
+    }
 
     if (
       sx !== undefined &&
@@ -560,99 +583,259 @@ export class Canvas2DRenderBackend implements IRenderBackend {
       this._ctx.drawImage(image, dx, dy, dw, dh)
     }
 
-    this._ctx.globalAlpha = prevAlpha
+    this._ctx.restore()
+    this._syncTransform()
 
     this._stats.drawCalls++
     this._stats.textures++
   }
 
-  drawPattern(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    imageId: string,
-    repetition: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat'
-  ): void {
+  private _drawRectCommand(
+    command: DrawRectCommand,
+    buffer: RenderCommandBuffer,
+    shaderCache: Map<number, CanvasGradient | CanvasPattern>
+  ) {
     if (!this._ctx) return
+    this._setTransform(command.transform)
+    this._applyPaintState(command.paint)
 
-    const image = this._images.get(imageId)
-    if (!image) {
-      console.warn(`Image not found for pattern: ${imageId}`)
-      return
+    this._ctx.beginPath()
+    const { x, y, width, height, cornerRadius } = command
+    if (typeof (this._ctx as any).roundRect === 'function') {
+      if (typeof cornerRadius === 'number') {
+        ;(this._ctx as any).roundRect(x, y, width, height, cornerRadius)
+      } else {
+        ;(this._ctx as any).roundRect(
+          x,
+          y,
+          width,
+          height,
+          Array.from(cornerRadius)
+        )
+      }
+    } else {
+      this._buildRectPath(x, y, width, height, cornerRadius)
+    }
+    this._ctx.closePath()
+    this._drawPathWithPaint(command.paint, buffer, shaderCache)
+  }
+
+  private _drawEllipseCommand(
+    command: DrawEllipseCommand,
+    buffer: RenderCommandBuffer,
+    shaderCache: Map<number, CanvasGradient | CanvasPattern>
+  ) {
+    if (!this._ctx) return
+    this._setTransform(command.transform)
+    this._applyPaintState(command.paint)
+
+    this._ctx.beginPath()
+    this._ctx.ellipse(
+      command.cx,
+      command.cy,
+      command.rx,
+      command.ry,
+      command.rotation,
+      0,
+      Math.PI * 2
+    )
+    this._ctx.closePath()
+    this._drawPathWithPaint(command.paint, buffer, shaderCache)
+  }
+
+  private _drawPathCommand(
+    command: DrawPathCommand,
+    buffer: RenderCommandBuffer,
+    shaderCache: Map<number, CanvasGradient | CanvasPattern>
+  ) {
+    if (!this._ctx) return
+    const path = this._paths.get(command.pathId)
+    if (!path) return
+
+    this._setTransform(command.transform)
+    this._applyPaintState(command.paint)
+    this._drawPathWithPaint(command.paint, buffer, shaderCache, path)
+  }
+
+  private _drawTextCommand(
+    command: DrawTextCommand,
+    buffer: RenderCommandBuffer,
+    shaderCache: Map<number, CanvasGradient | CanvasPattern>
+  ) {
+    if (!this._ctx) return
+    this._setTransform(command.transform)
+    this._applyPaintState(command.paint)
+
+    this._ctx.font = `${command.fontSize}px ${command.fontId}`
+    this._ctx.textAlign = command.align ?? 'left'
+    this._ctx.textBaseline = command.baseline ?? 'alphabetic'
+
+    const style = this._paintToStyle(command.paint, buffer, shaderCache)
+    if (style && command.paint.style === PaintStyle.Fill) {
+      this._ctx.fillStyle = style
+      if (command.maxWidth !== undefined) {
+        this._ctx.fillText(command.text, command.x, command.y, command.maxWidth)
+      } else {
+        this._ctx.fillText(command.text, command.x, command.y)
+      }
     }
 
-    const pattern = this._ctx.createPattern(image, repetition)
-    if (!pattern) return
-
-    this._ctx.fillStyle = pattern
-    this._ctx.fillRect(x, y, w, h)
+    if (
+      style &&
+      command.paint.style === PaintStyle.Stroke &&
+      command.paint.stroke &&
+      command.paint.stroke.width > 0
+    ) {
+      this._ctx.strokeStyle = style
+      if (command.maxWidth !== undefined) {
+        this._ctx.strokeText(
+          command.text,
+          command.x,
+          command.y,
+          command.maxWidth
+        )
+      } else {
+        this._ctx.strokeText(command.text, command.x, command.y)
+      }
+    }
 
     this._stats.drawCalls++
   }
 
-  // ==========================================
-  // 7. Textures and Resources
-  // ==========================================
-
-  createGradient(gradient: Gradient): number {
-    if (!this._ctx) return 0
-
-    let canvasGradient: CanvasGradient
-
-    const coords = gradient.coords
-
-    switch (gradient.type) {
-      case GradientType.LINEAR:
-        canvasGradient = this._ctx.createLinearGradient(
-          coords[0],
-          coords[1],
-          coords[2],
-          coords[3]
-        )
-        break
-
-      case GradientType.RADIAL:
-        canvasGradient = this._ctx.createRadialGradient(
-          coords[0],
-          coords[1],
-          coords[2],
-          coords[3],
-          coords[4],
-          coords[5]
-        )
-        break
-
-      case GradientType.CONIC:
-        canvasGradient = this._ctx.createConicGradient(
-          coords[2],
-          coords[0],
-          coords[1]
-        )
-        break
-
-      default:
-        console.warn('Unsupported gradient type')
-        return 0
-    }
-
-    for (const stop of gradient.stops) {
-      canvasGradient.addColorStop(stop.offset, this._colorToStyle(stop.color))
-    }
-
-    const id = this._gradientIdCounter++
-    this._gradients.set(id, canvasGradient)
-    return id
+  private _drawImageCommand(command: DrawImageCommand) {
+    this._setTransform(command.transform)
+    this._drawImage(
+      command.imageId,
+      command.dx,
+      command.dy,
+      command.dw,
+      command.dh,
+      command.sx,
+      command.sy,
+      command.sw,
+      command.sh,
+      command.paint
+    )
   }
 
-  deleteGradient(gradientId: number): void {
-    this._gradients.delete(gradientId)
+  private _drawPathWithPaint(
+    paint: Paint,
+    buffer: RenderCommandBuffer,
+    shaderCache: Map<number, CanvasGradient | CanvasPattern>,
+    path?: Path2D
+  ) {
+    if (!this._ctx) return
+
+    const style = this._paintToStyle(paint, buffer, shaderCache)
+    if (!style) {
+      return
+    }
+
+    if (paint.style === PaintStyle.Fill) {
+      this._ctx.fillStyle = style
+      if (path) {
+        this._ctx.fill(path)
+      } else {
+        this._ctx.fill()
+      }
+    } else if (paint.stroke && paint.stroke.width > 0) {
+      this._ctx.strokeStyle = style
+      if (path) {
+        this._ctx.stroke(path)
+      } else {
+        this._ctx.stroke()
+      }
+    }
+
+    this._stats.drawCalls++
   }
+
+  private _applyPaintState(paint: Paint) {
+    if (!this._ctx) return
+
+    this._setGlobalAlpha(paint.alpha ?? 1)
+    this._setBlendMode(paint.blendMode ?? BlendMode.NORMAL)
+    if (paint.stroke) {
+      this._setLineStyle(
+        paint.stroke.width,
+        paint.stroke.cap ?? LineCap.BUTT,
+        paint.stroke.join ?? LineJoin.MITER,
+        paint.stroke.miterLimit
+      )
+      if (paint.stroke.dash && paint.stroke.dash.length > 0) {
+        this._setLineDash([...paint.stroke.dash], paint.stroke.dashOffset ?? 0)
+      } else {
+        this._clearLineDash()
+      }
+    } else {
+      this._clearLineDash()
+    }
+
+    const shadow = paint.effects?.find(effect => effect.type === 'drop-shadow')
+    if (shadow) {
+      this._setShadow(
+        shadow.offsetX ?? 0,
+        shadow.offsetY ?? 0,
+        shadow.blur ?? 0,
+        shadow.color ?? 0
+      )
+    } else {
+      this._clearShadow()
+    }
+  }
+
+  private _buildRectPath(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    cornerRadius: number | Float32Array
+  ) {
+    if (!this._ctx) return
+
+    if (typeof cornerRadius === 'number' && cornerRadius > 0) {
+      const r = Math.min(cornerRadius, width / 2, height / 2)
+      this._ctx.moveTo(x + r, y)
+      this._ctx.lineTo(x + width - r, y)
+      this._ctx.arcTo(x + width, y, x + width, y + r, r)
+      this._ctx.lineTo(x + width, y + height - r)
+      this._ctx.arcTo(x + width, y + height, x + width - r, y + height, r)
+      this._ctx.lineTo(x + r, y + height)
+      this._ctx.arcTo(x, y + height, x, y + height - r, r)
+      this._ctx.lineTo(x, y + r)
+      this._ctx.arcTo(x, y, x + r, y, r)
+      return
+    }
+
+    if (cornerRadius instanceof Float32Array) {
+      const [tl, tr, br, bl] = Array.from(cornerRadius)
+      this._ctx.moveTo(x + tl, y)
+      this._ctx.lineTo(x + width - tr, y)
+      if (tr > 0) this._ctx.arcTo(x + width, y, x + width, y + tr, tr)
+      this._ctx.lineTo(x + width, y + height - br)
+      if (br > 0) {
+        this._ctx.arcTo(x + width, y + height, x + width - br, y + height, br)
+      }
+      this._ctx.lineTo(x + bl, y + height)
+      if (bl > 0) this._ctx.arcTo(x, y + height, x, y + height - bl, bl)
+      this._ctx.lineTo(x, y + tl)
+      if (tl > 0) this._ctx.arcTo(x, y, x + tl, y, tl)
+      return
+    }
+
+    this._ctx.rect(x, y, width, height)
+  }
+
+  // ==========================================
+  // 6. Image resources
+  // ==========================================
 
   async uploadImage(imageId: string, source: TexImageSource): Promise<void> {
     if (
-      source instanceof HTMLImageElement ||
-      source instanceof HTMLCanvasElement ||
+      (typeof HTMLImageElement !== 'undefined' &&
+        source instanceof HTMLImageElement) ||
+      (typeof HTMLCanvasElement !== 'undefined' &&
+        source instanceof HTMLCanvasElement) ||
       (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) ||
       (typeof OffscreenCanvas !== 'undefined' &&
         source instanceof OffscreenCanvas)
@@ -667,59 +850,65 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._images.delete(imageId)
   }
 
-  createRenderTarget(width: number, height: number, _samples?: number): number {
-    // Attempt to create a new canvas of the same type as the main canvas
-    let offscreenCanvas: any
+  createOffscreenSurface(
+    width: number,
+    height: number,
+    _samples?: number
+  ): number {
+    let offscreenCanvas: HTMLCanvasElement | OffscreenCanvas
 
-    if (this._canvas && (this._canvas as any).constructor) {
-      // For OffscreenCanvas or Node-Canvas instances
-      const CanvasClass = (this._canvas as any).constructor
-      offscreenCanvas = new CanvasClass()
+    if (
+      typeof OffscreenCanvas !== 'undefined' &&
+      this._canvas instanceof OffscreenCanvas
+    ) {
+      offscreenCanvas = new OffscreenCanvas(
+        width * this._dpr,
+        height * this._dpr
+      )
     } else if (typeof document !== 'undefined') {
       offscreenCanvas = document.createElement('canvas')
+      offscreenCanvas.width = width * this._dpr
+      offscreenCanvas.height = height * this._dpr
     } else {
       throw new Error(
         'Environment does not support creating new canvas instances'
       )
     }
 
-    offscreenCanvas.width = width * this._dpr
-    offscreenCanvas.height = height * this._dpr
-
     const ctx = offscreenCanvas.getContext('2d')
     if (ctx) {
       ctx.scale(this._dpr, this._dpr)
     }
 
-    const id = this._renderTargetIdCounter++
-    this._renderTargets.set(id, offscreenCanvas)
+    const id = this._offscreenSurfaceIdCounter++
+    this._offscreenSurfaces.set(id, offscreenCanvas)
     return id
   }
 
-  deleteRenderTarget(targetId: number): void {
-    this._renderTargets.delete(targetId)
+  deleteOffscreenSurface(surfaceId: number): void {
+    this._offscreenSurfaces.delete(surfaceId)
   }
 
-  setRenderTarget(targetId: number | null): void {
-    if (this._currentRenderTarget === targetId) {
+  setSurface(surfaceId: number | null): void {
+    if (this._currentSurface === surfaceId) {
       return
     }
-    if (targetId === null) {
-      this._currentRenderTarget = null
+    if (surfaceId === null) {
+      this._currentSurface = null
       if (this._canvas) {
         this._ctx = this._canvas.getContext('2d')
       }
     } else {
-      const target = this._renderTargets.get(targetId)
+      const target = this._offscreenSurfaces.get(surfaceId)
       if (target) {
-        this._currentRenderTarget = targetId
+        this._currentSurface = surfaceId
         this._ctx = target.getContext('2d')
       }
     }
   }
 
-  blitRenderTarget(
-    targetId: number,
+  blitSurface(
+    surfaceId: number,
     dx: number,
     dy: number,
     dw: number,
@@ -727,9 +916,9 @@ export class Canvas2DRenderBackend implements IRenderBackend {
   ): void {
     if (!this._ctx) return
 
-    const target = this._renderTargets.get(targetId)
+    const target = this._offscreenSurfaces.get(surfaceId)
     if (!target) {
-      console.warn(`Render target not found: ${targetId}`)
+      console.warn(`Offscreen surface not found: ${surfaceId}`)
       return
     }
 
@@ -737,12 +926,7 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     this._stats.drawCalls++
   }
 
-  getStats(): {
-    drawCalls: number
-    triangles: number
-    vertices: number
-    textures: number
-  } {
+  getStats(): RenderStats {
     return { ...this._stats }
   }
 
@@ -755,33 +939,23 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     }
   }
 
-  drawDebugRect(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    color: number
-  ): void {
-    if (!this._ctx) return
-
-    this._ctx.strokeStyle = this._colorToStyle(color)
-    this._ctx.lineWidth = 1
-    this._ctx.strokeRect(x, y, w, h)
-  }
-
   isPointInPath(
     pathId: number,
     x: number,
     y: number,
-    _transform?: Float32Array,
+    transform?: Float32Array,
     fillRule: 'nonzero' | 'evenodd' = 'nonzero'
   ): boolean {
     if (!this._ctx) return false
     const path = this._paths.get(pathId)
     if (!path) return false
 
-    if (_transform) {
-      return this._ctx.isPointInPath(path, x, y, fillRule)
+    if (transform) {
+      const local = this._toLocalPoint(transform, x, y)
+      if (!local) {
+        return false
+      }
+      return this._ctx.isPointInPath(path, local.x, local.y, fillRule)
     }
 
     return this._ctx.isPointInPath(path, x, y, fillRule)
@@ -791,25 +965,32 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     pathId: number,
     x: number,
     y: number,
-    _transform?: Float32Array,
+    transform?: Float32Array,
     strokeWidth?: number
   ): boolean {
     if (!this._ctx) return false
     const path = this._paths.get(pathId)
     if (!path) return false
 
+    let hitX = x
+    let hitY = y
+    if (transform) {
+      const local = this._toLocalPoint(transform, x, y)
+      if (!local) {
+        return false
+      }
+      hitX = local.x
+      hitY = local.y
+    }
+
     const prevLineWidth = this._ctx.lineWidth
     if (strokeWidth !== undefined) {
       this._ctx.lineWidth = strokeWidth
     }
 
-    const result = this._ctx.isPointInStroke(path, x, y)
+    const result = this._ctx.isPointInStroke(path, hitX, hitY)
     this._ctx.lineWidth = prevLineWidth
     return result
-  }
-
-  getBackendType(): string {
-    return 'canvas2d'
   }
 
   private _colorToStyle(color: number): string {
@@ -823,11 +1004,132 @@ export class Canvas2DRenderBackend implements IRenderBackend {
     return `rgba(${r}, ${g}, ${b}, ${a})`
   }
 
-  private _paintIdToStyle(paintId: number): string | CanvasGradient {
-    const gradient = this._gradients.get(paintId)
-    if (gradient) {
-      return gradient
+  private _paintToStyle(
+    paint: Paint,
+    buffer: RenderCommandBuffer,
+    shaderCache: Map<number, CanvasGradient | CanvasPattern>
+  ): string | CanvasGradient | CanvasPattern | null {
+    if (paint.color !== undefined) {
+      return this._colorToStyle(paint.color)
     }
-    return this._colorToStyle(paintId)
+    if (!paint.shader) {
+      return null
+    }
+
+    const cached = shaderCache.get(paint.shader.id)
+    if (cached) {
+      return cached
+    }
+
+    const shader = buffer.getShader(paint.shader.id)
+    if (!shader) {
+      return null
+    }
+
+    const canvasShader = this._createCanvasShader(shader)
+    if (!canvasShader) {
+      return null
+    }
+
+    shaderCache.set(paint.shader.id, canvasShader)
+    return canvasShader
+  }
+
+  private _createCanvasShader(
+    shader: Shader
+  ): CanvasGradient | CanvasPattern | null {
+    if (!this._ctx) {
+      return null
+    }
+
+    if (shader.type === ShaderType.IMAGE) {
+      const image = this._images.get(shader.imageId)
+      if (!image) {
+        return null
+      }
+      const pattern = this._ctx.createPattern(
+        image,
+        shader.repetition ?? 'repeat'
+      )
+      if (!pattern) {
+        return null
+      }
+      if (shader.transform) {
+        pattern.setTransform({
+          a: shader.transform[0],
+          b: shader.transform[1],
+          c: shader.transform[2],
+          d: shader.transform[3],
+          e: shader.transform[4],
+          f: shader.transform[5],
+        })
+      }
+      return pattern
+    }
+
+    if (shader.type === ShaderType.RUNTIME_EFFECT) {
+      return null
+    }
+
+    const gradient = shader as GradientShader
+    const coords = gradient.coords
+    let canvasGradient: CanvasGradient
+    switch (gradient.type) {
+      case ShaderType.LINEAR_GRADIENT:
+        canvasGradient = this._ctx.createLinearGradient(
+          coords[0],
+          coords[1],
+          coords[2],
+          coords[3]
+        )
+        break
+      case ShaderType.RADIAL_GRADIENT:
+        canvasGradient = this._ctx.createRadialGradient(
+          coords[0],
+          coords[1],
+          coords[2],
+          coords[3],
+          coords[4],
+          coords[5]
+        )
+        break
+      case ShaderType.CONIC_GRADIENT:
+        if (typeof this._ctx.createConicGradient !== 'function') {
+          return null
+        }
+        canvasGradient = this._ctx.createConicGradient(
+          coords[2],
+          coords[0],
+          coords[1]
+        )
+        break
+      default:
+        return null
+    }
+
+    for (const stop of gradient.stops) {
+      canvasGradient.addColorStop(stop.offset, this._colorToStyle(stop.color))
+    }
+    return canvasGradient
+  }
+
+  private _toLocalPoint(transform: Float32Array, x: number, y: number) {
+    const a = transform[0]
+    const b = transform[1]
+    const c = transform[2]
+    const d = transform[3]
+    const e = transform[4]
+    const f = transform[5]
+    const det = a * d - b * c
+    if (Math.abs(det) < 1e-12) {
+      return null
+    }
+
+    const dx = x - e
+    const dy = y - f
+    return {
+      x: (d * dx - c * dy) / det,
+      y: (-b * dx + a * dy) / det,
+    }
   }
 }

@@ -2,63 +2,105 @@ import {
   type SceneGraph,
   MAT_SIZE,
   MAX_NODES,
-  NodeCursor,
   NodeLifecycle,
   NULL_INDEX,
 } from '@latte-js/espresso'
 import { mat2d } from 'gl-matrix'
 
 import { Camera } from './camera'
+import { RenderCommandEncoder } from './renderCommandEncoder'
 import { RenderFrameBuilder, type RenderFrame } from './renderFrameBuilder'
 import { RenderReason, RenderScheduler } from './renderScheduler'
 import { RenderSceneIndex } from './renderSceneIndex'
-import { getRenderer } from './rendererRegistry'
 
 import { NodeType, type IDType } from '@latte-js/bean'
-import type { IRenderBackend } from '../contract/renderBackend'
+import { RenderCommandBuffer } from '../contract/renderBackend'
+
+import type {
+  IRenderBackendDriver,
+  RenderBackendOptions,
+  RenderSurface,
+  RenderSurfaceSize,
+} from '../contract/renderBackend'
+
+export type RendererFrameHandle = unknown
+
+export interface RendererFrameScheduler {
+  requestFrame(callback: () => void): RendererFrameHandle
+  cancelFrame(handle: RendererFrameHandle): void
+}
+
+export interface RendererOptions {
+  readonly surface: RenderSurface
+  readonly size: RenderSurfaceSize
+  readonly activeRootId?: IDType
+  readonly backendOptions?: RenderBackendOptions
+  readonly scheduler?: RendererFrameScheduler
+  readonly autoStart?: boolean
+}
+
+const DEFAULT_RENDERER_FRAME_SCHEDULER: RendererFrameScheduler = {
+  requestFrame(callback) {
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      return globalThis.requestAnimationFrame(callback)
+    }
+    return globalThis.setTimeout(callback, 16)
+  },
+  cancelFrame(handle) {
+    if (
+      typeof handle === 'number' &&
+      typeof globalThis.cancelAnimationFrame === 'function'
+    ) {
+      globalThis.cancelAnimationFrame(handle)
+      return
+    }
+    globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>)
+  },
+}
 
 export class Renderer {
   private _camera: Camera
-  private _tempMatrix: mat2d = mat2d.create()
   private _sceneIndex: RenderSceneIndex
   private _frameBuilder: RenderFrameBuilder
+  private _commandEncoder = new RenderCommandEncoder()
   private _renderScheduler = new RenderScheduler()
   private _lastFrame: RenderFrame | null = null
-  private _canvas: HTMLCanvasElement
-  private _frameId: number | null = null
-  private _resizeObserver: ResizeObserver | null = null
+  private _frameId: RendererFrameHandle | null = null
   private _disposed = false
+  private readonly _surface: RenderSurface
+  private readonly _frameScheduler: RendererFrameScheduler
+  private _size: RenderSurfaceSize
+  private _activeRootId?: IDType
 
   constructor(
     private _sceneGraph: SceneGraph,
-    private _backend: IRenderBackend,
-    private _container: HTMLDivElement,
-    private _activeRootId?: IDType
+    private _backend: IRenderBackendDriver,
+    options: RendererOptions
   ) {
-    const canvas = document.createElement('canvas')
-    canvas.style.position = 'absolute'
-    canvas.style.top = '0'
-    canvas.style.left = '0'
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
-    canvas.style.display = 'block'
-    this._container.appendChild(canvas)
-    this._canvas = canvas
+    this._surface = options.surface
+    this._size = options.size
+    this._activeRootId = options.activeRootId
+    this._frameScheduler = options.scheduler ?? DEFAULT_RENDERER_FRAME_SCHEDULER
 
-    this._initCamera()
-    this._initRenderBackend()
-    this._initObserver(canvas)
+    this._initCamera(options.size)
+    this._initRenderBackend(
+      options.surface,
+      options.size,
+      options.backendOptions
+    )
     this._sceneIndex = new RenderSceneIndex(this._sceneGraph)
     this._frameBuilder = new RenderFrameBuilder(this._sceneIndex)
-    this.start()
+    if (options.autoStart !== false) {
+      this.start()
+    }
   }
 
   public get sceneIndex() {
     return this._sceneIndex
   }
 
-  public get canvas() {
-    return this._canvas
+  public get surface() {
+    return this._surface
   }
 
   public setActiveRootId(rootId?: IDType | null) {
@@ -99,26 +141,16 @@ export class Renderer {
     return this._lastFrame
   }
 
-  public resize(width: number, height: number) {
-    this._backend.resize(width, height, window.devicePixelRatio)
-
-    this.camera.resize(width, height)
+  public resize(size: RenderSurfaceSize) {
+    this._size = size
+    this._backend.resize(size)
+    this.camera.resize(size.width, size.height)
     this.requestRender(RenderReason.Resize)
   }
 
-  private _initObserver(container: HTMLCanvasElement) {
-    const observer = new ResizeObserver(entries => {
-      const { width, height } = entries[0].contentRect
-      this.resize(width, height)
-    })
-    observer.observe(container)
-    this._resizeObserver = observer
-  }
-
-  private _initCamera() {
-    const rect = this._container.getBoundingClientRect()
-    this._camera = new Camera(rect.width, rect.height)
-    this._camera.fitBounds(-100, -100, rect.right * 2, rect.bottom * 2, 0)
+  private _initCamera(size: RenderSurfaceSize) {
+    this._camera = new Camera(size.width, size.height)
+    this._camera.fitBounds(-100, -100, size.width * 2, size.height * 2, 0)
 
     this._camera.onDidChange(() => {
       this.requestRender(RenderReason.CameraChanged)
@@ -129,11 +161,13 @@ export class Renderer {
     return this._camera
   }
 
-  private _initRenderBackend() {
-    const rect = this._container.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    this._backend.init(this._canvas, dpr)
-    this._backend.resize(rect.width, rect.height, dpr)
+  private _initRenderBackend(
+    surface: RenderSurface,
+    size: RenderSurfaceSize,
+    options?: RenderBackendOptions
+  ) {
+    this._backend.init(surface, { ...options, dpr: options?.dpr ?? size.dpr })
+    this._backend.resize(size)
   }
 
   public requestRender(reason: RenderReason | string = RenderReason.Manual) {
@@ -277,59 +311,18 @@ export class Renderer {
 
   private _actualRender(frame: RenderFrame) {
     const matrix = this._camera.getMatrix()
-    this._backend.setTransform(new Float32Array([1, 0, 0, 1, 0, 0]))
-    this._clearRect()
-
-    this._backend.beginFrame()
-
-    const node = new NodeCursor(this._sceneGraph, -1)
-    for (const id of frame.nodeIndices) {
-      node.to(id)
-      const { worldTransform: wt } = node
-      const type = node.type
-      const a = wt[0]
-      const b = wt[1]
-      const c = wt[2]
-      const d = wt[3]
-      const tx = wt[4]
-      const ty = wt[5]
-
-      mat2d.set(this._tempMatrix, a, b, c, d, tx, ty)
-
-      // Combine with camera matrix for rendering
-      mat2d.multiply(this._tempMatrix, matrix, this._tempMatrix)
-
-      this._backend.setTransform(new Float32Array(this._tempMatrix))
-
-      const renderer = getRenderer(type)
-      if (renderer) {
-        renderer.render(this._backend, node)
-      }
-    }
-
-    // this._backend.drawRect(
-    //   this._nodeCursor.x,
-    //   this._nodeCursor.y,
-    //   this._nodeCursor.width,
-    //   this._nodeCursor.height,
-    //   0,
-    //   0xffffffff,
-    //   255,
-    //   1
-    // )
-    // this._backend.drawText(
-    //   `testtest${this._testNumber++}`,
-    //   this._nodeCursor.x,
-    //   this._nodeCursor.y,
-    //   'serif',
-    //   14,
-    //   0x000000ff
-    // )
-
-    // this._backend.drawRect(-10, -1, 20, 2, 0, 0xff0000ff)
-    // this._backend.drawRect(-1, -10, 2, 20, 0, 0xff0000ff)
-    this._backend.setTransform(new Float32Array(matrix))
-    this._backend.endFrame()
+    const commands = this._commandEncoder.encode({
+      frame,
+      sceneGraph: this._sceneGraph,
+      cameraMatrix: matrix,
+      clearBounds: {
+        x: 0,
+        y: 0,
+        width: this._backend.getSize().width,
+        height: this._backend.getSize().height,
+      },
+    })
+    this._backend.submit(commands)
     this._lastFrame = frame
   }
 
@@ -345,29 +338,19 @@ export class Renderer {
   public dispose() {
     this._disposed = true
     if (this._frameId !== null) {
-      cancelAnimationFrame(this._frameId)
+      this._frameScheduler.cancelFrame(this._frameId)
       this._frameId = null
     }
-    this._resizeObserver?.disconnect()
-    this._resizeObserver = null
     this._renderScheduler.clear()
     this._lastFrame = null
     this._backend.dispose()
-    this._canvas.remove()
-  }
-
-  private _clearRect() {
-    this._backend.clearRect(
-      0,
-      0,
-      this._backend.getWidth(),
-      this._backend.getHeight()
-    )
   }
 
   private _clearFrame() {
-    this._backend.setTransform(new Float32Array([1, 0, 0, 1, 0, 0]))
-    this._clearRect()
+    const commands = new RenderCommandBuffer()
+    const size = this._backend.getSize()
+    commands.setClear({ x: 0, y: 0, width: size.width, height: size.height })
+    this._backend.submit(commands)
   }
 
   private _isRenderableNode(index: number) {
@@ -381,7 +364,7 @@ export class Renderer {
     if (this._disposed) {
       return
     }
-    this._frameId = requestAnimationFrame(() => {
+    this._frameId = this._frameScheduler.requestFrame(() => {
       if (this._disposed) {
         return
       }

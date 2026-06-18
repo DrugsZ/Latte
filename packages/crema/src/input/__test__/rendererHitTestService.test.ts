@@ -4,7 +4,7 @@ import { SceneGraph } from '@latte-js/espresso'
 import { EditorHost } from '@latte-js/syrup'
 import { describe, expect, it, vi } from 'vitest'
 
-import { RendererInputHitTestProvider } from '../rendererInputHitTestProvider'
+import { RendererHitTestService } from '../rendererHitTestService'
 
 const createScene = () => {
   const graph = new SceneGraph()
@@ -47,48 +47,53 @@ const createRenderer = (
   ({
     activeRootId: rootId,
     camera: new Camera(1000, 1000),
-    canvas: {
-      getBoundingClientRect: () => ({
-        left: 100,
-        top: 50,
-        right: 1100,
-        bottom: 1050,
-        width: 1000,
-        height: 1000,
-        x: 100,
-        y: 50,
-        toJSON: () => ({}),
-      }),
-    },
     queryHitTestCandidates,
   }) as unknown as Renderer
 
-describe('RendererInputHitTestProvider', () => {
+const createViewport = () =>
+  ({
+    getBoundingClientRect: () => ({
+      left: 100,
+      top: 50,
+      right: 1100,
+      bottom: 1050,
+      width: 1000,
+      height: 1000,
+      x: 100,
+      y: 50,
+      toJSON: () => ({}),
+    }),
+  }) as HTMLElement
+
+describe('RendererHitTestService', () => {
   it('uses canvas-local coordinates for hit testing and world coordinates for scene index query', () => {
     const { graph, rootId, rectId, rectIndex } = createScene()
     const queryHitTestCandidates = vi.fn().mockReturnValue([rectIndex])
     const renderer = createRenderer(rootId, queryHitTestCandidates)
-    const provider = new RendererInputHitTestProvider(
+    const service = new RendererHitTestService(
       new EditorHost(graph),
-      renderer
+      renderer,
+      createViewport()
     )
 
-    const result = provider.hitTest(660, 610)
+    const result = service.hitTest(660, 610)
 
     expect(queryHitTestCandidates).toHaveBeenCalledWith(60, 60, rootId)
-    expect(result.client).toEqual({ x: 60, y: 60 })
+    expect(result.viewport).toEqual({ x: 560, y: 560 })
+    expect(result.world).toEqual({ x: 60, y: 60 })
     expect(result.hitResult).toEqual({ nodeIndex: rectIndex, nodeId: rectId })
   })
 
   it('falls back to full hit testing when scene index has no candidates', () => {
     const { graph, rootId, rectId, rectIndex } = createScene()
     const renderer = createRenderer(rootId, vi.fn().mockReturnValue([]))
-    const provider = new RendererInputHitTestProvider(
+    const service = new RendererHitTestService(
       new EditorHost(graph),
-      renderer
+      renderer,
+      createViewport()
     )
 
-    const result = provider.hitTest(660, 610)
+    const result = service.hitTest(660, 610)
 
     expect(result.hitResult).toEqual({ nodeIndex: rectIndex, nodeId: rectId })
   })
