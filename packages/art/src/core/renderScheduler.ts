@@ -5,6 +5,7 @@ export enum RenderReason {
   ActiveRootChanged = 'active-root-changed',
   GraphChanged = 'graph-changed',
   SceneDirty = 'scene-dirty',
+  LayerChanged = 'layer-changed',
 }
 
 export type RenderRequestReason = RenderReason | string

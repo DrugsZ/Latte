@@ -63,11 +63,23 @@ export type {
 } from './core/renderFrameBuilder'
 export { RenderReason, RenderScheduler } from './core/renderScheduler'
 export type { RenderRequestReason } from './core/renderScheduler'
+export type {
+  RenderLayer,
+  RenderLayerEncodeContext,
+  RenderLayerHitResult,
+  RenderLayerHitTestContext,
+  RenderLayerHitTestPoint,
+  RenderLayerPoint,
+} from './core/renderLayer'
 export { RenderSceneIndex } from './core/renderSceneIndex'
 export type {
   RenderSceneBounds,
   RenderSceneCandidate,
 } from './core/renderSceneIndex'
+export {
+  SCENE_RENDER_LAYER_ID,
+  SceneRenderLayer,
+} from './core/sceneRenderLayer'
 export { HitTester } from './interaction/hitTester'
 
 export * from './render/canvas/index'

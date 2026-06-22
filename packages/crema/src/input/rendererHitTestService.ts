@@ -1,7 +1,11 @@
 import { HitTester, type Renderer } from '@latte-js/art'
 import { NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
 
-import type { EditorHost, IHitTestService } from '@latte-js/syrup'
+import type {
+  EditorHost,
+  IHitTestResult,
+  IHitTestService,
+} from '@latte-js/syrup'
 
 export class RendererHitTestService implements IHitTestService {
   private _graph: SceneGraph
@@ -16,7 +20,7 @@ export class RendererHitTestService implements IHitTestService {
     this._hitTester = new HitTester(this._graph, this._renderer.camera)
   }
 
-  public hitTest(clientX: number, clientY: number) {
+  public hitTest(clientX: number, clientY: number): IHitTestResult {
     this._syncGraph()
 
     const rect = this._viewport.getBoundingClientRect()
@@ -25,6 +29,20 @@ export class RendererHitTestService implements IHitTestService {
     const viewport = { x: localX, y: localY }
     const world = this._renderer.camera.toWorld(localX, localY)
     const activeRootId = this._renderer.activeRootId
+    const layerHit = this._renderer.hitTestLayers({ viewport, world })
+    if (layerHit) {
+      return {
+        hitResult: {
+          kind: 'render-layer',
+          layerId: layerHit.layerId,
+          targetId: layerHit.targetId,
+          payload: layerHit.data,
+        },
+        viewport,
+        world,
+      }
+    }
+
     if (!activeRootId) {
       return { hitResult: undefined, viewport, world }
     }

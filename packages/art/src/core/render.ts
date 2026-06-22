@@ -1,20 +1,12 @@
-import {
-  type SceneGraph,
-  MAT_SIZE,
-  MAX_NODES,
-  NodeLifecycle,
-  NULL_INDEX,
-} from '@latte-js/espresso'
-import { mat2d } from 'gl-matrix'
+import { toDisposable } from '@latte-js/kit'
+import { type SceneGraph } from '@latte-js/espresso'
 
 import { Camera } from './camera'
-import { RenderCommandEncoder } from './renderCommandEncoder'
-import { RenderFrameBuilder, type RenderFrame } from './renderFrameBuilder'
+import { type RenderLayer, type RenderLayerHitTestPoint } from './renderLayer'
 import { RenderReason, RenderScheduler } from './renderScheduler'
-import { RenderSceneIndex } from './renderSceneIndex'
+import { SceneRenderLayer } from './sceneRenderLayer'
 
-import { NodeType, type IDType } from '@latte-js/bean'
-import { RenderCommandBuffer } from '../contract/renderBackend'
+import { type IDType } from '@latte-js/bean'
 
 import type {
   IRenderBackendDriver,
@@ -22,6 +14,7 @@ import type {
   RenderSurface,
   RenderSurfaceSize,
 } from '../contract/renderBackend'
+import type { IDisposable } from '@latte-js/kit'
 
 export type RendererFrameHandle = unknown
 
@@ -60,11 +53,10 @@ const DEFAULT_RENDERER_FRAME_SCHEDULER: RendererFrameScheduler = {
 
 export class Renderer {
   private _camera: Camera
-  private _sceneIndex: RenderSceneIndex
-  private _frameBuilder: RenderFrameBuilder
-  private _commandEncoder = new RenderCommandEncoder()
+  private readonly _sceneLayer: SceneRenderLayer
+  private readonly _layers = new Map<string, RenderLayer>()
+  private _sortedLayers: readonly RenderLayer[] | null = null
   private _renderScheduler = new RenderScheduler()
-  private _lastFrame: RenderFrame | null = null
   private _frameId: RendererFrameHandle | null = null
   private _disposed = false
   private readonly _surface: RenderSurface
@@ -88,15 +80,15 @@ export class Renderer {
       options.size,
       options.backendOptions
     )
-    this._sceneIndex = new RenderSceneIndex(this._sceneGraph)
-    this._frameBuilder = new RenderFrameBuilder(this._sceneIndex)
+    this._sceneLayer = new SceneRenderLayer(this._sceneGraph)
+    this.registerLayer(this._sceneLayer)
     if (options.autoStart !== false) {
       this.start()
     }
   }
 
   public get sceneIndex() {
-    return this._sceneIndex
+    return this._sceneLayer.sceneIndex
   }
 
   public get surface() {
@@ -110,10 +102,7 @@ export class Renderer {
   public fitToContent(rootId: IDType = this._activeRootId!, padding = 0.1) {
     if (!rootId) return false
 
-    const rootIndex = this._sceneGraph.getIndex(rootId)
-    if (rootIndex === NULL_INDEX) return false
-
-    const bounds = this._computeContentBounds(rootIndex)
+    const bounds = this._sceneLayer.computeContentBounds(rootId)
     if (!bounds) return false
 
     this._camera.fitBounds(
@@ -129,7 +118,7 @@ export class Renderer {
 
   public setGraph(graph: SceneGraph) {
     this._sceneGraph = graph
-    this._sceneIndex.setGraph(graph)
+    this._sceneLayer.setGraph(graph)
     this.requestRender(RenderReason.GraphChanged)
   }
 
@@ -138,7 +127,7 @@ export class Renderer {
   }
 
   public get lastFrame() {
-    return this._lastFrame
+    return this._sceneLayer.lastFrame
   }
 
   public resize(size: RenderSurfaceSize) {
@@ -174,12 +163,59 @@ export class Renderer {
     this._renderScheduler.request(reason)
   }
 
+  public registerLayer(layer: RenderLayer): IDisposable {
+    if (this._layers.has(layer.id)) {
+      throw new Error(`[Renderer] Render layer already registered: ${layer.id}`)
+    }
+    this._layers.set(layer.id, layer)
+    this._invalidateLayerOrder()
+    this.requestRender(RenderReason.LayerChanged)
+    return toDisposable(() => {
+      this.unregisterLayer(layer.id)
+    })
+  }
+
+  public unregisterLayer(id: string) {
+    const didDelete = this._layers.delete(id)
+    if (!didDelete) {
+      return
+    }
+    this._invalidateLayerOrder()
+    this.requestRender(RenderReason.LayerChanged)
+  }
+
+  public getLayer<T extends RenderLayer = RenderLayer>(id: string) {
+    return (this._layers.get(id) as T | undefined) ?? null
+  }
+
+  public hitTestLayers(point: RenderLayerHitTestPoint) {
+    const context = {
+      sceneGraph: this._sceneGraph,
+      camera: this._camera,
+      activeRootId: this._activeRootId,
+    }
+
+    const layers = [...this._getSortedLayers()].reverse()
+    for (const layer of layers) {
+      if (layer.visible === false || !layer.hitTest) {
+        continue
+      }
+
+      const result = layer.hitTest(point, context)
+      if (result) {
+        return result
+      }
+    }
+
+    return null
+  }
+
   public rebuildSceneIndex() {
-    this._sceneIndex.rebuild()
+    this._sceneLayer.rebuildSceneIndex()
   }
 
   public updateSceneIndexByIds(ids: Iterable<IDType>) {
-    this._sceneIndex.updateByIds(ids)
+    this._sceneLayer.updateSceneIndexByIds(ids)
   }
 
   public queryHitTestCandidates(
@@ -190,97 +226,7 @@ export class Renderer {
     if (!rootId) {
       return []
     }
-    return this._sceneIndex.filterRenderableCandidates(
-      this._sceneIndex.queryPointCandidates(worldX, worldY),
-      rootId
-    )
-  }
-
-  private _computeContentBounds(rootIndex: number) {
-    const identity = mat2d.create()
-    const stack: { index: number; parentMatrix: mat2d }[] = [
-      { index: rootIndex, parentMatrix: identity },
-    ]
-    const visited = new Set<number>()
-    let minX = Infinity
-    let minY = Infinity
-    let maxX = -Infinity
-    let maxY = -Infinity
-
-    while (stack.length) {
-      const { index, parentMatrix } = stack.pop()!
-      if (visited.has(index)) {
-        throw new Error(`Tree cycle detected at node ${index}`)
-      }
-      if (visited.size > MAX_NODES) {
-        throw new Error('Tree cycle detected')
-      }
-
-      visited.add(index)
-      if (!this._isRenderableNode(index)) {
-        continue
-      }
-
-      const local = this._sceneGraph.matrix.subarray(
-        index * MAT_SIZE,
-        index * MAT_SIZE + MAT_SIZE
-      ) as mat2d
-      const world = mat2d.create()
-      mat2d.multiply(world, parentMatrix, local)
-
-      const type = this._sceneGraph.type[index]
-      const width = this._sceneGraph.size[index * 2]
-      const height = this._sceneGraph.size[index * 2 + 1]
-      if (
-        type !== NodeType.DOCUMENT &&
-        type !== NodeType.CANVAS &&
-        Number.isFinite(width) &&
-        Number.isFinite(height) &&
-        width > 0 &&
-        height > 0
-      ) {
-        const corners = [
-          [0, 0],
-          [width, 0],
-          [width, height],
-          [0, height],
-        ]
-        for (const [x, y] of corners) {
-          const tx = world[0] * x + world[2] * y + world[4]
-          const ty = world[1] * x + world[3] * y + world[5]
-          minX = Math.min(minX, tx)
-          minY = Math.min(minY, ty)
-          maxX = Math.max(maxX, tx)
-          maxY = Math.max(maxY, ty)
-        }
-      }
-
-      const children: number[] = []
-      let childIdx = this._sceneGraph.firstChild[index]
-      const visitedChildren = new Set<number>()
-      while (childIdx !== NULL_INDEX) {
-        if (visitedChildren.has(childIdx)) {
-          throw new Error(`Tree cycle detected at node ${childIdx}`)
-        }
-        visitedChildren.add(childIdx)
-        children.push(childIdx)
-        childIdx = this._sceneGraph.nextSibling[childIdx]
-      }
-      for (let i = children.length - 1; i >= 0; i--) {
-        stack.push({ index: children[i], parentMatrix: world })
-      }
-    }
-
-    if (
-      !Number.isFinite(minX) ||
-      !Number.isFinite(minY) ||
-      !Number.isFinite(maxX) ||
-      !Number.isFinite(maxY)
-    ) {
-      return null
-    }
-
-    return { minX, minY, maxX, maxY }
+    return this._sceneLayer.queryHitTestCandidates(worldX, worldY, rootId)
   }
 
   private _render() {
@@ -289,41 +235,23 @@ export class Renderer {
     }
 
     const reasons = this._renderScheduler.consume()
-    if (!this._activeRootId) {
-      this._clearFrame()
-      this._lastFrame = null
-      return
-    }
-
-    const frame = this._frameBuilder.build({
-      activeRootId: this._activeRootId,
-      viewportBounds: this._camera.getViewportBounds(),
-      reasons,
-    })
-    if (!frame) {
-      this._clearFrame()
-      this._lastFrame = null
-      return
-    }
-
-    this._actualRender(frame)
-  }
-
-  private _actualRender(frame: RenderFrame) {
-    const matrix = this._camera.getMatrix()
-    const commands = this._commandEncoder.encode({
-      frame,
+    const context = {
       sceneGraph: this._sceneGraph,
-      cameraMatrix: matrix,
-      clearBounds: {
-        x: 0,
-        y: 0,
-        width: this._backend.getSize().width,
-        height: this._backend.getSize().height,
-      },
-    })
-    this._backend.submit(commands)
-    this._lastFrame = frame
+      camera: this._camera,
+      backendSize: this._backend.getSize(),
+      reasons,
+      activeRootId: this._activeRootId,
+    }
+
+    for (const layer of this._getSortedLayers()) {
+      if (layer.visible === false) {
+        continue
+      }
+      const commands = layer.encode(context)
+      if (commands) {
+        this._backend.submit(commands)
+      }
+    }
   }
 
   public renderFrame() {
@@ -342,22 +270,23 @@ export class Renderer {
       this._frameId = null
     }
     this._renderScheduler.clear()
-    this._lastFrame = null
     this._backend.dispose()
   }
 
-  private _clearFrame() {
-    const commands = new RenderCommandBuffer()
-    const size = this._backend.getSize()
-    commands.setClear({ x: 0, y: 0, width: size.width, height: size.height })
-    this._backend.submit(commands)
+  private _getSortedLayers() {
+    if (!this._sortedLayers) {
+      this._sortedLayers = [...this._layers.values()].sort((a, b) => {
+        if (a.zIndex !== b.zIndex) {
+          return a.zIndex - b.zIndex
+        }
+        return a.id.localeCompare(b.id)
+      })
+    }
+    return this._sortedLayers
   }
 
-  private _isRenderableNode(index: number) {
-    return (
-      (this._sceneGraph.lifecycle[index] & NodeLifecycle.Active) !== 0 &&
-      this._sceneGraph.visible[index] === 1
-    )
+  private _invalidateLayerOrder() {
+    this._sortedLayers = null
   }
 
   private _scheduleRender() {

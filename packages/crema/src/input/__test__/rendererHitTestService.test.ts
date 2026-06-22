@@ -42,11 +42,13 @@ const createScene = () => {
 
 const createRenderer = (
   rootId: string,
-  queryHitTestCandidates: ReturnType<typeof vi.fn>
+  queryHitTestCandidates: ReturnType<typeof vi.fn>,
+  hitTestLayers: ReturnType<typeof vi.fn> = vi.fn().mockReturnValue(null)
 ) =>
   ({
     activeRootId: rootId,
     camera: new Camera(1000, 1000),
+    hitTestLayers,
     queryHitTestCandidates,
   }) as unknown as Renderer
 
@@ -96,5 +98,39 @@ describe('RendererHitTestService', () => {
     const result = service.hitTest(660, 610)
 
     expect(result.hitResult).toEqual({ nodeIndex: rectIndex, nodeId: rectId })
+  })
+
+  it('uses render layer hit testing before scene node hit testing', () => {
+    const { graph, rootId } = createScene()
+    const queryHitTestCandidates = vi.fn().mockReturnValue([])
+    const hitTestLayers = vi.fn().mockReturnValue({
+      layerId: 'test-layer',
+      targetId: 'test-target',
+      data: { role: 'handle' },
+    })
+    const renderer = createRenderer(
+      rootId,
+      queryHitTestCandidates,
+      hitTestLayers
+    )
+    const service = new RendererHitTestService(
+      new EditorHost(graph),
+      renderer,
+      createViewport()
+    )
+
+    const result = service.hitTest(660, 610)
+
+    expect(hitTestLayers).toHaveBeenCalledWith({
+      viewport: { x: 560, y: 560 },
+      world: { x: 60, y: 60 },
+    })
+    expect(queryHitTestCandidates).not.toHaveBeenCalled()
+    expect(result.hitResult).toEqual({
+      kind: 'render-layer',
+      layerId: 'test-layer',
+      targetId: 'test-target',
+      payload: { role: 'handle' },
+    })
   })
 })

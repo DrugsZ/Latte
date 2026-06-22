@@ -152,6 +152,7 @@ export class EditorRuntime {
     this._workbench = new Workbench({
       editor: this.editorHost,
       inputService: this._inputService,
+      renderer: this._renderer,
       documentService: this._baristaClient.getService(Channels.Document),
       queryService: this._baristaClient.getService(Channels.Query),
     })
