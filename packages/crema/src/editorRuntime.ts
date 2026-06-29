@@ -25,6 +25,7 @@ const WORKER_SERVICE_CHANNELS = [
   Channels.Document,
   Channels.Query,
   Channels.UndoRedo,
+  Channels.Style,
 ] as const
 
 // FIXME(di): Replace channel-string service registration with typed service
@@ -153,7 +154,9 @@ export class EditorRuntime {
       editor: this.editorHost,
       inputService: this._inputService,
       renderer: this._renderer,
+      transformInteraction: this.transformInteraction,
       documentService: this._baristaClient.getService(Channels.Document),
+      nodeService: this._baristaClient.getService(Channels.Node),
       queryService: this._baristaClient.getService(Channels.Query),
     })
 

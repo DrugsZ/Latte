@@ -1,5 +1,7 @@
 import { NodeLifecycle, NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
 
+import { SelectionOverlayHitType } from './selectionOverlayConstants'
+
 import type { Camera } from '@latte-js/art'
 import type { IDType } from '@latte-js/bean'
 
@@ -27,15 +29,35 @@ export interface ViewportRect {
   readonly height: number
 }
 
+export interface ViewportPoint {
+  readonly x: number
+  readonly y: number
+}
+
+export type ViewportQuad = readonly [
+  ViewportPoint,
+  ViewportPoint,
+  ViewportPoint,
+  ViewportPoint,
+]
+
+type WorldQuad = readonly [
+  ViewportPoint,
+  ViewportPoint,
+  ViewportPoint,
+  ViewportPoint,
+]
+
 export interface InteractionGroup {
   readonly ids: readonly IDType[]
   readonly worldBounds: OverlayBounds
   readonly viewportBounds: ViewportRect
+  readonly viewportCorners: ViewportQuad
 }
 
 export interface SelectionOverlayHandle {
   readonly id: string
-  readonly type: 'resize-handle'
+  readonly type: SelectionOverlayHitType.ResizeHandle
   readonly direction: ResizeHandleDirection
   readonly viewportBounds: ViewportRect
 }
@@ -65,6 +87,12 @@ const HANDLE_DIRECTIONS: readonly ResizeHandleDirection[] = [
   'w',
 ]
 
+interface SelectionOverlayItem {
+  readonly id: IDType
+  readonly worldBounds: OverlayBounds
+  readonly worldCorners?: WorldQuad
+}
+
 export class SelectionOverlayGeometryBuilder {
   public build(
     options: SelectionOverlayGeometryOptions
@@ -79,7 +107,7 @@ export class SelectionOverlayGeometryBuilder {
       return null
     }
 
-    const ids: IDType[] = []
+    const items: SelectionOverlayItem[] = []
     let worldBounds: OverlayBounds | null = null
 
     for (const id of selectionIds) {
@@ -91,15 +119,15 @@ export class SelectionOverlayGeometryBuilder {
         continue
       }
 
-      const bounds = this._readWorldBounds(sceneGraph, index)
-      if (!bounds) {
+      const item = this._readSelectionItem(sceneGraph, index, id)
+      if (!item) {
         continue
       }
 
-      ids.push(id)
+      items.push(item)
       worldBounds = worldBounds
-        ? this._unionBounds(worldBounds, bounds)
-        : bounds
+        ? this._unionBounds(worldBounds, item.worldBounds)
+        : item.worldBounds
     }
 
     if (
@@ -109,14 +137,19 @@ export class SelectionOverlayGeometryBuilder {
       return null
     }
 
-    const viewportBounds = this._worldToViewportBounds(worldBounds, camera)
+    const viewportCorners =
+      items.length === 1 && items[0].worldCorners
+        ? this._worldToViewportCorners(items[0].worldCorners, camera)
+        : this._worldBoundsToViewportCorners(worldBounds, camera)
+    const viewportBounds = this._viewportBoundsFromCorners(viewportCorners)
     return {
       group: {
-        ids,
+        ids: items.map(item => item.id),
         worldBounds,
         viewportBounds,
+        viewportCorners,
       },
-      handles: this._createHandles(viewportBounds),
+      handles: this._createHandles(viewportCorners),
     }
   }
 
@@ -151,6 +184,31 @@ export class SelectionOverlayGeometryBuilder {
     return false
   }
 
+  private _readSelectionItem(
+    sceneGraph: SceneGraph,
+    index: number,
+    id: IDType
+  ): SelectionOverlayItem | null {
+    const bounds = this._readWorldBounds(sceneGraph, index)
+    if (!bounds) {
+      return null
+    }
+
+    const worldCorners = this._readWorldCorners(sceneGraph, index)
+    if (worldCorners) {
+      return {
+        id,
+        worldCorners,
+        worldBounds: this._boundsFromPoints(worldCorners),
+      }
+    }
+
+    return {
+      id,
+      worldBounds: bounds,
+    }
+  }
+
   private _readWorldBounds(
     sceneGraph: SceneGraph,
     index: number
@@ -175,6 +233,46 @@ export class SelectionOverlayGeometryBuilder {
     }
 
     return bounds
+  }
+
+  private _readWorldCorners(
+    sceneGraph: SceneGraph,
+    index: number
+  ): WorldQuad | null {
+    const width = sceneGraph.size[index * 2]
+    const height = sceneGraph.size[index * 2 + 1]
+    if (
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      width <= 0 ||
+      height <= 0
+    ) {
+      return null
+    }
+
+    const ptr = index * 6
+    const a = sceneGraph.worldMatrix[ptr]
+    const b = sceneGraph.worldMatrix[ptr + 1]
+    const c = sceneGraph.worldMatrix[ptr + 2]
+    const d = sceneGraph.worldMatrix[ptr + 3]
+    const tx = sceneGraph.worldMatrix[ptr + 4]
+    const ty = sceneGraph.worldMatrix[ptr + 5]
+
+    if (![a, b, c, d, tx, ty].every(Number.isFinite)) {
+      return null
+    }
+
+    const transform = (x: number, y: number): ViewportPoint => ({
+      x: a * x + c * y + tx,
+      y: b * x + d * y + ty,
+    })
+
+    return [
+      transform(0, 0),
+      transform(width, 0),
+      transform(width, height),
+      transform(0, height),
+    ]
   }
 
   private _unionBounds(a: OverlayBounds, b: OverlayBounds): OverlayBounds {
@@ -205,51 +303,68 @@ export class SelectionOverlayGeometryBuilder {
     }
   }
 
-  private _worldToViewportBounds(
+  private _boundsFromPoints(points: readonly ViewportPoint[]): OverlayBounds {
+    const xs = points.map(point => point.x)
+    const ys = points.map(point => point.y)
+    return {
+      minX: Math.min(...xs),
+      minY: Math.min(...ys),
+      maxX: Math.max(...xs),
+      maxY: Math.max(...ys),
+    }
+  }
+
+  private _worldToViewportCorners(
+    corners: WorldQuad,
+    camera: Camera
+  ): ViewportQuad {
+    return corners.map(point =>
+      camera.toScreen(point.x, point.y)
+    ) as unknown as ViewportQuad
+  }
+
+  private _worldBoundsToViewportCorners(
     bounds: OverlayBounds,
     camera: Camera
-  ): ViewportRect {
-    const points = [
+  ): ViewportQuad {
+    return [
       camera.toScreen(bounds.minX, bounds.minY),
       camera.toScreen(bounds.maxX, bounds.minY),
       camera.toScreen(bounds.maxX, bounds.maxY),
       camera.toScreen(bounds.minX, bounds.maxY),
     ]
-    const xs = points.map(point => point.x)
-    const ys = points.map(point => point.y)
-    const minX = Math.min(...xs)
-    const minY = Math.min(...ys)
-    const maxX = Math.max(...xs)
-    const maxY = Math.max(...ys)
+  }
+
+  private _viewportBoundsFromCorners(corners: ViewportQuad): ViewportRect {
+    const bounds = this._boundsFromPoints(corners)
     return {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
+      x: bounds.minX,
+      y: bounds.minY,
+      width: bounds.maxX - bounds.minX,
+      height: bounds.maxY - bounds.minY,
     }
   }
 
-  private _createHandles(bounds: ViewportRect): SelectionOverlayHandle[] {
-    const x0 = bounds.x
-    const y0 = bounds.y
-    const x1 = bounds.x + bounds.width
-    const y1 = bounds.y + bounds.height
-    const cx = bounds.x + bounds.width / 2
-    const cy = bounds.y + bounds.height / 2
+  private _createHandles(corners: ViewportQuad): SelectionOverlayHandle[] {
+    const [nw, ne, se, sw] = corners
+    const mid = (a: ViewportPoint, b: ViewportPoint): ViewportPoint => ({
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2,
+    })
     const positions: Record<ResizeHandleDirection, { x: number; y: number }> = {
-      nw: { x: x0, y: y0 },
-      n: { x: cx, y: y0 },
-      ne: { x: x1, y: y0 },
-      e: { x: x1, y: cy },
-      se: { x: x1, y: y1 },
-      s: { x: cx, y: y1 },
-      sw: { x: x0, y: y1 },
-      w: { x: x0, y: cy },
+      nw,
+      n: mid(nw, ne),
+      ne,
+      e: mid(ne, se),
+      se,
+      s: mid(se, sw),
+      sw,
+      w: mid(sw, nw),
     }
 
     return HANDLE_DIRECTIONS.map(direction => ({
       id: `resize-${direction}`,
-      type: 'resize-handle',
+      type: SelectionOverlayHitType.ResizeHandle,
       direction,
       viewportBounds: this._centeredRect(positions[direction], HANDLE_SIZE),
     }))

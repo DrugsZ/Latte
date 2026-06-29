@@ -1,7 +1,12 @@
 import { Emitter, type Event } from '@latte-js/kit'
 import { System, SystemBase, Systems } from './systems'
 
-import type { ICreateNodeOptions, IDType } from '@latte-js/bean'
+import { NodeType } from '@latte-js/bean'
+import type {
+  ICreateNodeOptions,
+  ICreateRectangleOptions,
+  IDType,
+} from '@latte-js/bean'
 import {
   MutationPolicyKind,
   type MutationPolicyMap,
@@ -20,6 +25,19 @@ const nodeMutationPolicies: MutationPolicyMap = {
     kind: MutationPolicyKind.Atomic,
     label: TransactionLabel.CreateLayer,
     ids: args => [(args[0] as ICreateNodeOptions).id],
+  },
+  createRectangle: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.CreateLayer,
+    ids: args => {
+      const options = args[1] as ICreateRectangleOptions
+      return options.id ? [options.id] : []
+    },
+  },
+  setName: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.RenameLayer,
+    ids: args => [args[0] as IDType],
   },
   deleteNode: {
     kind: MutationPolicyKind.Atomic,
@@ -76,6 +94,32 @@ export class NodeSystem extends SystemBase {
     return options.id
   }
 
+  async createRectangle(
+    parent: IDType,
+    options: ICreateRectangleOptions
+  ): Promise<IDType> {
+    const id = options.id ?? this._createNodeId('rectangle')
+    const index = this._mutationWriter.createNode(id, NodeType.RECTANGLE)
+    this._nodeCursor.to(index)
+    this._nodeCursor.x = options.x
+    this._nodeCursor.y = options.y
+    this._nodeCursor.width = options.width
+    this._nodeCursor.height = options.height
+
+    const moved = this._mutationWriter.appendChild(parent, id)
+    this._onDidCreateNode.fire({
+      sessionId: this._currentSessionId,
+      nodes: [[id, index]],
+    })
+    this._fireDidMoveNode(moved)
+    return id
+  }
+
+  async setName(id: IDType, name: string): Promise<void> {
+    this._nodeCursor.toID(id)
+    this._nodeCursor.name = name
+  }
+
   async deleteNode(id: IDType): Promise<void> {
     const deleted = this._mutationWriter.removeNode(id)
     this._onDidDeleteNode.fire({
@@ -114,5 +158,13 @@ export class NodeSystem extends SystemBase {
       sessionId: this._currentSessionId,
       nodes: [node],
     })
+  }
+
+  private _createNodeId(prefix: string): IDType {
+    const random =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    return `${prefix}:${random}`
   }
 }

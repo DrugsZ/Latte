@@ -11,6 +11,14 @@ export interface ICreateNodeOptions {
   readonly height?: number
 }
 
+export interface ICreateRectangleOptions {
+  readonly id?: IDType
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
 export type NodeChange = [id: IDType, index: number]
 
 export interface INodeLifecycleEvent {
@@ -23,6 +31,11 @@ export interface INodeMoveEvent {
 
 export interface INodeService {
   createNode(options: ICreateNodeOptions): Promise<IDType>
+  createRectangle(
+    parent: IDType,
+    options: ICreateRectangleOptions
+  ): Promise<IDType>
+  setName(id: IDType, name: string): Promise<void>
   appendChild(parent: IDType, child: IDType): Promise<IDType>
   insertBefore(
     parent: IDType,

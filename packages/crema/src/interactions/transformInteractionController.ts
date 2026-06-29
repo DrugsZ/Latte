@@ -96,6 +96,13 @@ export class TransformInteractionController {
     })
   }
 
+  public resize(ids: IDType[], width: number, height: number) {
+    this._scheduleTransformUpdate({
+      notify: () => this._transformService.resize$(ids, width, height),
+      request: () => this._transformService.resize(ids, width, height),
+    })
+  }
+
   public async commitTransform() {
     if (!this._active) {
       return

@@ -20,6 +20,21 @@ const setBounds = (
   graph.aabb[ptr + 3] = maxY
 }
 
+const setRectShape = (
+  graph: SceneGraph,
+  index: number,
+  width: number,
+  height: number,
+  matrix: readonly [number, number, number, number, number, number]
+) => {
+  graph.size[index * 2] = width
+  graph.size[index * 2 + 1] = height
+  const ptr = index * 6
+  for (let i = 0; i < matrix.length; i += 1) {
+    graph.worldMatrix[ptr + i] = matrix[i]
+  }
+}
+
 const createScene = () => {
   const graph = new SceneGraph()
   const rootId: IDType = 'test:page'
@@ -78,6 +93,36 @@ describe('SelectionOverlayGeometryBuilder', () => {
       'sw',
       'w',
     ])
+  })
+
+  it('uses the selected node oriented bounds for single selection', () => {
+    const { graph, rectA, rootId } = createScene()
+    setRectShape(graph, rectA, 100, 50, [0, 1, -1, 0, 10, 20])
+
+    const geometry = build(graph, ['test:a'], rootId)!
+
+    expect(geometry.group.worldBounds).toEqual({
+      minX: -40,
+      minY: 20,
+      maxX: 10,
+      maxY: 120,
+    })
+    expect(geometry.group.viewportCorners).toEqual([
+      { x: 110, y: 120 },
+      { x: 110, y: 220 },
+      { x: 60, y: 220 },
+      { x: 60, y: 120 },
+    ])
+    expect(geometry.handles.find(handle => handle.direction === 'se')).toEqual(
+      expect.objectContaining({
+        viewportBounds: {
+          x: 56,
+          y: 216,
+          width: 8,
+          height: 8,
+        },
+      })
+    )
   })
 
   it('merges multiple selected node bounds', () => {

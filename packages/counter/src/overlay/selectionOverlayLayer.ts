@@ -5,9 +5,16 @@ import {
 } from '@latte-js/art'
 
 import {
+  SELECTION_OVERLAY_LAYER_ID,
+  SelectionOverlayHitType,
+  SelectionOverlayTargetId,
+} from './selectionOverlayConstants'
+import {
   SelectionOverlayGeometryBuilder,
   type SelectionOverlayGeometry,
+  type ResizeHandleDirection,
   type ViewportRect,
+  type ViewportQuad,
 } from './selectionOverlayGeometry'
 
 import type {
@@ -20,16 +27,20 @@ import type {
 import type { IDType } from '@latte-js/bean'
 import type { SelectionService } from '../services/selection/selectionService'
 
-export const SELECTION_OVERLAY_LAYER_ID = 'latte.selection-overlay'
+export {
+  SELECTION_OVERLAY_LAYER_ID,
+  SelectionOverlayHitType,
+  SelectionOverlayTargetId,
+} from './selectionOverlayConstants'
 
 export type SelectionOverlayHitData =
   | {
-      readonly type: 'resize-handle'
+      readonly type: SelectionOverlayHitType.ResizeHandle
       readonly ids: readonly IDType[]
-      readonly direction: string
+      readonly direction: ResizeHandleDirection
     }
   | {
-      readonly type: 'selection-bounds'
+      readonly type: SelectionOverlayHitType.SelectionBounds
       readonly ids: readonly IDType[]
     }
 
@@ -54,7 +65,7 @@ export class SelectionOverlayLayer implements RenderLayer {
     }
 
     const buffer = new RenderCommandBuffer()
-    this._drawBounds(buffer, geometry.group.viewportBounds)
+    this._drawBounds(buffer, geometry.group.viewportCorners)
     for (const handle of geometry.handles) {
       this._drawHandle(buffer, handle.viewportBounds)
     }
@@ -76,7 +87,7 @@ export class SelectionOverlayLayer implements RenderLayer {
           layerId: this.id,
           targetId: handle.id,
           data: {
-            type: 'resize-handle',
+            type: SelectionOverlayHitType.ResizeHandle,
             ids: geometry.group.ids,
             direction: handle.direction,
           },
@@ -84,12 +95,14 @@ export class SelectionOverlayLayer implements RenderLayer {
       }
     }
 
-    if (this._isOnBoundsStroke(geometry.group.viewportBounds, point.viewport)) {
+    if (
+      this._isOnBoundsStroke(geometry.group.viewportCorners, point.viewport)
+    ) {
       return {
         layerId: this.id,
-        targetId: 'selection-bounds',
+        targetId: SelectionOverlayTargetId.SelectionBounds,
         data: {
-          type: 'selection-bounds',
+          type: SelectionOverlayHitType.SelectionBounds,
           ids: geometry.group.ids,
         },
       }
@@ -109,14 +122,15 @@ export class SelectionOverlayLayer implements RenderLayer {
     })
   }
 
-  private _drawBounds(buffer: RenderCommandBuffer, bounds: ViewportRect) {
+  private _drawBounds(buffer: RenderCommandBuffer, corners: ViewportQuad) {
+    const rect = this._quadToLocalRect(corners)
     buffer.push({
       type: RenderCommandType.DrawRect,
-      transform: Float32Array.from(IDENTITY_TRANSFORM),
-      x: bounds.x,
-      y: bounds.y,
-      width: bounds.width,
-      height: bounds.height,
+      transform: rect.transform,
+      x: 0,
+      y: 0,
+      width: rect.width,
+      height: rect.height,
       cornerRadius: 0,
       paint: {
         style: PaintStyle.Stroke,
@@ -166,26 +180,76 @@ export class SelectionOverlayLayer implements RenderLayer {
   }
 
   private _isOnBoundsStroke(
-    rect: ViewportRect,
+    corners: ViewportQuad,
     point: { x: number; y: number }
   ) {
-    const outer = this._inflate(rect, BOUNDS_HIT_TOLERANCE)
-    const inner = this._inflate(rect, -BOUNDS_HIT_TOLERANCE)
-    if (!this._containsPoint(outer, point)) {
-      return false
+    for (let i = 0; i < corners.length; i += 1) {
+      const start = corners[i]
+      const end = corners[(i + 1) % corners.length]
+      if (this._distanceToSegment(point, start, end) <= BOUNDS_HIT_TOLERANCE) {
+        return true
+      }
     }
-    if (inner.width <= 0 || inner.height <= 0) {
-      return true
-    }
-    return !this._containsPoint(inner, point)
+    return false
   }
 
-  private _inflate(rect: ViewportRect, amount: number): ViewportRect {
-    return {
-      x: rect.x - amount,
-      y: rect.y - amount,
-      width: rect.width + amount * 2,
-      height: rect.height + amount * 2,
+  private _quadToLocalRect(corners: ViewportQuad) {
+    const [origin, xAxisEnd, , yAxisEnd] = corners
+    const xAxis = {
+      x: xAxisEnd.x - origin.x,
+      y: xAxisEnd.y - origin.y,
     }
+    const yAxis = {
+      x: yAxisEnd.x - origin.x,
+      y: yAxisEnd.y - origin.y,
+    }
+    const width = Math.hypot(xAxis.x, xAxis.y)
+    const height = Math.hypot(yAxis.x, yAxis.y)
+
+    if (width === 0 || height === 0) {
+      return {
+        width: 0,
+        height: 0,
+        transform: Float32Array.from(IDENTITY_TRANSFORM),
+      }
+    }
+
+    return {
+      width,
+      height,
+      transform: Float32Array.from([
+        xAxis.x / width,
+        xAxis.y / width,
+        yAxis.x / height,
+        yAxis.y / height,
+        origin.x,
+        origin.y,
+      ]),
+    }
+  }
+
+  private _distanceToSegment(
+    point: { x: number; y: number },
+    start: { x: number; y: number },
+    end: { x: number; y: number }
+  ) {
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const lengthSquared = dx * dx + dy * dy
+    if (lengthSquared === 0) {
+      return Math.hypot(point.x - start.x, point.y - start.y)
+    }
+
+    const t = Math.max(
+      0,
+      Math.min(
+        1,
+        ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
+      )
+    )
+    return Math.hypot(
+      point.x - (start.x + t * dx),
+      point.y - (start.y + t * dy)
+    )
   }
 }

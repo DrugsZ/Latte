@@ -1,6 +1,7 @@
 import {
   Channels,
   type ICreateNodeOptions,
+  type ICreateRectangleOptions,
   type INodeLifecycleEvent,
   type INodeMoveEvent,
   type IDType,
@@ -25,6 +26,17 @@ export class NodeService
 
   async createNode(options: ICreateNodeOptions): Promise<IDType> {
     return this.system.createNode(options)
+  }
+
+  async createRectangle(
+    parent: IDType,
+    options: ICreateRectangleOptions
+  ): Promise<IDType> {
+    return this.system.createRectangle(parent, options)
+  }
+
+  async setName(id: IDType, name: string): Promise<void> {
+    return this.system.setName(id, name)
   }
 
   async appendChild(parent: IDType, child: IDType): Promise<IDType> {

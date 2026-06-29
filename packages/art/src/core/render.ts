@@ -61,7 +61,6 @@ export class Renderer {
   private _disposed = false
   private readonly _surface: RenderSurface
   private readonly _frameScheduler: RendererFrameScheduler
-  private _size: RenderSurfaceSize
   private _activeRootId?: IDType
 
   constructor(
@@ -70,7 +69,6 @@ export class Renderer {
     options: RendererOptions
   ) {
     this._surface = options.surface
-    this._size = options.size
     this._activeRootId = options.activeRootId
     this._frameScheduler = options.scheduler ?? DEFAULT_RENDERER_FRAME_SCHEDULER
 
@@ -131,7 +129,6 @@ export class Renderer {
   }
 
   public resize(size: RenderSurfaceSize) {
-    this._size = size
     this._backend.resize(size)
     this.camera.resize(size.width, size.height)
     this.requestRender(RenderReason.Resize)

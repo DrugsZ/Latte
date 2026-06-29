@@ -12,6 +12,8 @@ import { describe, expect, it } from 'vitest'
 import { SelectionService } from '../../services/selection/selectionService'
 import {
   SELECTION_OVERLAY_LAYER_ID,
+  SelectionOverlayHitType,
+  SelectionOverlayTargetId,
   SelectionOverlayLayer,
 } from '../selectionOverlayLayer'
 
@@ -30,6 +32,21 @@ const setBounds = (
   graph.aabb[ptr + 3] = maxY
 }
 
+const setRectShape = (
+  graph: SceneGraph,
+  index: number,
+  width: number,
+  height: number,
+  matrix: readonly [number, number, number, number, number, number]
+) => {
+  graph.size[index * 2] = width
+  graph.size[index * 2 + 1] = height
+  const ptr = index * 6
+  for (let i = 0; i < matrix.length; i += 1) {
+    graph.worldMatrix[ptr + i] = matrix[i]
+  }
+}
+
 const createFixture = () => {
   const graph = new SceneGraph()
   const rootId: IDType = 'test:page'
@@ -38,6 +55,7 @@ const createFixture = () => {
   const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
   graph.appendChild(root, rect)
   setBounds(graph, rect, 10, 20, 110, 70)
+  setRectShape(graph, rect, 100, 50, [1, 0, 0, 1, 10, 20])
   const camera = new Camera(200, 200)
   const selection = new SelectionService(graph)
   const layer = new SelectionOverlayLayer(selection)
@@ -79,10 +97,33 @@ describe('SelectionOverlayLayer', () => {
     expect(buffer.commands).toHaveLength(17)
     expect(buffer.commands[0]).toMatchObject({
       type: RenderCommandType.DrawRect,
-      x: 110,
-      y: 120,
+      x: 0,
+      y: 0,
       width: 100,
       height: 50,
+      transform: Float32Array.from([1, 0, 0, 1, 110, 120]),
+      paint: {
+        style: PaintStyle.Stroke,
+      },
+    })
+  })
+
+  it('encodes single rotated selection as an oriented bounds command', () => {
+    const fixture = createFixture()
+    const rect = fixture.graph.getIndex('test:rect')
+    setBounds(fixture.graph, rect, -40, 20, 10, 120)
+    setRectShape(fixture.graph, rect, 100, 50, [0, 1, -1, 0, 10, 20])
+    fixture.selection.select(['test:rect'])
+
+    const buffer = fixture.layer.encode(createEncodeContext(fixture))!
+
+    expect(buffer.commands[0]).toMatchObject({
+      type: RenderCommandType.DrawRect,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 50,
+      transform: Float32Array.from([0, 1, -1, 0, 110, 120]),
       paint: {
         style: PaintStyle.Stroke,
       },
@@ -105,7 +146,7 @@ describe('SelectionOverlayLayer', () => {
       layerId: SELECTION_OVERLAY_LAYER_ID,
       targetId: 'resize-nw',
       data: {
-        type: 'resize-handle',
+        type: SelectionOverlayHitType.ResizeHandle,
         ids: ['test:rect'],
         direction: 'nw',
       },
@@ -126,9 +167,9 @@ describe('SelectionOverlayLayer', () => {
 
     expect(result).toEqual({
       layerId: SELECTION_OVERLAY_LAYER_ID,
-      targetId: 'selection-bounds',
+      targetId: SelectionOverlayTargetId.SelectionBounds,
       data: {
-        type: 'selection-bounds',
+        type: SelectionOverlayHitType.SelectionBounds,
         ids: ['test:rect'],
       },
     })
