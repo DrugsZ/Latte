@@ -1,5 +1,3 @@
-import { NodeType } from '@latte-js/bean'
-import { SceneGraph } from '@latte-js/espresso'
 import { EventResult } from '@latte-js/syrup'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -36,21 +34,11 @@ const createTransformInteraction = () => ({
   beginTransform: vi.fn(async () => {}),
   moveBy: vi.fn(),
   resize: vi.fn(),
+  resizeByHandle: vi.fn(),
   transformAround: vi.fn(),
   commitTransform: vi.fn(async () => {}),
   cancelTransform: vi.fn(async () => {}),
 })
-
-const createResizeGraph = () => {
-  const graph = new SceneGraph()
-  const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
-  const ptr = rect * 4
-  graph.aabb[ptr] = 10
-  graph.aabb[ptr + 1] = 20
-  graph.aabb[ptr + 2] = 110
-  graph.aabb[ptr + 3] = 70
-  return graph
-}
 
 const overlayHit = (
   payload: Record<string, unknown>,
@@ -413,12 +401,9 @@ describe('SelectionInteractionTool', () => {
     expect(transform.beginTransform).not.toHaveBeenCalled()
   })
 
-  it('consumes resize handles that need unsupported anchor-moving resize', () => {
+  it('starts resize interactions from any resize handle', async () => {
     const transform = createTransformInteraction()
-    const graph = createResizeGraph()
-    const tool = new SelectionInteractionTool(transform, {
-      getSceneGraph: () => graph,
-    })
+    const tool = new SelectionInteractionTool(transform)
 
     const result = tool.onEvent(
       pointerEvent(InputPointerEventType.Down, {
@@ -435,14 +420,29 @@ describe('SelectionInteractionTool', () => {
 
     expect(result).toBe(EventResult.CONSUMED)
     expect(transform.beginTransform).not.toHaveBeenCalled()
+
+    tool.onEvent(
+      pointerEvent(InputPointerEventType.Move, {
+        world: { x: 0, y: 0 },
+        viewport: { x: 20, y: 20 },
+      }) as any
+    )
+    await waitForMicrotasks()
+
+    expect(transform.beginTransform).toHaveBeenCalledWith(
+      ['test:rect'],
+      SelectionOverlayInteractionLabel.ResizeSelection
+    )
+    expect(transform.resizeByHandle).toHaveBeenLastCalledWith(
+      ['test:rect'],
+      'nw',
+      [0, 0]
+    )
   })
 
-  it('resizes a single rectangle from the south-east handle after drag threshold', async () => {
+  it('resizes from the south-east handle after drag threshold', async () => {
     const transform = createTransformInteraction()
-    const graph = createResizeGraph()
-    const tool = new SelectionInteractionTool(transform, {
-      getSceneGraph: () => graph,
-    })
+    const tool = new SelectionInteractionTool(transform)
     const down = pointerEvent(InputPointerEventType.Down, {
       hitResult: overlayHit(
         {
@@ -477,7 +477,11 @@ describe('SelectionInteractionTool', () => {
       ['test:rect'],
       SelectionOverlayInteractionLabel.ResizeSelection
     )
-    expect(transform.resize).toHaveBeenLastCalledWith(['test:rect'], 120, 75)
+    expect(transform.resizeByHandle).toHaveBeenLastCalledWith(
+      ['test:rect'],
+      'se',
+      [130, 95]
+    )
 
     const up = pointerEvent(InputPointerEventType.Up, {
       world: { x: 140, y: 100 },
@@ -485,7 +489,11 @@ describe('SelectionInteractionTool', () => {
     tool.onEvent(up as any)
     await waitForMicrotasks()
 
-    expect(transform.resize).toHaveBeenLastCalledWith(['test:rect'], 130, 80)
+    expect(transform.resizeByHandle).toHaveBeenLastCalledWith(
+      ['test:rect'],
+      'se',
+      [140, 100]
+    )
     expect(transform.commitTransform).toHaveBeenCalled()
     expect(up.releasePointer).toHaveBeenCalled()
   })

@@ -73,7 +73,6 @@ export class Workbench {
     this._selectionInteractionTool = new SelectionInteractionTool(
       options.transformInteraction,
       {
-        getSceneGraph: () => this._editor.graph,
         getSelectedIds: () => this.selectionService.ids,
         selectIds: ids => this.selectionService.select(ids),
         toggleId: id => this.selectionService.toggle(id),

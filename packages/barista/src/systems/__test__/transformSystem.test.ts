@@ -25,9 +25,14 @@ const flushMatrix = (graph: SceneGraph) => {
   )
 }
 
+const roundForCompare = (value: number) => {
+  const rounded = Number(value.toFixed(4))
+  return Object.is(rounded, -0) ? 0 : rounded
+}
+
 const expectCloseMatrix = (actual: ArrayLike<number>, expected: number[]) => {
-  expect(Array.from(actual).map(value => Number(value.toFixed(4)))).toEqual(
-    expected.map(value => Number(value.toFixed(4)))
+  expect(Array.from(actual).map(roundForCompare)).toEqual(
+    expected.map(roundForCompare)
   )
 }
 
@@ -35,8 +40,8 @@ const expectClosePoint = (
   actual: ArrayLike<number>,
   expected: ArrayLike<number>
 ) => {
-  expect(Array.from(actual).map(value => Number(value.toFixed(4)))).toEqual(
-    Array.from(expected).map(value => Number(value.toFixed(4)))
+  expect(Array.from(actual).map(roundForCompare)).toEqual(
+    Array.from(expected).map(roundForCompare)
   )
 }
 
@@ -411,6 +416,188 @@ describe('TransformSystem', () => {
     expect(child.y).toBe(15)
     expect(child.width).toBe(15)
     expect(child.height).toBe(7.5)
+  })
+
+  it('resizeByHandle resizes the south-east handle while keeping north-west fixed', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.x = 10
+    cursor.y = 20
+    cursor.width = 100
+    cursor.height = 50
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:rect'])
+    system.resizeByHandle(['test:rect'], 'se', [130, 95])
+
+    expect(cursor.width).toBeCloseTo(120)
+    expect(cursor.height).toBeCloseTo(75)
+    expectCloseMatrix(cursor.transform, [1, 0, 0, 1, 10, 20])
+    expectClosePoint(
+      transformCorners(cursor.transform as mat2d, 120, 75)[2],
+      [130, 95]
+    )
+  })
+
+  it('resizeByHandle keeps resizing after the dragged corner crosses the opposite corner', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.x = 10
+    cursor.y = 20
+    cursor.width = 100
+    cursor.height = 50
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:rect'])
+    system.resizeByHandle(['test:rect'], 'se', [0, 0])
+
+    expect(cursor.width).toBeCloseTo(10)
+    expect(cursor.height).toBeCloseTo(20)
+    expectCloseMatrix(cursor.transform, [-1, 0, 0, -1, 10, 20])
+    const corners = transformCorners(cursor.transform as mat2d, 10, 20)
+    expectClosePoint(corners[0], [10, 20])
+    expectClosePoint(corners[2], [0, 0])
+  })
+
+  it('resizeByHandle projects pointer movement onto a rotated node basis', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.width = 100
+    cursor.height = 50
+    const transform = mat2d.create()
+    mat2d.translate(transform, transform, [100, 50])
+    mat2d.rotate(transform, transform, Math.PI / 2)
+    cursor.transform = transform
+
+    const targetPointer = vec2.transformMat2d(
+      vec2.create(),
+      vec2.fromValues(120, 60),
+      transform
+    )
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:rect'])
+    system.resizeByHandle(['test:rect'], 'se', targetPointer)
+
+    expect(cursor.width).toBeCloseTo(120)
+    expect(cursor.height).toBeCloseTo(60)
+    expectCloseMatrix(cursor.transform, [0, 1, -1, 0, 100, 50])
+    expectClosePoint(transformCorners(cursor.transform as mat2d, 120, 60)[2], [
+      targetPointer[0],
+      targetPointer[1],
+    ])
+  })
+
+  it('resizeByHandle supports north-west anchor-moving resize', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.x = 10
+    cursor.y = 20
+    cursor.width = 100
+    cursor.height = 50
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:rect'])
+    system.resizeByHandle(['test:rect'], 'nw', [0, 0])
+
+    expect(cursor.width).toBeCloseTo(110)
+    expect(cursor.height).toBeCloseTo(70)
+    expectCloseMatrix(cursor.transform, [1, 0, 0, 1, 0, 0])
+    expectClosePoint(
+      transformCorners(cursor.transform as mat2d, 110, 70)[2],
+      [110, 70]
+    )
+  })
+
+  it('resizeByHandle scales descendants through the baked selected group size', () => {
+    const graph = new SceneGraph()
+    const rootIndex = graph.createNode(NodeType.GROUP, 'test:group')
+    const childIndex = graph.createNode(NodeType.RECTANGLE, 'test:child')
+    graph.appendChild(0, rootIndex)
+    graph.appendChild(rootIndex, childIndex)
+
+    const root = new NodeCursor(graph, rootIndex)
+    root.width = 100
+    root.height = 100
+
+    const child = new NodeCursor(graph, childIndex)
+    child.x = 10
+    child.y = 20
+    child.width = 10
+    child.height = 10
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:group'])
+    system.resizeByHandle(['test:group'], 'se', [200, 50])
+
+    expect(root.width).toBeCloseTo(200)
+    expect(root.height).toBeCloseTo(50)
+    expectCloseMatrix(root.transform, [1, 0, 0, 1, 0, 0])
+    expect(child.x).toBeCloseTo(20)
+    expect(child.y).toBeCloseTo(10)
+    expect(child.width).toBeCloseTo(20)
+    expect(child.height).toBeCloseTo(5)
+    expectCloseMatrix(child.transform, [1, 0, 0, 1, 20, 10])
+  })
+
+  it('resizeByHandle targets the initial snapshot instead of accumulating intermediate sizes', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.x = 10
+    cursor.y = 20
+    cursor.width = 100
+    cursor.height = 50
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:rect'])
+    system.resizeByHandle(['test:rect'], 'se', [130, 95])
+    system.resizeByHandle(['test:rect'], 'se', [150, 110])
+
+    expect(cursor.width).toBeCloseTo(140)
+    expect(cursor.height).toBeCloseTo(90)
+    expectCloseMatrix(cursor.transform, [1, 0, 0, 1, 10, 20])
+  })
+
+  it('undoes and redoes resizeByHandle as one committed transform session', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.x = 10
+    cursor.y = 20
+    cursor.width = 100
+    cursor.height = 50
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    const history = getHistoryManager(graph)
+    transactions.begin(TransactionLabel.ResizeLayer, ['test:rect'])
+    system.resizeByHandle(['test:rect'], 'se', [130, 95])
+    system.resizeByHandle(['test:rect'], 'se', [150, 110])
+    history.push(RESOURCE_ID, transactions.commit())
+
+    expect(cursor.width).toBeCloseTo(140)
+    expect(cursor.height).toBeCloseTo(90)
+    expect(history.undo(RESOURCE_ID)).toBe(true)
+    expect(cursor.width).toBeCloseTo(100)
+    expect(cursor.height).toBeCloseTo(50)
+    expectCloseMatrix(cursor.transform, [1, 0, 0, 1, 10, 20])
+
+    expect(history.canUndo(RESOURCE_ID)).toBe(false)
+    expect(history.redo(RESOURCE_ID)).toBe(true)
+    expect(cursor.width).toBeCloseTo(140)
+    expect(cursor.height).toBeCloseTo(90)
+    expectCloseMatrix(cursor.transform, [1, 0, 0, 1, 10, 20])
   })
 
   it('continues resizing descendants through intermediate nodes without ids', () => {

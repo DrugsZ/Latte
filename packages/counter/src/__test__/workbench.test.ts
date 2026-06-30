@@ -24,6 +24,7 @@ const createTransformInteraction = () => ({
   beginTransform: vi.fn(async () => {}),
   moveBy: vi.fn(),
   resize: vi.fn(),
+  resizeByHandle: vi.fn(),
   transformAround: vi.fn(),
   commitTransform: vi.fn(async () => {}),
   cancelTransform: vi.fn(async () => {}),

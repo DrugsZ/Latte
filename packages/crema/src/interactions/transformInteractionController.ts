@@ -1,4 +1,10 @@
-import type { IDType, ITransformService, mat2d, vec2 } from '@latte-js/bean'
+import type {
+  IDType,
+  ITransformService,
+  ResizeHandleDirection,
+  mat2d,
+  vec2,
+} from '@latte-js/bean'
 
 interface PendingTransformUpdate {
   notify: () => void
@@ -100,6 +106,19 @@ export class TransformInteractionController {
     this._scheduleTransformUpdate({
       notify: () => this._transformService.resize$(ids, width, height),
       request: () => this._transformService.resize(ids, width, height),
+    })
+  }
+
+  public resizeByHandle(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ) {
+    this._scheduleTransformUpdate({
+      notify: () =>
+        this._transformService.resizeByHandle$(ids, direction, pointerWorld),
+      request: () =>
+        this._transformService.resizeByHandle(ids, direction, pointerWorld),
     })
   }
 

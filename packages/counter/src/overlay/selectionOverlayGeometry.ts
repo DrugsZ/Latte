@@ -1,19 +1,17 @@
-import { NodeLifecycle, NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
+import {
+  InteractionGroupResolver,
+  NodeLifecycle,
+  NULL_INDEX,
+  type InteractionGroupBox,
+  type SceneGraph,
+} from '@latte-js/espresso'
 
 import { SelectionOverlayHitType } from './selectionOverlayConstants'
 
 import type { Camera } from '@latte-js/art'
-import type { IDType } from '@latte-js/bean'
+import type { IDType, ResizeHandleDirection } from '@latte-js/bean'
 
-export type ResizeHandleDirection =
-  | 'nw'
-  | 'n'
-  | 'ne'
-  | 'e'
-  | 'se'
-  | 's'
-  | 'sw'
-  | 'w'
+export type { ResizeHandleDirection } from '@latte-js/bean'
 
 export interface OverlayBounds {
   readonly minX: number
@@ -47,6 +45,8 @@ type WorldQuad = readonly [
   ViewportPoint,
   ViewportPoint,
 ]
+
+type WorldMatrix = readonly [number, number, number, number, number, number]
 
 export interface InteractionGroup {
   readonly ids: readonly IDType[]
@@ -87,10 +87,15 @@ const HANDLE_DIRECTIONS: readonly ResizeHandleDirection[] = [
   'w',
 ]
 
-interface SelectionOverlayItem {
+interface SelectionOverlayTarget {
   readonly id: IDType
-  readonly worldBounds: OverlayBounds
-  readonly worldCorners?: WorldQuad
+  readonly index: number
+}
+
+interface SelectionOverlayBaseBox {
+  readonly width: number
+  readonly height: number
+  readonly matrix: WorldMatrix
 }
 
 export class SelectionOverlayGeometryBuilder {
@@ -107,8 +112,14 @@ export class SelectionOverlayGeometryBuilder {
       return null
     }
 
-    const items: SelectionOverlayItem[] = []
-    let worldBounds: OverlayBounds | null = null
+    const targets: SelectionOverlayTarget[] = []
+    const baseBoxes = new Map<number, SelectionOverlayBaseBox | null>()
+    const readBaseBox = (index: number) => {
+      if (!baseBoxes.has(index)) {
+        baseBoxes.set(index, this._readBaseBox(sceneGraph, index))
+      }
+      return baseBoxes.get(index) ?? null
+    }
 
     for (const id of selectionIds) {
       const index = sceneGraph.getIndex(id)
@@ -119,32 +130,32 @@ export class SelectionOverlayGeometryBuilder {
         continue
       }
 
-      const item = this._readSelectionItem(sceneGraph, index, id)
-      if (!item) {
-        continue
-      }
-
-      items.push(item)
-      worldBounds = worldBounds
-        ? this._unionBounds(worldBounds, item.worldBounds)
-        : item.worldBounds
+      targets.push({ id, index })
     }
 
-    if (
-      !worldBounds ||
-      !this._intersects(worldBounds, camera.getViewportBounds())
-    ) {
+    const groupBox = new InteractionGroupResolver<SelectionOverlayTarget>({
+      getBaseSize: target =>
+        readBaseBox(target.index) ?? { width: 0, height: 0 },
+      getBaseWorldMatrix: target =>
+        readBaseBox(target.index)?.matrix ?? [1, 0, 0, 1, 0, 0],
+    }).resolve(targets)
+
+    if (!groupBox) {
       return null
     }
 
-    const viewportCorners =
-      items.length === 1 && items[0].worldCorners
-        ? this._worldToViewportCorners(items[0].worldCorners, camera)
-        : this._worldBoundsToViewportCorners(worldBounds, camera)
+    const worldCorners = this._boxToWorldCorners(groupBox)
+    const worldBounds = this._boundsFromPoints(worldCorners)
+
+    if (!this._intersects(worldBounds, camera.getViewportBounds())) {
+      return null
+    }
+
+    const viewportCorners = this._worldToViewportCorners(worldCorners, camera)
     const viewportBounds = this._viewportBoundsFromCorners(viewportCorners)
     return {
       group: {
-        ids: items.map(item => item.id),
+        ids: groupBox.ids,
         worldBounds,
         viewportBounds,
         viewportCorners,
@@ -184,29 +195,61 @@ export class SelectionOverlayGeometryBuilder {
     return false
   }
 
-  private _readSelectionItem(
+  private _readBaseBox(
     sceneGraph: SceneGraph,
-    index: number,
-    id: IDType
-  ): SelectionOverlayItem | null {
+    index: number
+  ): SelectionOverlayBaseBox | null {
+    const size = this._readNodeSize(sceneGraph, index)
+    const matrix = this._readWorldMatrix(sceneGraph, index)
+    if (size && matrix) {
+      return {
+        ...size,
+        matrix,
+      }
+    }
+
     const bounds = this._readWorldBounds(sceneGraph, index)
     if (!bounds) {
       return null
     }
 
-    const worldCorners = this._readWorldCorners(sceneGraph, index)
-    if (worldCorners) {
-      return {
-        id,
-        worldCorners,
-        worldBounds: this._boundsFromPoints(worldCorners),
-      }
+    return {
+      width: bounds.maxX - bounds.minX,
+      height: bounds.maxY - bounds.minY,
+      matrix: [1, 0, 0, 1, bounds.minX, bounds.minY],
+    }
+  }
+
+  private _readNodeSize(sceneGraph: SceneGraph, index: number) {
+    const width = sceneGraph.size[index * 2]
+    const height = sceneGraph.size[index * 2 + 1]
+    if (
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      width <= 0 ||
+      height <= 0
+    ) {
+      return null
     }
 
-    return {
-      id,
-      worldBounds: bounds,
-    }
+    return { width, height }
+  }
+
+  private _readWorldMatrix(
+    sceneGraph: SceneGraph,
+    index: number
+  ): WorldMatrix | null {
+    const ptr = index * 6
+    const matrix: WorldMatrix = [
+      sceneGraph.worldMatrix[ptr],
+      sceneGraph.worldMatrix[ptr + 1],
+      sceneGraph.worldMatrix[ptr + 2],
+      sceneGraph.worldMatrix[ptr + 3],
+      sceneGraph.worldMatrix[ptr + 4],
+      sceneGraph.worldMatrix[ptr + 5],
+    ]
+
+    return matrix.every(Number.isFinite) ? matrix : null
   }
 
   private _readWorldBounds(
@@ -235,33 +278,10 @@ export class SelectionOverlayGeometryBuilder {
     return bounds
   }
 
-  private _readWorldCorners(
-    sceneGraph: SceneGraph,
-    index: number
-  ): WorldQuad | null {
-    const width = sceneGraph.size[index * 2]
-    const height = sceneGraph.size[index * 2 + 1]
-    if (
-      !Number.isFinite(width) ||
-      !Number.isFinite(height) ||
-      width <= 0 ||
-      height <= 0
-    ) {
-      return null
-    }
-
-    const ptr = index * 6
-    const a = sceneGraph.worldMatrix[ptr]
-    const b = sceneGraph.worldMatrix[ptr + 1]
-    const c = sceneGraph.worldMatrix[ptr + 2]
-    const d = sceneGraph.worldMatrix[ptr + 3]
-    const tx = sceneGraph.worldMatrix[ptr + 4]
-    const ty = sceneGraph.worldMatrix[ptr + 5]
-
-    if (![a, b, c, d, tx, ty].every(Number.isFinite)) {
-      return null
-    }
-
+  private _boxToWorldCorners(
+    box: InteractionGroupBox<SelectionOverlayTarget>
+  ): WorldQuad {
+    const [a, b, c, d, tx, ty] = box.matrix
     const transform = (x: number, y: number): ViewportPoint => ({
       x: a * x + c * y + tx,
       y: b * x + d * y + ty,
@@ -269,19 +289,10 @@ export class SelectionOverlayGeometryBuilder {
 
     return [
       transform(0, 0),
-      transform(width, 0),
-      transform(width, height),
-      transform(0, height),
+      transform(box.width, 0),
+      transform(box.width, box.height),
+      transform(0, box.height),
     ]
-  }
-
-  private _unionBounds(a: OverlayBounds, b: OverlayBounds): OverlayBounds {
-    return {
-      minX: Math.min(a.minX, b.minX),
-      minY: Math.min(a.minY, b.minY),
-      maxX: Math.max(a.maxX, b.maxX),
-      maxY: Math.max(a.maxY, b.maxY),
-    }
   }
 
   private _intersects(a: OverlayBounds, b: OverlayBounds) {
@@ -321,18 +332,6 @@ export class SelectionOverlayGeometryBuilder {
     return corners.map(point =>
       camera.toScreen(point.x, point.y)
     ) as unknown as ViewportQuad
-  }
-
-  private _worldBoundsToViewportCorners(
-    bounds: OverlayBounds,
-    camera: Camera
-  ): ViewportQuad {
-    return [
-      camera.toScreen(bounds.minX, bounds.minY),
-      camera.toScreen(bounds.maxX, bounds.minY),
-      camera.toScreen(bounds.maxX, bounds.maxY),
-      camera.toScreen(bounds.minX, bounds.maxY),
-    ]
   }
 
   private _viewportBoundsFromCorners(corners: ViewportQuad): ViewportRect {

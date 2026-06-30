@@ -23,8 +23,8 @@ export const CREATION_PREVIEW_LAYER_ID = 'latte.creation-preview'
 const IDENTITY_TRANSFORM = new Float32Array([1, 0, 0, 1, 0, 0])
 const PREVIEW_FILL = 0x2f80ff24
 const PREVIEW_STROKE = 0x2f80ffff
-const RECTANGLE_PREVIEW_TYPE: NonNullable<CreationPreviewState>['type'] =
-  'rectangle'
+const RECTANGLE_PREVIEW_TYPE =
+  'rectangle' as NonNullable<CreationPreviewState>['type']
 
 export class CreationPreviewLayer implements RenderLayer {
   public readonly id = CREATION_PREVIEW_LAYER_ID

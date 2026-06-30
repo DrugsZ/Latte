@@ -4,7 +4,6 @@ import {
   type InputEditorEvent,
   type InputMouseEvent,
 } from '@latte-js/syrup'
-import { NodeLifecycle, NULL_INDEX, type SceneGraph } from '@latte-js/espresso'
 
 import {
   SELECTION_OVERLAY_LAYER_ID,
@@ -24,22 +23,23 @@ import {
 } from './selectionOverlayInteractionTypes'
 
 import {
-  NodeType,
   type HitResult,
   type IDType,
+  type ResizeHandleDirection,
   type mat2d,
   type vec2,
 } from '@latte-js/bean'
-import type {
-  OverlayBounds,
-  ResizeHandleDirection,
-} from '../overlay/selectionOverlayGeometry'
 
 export interface ISelectionTransformInteraction {
   readonly isActive: boolean
   beginTransform(ids: IDType[], label?: string): Promise<void>
   moveBy(ids: IDType[], totalDelta: vec2): void
   resize(ids: IDType[], width: number, height: number): void
+  resizeByHandle(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ): void
   transformAround(ids: IDType[], matrix: mat2d, pivot: vec2): void
   commitTransform(): Promise<void>
   cancelTransform(): Promise<void>
@@ -54,7 +54,6 @@ export interface SelectionInteractionOpenScopeRequest {
 }
 
 export interface SelectionInteractionToolOptions {
-  readonly getSceneGraph?: () => SceneGraph
   readonly getSelectedIds?: () => readonly IDType[]
   readonly selectIds?: (ids: readonly IDType[]) => void
   readonly toggleId?: (id: IDType) => void
@@ -80,7 +79,6 @@ interface PendingSelectionPointerInteraction {
   readonly ids: IDType[]
   readonly pointerId?: number
   readonly direction?: ResizeHandleDirection
-  readonly originBounds?: OverlayBounds
   readonly originWorld: PointerPoint
   readonly originViewport: PointerPoint
   latestWorld: PointerPoint
@@ -95,7 +93,6 @@ interface ActiveSelectionPointerInteraction {
   readonly ids: IDType[]
   readonly pointerId?: number
   readonly direction?: ResizeHandleDirection
-  readonly originBounds?: OverlayBounds
   readonly originWorld: PointerPoint
   latestWorld: PointerPoint
   phase:
@@ -377,7 +374,6 @@ export class SelectionInteractionTool implements IInputMouseHandler {
       ids: [...state.ids],
       pointerId: state.pointerId,
       direction: state.direction,
-      originBounds: state.originBounds,
       originWorld: state.originWorld,
       latestWorld: state.latestWorld,
       phase: SelectionOverlayInteractionPhase.Beginning,
@@ -487,31 +483,23 @@ export class SelectionInteractionTool implements IInputMouseHandler {
   }
 
   private _flushResize(state: ActiveSelectionPointerInteraction) {
+    if (!state.direction || state.ids.length === 0) {
+      return
+    }
+
     if (
-      state.direction !== 'se' ||
-      !state.originBounds ||
-      state.ids.length !== 1
+      state.latestWorld.x === state.originWorld.x &&
+      state.latestWorld.y === state.originWorld.y &&
+      !state.hasFlushedUpdate
     ) {
       return
     }
 
-    const dx = state.latestWorld.x - state.originWorld.x
-    const dy = state.latestWorld.y - state.originWorld.y
-    if (dx === 0 && dy === 0 && !state.hasFlushedUpdate) {
-      return
-    }
-
-    const width = Math.max(
-      0,
-      state.originBounds.maxX - state.originBounds.minX + dx
-    )
-    const height = Math.max(
-      0,
-      state.originBounds.maxY - state.originBounds.minY + dy
-    )
-
     state.hasFlushedUpdate = true
-    this._transformInteraction.resize(state.ids, width, height)
+    this._transformInteraction.resizeByHandle(state.ids, state.direction, [
+      state.latestWorld.x,
+      state.latestWorld.y,
+    ])
   }
 
   private _handleResizePointerDown(
@@ -521,13 +509,7 @@ export class SelectionInteractionTool implements IInputMouseHandler {
       { type: SelectionOverlayHitType.ResizeHandle }
     >
   ): EventResult {
-    if (overlayHit.direction !== 'se' || overlayHit.ids.length !== 1) {
-      event.preventDefault()
-      return EventResult.CONSUMED
-    }
-
-    const originBounds = this._getResizableBounds(overlayHit.ids[0])
-    if (!originBounds) {
+    if (overlayHit.ids.length === 0) {
       event.preventDefault()
       return EventResult.CONSUMED
     }
@@ -535,49 +517,10 @@ export class SelectionInteractionTool implements IInputMouseHandler {
     return this._startPendingInteraction(event, {
       kind: SelectionOverlayInteractionKind.Resize,
       intent: SelectionInteractionIntent.ResizeSelection,
-      ids: [overlayHit.ids[0]],
+      ids: [...overlayHit.ids],
       direction: overlayHit.direction,
-      originBounds,
       clickAction: SelectionInteractionClickAction.Preserve,
     })
-  }
-
-  private _getResizableBounds(id: IDType): OverlayBounds | null {
-    const graph = this._options.getSceneGraph?.()
-    if (!graph) {
-      return null
-    }
-
-    const index = graph.getIndex(id)
-    if (
-      index === NULL_INDEX ||
-      graph.type[index] !== NodeType.RECTANGLE ||
-      (graph.lifecycle[index] & NodeLifecycle.Active) === 0 ||
-      graph.visible[index] !== 1
-    ) {
-      return null
-    }
-
-    const ptr = index * 4
-    const bounds = {
-      minX: graph.aabb[ptr],
-      minY: graph.aabb[ptr + 1],
-      maxX: graph.aabb[ptr + 2],
-      maxY: graph.aabb[ptr + 3],
-    }
-
-    if (
-      !Number.isFinite(bounds.minX) ||
-      !Number.isFinite(bounds.minY) ||
-      !Number.isFinite(bounds.maxX) ||
-      !Number.isFinite(bounds.maxY) ||
-      bounds.minX >= bounds.maxX ||
-      bounds.minY >= bounds.maxY
-    ) {
-      return null
-    }
-
-    return bounds
   }
 
   private _applyClickAction(state: PendingSelectionPointerInteraction) {

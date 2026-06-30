@@ -51,6 +51,14 @@ export {
   extractMat2,
   applyDistributiveScale,
 } from './math/transform'
+export {
+  InteractionGroupResolver,
+  type InteractionGroupBox,
+  type InteractionGroupBoxMode,
+  type InteractionGroupResolverOptions,
+  type InteractionGroupSize,
+  type InteractionGroupTarget,
+} from './math/interactionGroupResolver'
 export { TransformOps } from './data/ops/transformOps'
 export { walkTree } from './query/treeWalker'
 export { PropId } from './data/propKeys'
