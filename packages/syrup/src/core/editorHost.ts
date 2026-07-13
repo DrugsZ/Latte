@@ -8,9 +8,10 @@ export type EditorHostServiceId<T = unknown> = ServiceIdentifier<T> | string
 
 export interface IEditorRenderer<TGraph = unknown> {
   setGraph(graph: TGraph): void
-  setActiveRootId(rootId: IDType): void
+  rebuildSceneIndex?(): void
+  updateSceneIndexByIds?(ids: Iterable<IDType>): void
   fitToContent(rootId?: IDType, padding?: number): boolean
-  requestRender(): void
+  requestRender(reason?: string): void
 }
 
 export class EditorHost<TGraph = unknown> extends Disposable {

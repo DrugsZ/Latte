@@ -1,4 +1,5 @@
 export * from './input/inputService'
+export * from './hitTest/hitTestService'
 export * from './command/commandService'
 export * from './command/commandsRegistry'
 export * from './keybinding/keybindingService'

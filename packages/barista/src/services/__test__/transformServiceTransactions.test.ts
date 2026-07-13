@@ -121,12 +121,14 @@ describe('TransformService transactions', () => {
 
     await transform.call(ctx(), 'beginTransform', ['test:rect'], 'Drag Layer')
     await transform.call(ctx(), 'moveBy$', ['test:rect'], [5, 0])
+    await transform.call(ctx(), 'moveBy$', ['test:rect'], [6, 0])
     await transform.call(ctx(), 'moveBy', ['test:rect'], [7, 0])
     await transform.call(ctx(), 'commitTransform')
 
     expect(cursor.x).toBe(17)
     expect(await undoRedo.call(ctx(), 'undo')).toBe(true)
     expect(cursor.x).toBe(10)
+    expect(await undoRedo.call(ctx(), 'canUndo')).toBe(false)
     expect(await undoRedo.call(ctx(), 'redo')).toBe(true)
     expect(cursor.x).toBe(17)
   })
@@ -262,6 +264,66 @@ describe('TransformService transactions', () => {
     expect(cursor.y).toBe(20)
     expect(cursor.width).toBe(100)
     expect(cursor.height).toBe(100)
+  })
+
+  it('renames nodes through worker-owned history', async () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.name = 'Before'
+    const gate = createMutationGate(graph)
+    const node = createNodeChannel(graph, gate)
+    const undoRedo = fromService(new UndoRedoService(createContext(graph)), {
+      channelName: Channels.UndoRedo,
+      mutationGate: gate,
+    })
+
+    await node.call(ctx(), 'setName', 'test:rect', 'After')
+
+    expect(cursor.name).toBe('After')
+    expect(await undoRedo.call(ctx(), 'undo')).toBe(true)
+    expect(cursor.name).toBe('Before')
+    expect(await undoRedo.call(ctx(), 'redo')).toBe(true)
+    expect(cursor.name).toBe('After')
+  })
+
+  it('creates and appends rectangles as one worker-owned history step', async () => {
+    const graph = new SceneGraph()
+    const page = graph.createNode(NodeType.CANVAS, 'test:page')
+    graph.appendChild(0, page)
+    const gate = createMutationGate(graph)
+    const node = createNodeChannel(graph, gate)
+    const undoRedo = fromService(new UndoRedoService(createContext(graph)), {
+      channelName: Channels.UndoRedo,
+      mutationGate: gate,
+    })
+
+    const id = await node.call(ctx(), 'createRectangle', 'test:page', {
+      id: 'test:rect',
+      x: 10,
+      y: 20,
+      width: 120,
+      height: 80,
+    })
+    const index = graph.getIndex('test:rect')
+    const cursor = new NodeCursor(graph, index)
+
+    expect(id).toBe('test:rect')
+    expect(index).not.toBe(NULL_INDEX)
+    expect(graph.parent[index]).toBe(page)
+    expect(cursor.x).toBe(10)
+    expect(cursor.y).toBe(20)
+    expect(cursor.width).toBe(120)
+    expect(cursor.height).toBe(80)
+
+    expect(await undoRedo.call(ctx(), 'undo')).toBe(true)
+    expect(graph.getIndex('test:rect')).toBe(NULL_INDEX)
+    expect(await undoRedo.call(ctx(), 'canUndo')).toBe(false)
+
+    expect(await undoRedo.call(ctx(), 'redo')).toBe(true)
+    const restored = graph.getIndex('test:rect')
+    expect(restored).toBe(index)
+    expect(graph.parent[restored]).toBe(page)
   })
 
   it('finalizes abandoned create tombstones when redo history is cleared', async () => {

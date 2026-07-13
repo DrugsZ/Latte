@@ -1,3 +1,4 @@
+import { RenderReason } from '@latte-js/art'
 import { NodeType, type IDType, type ILatteFile } from '@latte-js/bean'
 import type { SceneGraph } from '@latte-js/espresso'
 import { Disposable } from '@latte-js/kit'
@@ -7,16 +8,27 @@ export interface IApplyDocumentViewStateOptions {
   readonly fitToContent?: boolean
 }
 
+export interface IRenderViewStateSink {
+  setActiveRootId(rootId?: IDType | null): void
+  fitToContent(rootId?: IDType, padding?: number): boolean
+  requestRender(reason?: string): void
+}
+
 export class DocumentViewStateController extends Disposable {
   private readonly _activeRootIds = new Map<string, IDType>()
 
-  constructor(private readonly _host: EditorHost<SceneGraph>) {
+  constructor(
+    private readonly _host: EditorHost<SceneGraph>,
+    private readonly _renderViewState: IRenderViewStateSink
+  ) {
     super()
 
     this._register(
       this._host.onDidChangeActiveDocument(doc => {
         if (doc) {
           this.applyActiveRoot(doc.id)
+        } else {
+          this._clearActiveRoot()
         }
       })
     )
@@ -61,16 +73,16 @@ export class DocumentViewStateController extends Disposable {
     options: IApplyDocumentViewStateOptions = {}
   ) {
     const activeRootId = this._activeRootIds.get(documentId)
-    if (!activeRootId || !this._host.renderer) {
+    this._renderViewState.setActiveRootId(activeRootId)
+    this._renderViewState.requestRender(RenderReason.ActiveRootChanged)
+    if (!activeRootId) {
       return
     }
 
-    this._host.renderer.setActiveRootId(activeRootId)
     if (options.fitToContent) {
-      this._host.renderer.fitToContent(activeRootId)
+      this._renderViewState.fitToContent(activeRootId)
       return
     }
-    this._host.renderer.requestRender()
   }
 
   public override dispose() {
@@ -92,5 +104,10 @@ export class DocumentViewStateController extends Disposable {
       return type === 'DOCUMENT' || type === NodeType.DOCUMENT
     })
     return document?.guid
+  }
+
+  private _clearActiveRoot() {
+    this._renderViewState.setActiveRootId(undefined)
+    this._renderViewState.requestRender(RenderReason.ActiveRootChanged)
   }
 }

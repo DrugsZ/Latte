@@ -49,6 +49,7 @@
     }
   },
   "dependencies": {
+    "@latte-js/art": "workspace:*",
     "@latte-js/bean": "workspace:*",
     "@latte-js/espresso": "workspace:*",
     "@latte-js/kit": "workspace:*",

@@ -20,6 +20,10 @@ export class SelectionTool implements IInputMouseHandler {
 
   private _handlePointerDown(e: InputMouseEvent): EventResult {
     const isMultiSelect = e.ctrlKey || e.metaKey || e.shiftKey
+    if (e.hitResult?.kind === 'render-layer') {
+      return EventResult.IGNORED
+    }
+
     const hitNodeId = e.hitResult?.nodeId
 
     if (hitNodeId !== undefined) {

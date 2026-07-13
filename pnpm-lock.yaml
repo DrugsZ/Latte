@@ -203,6 +203,9 @@ importers:
 
   packages/counter:
     dependencies:
+      '@latte-js/art':
+        specifier: workspace:*
+        version: link:../art
       '@latte-js/bean':
         specifier: workspace:*
         version: link:../bean

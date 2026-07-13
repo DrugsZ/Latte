@@ -1,6 +1,16 @@
 import type { mat2d, vec2 } from '../math/matrix'
 import type { IDType } from '../schema/index'
 
+export type ResizeHandleDirection =
+  | 'nw'
+  | 'n'
+  | 'ne'
+  | 'e'
+  | 'se'
+  | 's'
+  | 'sw'
+  | 'w'
+
 export interface ITransformService {
   beginTransform(ids: IDType[], label?: string): Promise<void>
 
@@ -55,4 +65,16 @@ export interface ITransformService {
   resize(ids: IDType[], width: number, height: number): Promise<void>
 
   resize$(ids: IDType[], width: number, height: number): void
+
+  resizeByHandle(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ): Promise<void>
+
+  resizeByHandle$(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ): void
 }

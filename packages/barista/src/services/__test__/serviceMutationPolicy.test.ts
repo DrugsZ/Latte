@@ -11,6 +11,7 @@ import {
   getServiceCallMethodNames,
 } from '../serviceAudit'
 import { getRegisteredServices, ServiceBase } from '../serviceBase'
+import { StyleService } from '../style'
 import { TransformService } from '../transform'
 import { UndoRedoService } from '../undoRedo'
 import { MutationPolicyKind } from '../../transactions/mutationPolicy'
@@ -101,6 +102,7 @@ describe('service mutation policies', () => {
     void DocumentService
     void NodeService
     void QueryService
+    void StyleService
     void TransformService
     void UndoRedoService
 
@@ -116,6 +118,7 @@ describe('service mutation policies', () => {
         'document',
         'node',
         'query',
+        'style',
         'transform',
         'undoRedo',
       ])

@@ -15,6 +15,10 @@ describe('TransformInteractionController', () => {
       moveBy$: vi.fn(),
       moveTo: vi.fn().mockResolvedValue(undefined),
       moveTo$: vi.fn(),
+      resize: vi.fn().mockResolvedValue(undefined),
+      resize$: vi.fn(),
+      resizeByHandle: vi.fn().mockResolvedValue(undefined),
+      resizeByHandle$: vi.fn(),
       transformAround: vi.fn().mockResolvedValue(undefined),
       transformAround$: vi.fn(),
     }
@@ -66,6 +70,60 @@ describe('TransformInteractionController', () => {
     expect(transformService.moveBy.mock.invocationCallOrder[0]).toBeLessThan(
       transformService.commitTransform.mock.invocationCallOrder[0]
     )
+  })
+
+  it('coalesces resize updates and flushes the final size on commit', async () => {
+    const controller = new TransformInteractionController(transformService)
+
+    await controller.beginTransform(['test:rect'])
+    controller.resize(['test:rect'], 120, 80)
+    controller.resize(['test:rect'], 140, 90)
+
+    vi.advanceTimersByTime(16)
+
+    expect(transformService.resize$).toHaveBeenCalledTimes(1)
+    expect(transformService.resize$).toHaveBeenCalledWith(
+      ['test:rect'],
+      140,
+      90
+    )
+
+    controller.resize(['test:rect'], 160, 100)
+    await controller.commitTransform()
+
+    expect(transformService.resize).toHaveBeenCalledWith(
+      ['test:rect'],
+      160,
+      100
+    )
+    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
+  })
+
+  it('coalesces resize-by-handle updates and flushes the final pointer target on commit', async () => {
+    const controller = new TransformInteractionController(transformService)
+
+    await controller.beginTransform(['test:rect'])
+    controller.resizeByHandle(['test:rect'], 'se', [120, 80])
+    controller.resizeByHandle(['test:rect'], 'se', [140, 90])
+
+    vi.advanceTimersByTime(16)
+
+    expect(transformService.resizeByHandle$).toHaveBeenCalledTimes(1)
+    expect(transformService.resizeByHandle$).toHaveBeenCalledWith(
+      ['test:rect'],
+      'se',
+      [140, 90]
+    )
+
+    controller.resizeByHandle(['test:rect'], 'se', [160, 100])
+    await controller.commitTransform()
+
+    expect(transformService.resizeByHandle).toHaveBeenCalledWith(
+      ['test:rect'],
+      'se',
+      [160, 100]
+    )
+    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
   })
 
   it('drops pending update before canceling the transform interaction', async () => {

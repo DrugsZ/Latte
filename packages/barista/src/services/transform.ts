@@ -2,6 +2,7 @@ import {
   Channels,
   type IDType,
   type ITransformService,
+  type ResizeHandleDirection,
   type mat2d,
   type vec2,
 } from '@latte-js/bean'
@@ -31,6 +32,7 @@ const transformServiceMutationPolicies: MutationPolicyMap = {
   moveBy$: { kind: MutationPolicyKind.SessionMutation },
   transformAround$: { kind: MutationPolicyKind.SessionMutation },
   resize$: { kind: MutationPolicyKind.SessionMutation },
+  resizeByHandle$: { kind: MutationPolicyKind.SessionMutation },
 }
 
 @Service({
@@ -94,5 +96,21 @@ export class TransformService
 
   public async resize$(ids: IDType[], width: number, height: number) {
     return this.system.resize(ids, width, height)
+  }
+
+  public async resizeByHandle(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ) {
+    return this.system.resizeByHandle(ids, direction, pointerWorld)
+  }
+
+  public async resizeByHandle$(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ) {
+    return this.system.resizeByHandle(ids, direction, pointerWorld)
   }
 }

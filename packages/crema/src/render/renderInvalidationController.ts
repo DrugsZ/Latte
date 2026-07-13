@@ -1,4 +1,5 @@
-import type { SceneGraph } from '@latte-js/espresso'
+import { RenderReason } from '@latte-js/art'
+import { DIRTY_TREE, type SceneGraph } from '@latte-js/espresso'
 import { Disposable } from '@latte-js/kit'
 import type { EditorHost } from '@latte-js/syrup'
 
@@ -19,10 +20,24 @@ export class RenderInvalidationController extends Disposable {
 
     this._register(
       projection.onDidMarkDirty(event => {
+        const renderer = this._host.renderer
+        if (!renderer) {
+          return
+        }
+
         if (event.renderIds.length > 0) {
-          this._host.renderer?.requestRender()
+          if (this._requiresSceneIndexRebuild(event)) {
+            renderer.rebuildSceneIndex?.()
+          } else {
+            renderer.updateSceneIndexByIds?.(event.affectedIds)
+          }
+          renderer.requestRender(RenderReason.SceneDirty)
         }
       })
     )
+  }
+
+  private _requiresSceneIndexRebuild(event: IProjectionDirtyEvent) {
+    return event.nodes.some(node => (node.flags & DIRTY_TREE) !== 0)
   }
 }

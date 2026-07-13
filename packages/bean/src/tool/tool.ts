@@ -9,6 +9,7 @@ export interface ITool {
   onPointerDown?(e: IMouseEvent): void
   onPointerMove?(e: IMouseEvent): void
   onPointerUp?(e: IMouseEvent): void
+  onPointerCancel?(e: IMouseEvent): void
 
   onKeyDown?(e: KeyboardEvent): void
   onKeyUp?(e: KeyboardEvent): void

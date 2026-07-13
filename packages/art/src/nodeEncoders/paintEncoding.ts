@@ -1,4 +1,5 @@
 import {
+  BlendModeType,
   type FillColor,
   FillType,
   type IGradientAngularPaint,
@@ -11,10 +12,14 @@ import {
 } from '@latte-js/bean'
 
 import {
-  type Gradient,
+  BlendMode,
   type GradientStop,
-  GradientType,
-  type IRenderBackend,
+  type IRenderCommandEncoder,
+  type Paint,
+  PaintStyle,
+  type Shader,
+  ShaderType,
+  type StrokeStyle,
 } from '../contract/renderBackend'
 
 /**
@@ -39,13 +44,50 @@ export function applyOpacity(color: number, opacity: number): number {
 }
 
 /**
- * Paint result types for rendering
+ * Encoded paint result used by node command encoders.
  */
 export type PaintResult =
-  | { type: 'solid'; color: number }
-  | { type: 'gradient'; gradientId: number }
-  | { type: 'image'; imageId: string; transform?: Float32Array }
+  | { type: 'paint'; paint: Paint }
+  | { type: 'image'; imageId: string; paint?: Paint; transform?: Float32Array }
   | { type: 'none' }
+
+export function blendModeToRenderBlendMode(mode: BlendModeType): BlendMode {
+  switch (mode) {
+    case BlendModeType.MULTIPLY:
+      return BlendMode.MULTIPLY
+    case BlendModeType.SCREEN:
+      return BlendMode.SCREEN
+    case BlendModeType.OVERLAY:
+      return BlendMode.OVERLAY
+    case BlendModeType.DARKEN:
+      return BlendMode.DARKEN
+    case BlendModeType.LIGHTEN:
+      return BlendMode.LIGHTEN
+    case BlendModeType.COLOR_DODGE:
+      return BlendMode.COLOR_DODGE
+    case BlendModeType.COLOR_BURN:
+      return BlendMode.COLOR_BURN
+    case BlendModeType.HARD_LIGHT:
+      return BlendMode.HARD_LIGHT
+    case BlendModeType.SOFT_LIGHT:
+      return BlendMode.SOFT_LIGHT
+    case BlendModeType.DIFFERENCE:
+      return BlendMode.DIFFERENCE
+    case BlendModeType.EXCLUSION:
+      return BlendMode.EXCLUSION
+    case BlendModeType.HUE:
+      return BlendMode.HUE
+    case BlendModeType.SATURATION:
+      return BlendMode.SATURATION
+    case BlendModeType.COLOR:
+      return BlendMode.COLOR
+    case BlendModeType.LUMINOSITY:
+      return BlendMode.LUMINOSITY
+    case BlendModeType.NORMAL:
+    default:
+      return BlendMode.NORMAL
+  }
+}
 
 /**
  * Convert gradient stops from IPaint format to backend format
@@ -63,8 +105,8 @@ function convertGradientStops(
 /**
  * Create a gradient from a gradient paint
  */
-export function createGradientFromPaint(
-  backend: IRenderBackend,
+export function createShaderFromPaint(
+  encoder: IRenderCommandEncoder,
   paint:
     | IGradientLinearPaint
     | IGradientRadialPaint
@@ -72,10 +114,10 @@ export function createGradientFromPaint(
     | IGradientDiamondPaint,
   width: number,
   height: number
-): number {
+): Paint {
   const stops = convertGradientStops(paint.stops, paint.opacity)
 
-  let gradient: Gradient
+  let shader: Shader
 
   switch (paint.type) {
     case FillType.GRADIENT_LINEAR: {
@@ -88,8 +130,8 @@ export function createGradientFromPaint(
       const x1 = (transform[0] + transform[4]) * width
       const y1 = (transform[1] + transform[5]) * height
 
-      gradient = {
-        type: GradientType.LINEAR,
+      shader = {
+        type: ShaderType.LINEAR_GRADIENT,
         stops,
         coords: Float32Array.from([x0, y0, x1, y1]),
       }
@@ -102,8 +144,8 @@ export function createGradientFromPaint(
       const cy = height / 2
       const r = Math.max(width, height) / 2
 
-      gradient = {
-        type: GradientType.RADIAL,
+      shader = {
+        type: ShaderType.RADIAL_GRADIENT,
         stops,
         coords: Float32Array.from([cx, cy, 0, cx, cy, r]),
       }
@@ -115,8 +157,8 @@ export function createGradientFromPaint(
       const cx = width / 2
       const cy = height / 2
 
-      gradient = {
-        type: GradientType.CONIC,
+      shader = {
+        type: ShaderType.CONIC_GRADIENT,
         stops,
         coords: Float32Array.from([cx, cy, 0]),
       }
@@ -129,8 +171,8 @@ export function createGradientFromPaint(
       const cy = height / 2
       const r = Math.max(width, height) / 2
 
-      gradient = {
-        type: GradientType.RADIAL,
+      shader = {
+        type: ShaderType.RADIAL_GRADIENT,
         stops,
         coords: Float32Array.from([cx, cy, 0, cx, cy, r]),
       }
@@ -138,14 +180,18 @@ export function createGradientFromPaint(
     }
   }
 
-  return backend.createGradient(gradient)
+  return {
+    style: PaintStyle.Fill,
+    shader: encoder.createShader(shader),
+    blendMode: blendModeToRenderBlendMode(paint.blendMode),
+  }
 }
 
 /**
  * Process a paint and return the appropriate result for rendering
  */
 export function processPaint(
-  backend: IRenderBackend,
+  encoder: IRenderCommandEncoder,
   paint: IPaint,
   width: number,
   height: number
@@ -161,15 +207,22 @@ export function processPaint(
         fillColorToHex(solidPaint.color),
         solidPaint.opacity
       )
-      return { type: 'solid', color }
+      return {
+        type: 'paint',
+        paint: {
+          style: PaintStyle.Fill,
+          color,
+          blendMode: blendModeToRenderBlendMode(solidPaint.blendMode),
+        },
+      }
     }
 
     case FillType.GRADIENT_LINEAR:
     case FillType.GRADIENT_RADIAL:
     case FillType.GRADIENT_ANGULAR:
     case FillType.GRADIENT_DIAMOND: {
-      const gradientId = createGradientFromPaint(
-        backend,
+      const gradient = createShaderFromPaint(
+        encoder,
         paint as
           | IGradientLinearPaint
           | IGradientRadialPaint
@@ -178,7 +231,7 @@ export function processPaint(
         width,
         height
       )
-      return { type: 'gradient', gradientId }
+      return { type: 'paint', paint: gradient }
     }
 
     case FillType.IMAGE: {
@@ -186,6 +239,11 @@ export function processPaint(
       return {
         type: 'image',
         imageId: imagePaint.image.hash,
+        paint: {
+          style: PaintStyle.Fill,
+          alpha: imagePaint.opacity,
+          blendMode: blendModeToRenderBlendMode(imagePaint.blendMode),
+        },
         transform: imagePaint.transform
           ? Float32Array.from(imagePaint.transform)
           : undefined,
@@ -198,16 +256,24 @@ export function processPaint(
 }
 
 /**
- * Get the first visible solid color from a paint array
- * Returns undefined if no valid solid color found
+ * Get the first visible solid paint from a paint array.
+ * Returns undefined if no valid solid paint is found.
  */
-export function getFirstSolidColor(paints: IPaint[]): number | undefined {
+export function getFirstSolidStrokePaint(
+  paints: IPaint[],
+  stroke: StrokeStyle
+): Paint | undefined {
   for (const paint of paints) {
     if (!paint.visible || paint.opacity <= 0) continue
 
     if (paint.type === FillType.SOLID) {
       const baseColor = fillColorToHex(paint.color)
-      return applyOpacity(baseColor, paint.opacity)
+      return {
+        style: PaintStyle.Stroke,
+        color: applyOpacity(baseColor, paint.opacity),
+        blendMode: blendModeToRenderBlendMode(paint.blendMode),
+        stroke,
+      }
     }
   }
 
@@ -215,16 +281,16 @@ export function getFirstSolidColor(paints: IPaint[]): number | undefined {
 }
 
 /**
- * Get the first visible paint result from a paint array
+ * Get the first visible encoded paint result from a paint array.
  */
 export function getFirstPaint(
-  backend: IRenderBackend,
+  encoder: IRenderCommandEncoder,
   paints: IPaint[],
   width: number,
   height: number
 ): PaintResult {
   for (const paint of paints) {
-    const result = processPaint(backend, paint, width, height)
+    const result = processPaint(encoder, paint, width, height)
     if (result.type !== 'none') {
       return result
     }
@@ -233,7 +299,7 @@ export function getFirstPaint(
 }
 
 /**
- * Check if a paint array has any visible fills
+ * Check if a paint array has any visible fills.
  */
 export function hasVisibleFills(paints: IPaint[]): boolean {
   return paints.some(p => p.visible && p.opacity > 0)

@@ -55,6 +55,8 @@ export class ToolService extends Disposable implements IInputMouseHandler {
       tool.onPointerMove?.(e as any)
     } else if (type === 'pointerup') {
       tool.onPointerUp?.(e as any)
+    } else if (type === 'pointercancel') {
+      tool.onPointerCancel?.(e as any)
     } else if (type === 'dblclick') {
       tool.onDoubleTap?.(e as any)
     }

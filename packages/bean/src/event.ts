@@ -1,8 +1,12 @@
 import { type IDType } from './index'
 
 export interface HitResult {
+  kind?: 'scene-node' | 'render-layer'
   nodeId?: IDType
   nodeIndex?: number
+  layerId?: string
+  targetId?: string
+  payload?: unknown
 }
 
 export interface IMouseEvent {

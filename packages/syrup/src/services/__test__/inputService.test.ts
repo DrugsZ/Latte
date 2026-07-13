@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { InputService } from '../input/inputService'
+import { EventResult, InputService } from '../input/inputService'
 
 describe('InputService', () => {
   let inputService: InputService
   let mockCanvas: any
-  let hitTestProvider: any
+  let hitTestService: any
 
   beforeEach(() => {
     // Setup DOM environment mocks
@@ -16,14 +16,15 @@ describe('InputService', () => {
       getBoundingClientRect: vi.fn().mockReturnValue({ left: 0, top: 0 }),
     }
 
-    hitTestProvider = {
+    hitTestService = {
       hitTest: vi.fn().mockReturnValue({
         hitResult: undefined,
-        client: { x: 0, y: 0 },
+        viewport: { x: 10, y: 10 },
+        world: { x: 0, y: 0 },
       }),
     }
 
-    inputService = new InputService(mockCanvas, hitTestProvider)
+    inputService = new InputService(mockCanvas, hitTestService)
   })
 
   afterEach(() => {
@@ -55,7 +56,7 @@ describe('InputService', () => {
     const handler = {
       id: 'test',
       priority: 10,
-      onEvent: vi.fn(),
+      onEvent: vi.fn(() => EventResult.IGNORED),
     }
 
     inputService.registerHandler(handler)
@@ -82,14 +83,103 @@ describe('InputService', () => {
     listener(mockEvent)
 
     expect(handler.onEvent).toHaveBeenCalled()
-    expect(hitTestProvider.hitTest).toHaveBeenCalledWith(10, 10)
+    expect(hitTestService.hitTest).toHaveBeenCalledWith(10, 10)
+  })
+
+  it('should stop dispatching when an event stops propagation', () => {
+    const first = {
+      id: 'first',
+      priority: 20,
+      onEvent: vi.fn(e => {
+        e.stopPropagation()
+        return EventResult.IGNORED
+      }),
+    }
+    const second = {
+      id: 'second',
+      priority: 10,
+      onEvent: vi.fn(() => EventResult.IGNORED),
+    }
+
+    inputService.registerHandler(first)
+    inputService.registerHandler(second)
+
+    const pointerDownCall = mockCanvas.addEventListener.mock.calls.find(
+      (call: any[]) => call[0] === 'pointerdown'
+    )
+    const listener = pointerDownCall[1]
+
+    const mockEvent = {
+      type: 'pointerdown',
+      clientX: 10,
+      clientY: 10,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }
+
+    listener(mockEvent)
+
+    expect(first.onEvent).toHaveBeenCalled()
+    expect(second.onEvent).not.toHaveBeenCalled()
+    expect(mockEvent.stopPropagation).toHaveBeenCalled()
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('should dispatch captured pointer events to the capture owner', () => {
+    const captureOwner = {
+      id: 'capture-owner',
+      priority: 10,
+      onEvent: vi.fn(e => {
+        if (e.browserEvent.type === 'pointerdown') {
+          e.capturePointer()
+        }
+        return EventResult.IGNORED
+      }),
+    }
+    const higherPriority = {
+      id: 'higher-priority',
+      priority: 20,
+      onEvent: vi.fn(() => EventResult.IGNORED),
+    }
+
+    inputService.registerHandler(higherPriority)
+    inputService.registerHandler(captureOwner)
+
+    const getListener = (type: string) =>
+      mockCanvas.addEventListener.mock.calls.find(
+        (call: any[]) => call[0] === type
+      )[1]
+
+    getListener('pointerdown')({
+      type: 'pointerdown',
+      pointerId: 1,
+      clientX: 10,
+      clientY: 10,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+
+    higherPriority.onEvent.mockClear()
+    captureOwner.onEvent.mockClear()
+
+    getListener('pointermove')({
+      type: 'pointermove',
+      pointerId: 1,
+      clientX: 20,
+      clientY: 20,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    })
+
+    expect(captureOwner.onEvent).toHaveBeenCalledTimes(1)
+    expect(higherPriority.onEvent).not.toHaveBeenCalled()
   })
 
   it('should remove handlers', () => {
     const handler = {
       id: 'test',
       priority: 10,
-      onEvent: vi.fn(),
+      onEvent: vi.fn(() => EventResult.IGNORED),
     }
     inputService.registerHandler(handler)
     inputService.removeHandler('test')

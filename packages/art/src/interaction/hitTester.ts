@@ -1,5 +1,6 @@
 import { type IDType, NodeType } from '@latte-js/bean'
 import {
+  NodeLifecycle,
   readNodeGeometry,
   type SceneGraph,
   NULL_INDEX,
@@ -43,17 +44,17 @@ export class HitTester {
     point: vec2,
     candidates?: Set<number>
   ): number {
-    if (!this._sceneGraph.visible[index]) {
-      return NULL_INDEX
-    }
-
-    if (candidates && !candidates.has(index)) {
+    if (!this._isHitTestableNode(index)) {
       return NULL_INDEX
     }
 
     const type = this._sceneGraph.type[index]
     const isInfiniteContainer =
       type === NodeType.DOCUMENT || type === NodeType.CANVAS
+
+    if (candidates && !candidates.has(index) && !isInfiniteContainer) {
+      return NULL_INDEX
+    }
 
     // 1. AABB Pruning
     if (!isInfiniteContainer) {
@@ -116,7 +117,9 @@ export class HitTester {
     const ty = this._sceneGraph.worldMatrix[matPtr + 5]
 
     mat2d.set(this._tempMat, a, b, c, d, tx, ty)
-    mat2d.invert(this._tempMat, this._tempMat)
+    if (!mat2d.invert(this._tempMat, this._tempMat)) {
+      return false
+    }
 
     vec2.transformMat2d(this._tempVec, point, this._tempMat)
 
@@ -132,6 +135,14 @@ export class HitTester {
     // For now, simple rect check (0,0 to width,height)
     const width = this._sceneGraph.size[index * 2]
     const height = this._sceneGraph.size[index * 2 + 1]
+    if (
+      !Number.isFinite(width) ||
+      !Number.isFinite(height) ||
+      width <= 0 ||
+      height <= 0
+    ) {
+      return false
+    }
 
     if (type === NodeType.ELLIPSE) {
       const rx = width / 2
@@ -156,5 +167,12 @@ export class HitTester {
     if (!data || !data.points) return false
 
     return isPointInPolygon(localPoint, data.points)
+  }
+
+  private _isHitTestableNode(index: number) {
+    return (
+      (this._sceneGraph.lifecycle[index] & NodeLifecycle.Active) !== 0 &&
+      this._sceneGraph.visible[index] === 1
+    )
   }
 }

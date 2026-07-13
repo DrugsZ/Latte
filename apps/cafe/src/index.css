@@ -8,7 +8,8 @@ body,
   overflow: hidden;
   /* 防止浏览器滚动条 */
   background: #f5f5f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .app-layout {
@@ -16,13 +17,51 @@ body,
   flex-direction: column;
   width: 100%;
   height: 100%;
+  color: #1f2933;
 }
 
-.header {
+.toolbar {
   height: 48px;
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  background: #fbfbfc;
+  border-bottom: 1px solid #d9dde3;
   flex-shrink: 0;
+}
+
+.toolbar button {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #c9d0d8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #202832;
+  font: inherit;
+  cursor: pointer;
+}
+
+.toolbar button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.toolbar button.active {
+  border-color: #2f80ff;
+  background: #eaf2ff;
+  color: #174ea6;
+}
+
+.toolbar button:disabled {
+  color: #9aa4b2;
+  cursor: default;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: #d9dde3;
 }
 
 .main-content {
@@ -56,4 +95,62 @@ body,
   width: 100%;
   height: 100%;
   outline: none;
+}
+
+.inspector {
+  width: 288px;
+  flex-shrink: 0;
+  border-left: 1px solid #d9dde3;
+  background: #fbfbfc;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.panel-title {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.empty-state {
+  padding: 12px 0;
+  color: #7b8794;
+  font-size: 13px;
+}
+
+.property-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.property-grid label:first-child,
+.property-grid label:last-child {
+  grid-column: 1 / -1;
+}
+
+.property-grid label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+  color: #5b6776;
+}
+
+.property-grid input {
+  min-width: 0;
+  height: 30px;
+  border: 1px solid #c9d0d8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2933;
+  padding: 0 8px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.property-grid input[type='color'] {
+  width: 100%;
+  padding: 2px;
 }

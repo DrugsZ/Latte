@@ -1,15 +1,17 @@
 import {
   DIRTY_LOCAL_MATRIX,
   DIRTY_WORLD_BOUNDS,
+  InteractionGroupResolver,
   MAX_NODES,
   NULL_INDEX,
+  type InteractionGroupBox,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
 
 import { getTransactionManager } from '../transactions/transactionRegistry'
 import { System, SystemBase, Systems } from './systems'
 
-import type { IDType } from '@latte-js/bean'
+import type { IDType, ResizeHandleDirection } from '@latte-js/bean'
 import {
   MutationPolicyKind,
   type MutationPolicyMap,
@@ -18,6 +20,18 @@ import { TransactionLabel } from '../transactions/transactionLabels'
 
 const idsFromFirstArg = (args: readonly unknown[]) => args[0] as IDType[]
 const EPSILON = 1e-6
+const MIN_RESIZE_BOX_SIZE = 1
+
+const RESIZE_HANDLE_DIRECTIONS = new Set<ResizeHandleDirection>([
+  'nw',
+  'n',
+  'ne',
+  'e',
+  'se',
+  's',
+  'sw',
+  'w',
+])
 
 interface TransformTarget {
   readonly id: IDType
@@ -41,6 +55,11 @@ const transformMutationPolicies: MutationPolicyMap = {
     ids: idsFromFirstArg,
   },
   resize: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.ResizeLayer,
+    ids: idsFromFirstArg,
+  },
+  resizeByHandle: {
     kind: MutationPolicyKind.Atomic,
     label: TransactionLabel.ResizeLayer,
     ids: idsFromFirstArg,
@@ -302,6 +321,31 @@ export class TransformSystem extends SystemBase {
     this._resizeByIndex(target.id, target.index, width, height)
   }
 
+  private _resizeByHandle(
+    targets: readonly TransformTarget[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ) {
+    const box = this._resolveInteractionGroupBox(targets)
+    if (!box) {
+      return
+    }
+
+    const worldStep = this._buildResizeByHandleWorldStep(
+      box,
+      direction,
+      pointerWorld
+    )
+
+    if (!worldStep) {
+      return
+    }
+
+    box.targets.forEach(target =>
+      this._applyWorldStepToTarget(target, worldStep)
+    )
+  }
+
   private _resizeByIndex(
     id: IDType,
     index: number,
@@ -343,6 +387,94 @@ export class TransformSystem extends SystemBase {
 
     this._transactions.capture(this._collectDescendantIds(index))
     this._applyWorldStepToDescendants(index, baseWorld, worldStep)
+  }
+
+  private _applyWorldStepToTarget(target: TransformTarget, worldStep: mat2d) {
+    const baseWorld = this._getBaseWorldMatrix(target.index)
+    const targetWorld = mat2d.multiply(mat2d.create(), worldStep, baseWorld)
+    const parentWorld = this._getParentWorld(target.index)
+    const targetLocal = this._worldToLocal(targetWorld, parentWorld)
+    const finalLocal = this._applyWorldScaleToSize(
+      target.id,
+      target.index,
+      baseWorld,
+      targetWorld,
+      targetLocal
+    )
+
+    this._cursor.to(target.index)
+    this._cursor.transform = finalLocal
+    this._markTransformDirty(target.index)
+
+    this._transactions.capture(this._collectDescendantIds(target.index))
+    this._applyWorldStepToDescendants(
+      target.index,
+      mat2d.multiply(mat2d.create(), parentWorld, finalLocal),
+      worldStep
+    )
+  }
+
+  private _buildResizeByHandleWorldStep(
+    box: InteractionGroupBox<TransformTarget>,
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ): mat2d | null {
+    const inverseBoxMatrix = mat2d.invert(mat2d.create(), box.matrix)
+    if (inverseBoxMatrix === null) {
+      throw new Error(
+        '[TransformSystem] Cannot resize through a non-invertible selection box'
+      )
+    }
+
+    const pointerLocal = vec2.transformMat2d(
+      vec2.create(),
+      vec2.fromValues(pointerWorld[0], pointerWorld[1]),
+      inverseBoxMatrix
+    )
+    let startX = 0
+    let startY = 0
+    let endX = box.width
+    let endY = box.height
+
+    if (direction.includes('w')) {
+      startX = pointerLocal[0]
+    } else if (direction.includes('e')) {
+      endX = pointerLocal[0]
+    }
+
+    if (direction.includes('n')) {
+      startY = pointerLocal[1]
+    } else if (direction.includes('s')) {
+      endY = pointerLocal[1]
+    }
+
+    const signedWidth = endX - startX
+    const signedHeight = endY - startY
+    if (
+      Math.abs(signedWidth) < MIN_RESIZE_BOX_SIZE ||
+      Math.abs(signedHeight) < MIN_RESIZE_BOX_SIZE
+    ) {
+      return null
+    }
+
+    const localStep = mat2d.create()
+    mat2d.translate(localStep, localStep, [startX, startY])
+    mat2d.scale(localStep, localStep, [
+      signedWidth / box.width,
+      signedHeight / box.height,
+    ])
+
+    const worldStep = mat2d.multiply(mat2d.create(), box.matrix, localStep)
+    mat2d.multiply(worldStep, worldStep, inverseBoxMatrix)
+    return worldStep
+  }
+
+  private _resolveInteractionGroupBox(targets: readonly TransformTarget[]) {
+    return new InteractionGroupResolver<TransformTarget>({
+      minBoxSize: MIN_RESIZE_BOX_SIZE,
+      getBaseSize: target => this._getBaseSize(target.id, target.index),
+      getBaseWorldMatrix: target => this._getBaseWorldMatrix(target.index),
+    }).resolve(targets)
   }
 
   private _collectDescendantIds(index: number): IDType[] {
@@ -502,6 +634,17 @@ export class TransformSystem extends SystemBase {
     targets.forEach(target => this._resize(target, width, height))
   }
 
+  public resizeByHandle(
+    ids: IDType[],
+    direction: ResizeHandleDirection,
+    pointerWorld: vec2
+  ) {
+    this._assertResizeHandleDirection(direction)
+    this._assertFiniteVec2(pointerWorld, 'resizeByHandle pointer')
+    const targets = this._prepareTargets(ids, 'resizeByHandle')
+    this._resizeByHandle(targets, direction, pointerWorld)
+  }
+
   private _assertFiniteVec2(value: vec2, source: string) {
     if (Number.isFinite(value[0]) && Number.isFinite(value[1])) {
       return
@@ -528,5 +671,14 @@ export class TransformSystem extends SystemBase {
     }
 
     throw new Error('[TransformSystem] Invalid resize dimensions')
+  }
+
+  private _assertResizeHandleDirection(
+    direction: ResizeHandleDirection
+  ): asserts direction is ResizeHandleDirection {
+    if (RESIZE_HANDLE_DIRECTIONS.has(direction)) {
+      return
+    }
+    throw new Error('[TransformSystem] Invalid resize handle direction')
   }
 }
