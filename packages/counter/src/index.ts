@@ -34,6 +34,16 @@ export {
   SelectionOverlayLayer,
 } from './overlay/selectionOverlayLayer'
 export type { SelectionOverlayHitData } from './overlay/selectionOverlayLayer'
+export { SelectionModel } from './services/selection/selectionModel'
+export type {
+  SelectionSnapshot,
+  SelectionTargetSnapshot,
+} from './services/selection/selectionModel'
+export { SelectionPropertyModel } from './services/selection/selectionPropertyModel'
+export type {
+  SelectionPropertyKey,
+  SelectionPropertyValue,
+} from './services/selection/selectionPropertyModel'
 export {
   InputPointerEventType,
   SELECTION_INTERACTION_TOOL_ID,

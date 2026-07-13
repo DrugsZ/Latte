@@ -28,64 +28,73 @@ export class RendererHitTestService implements IHitTestService {
     const localY = clientY - rect.top
     const viewport = { x: localX, y: localY }
     const world = this._renderer.camera.toWorld(localX, localY)
-    const activeRootId = this._renderer.activeRootId
-    const layerHit = this._renderer.hitTestLayers({ viewport, world })
-    if (layerHit) {
-      return {
-        hitResult: {
-          kind: 'render-layer',
-          layerId: layerHit.layerId,
-          targetId: layerHit.targetId,
-          payload: layerHit.data,
-        },
+
+    return (
+      this._graph.readConsistent(() => {
+        const activeRootId = this._renderer.activeRootId
+        const layerHit = this._renderer.hitTestLayers({ viewport, world })
+        if (layerHit) {
+          return {
+            hitResult: {
+              kind: 'render-layer',
+              layerId: layerHit.layerId,
+              targetId: layerHit.targetId,
+              payload: layerHit.data,
+            },
+            viewport,
+            world,
+          }
+        }
+
+        if (!activeRootId) {
+          return { hitResult: undefined, viewport, world }
+        }
+
+        const indexedCandidates = this._renderer.queryHitTestCandidates(
+          world.x,
+          world.y,
+          activeRootId
+        )
+
+        let candidates: Set<number> | undefined
+        if (indexedCandidates.length > 0) {
+          candidates = new Set<number>()
+          for (const index of indexedCandidates) {
+            let curr = index
+            while (curr !== NULL_INDEX) {
+              if (candidates.has(curr)) {
+                break
+              }
+              candidates.add(curr)
+              curr = this._graph.parent[curr]
+            }
+          }
+        }
+
+        const nodeIndex = this._hitTester.hitTest(
+          localX,
+          localY,
+          activeRootId,
+          candidates
+        )
+        if (nodeIndex === NULL_INDEX) {
+          return { hitResult: undefined, viewport, world }
+        }
+
+        return {
+          hitResult: {
+            nodeIndex,
+            nodeId: this._graph.getUUID(nodeIndex) || undefined,
+          },
+          viewport,
+          world,
+        }
+      }) ?? {
+        hitResult: undefined,
         viewport,
         world,
       }
-    }
-
-    if (!activeRootId) {
-      return { hitResult: undefined, viewport, world }
-    }
-
-    const indexedCandidates = this._renderer.queryHitTestCandidates(
-      world.x,
-      world.y,
-      activeRootId
     )
-
-    let candidates: Set<number> | undefined
-    if (indexedCandidates.length > 0) {
-      candidates = new Set<number>()
-      for (const index of indexedCandidates) {
-        let curr = index
-        while (curr !== NULL_INDEX) {
-          if (candidates.has(curr)) {
-            break
-          }
-          candidates.add(curr)
-          curr = this._graph.parent[curr]
-        }
-      }
-    }
-
-    const nodeIndex = this._hitTester.hitTest(
-      localX,
-      localY,
-      activeRootId,
-      candidates
-    )
-    if (nodeIndex === NULL_INDEX) {
-      return { hitResult: undefined, viewport, world }
-    }
-
-    return {
-      hitResult: {
-        nodeIndex,
-        nodeId: this._graph.getUUID(nodeIndex) || undefined,
-      },
-      viewport,
-      world,
-    }
   }
 
   private _syncGraph() {

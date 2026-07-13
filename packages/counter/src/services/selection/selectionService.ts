@@ -9,6 +9,7 @@ export class SelectionService {
   private _selectedIds = new Set<IDType>()
   private _activeId: IDType | null = null
   private _anchorId: IDType | null = null
+  private _selectionVersion = 0
 
   constructor(private _sceneGraph: SceneGraph) {}
 
@@ -86,6 +87,10 @@ export class SelectionService {
     return this._selectedIds.size === 0
   }
 
+  get selectionVersion(): number {
+    return this._selectionVersion
+  }
+
   forEach(fn: (cursor: NodeCursor) => void) {
     const cursor = new NodeCursor(this._sceneGraph, 0)
     for (const index of this.indices) {
@@ -105,6 +110,7 @@ export class SelectionService {
   }
 
   private _fireChange() {
+    this._selectionVersion += 1
     this._selectChange.fire(this.ids)
   }
 }

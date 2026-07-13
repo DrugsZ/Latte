@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   Channels,
+  DEFAULT_SCENE_GRAPH_NAME,
   JsonRpcMessageType,
   NodeType,
   type JsonRpcMessage,
 } from '@latte-js/bean'
 import {
   DEFAULT_HEAP_SIZE,
+  DIRTY_LOCAL_MATRIX,
   MAX_NODES,
   TOTAL_MEMORY_BYTES,
 } from '@latte-js/espresso'
@@ -188,6 +190,24 @@ describe('BaristaEngine', () => {
       'doc:a',
       'doc:b',
     ])
+  })
+
+  it('publishes an even revision when pipeline processing throws', () => {
+    const engine = createEngine()
+    const session = (engine as any)._sessionManager.getSession(
+      DEFAULT_SCENE_GRAPH_NAME
+    )
+    session.sceneGraph.beginPublicationWrite()
+    session.sceneGraph.tracker.mark(0, DIRTY_LOCAL_MATRIX)
+    ;(engine as any)._pendingTickSessions.add(DEFAULT_SCENE_GRAPH_NAME)
+    ;(engine as any)._pipelineRunner = {
+      process: vi.fn(() => {
+        throw new Error('pipeline failed')
+      }),
+    }
+
+    expect(() => engine.tick()).toThrow('pipeline failed')
+    expect(session.sceneGraph.isPublicationWriting).toBe(false)
   })
 })
 

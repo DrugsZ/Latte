@@ -1,7 +1,9 @@
 import type {
+  AbsoluteSizeResizeRequest,
   IDType,
   ITransformService,
   ResizeHandleDirection,
+  RotateRequest,
   mat2d,
   vec2,
 } from '@latte-js/bean'
@@ -99,6 +101,20 @@ export class TransformInteractionController {
     this._scheduleTransformUpdate({
       notify: () => this._transformService.transformAround$(ids, matrix, pivot),
       request: () => this._transformService.transformAround(ids, matrix, pivot),
+    })
+  }
+
+  public rotate(ids: IDType[], request: RotateRequest) {
+    this._scheduleTransformUpdate({
+      notify: () => this._transformService.rotate$(ids, request),
+      request: () => this._transformService.rotate(ids, request),
+    })
+  }
+
+  public setSize(ids: IDType[], request: AbsoluteSizeResizeRequest) {
+    this._scheduleTransformUpdate({
+      notify: () => this._transformService.setSize$(ids, request),
+      request: () => this._transformService.setSize(ids, request),
     })
   }
 

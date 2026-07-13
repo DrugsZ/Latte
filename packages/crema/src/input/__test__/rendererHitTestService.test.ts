@@ -133,4 +133,27 @@ describe('RendererHitTestService', () => {
       payload: { role: 'handle' },
     })
   })
+
+  it('skips hit testing while the projection revision is being written', () => {
+    const { graph, rootId } = createScene()
+    const queryHitTestCandidates = vi.fn().mockReturnValue([])
+    const hitTestLayers = vi.fn().mockReturnValue(null)
+    const renderer = createRenderer(
+      rootId,
+      queryHitTestCandidates,
+      hitTestLayers
+    )
+    const service = new RendererHitTestService(
+      new EditorHost(graph),
+      renderer,
+      createViewport()
+    )
+
+    graph.beginPublicationWrite()
+    const result = service.hitTest(660, 610)
+
+    expect(result.hitResult).toBeUndefined()
+    expect(hitTestLayers).not.toHaveBeenCalled()
+    expect(queryHitTestCandidates).not.toHaveBeenCalled()
+  })
 })

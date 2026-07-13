@@ -31,6 +31,8 @@ export class SceneGraph {
 
   public readonly buffer: SharedArrayBuffer
 
+  public readonly revision!: Int32Array
+
   public readonly allocator: Allocator
 
   public readonly parent!: Int32Array
@@ -125,6 +127,8 @@ export class SceneGraph {
   }
 
   private _initMemory() {
+    this.revision[0] = 0
+
     this.parent.fill(NULL_INDEX)
     this.firstChild.fill(NULL_INDEX)
     this.nextSibling.fill(NULL_INDEX)
@@ -155,6 +159,46 @@ export class SceneGraph {
     this._mutationRecorder = null
     this._mutationScopes = []
     this.blobs.dispose()
+  }
+
+  public get publicationRevision() {
+    return Atomics.load(this.revision, 0)
+  }
+
+  public get isPublicationWriting() {
+    return (this.publicationRevision & 1) === 1
+  }
+
+  public beginPublicationWrite() {
+    const current = Atomics.load(this.revision, 0)
+    if ((current & 1) === 1) {
+      return current
+    }
+    const next = current + 1
+    Atomics.store(this.revision, 0, next)
+    return next
+  }
+
+  public publishRevision() {
+    const current = Atomics.load(this.revision, 0)
+    const next = (current & 1) === 1 ? current + 1 : current
+    Atomics.store(this.revision, 0, next)
+    return next
+  }
+
+  public readConsistent<T>(reader: () => T): T | null {
+    const before = Atomics.load(this.revision, 0)
+    if ((before & 1) === 1) {
+      return null
+    }
+
+    const result = reader()
+    const after = Atomics.load(this.revision, 0)
+    if (before !== after || (after & 1) === 1) {
+      return null
+    }
+
+    return result
   }
 
   public setMutationRecorder(recorder: IMutationRecorder | null) {

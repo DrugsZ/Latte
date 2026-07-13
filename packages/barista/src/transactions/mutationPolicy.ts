@@ -127,6 +127,9 @@ export class MutationGate {
     invoke: () => T | Promise<T>
   ): Promise<T> {
     const normalizedSessionId = normalizeSessionId(sessionId)
+    if (policy.kind !== MutationPolicyKind.Readonly) {
+      this._sceneGraph.beginPublicationWrite()
+    }
 
     switch (policy.kind) {
       case MutationPolicyKind.Readonly:

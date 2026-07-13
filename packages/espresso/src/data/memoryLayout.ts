@@ -1,6 +1,8 @@
 import { MAX_NODES, MAT_SIZE, SIZE_SIZE } from './config'
 
 export const LAYOUT_DEF = [
+  { name: 'revision', type: Int32Array, size: 1 },
+
   { name: 'parent', type: Int32Array, size: MAX_NODES },
   { name: 'firstChild', type: Int32Array, size: MAX_NODES },
   { name: 'nextSibling', type: Int32Array, size: MAX_NODES },

@@ -102,6 +102,12 @@ export class SelectionOverlayGeometryBuilder {
   public build(
     options: SelectionOverlayGeometryOptions
   ): SelectionOverlayGeometry | null {
+    return options.sceneGraph.readConsistent(() => this._build(options))
+  }
+
+  private _build(
+    options: SelectionOverlayGeometryOptions
+  ): SelectionOverlayGeometry | null {
     const { sceneGraph, selectionIds, activeRootId, camera } = options
     if (selectionIds.length === 0 || !activeRootId) {
       return null

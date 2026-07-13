@@ -1,8 +1,10 @@
 import {
   Channels,
+  type AbsoluteSizeResizeRequest,
   type IDType,
   type ITransformService,
   type ResizeHandleDirection,
+  type RotateRequest,
   type mat2d,
   type vec2,
 } from '@latte-js/bean'
@@ -31,6 +33,8 @@ const transformServiceMutationPolicies: MutationPolicyMap = {
   moveTo$: { kind: MutationPolicyKind.SessionMutation },
   moveBy$: { kind: MutationPolicyKind.SessionMutation },
   transformAround$: { kind: MutationPolicyKind.SessionMutation },
+  rotate$: { kind: MutationPolicyKind.SessionMutation },
+  setSize$: { kind: MutationPolicyKind.SessionMutation },
   resize$: { kind: MutationPolicyKind.SessionMutation },
   resizeByHandle$: { kind: MutationPolicyKind.SessionMutation },
 }
@@ -88,6 +92,22 @@ export class TransformService
     pivot: vec2
   ) {
     return this.system.transformAround(ids, matrixPayload, pivot)
+  }
+
+  public async rotate(ids: IDType[], request: RotateRequest) {
+    return this.system.rotate(ids, request)
+  }
+
+  public async rotate$(ids: IDType[], request: RotateRequest) {
+    return this.system.rotate(ids, request)
+  }
+
+  public async setSize(ids: IDType[], request: AbsoluteSizeResizeRequest) {
+    return this.system.setSize(ids, request)
+  }
+
+  public async setSize$(ids: IDType[], request: AbsoluteSizeResizeRequest) {
+    return this.system.setSize(ids, request)
   }
 
   public async resize(ids: IDType[], width: number, height: number) {

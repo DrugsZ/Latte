@@ -11,6 +11,45 @@ export type ResizeHandleDirection =
   | 'sw'
   | 'w'
 
+export interface AbsoluteSizeResizeRequest {
+  readonly mode?: 'absolute-size'
+  readonly width?: number
+  readonly height?: number
+  readonly anchor?: 'local-origin'
+}
+
+export type ResizeRequest =
+  | (AbsoluteSizeResizeRequest & { readonly mode: 'absolute-size' })
+  | {
+      readonly mode: 'handle'
+      readonly direction: ResizeHandleDirection
+      readonly pointerWorld: vec2
+      readonly anchor: 'opposite-handle'
+    }
+
+export type RotateRequest =
+  | {
+      readonly mode: 'absolute'
+      readonly angle: number
+      readonly space: 'containing-parent'
+      readonly pivot: 'each-target-center'
+    }
+  | {
+      readonly mode: 'total-delta'
+      readonly angle: number
+      readonly space: 'world'
+      readonly pivot: 'interaction-group-center'
+    }
+  | {
+      readonly mode: 'total-delta'
+      readonly angle: number
+      readonly space: 'world'
+      readonly pivot: {
+        readonly kind: 'world-point'
+        readonly point: vec2
+      }
+    }
+
 export interface ITransformService {
   beginTransform(ids: IDType[], label?: string): Promise<void>
 
@@ -61,6 +100,14 @@ export interface ITransformService {
   ): Promise<void>
 
   transformAround$(ids: IDType[], matrixPayload: mat2d, pivot: vec2): void
+
+  rotate(ids: IDType[], request: RotateRequest): Promise<void>
+
+  rotate$(ids: IDType[], request: RotateRequest): void
+
+  setSize(ids: IDType[], request: AbsoluteSizeResizeRequest): Promise<void>
+
+  setSize$(ids: IDType[], request: AbsoluteSizeResizeRequest): void
 
   resize(ids: IDType[], width: number, height: number): Promise<void>
 

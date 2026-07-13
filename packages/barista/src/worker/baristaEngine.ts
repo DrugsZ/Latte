@@ -130,18 +130,24 @@ export class BaristaEngine {
     const session = this._sessionManager.getSession(sessionId)
     const context = this._sessionManager.getContext(sessionId)
     this._sessionManager.runWithContext(context, () => {
-      const batch = DirtyBatch.from(session.sceneGraph.tracker.flush())
+      try {
+        const batch = DirtyBatch.from(session.sceneGraph.tracker.flush())
 
-      if (!batch.hasChanges) return
+        if (!batch.hasChanges) {
+          return
+        }
 
-      this._pipelineRunner.process(batch)
+        this._pipelineRunner.process(batch)
 
-      const payload = this._notificationPlanner.createDirtyPayload(
-        batch,
-        session.nextProjectionVersion()
-      )
-      if (payload) {
-        this._sendDirtyNotification(sessionId, payload)
+        const payload = this._notificationPlanner.createDirtyPayload(
+          batch,
+          session.nextProjectionVersion()
+        )
+        if (payload) {
+          this._sendDirtyNotification(sessionId, payload)
+        }
+      } finally {
+        session.sceneGraph.publishRevision()
       }
     })
   }
