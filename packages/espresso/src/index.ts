@@ -59,6 +59,11 @@ export {
   type InteractionGroupSize,
   type InteractionGroupTarget,
 } from './math/interactionGroupResolver'
+export {
+  PositioningContextResolver,
+  type PositioningContext,
+  type ResolvedPositioningContext,
+} from './math/positioningContextResolver'
 export { TransformOps } from './data/ops/transformOps'
 export { walkTree } from './query/treeWalker'
 export { PropId } from './data/propKeys'

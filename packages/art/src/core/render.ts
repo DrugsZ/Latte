@@ -186,25 +186,27 @@ export class Renderer {
   }
 
   public hitTestLayers(point: RenderLayerHitTestPoint) {
-    const context = {
-      sceneGraph: this._sceneGraph,
-      camera: this._camera,
-      activeRootId: this._activeRootId,
-    }
-
-    const layers = [...this._getSortedLayers()].reverse()
-    for (const layer of layers) {
-      if (layer.visible === false || !layer.hitTest) {
-        continue
+    return this._sceneGraph.readConsistent(() => {
+      const context = {
+        sceneGraph: this._sceneGraph,
+        camera: this._camera,
+        activeRootId: this._activeRootId,
       }
 
-      const result = layer.hitTest(point, context)
-      if (result) {
-        return result
-      }
-    }
+      const layers = [...this._getSortedLayers()].reverse()
+      for (const layer of layers) {
+        if (layer.visible === false || !layer.hitTest) {
+          continue
+        }
 
-    return null
+        const result = layer.hitTest(point, context)
+        if (result) {
+          return result
+        }
+      }
+
+      return null
+    })
   }
 
   public rebuildSceneIndex() {
@@ -223,7 +225,11 @@ export class Renderer {
     if (!rootId) {
       return []
     }
-    return this._sceneLayer.queryHitTestCandidates(worldX, worldY, rootId)
+    return (
+      this._sceneGraph.readConsistent(() =>
+        this._sceneLayer.queryHitTestCandidates(worldX, worldY, rootId)
+      ) ?? []
+    )
   }
 
   private _render() {
@@ -232,22 +238,35 @@ export class Renderer {
     }
 
     const reasons = this._renderScheduler.consume()
-    const context = {
-      sceneGraph: this._sceneGraph,
-      camera: this._camera,
-      backendSize: this._backend.getSize(),
-      reasons,
-      activeRootId: this._activeRootId,
+    const buffers = this._sceneGraph.readConsistent(() => {
+      const context = {
+        sceneGraph: this._sceneGraph,
+        camera: this._camera,
+        backendSize: this._backend.getSize(),
+        reasons,
+        activeRootId: this._activeRootId,
+      }
+      const buffers: NonNullable<ReturnType<RenderLayer['encode']>>[] = []
+
+      for (const layer of this._getSortedLayers()) {
+        if (layer.visible === false) {
+          continue
+        }
+        const commands = layer.encode(context)
+        if (commands) {
+          buffers.push(commands)
+        }
+      }
+      return buffers
+    })
+
+    if (buffers === null) {
+      this.requestRender(RenderReason.SceneDirty)
+      return
     }
 
-    for (const layer of this._getSortedLayers()) {
-      if (layer.visible === false) {
-        continue
-      }
-      const commands = layer.encode(context)
-      if (commands) {
-        this._backend.submit(commands)
-      }
+    for (const commands of buffers) {
+      this._backend.submit(commands)
     }
   }
 

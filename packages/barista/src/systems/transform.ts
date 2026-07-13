@@ -4,6 +4,7 @@ import {
   InteractionGroupResolver,
   MAX_NODES,
   NULL_INDEX,
+  PositioningContextResolver,
   type InteractionGroupBox,
 } from '@latte-js/espresso'
 import { mat2d, vec2 } from 'gl-matrix'
@@ -11,7 +12,13 @@ import { mat2d, vec2 } from 'gl-matrix'
 import { getTransactionManager } from '../transactions/transactionRegistry'
 import { System, SystemBase, Systems } from './systems'
 
-import type { IDType, ResizeHandleDirection } from '@latte-js/bean'
+import {
+  NodeType,
+  type AbsoluteSizeResizeRequest,
+  type IDType,
+  type ResizeHandleDirection,
+  type RotateRequest,
+} from '@latte-js/bean'
 import {
   MutationPolicyKind,
   type MutationPolicyMap,
@@ -52,6 +59,16 @@ const transformMutationPolicies: MutationPolicyMap = {
   transformAround: {
     kind: MutationPolicyKind.Atomic,
     label: TransactionLabel.TransformLayer,
+    ids: idsFromFirstArg,
+  },
+  rotate: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.TransformLayer,
+    ids: idsFromFirstArg,
+  },
+  setSize: {
+    kind: MutationPolicyKind.Atomic,
+    label: TransactionLabel.ResizeLayer,
     ids: idsFromFirstArg,
   },
   resize: {
@@ -317,8 +334,137 @@ export class TransformSystem extends SystemBase {
     )
   }
 
+  public rotate(ids: IDType[], request: RotateRequest) {
+    this._assertRotateRequest(request)
+    const targets = this._prepareTargets(ids, 'rotate')
+    if (targets.length === 0) {
+      return
+    }
+
+    if (request.mode === 'absolute') {
+      targets.forEach(target => this._rotateAbsolute(target, request.angle))
+      return
+    }
+
+    const rotation = mat2d.create()
+    mat2d.rotate(rotation, rotation, this._degreesToRadians(request.angle))
+    const pivot =
+      request.pivot === 'interaction-group-center'
+        ? this._resolveInteractionGroupCenter(targets)
+        : vec2.fromValues(request.pivot.point[0], request.pivot.point[1])
+
+    if (!pivot) {
+      return
+    }
+
+    targets.forEach(target => this._transformAround(target, rotation, pivot))
+  }
+
+  private _rotateAbsolute(target: TransformTarget, angle: number) {
+    const context = new PositioningContextResolver(
+      this._sceneGraph
+    ).resolveByIndex(target.index)
+    if (!context) {
+      throw new Error(
+        `[TransformSystem] Cannot resolve positioning context for rotate: ${target.id}`
+      )
+    }
+
+    const containingWorld =
+      context.containingParentIndex === NULL_INDEX
+        ? mat2d.create()
+        : this._getBaseWorldMatrix(context.containingParentIndex)
+    const containingWorldInv = mat2d.invert(mat2d.create(), containingWorld)
+    if (containingWorldInv === null) {
+      throw new Error(
+        `[TransformSystem] Cannot rotate through a non-invertible containing parent: ${target.id}`
+      )
+    }
+
+    const baseWorld = this._getBaseWorldMatrix(target.index)
+    const contextTransform = mat2d.multiply(
+      mat2d.create(),
+      containingWorldInv,
+      baseWorld
+    )
+    const currentAngle = Math.atan2(contextTransform[1], contextTransform[0])
+    const delta = this._degreesToRadians(angle) - currentAngle
+    const rotation = mat2d.create()
+    mat2d.rotate(rotation, rotation, delta)
+
+    const size = this._getBaseSize(target.id, target.index)
+    const center = vec2.transformMat2d(
+      vec2.create(),
+      vec2.fromValues(size.width / 2, size.height / 2),
+      contextTransform
+    )
+    const contextStep = this._buildPivotedWorldStep(rotation, center)
+    const targetContext = mat2d.multiply(
+      mat2d.create(),
+      contextStep,
+      contextTransform
+    )
+    const targetWorld = mat2d.multiply(
+      mat2d.create(),
+      containingWorld,
+      targetContext
+    )
+    const directParentWorld =
+      context.directParentIndex === NULL_INDEX
+        ? mat2d.create()
+        : this._getBaseWorldMatrix(context.directParentIndex)
+
+    this._applyTargetWorldMatrix(target.index, targetWorld, directParentWorld)
+  }
+
+  private _resolveInteractionGroupCenter(
+    targets: readonly TransformTarget[]
+  ): vec2 | null {
+    const box = this._resolveInteractionGroupBox(targets)
+    if (!box) {
+      return null
+    }
+
+    return vec2.transformMat2d(
+      vec2.create(),
+      vec2.fromValues(box.width / 2, box.height / 2),
+      box.matrix
+    )
+  }
+
   private _resize(target: TransformTarget, width: number, height: number) {
     this._resizeByIndex(target.id, target.index, width, height)
+  }
+
+  private _setSize(
+    target: TransformTarget,
+    request: Required<Pick<AbsoluteSizeResizeRequest, 'width' | 'height'>>
+  ) {
+    const type = this._sceneGraph.type[target.index]
+    if (type === NodeType.TEXT) {
+      throw new Error(
+        `[TransformSystem] setSize is unsupported for ${NodeType[type]}`
+      )
+    }
+
+    if (type === NodeType.GROUP) {
+      this._resize(target, request.width, request.height)
+      return
+    }
+
+    this._resizeLocalOnly(target, request.width, request.height)
+  }
+
+  private _resizeLocalOnly(
+    target: TransformTarget,
+    width: number,
+    height: number
+  ) {
+    this._cursor.to(target.index)
+    this._cursor.width = width
+    this._cursor.height = height
+    this._cursor.transform = this._getBaseLocalMatrix(target.index)
+    this._markTransformDirty(target.index)
   }
 
   private _resizeByHandle(
@@ -634,6 +780,14 @@ export class TransformSystem extends SystemBase {
     targets.forEach(target => this._resize(target, width, height))
   }
 
+  public setSize(ids: IDType[], request: AbsoluteSizeResizeRequest) {
+    const targets = this._prepareTargets(ids, 'setSize')
+    targets.forEach(target => {
+      const size = this._resolveAbsoluteSize(target, request)
+      this._setSize(target, size)
+    })
+  }
+
   public resizeByHandle(
     ids: IDType[],
     direction: ResizeHandleDirection,
@@ -671,6 +825,48 @@ export class TransformSystem extends SystemBase {
     }
 
     throw new Error('[TransformSystem] Invalid resize dimensions')
+  }
+
+  private _resolveAbsoluteSize(
+    target: TransformTarget,
+    request: AbsoluteSizeResizeRequest
+  ): Required<Pick<AbsoluteSizeResizeRequest, 'width' | 'height'>> {
+    if (request.width === undefined && request.height === undefined) {
+      throw new Error('[TransformSystem] setSize requires width or height')
+    }
+
+    const baseSize = this._getBaseSize(target.id, target.index)
+    const width = request.width ?? baseSize.width
+    const height = request.height ?? baseSize.height
+    this._assertValidSize(width, height)
+    return { width, height }
+  }
+
+  private _assertRotateRequest(request: RotateRequest) {
+    if (!Number.isFinite(request.angle)) {
+      throw new Error('[TransformSystem] Invalid rotate angle')
+    }
+    if (request.mode === 'absolute') {
+      if (
+        request.space === 'containing-parent' &&
+        request.pivot === 'each-target-center'
+      ) {
+        return
+      }
+      throw new Error('[TransformSystem] Invalid absolute rotate request')
+    }
+
+    if (request.space !== 'world') {
+      throw new Error('[TransformSystem] Invalid rotate space')
+    }
+    if (request.pivot === 'interaction-group-center') {
+      return
+    }
+    this._assertFiniteVec2(request.pivot.point, 'rotate pivot')
+  }
+
+  private _degreesToRadians(angle: number) {
+    return (angle * Math.PI) / 180
   }
 
   private _assertResizeHandleDirection(
