@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsgo && vite build",
+    "lint": "eslint src/",
+    "test": "vitest run",
     "type-check": "tsgo --noEmit",
     "preview": "vite preview"
   },
@@ -25,9 +27,9 @@
   "devDependencies": {
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitejs/plugin-react": "^5.2.0",
     "typescript": "^5.9.3",
-    "vite": "^7.2.6",
+    "vite": "^7.3.6",
     "vite-tsconfig-paths": "^6.1.1"
   }
 }

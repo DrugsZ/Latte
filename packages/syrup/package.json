@@ -8,6 +8,8 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "type-check": "tsgo --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run --passWithNoTests",
     "dev": "tsup src/index.ts --watch",
     "clean": "rm -rf dist"
   },
@@ -40,6 +42,7 @@
   },
   "publishConfig": {
     "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
     "access": "public",
     "exports": {
@@ -56,7 +59,7 @@
     "mitt": "^3.0.0"
   },
   "devDependencies": {
-    "tsup": "^8.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
 }

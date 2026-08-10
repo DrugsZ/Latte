@@ -10,6 +10,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "type-check": "tsgo --noEmit",
+    "lint": "eslint src/",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -43,26 +44,26 @@
     }
   },
   "publishConfig": {
-    "main": "./dist/index.js",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
-        "import": "./dist/index.mjs",
-        "require": "./dist/index.js"
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
       }
     }
   },
   "dependencies": {
     "@latte-js/bean": "workspace:*",
-    "gl-matrix": "^3.4.4",
-    "uuid": "^9.0.0"
+    "gl-matrix": "^3.4.4"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.18",
-    "tsup": "^8.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.10"
   }
 }

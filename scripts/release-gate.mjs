@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process'
 
 const isWindows = process.platform === 'win32'
+const browserChannel = process.env.PLAYWRIGHT_CHANNEL ?? 'chromium'
+const shouldInstallBundledChromium = browserChannel === 'chromium'
 
 const steps = [
   {
@@ -24,22 +26,36 @@ const steps = [
     args: ['run', 'test'],
   },
   {
-    label: 'Cafe build',
+    label: 'Workspace build',
     command: 'pnpm',
-    args: ['--filter', '@latte-js/cafe', 'run', 'build'],
+    args: ['run', 'build'],
   },
   {
-    label: 'Playwright browser install',
+    label: 'Package artifacts',
     command: 'pnpm',
-    args: [
-      'exec',
-      'playwright',
-      'install',
-      '--with-deps',
-      '--no-shell',
-      'chromium',
-    ],
+    args: ['run', 'packages:check'],
   },
+  {
+    label: 'Security audit',
+    command: 'pnpm',
+    args: ['run', 'security:check'],
+  },
+  ...(shouldInstallBundledChromium
+    ? [
+        {
+          label: 'Playwright browser install',
+          command: 'pnpm',
+          args: [
+            'exec',
+            'playwright',
+            'install',
+            '--with-deps',
+            '--no-shell',
+            'chromium',
+          ],
+        },
+      ]
+    : []),
   {
     label: 'Browser smoke / e2e',
     command: 'pnpm',

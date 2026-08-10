@@ -41,18 +41,18 @@ UI / Tool / Command / Plugin
   -> renderer and UI readonly projection
 ```
 
-| Package              | Role                    | Responsibility                                                                              |
-| -------------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
-| `@latte-js/bean`     | Protocol                | Types, node enums, file schema types and RPC contracts.                                     |
+| Package              | Role                    | Responsibility                                                                                                     |
+| -------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `@latte-js/bean`     | Protocol                | Types, node enums, file schema types and RPC contracts.                                                            |
 | `@latte-js/espresso` | Data kernel             | `SharedArrayBuffer`, SoA layout, SceneGraph, NodeCursor, loader/serializer and temporary shared heap/blob storage. |
-| `@latte-js/barista`  | Worker engine           | Worker services, systems, mutation policy, transactions, history, undo/redo and future Rust/WASM compute bridge. |
-| `@latte-js/crema`    | Runtime assembly        | Editor runtime, worker client, projection sync and interaction controller.                  |
-| `@latte-js/art`      | Rendering               | Read-only renderer, camera, hit testing, RTree and render backends.                         |
-| `@latte-js/syrup`    | Main-thread platform    | Editor host, DI, commands, menus, keybindings, input and future contribution registry.      |
-| `@latte-js/counter`  | Workbench contributions | Built-in tools, selection, commands and product behavior.                                   |
-| `@latte-js/milk`     | UI                      | React panels and UI components that operate through services.                               |
-| `@latte-js/kit`      | Utilities               | Events, lifecycle helpers, platform utilities and shared data structures.                   |
-| `apps/cafe`          | Demo app                | Integration demo, local smoke target and product playground.                                |
+| `@latte-js/barista`  | Worker engine           | Worker services, systems, mutation policy, transactions, history, undo/redo and future Rust/WASM compute bridge.   |
+| `@latte-js/crema`    | Runtime assembly        | Editor runtime, worker client, projection sync and interaction controller.                                         |
+| `@latte-js/art`      | Rendering               | Read-only renderer, camera, hit testing, RTree and render backends.                                                |
+| `@latte-js/syrup`    | Main-thread platform    | Editor host, DI, commands, menus, keybindings, input and future contribution registry.                             |
+| `@latte-js/counter`  | Workbench contributions | Built-in tools, selection, commands and product behavior.                                                          |
+| `@latte-js/milk`     | UI                      | React panels and UI components that operate through services.                                                      |
+| `@latte-js/kit`      | Utilities               | Events, lifecycle helpers, platform utilities and shared data structures.                                          |
+| `apps/cafe`          | Demo app                | Integration demo, local smoke target and product playground.                                                       |
 
 ### Runtime and Host Boundary
 
@@ -67,7 +67,7 @@ Latte keeps `@latte-js/syrup` and `@latte-js/crema` separate on purpose:
 
 ### Requirements
 
-- Node.js >= 18
+- Node.js >= 20.19.0
 - pnpm 10.x, matching the `packageManager` field in `package.json`
 
 ### Install and Run

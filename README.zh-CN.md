@@ -41,18 +41,18 @@ UI / Tool / Command / Plugin
   -> renderer 和 UI 只读投影
 ```
 
-| 包                   | 角色           | 职责                                                                                      |
-| -------------------- | -------------- | ----------------------------------------------------------------------------------------- |
-| `@latte-js/bean`     | 协议层         | 类型、节点枚举、文件 schema 类型与 RPC contract。                                         |
+| 包                   | 角色           | 职责                                                                                                    |
+| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
+| `@latte-js/bean`     | 协议层         | 类型、节点枚举、文件 schema 类型与 RPC contract。                                                       |
 | `@latte-js/espresso` | 数据内核       | `SharedArrayBuffer`、SoA 布局、SceneGraph、NodeCursor、loader/serializer 与临时 shared heap/blob 存储。 |
-| `@latte-js/barista`  | Worker 引擎    | Worker services、systems、mutation policy、事务、历史、undo/redo 与未来 Rust/WASM 计算桥接。 |
-| `@latte-js/crema`    | Runtime 组装   | Editor runtime、worker client、projection sync 与 interaction controller。                |
-| `@latte-js/art`      | 渲染层         | 只读 renderer、camera、hit test、RTree 与 render backends。                               |
-| `@latte-js/syrup`    | 主线程平台     | Editor host、DI、commands、menus、keybindings、input 与未来 contribution registry。       |
-| `@latte-js/counter`  | Workbench 贡献 | 内置工具、selection、commands 与产品行为。                                                |
-| `@latte-js/milk`     | UI 层          | 通过 service 操作的 React 面板与 UI 组件。                                                |
-| `@latte-js/kit`      | 工具包         | Events、lifecycle、平台工具与共享数据结构。                                               |
-| `apps/cafe`          | 示例应用       | 集成示例、本地 smoke target 与产品 playground。                                           |
+| `@latte-js/barista`  | Worker 引擎    | Worker services、systems、mutation policy、事务、历史、undo/redo 与未来 Rust/WASM 计算桥接。            |
+| `@latte-js/crema`    | Runtime 组装   | Editor runtime、worker client、projection sync 与 interaction controller。                              |
+| `@latte-js/art`      | 渲染层         | 只读 renderer、camera、hit test、RTree 与 render backends。                                             |
+| `@latte-js/syrup`    | 主线程平台     | Editor host、DI、commands、menus、keybindings、input 与未来 contribution registry。                     |
+| `@latte-js/counter`  | Workbench 贡献 | 内置工具、selection、commands 与产品行为。                                                              |
+| `@latte-js/milk`     | UI 层          | 通过 service 操作的 React 面板与 UI 组件。                                                              |
+| `@latte-js/kit`      | 工具包         | Events、lifecycle、平台工具与共享数据结构。                                                             |
+| `apps/cafe`          | 示例应用       | 集成示例、本地 smoke target 与产品 playground。                                                         |
 
 ### Runtime 与 Host 边界
 
@@ -67,7 +67,7 @@ Latte 会刻意保留 `@latte-js/syrup` 与 `@latte-js/crema` 的分层：
 
 ### 环境要求
 
-- Node.js >= 18
+- Node.js >= 20.19.0
 - pnpm 10.x，与根 `package.json` 的 `packageManager` 字段保持一致
 
 ### 安装运行

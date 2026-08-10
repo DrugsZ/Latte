@@ -15,11 +15,12 @@
       ]
     },
     "test": {
-      "dependsOn": [],
+      "dependsOn": [
+        "^build"
+      ],
       "inputs": [
-        "src/**/*.tsx",
-        "src/**/*.ts",
-        "test/**/*.ts"
+        "$TURBO_DEFAULT$",
+        "../../tsconfig.json"
       ],
       "outputs": []
     },
@@ -38,9 +39,15 @@
       "persistent": true
     },
     "lint": {
+      "dependsOn": [
+        "^lint"
+      ],
       "outputs": []
     },
     "type-check": {
+      "dependsOn": [
+        "^type-check"
+      ],
       "outputs": []
     },
     "clean": {

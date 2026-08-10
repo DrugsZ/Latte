@@ -2,7 +2,6 @@
   "name": "@latte-js/kit",
   "version": "0.1.0",
   "description": "Shared runtime utilities and infrastructure (Events, Lifecycle, Async)",
-  "private": true,
   "license": "MIT",
   "sideEffects": false,
   "main": "./src/index.ts",
@@ -14,6 +13,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
+    "type-check": "tsgo --noEmit",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "lint": "eslint src/",
     "test": "vitest run",
@@ -37,9 +37,9 @@
     "@latte-js/bean": "workspace:*"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.18",
-    "tsup": "^8.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.10"
   }
 }

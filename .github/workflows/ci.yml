@@ -39,7 +39,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -77,7 +77,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -85,7 +85,6 @@ jobs:
 
       - name: Run audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
 
   deploy-production:
     name: Deploy to Production

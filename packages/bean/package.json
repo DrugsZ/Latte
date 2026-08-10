@@ -11,6 +11,7 @@
     "type-check": "tsgo --noEmit",
     "dev": "tsup src/index.ts --watch",
     "lint": "eslint src/",
+    "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   },
   "files": [
@@ -41,6 +42,7 @@
   },
   "publishConfig": {
     "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
     "access": "public",
     "exports": {
@@ -52,7 +54,7 @@
     }
   },
   "devDependencies": {
-    "tsup": "^8.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
 }
