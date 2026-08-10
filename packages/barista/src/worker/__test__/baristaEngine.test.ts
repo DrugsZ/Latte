@@ -15,7 +15,7 @@ import {
 
 import { BaristaEngine } from '../baristaEngine'
 import { BaristaSessionManager } from '../baristaSessionManager'
-import { createJsonRpcRequest } from '../../ipc/ipc'
+import { createJsonRpcListenMessage, createJsonRpcRequest } from '../../ipc/ipc'
 
 import type { IMessagePassingProtocol } from '../../ipc/protocol/protocol'
 
@@ -67,6 +67,42 @@ function createSessionBuffers() {
 }
 
 describe('BaristaEngine', () => {
+  it('forwards node lifecycle events for the requested session', async () => {
+    const { engine, protocol } = createEngineWithProtocol()
+    const doc = createSessionBuffers()
+    engine.initSession('doc:a', doc.buffer, doc.allocBuffer, doc.heapBuffer)
+
+    await protocol.receive(
+      createJsonRpcListenMessage(
+        `${Channels.Node}.onDidCreateNode`,
+        1,
+        undefined,
+        'doc:a'
+      )
+    )
+    await protocol.receive(
+      createJsonRpcRequest(
+        `${Channels.Node}.createNode`,
+        2,
+        [{ id: 'node:a', type: NodeType.RECTANGLE }],
+        'doc:a'
+      )
+    )
+
+    const lifecycleNotification = protocol.send.mock.calls
+      .map(([message]) => message as JsonRpcMessage)
+      .find(
+        message =>
+          message.type === JsonRpcMessageType.Notification &&
+          message.method === `${Channels.Node}.onDidCreateNode`
+      )
+
+    expect(lifecycleNotification).toMatchObject({
+      sessionId: 'doc:a',
+      params: { nodes: [['node:a', 1]] },
+    })
+  })
+
   it('rejects duplicate session ids', () => {
     const engine = createEngine()
     const sessionId = 'session:duplicate'
@@ -149,6 +185,35 @@ describe('BaristaEngine', () => {
     ])
     expect((dirtyNotifications[0] as any).params.allIds).toEqual(['node:a'])
     expect((dirtyNotifications[1] as any).params.allIds).toEqual(['node:b'])
+  })
+
+  it('publishes an even revision before dirty notifications are sent', async () => {
+    const { engine, protocol } = createEngineWithProtocol()
+    const session = (engine as any)._sessionManager.getSession(
+      DEFAULT_SCENE_GRAPH_NAME
+    )
+    const notificationRevisions: number[] = []
+
+    protocol.send.mockImplementation(message => {
+      const rpcMessage = message as JsonRpcMessage & { method?: string }
+      if (
+        rpcMessage.type === JsonRpcMessageType.Notification &&
+        rpcMessage.method === 'scene.onDirty'
+      ) {
+        notificationRevisions.push(session.sceneGraph.publicationRevision)
+      }
+    })
+
+    await protocol.receive(
+      createJsonRpcRequest(
+        `${Channels.Node}.createNode`,
+        1,
+        [{ id: 'node:a', type: NodeType.RECTANGLE, x: 10, y: 20 }],
+        DEFAULT_SCENE_GRAPH_NAME
+      )
+    )
+
+    expect(notificationRevisions).toEqual([2])
   })
 
   it('keeps session context isolated for queued concurrent RPC messages', async () => {

@@ -1,5 +1,6 @@
 import type { IDocumentService } from './document'
 import type { INodeService } from './node'
+import type { IPropertyService } from './property'
 import type { IQueryService } from './query'
 import type { ISceneService } from './scene'
 import type { IStyleService } from './style'
@@ -14,6 +15,7 @@ export enum Channels {
   Query = 'query',
   UndoRedo = 'undoRedo',
   Style = 'style',
+  Property = 'property',
 }
 
 export type ChannelID = `${Channels}`
@@ -26,6 +28,7 @@ export interface IServiceMap {
   [Channels.Query]: IQueryService
   [Channels.UndoRedo]: IUndoRedoService
   [Channels.Style]: IStyleService
+  [Channels.Property]: IPropertyService
 }
 
 export type ServiceMapConstructor = {

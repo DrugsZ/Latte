@@ -26,6 +26,7 @@ import {
   type HitResult,
   type IDType,
   type ResizeHandleDirection,
+  type RotateRequest,
   type mat2d,
   type vec2,
 } from '@latte-js/bean'
@@ -40,6 +41,7 @@ export interface ISelectionTransformInteraction {
     direction: ResizeHandleDirection,
     pointerWorld: vec2
   ): void
+  rotate(ids: IDType[], request: RotateRequest): void
   transformAround(ids: IDType[], matrix: mat2d, pivot: vec2): void
   commitTransform(): Promise<void>
   cancelTransform(): Promise<void>
@@ -79,6 +81,7 @@ interface PendingSelectionPointerInteraction {
   readonly ids: IDType[]
   readonly pointerId?: number
   readonly direction?: ResizeHandleDirection
+  readonly pivotWorld?: PointerPoint
   readonly originWorld: PointerPoint
   readonly originViewport: PointerPoint
   latestWorld: PointerPoint
@@ -93,8 +96,11 @@ interface ActiveSelectionPointerInteraction {
   readonly ids: IDType[]
   readonly pointerId?: number
   readonly direction?: ResizeHandleDirection
+  readonly pivotWorld?: PointerPoint
   readonly originWorld: PointerPoint
   latestWorld: PointerPoint
+  lastRotateAngle?: number
+  totalRotateAngle: number
   phase:
     | SelectionOverlayInteractionPhase.Beginning
     | SelectionOverlayInteractionPhase.Active
@@ -107,8 +113,7 @@ interface ActiveSelectionPointerInteraction {
 }
 
 type SelectionPointerInteraction =
-  | PendingSelectionPointerInteraction
-  | ActiveSelectionPointerInteraction
+  PendingSelectionPointerInteraction | ActiveSelectionPointerInteraction
 
 export class SelectionInteractionTool implements IInputMouseHandler {
   public readonly id = SELECTION_INTERACTION_TOOL_ID
@@ -175,6 +180,10 @@ export class SelectionInteractionTool implements IInputMouseHandler {
     event: InputMouseEvent,
     overlayHit: SelectionOverlayHitData
   ): EventResult {
+    if (overlayHit.type === SelectionOverlayHitType.RotateHandle) {
+      return this._handleRotatePointerDown(event, overlayHit)
+    }
+
     if (overlayHit.type === SelectionOverlayHitType.ResizeHandle) {
       return this._handleResizePointerDown(event, overlayHit)
     }
@@ -358,10 +367,7 @@ export class SelectionInteractionTool implements IInputMouseHandler {
   private _activatePendingInteraction(
     state: PendingSelectionPointerInteraction
   ): ActiveSelectionPointerInteraction | null {
-    if (
-      state.kind === SelectionOverlayInteractionKind.Marquee ||
-      state.kind === SelectionOverlayInteractionKind.Rotate
-    ) {
+    if (state.kind === SelectionOverlayInteractionKind.Marquee) {
       return null
     }
 
@@ -374,8 +380,13 @@ export class SelectionInteractionTool implements IInputMouseHandler {
       ids: [...state.ids],
       pointerId: state.pointerId,
       direction: state.direction,
+      pivotWorld: state.pivotWorld,
       originWorld: state.originWorld,
       latestWorld: state.latestWorld,
+      lastRotateAngle: state.pivotWorld
+        ? this._angleFromPivot(state.pivotWorld, state.originWorld)
+        : undefined,
+      totalRotateAngle: 0,
       phase: SelectionOverlayInteractionPhase.Beginning,
       hasBegun: false,
       beginFailed: false,
@@ -406,7 +417,9 @@ export class SelectionInteractionTool implements IInputMouseHandler {
         state.ids,
         state.kind === SelectionOverlayInteractionKind.Resize
           ? SelectionOverlayInteractionLabel.ResizeSelection
-          : SelectionOverlayInteractionLabel.MoveSelection
+          : state.kind === SelectionOverlayInteractionKind.Rotate
+            ? SelectionOverlayInteractionLabel.RotateSelection
+            : SelectionOverlayInteractionLabel.MoveSelection
       )
       state.hasBegun = true
 
@@ -468,6 +481,11 @@ export class SelectionInteractionTool implements IInputMouseHandler {
       return
     }
 
+    if (state.kind === SelectionOverlayInteractionKind.Rotate) {
+      this._flushRotate(state)
+      return
+    }
+
     this._flushMove(state)
   }
 
@@ -502,6 +520,52 @@ export class SelectionInteractionTool implements IInputMouseHandler {
     ])
   }
 
+  private _flushRotate(state: ActiveSelectionPointerInteraction) {
+    if (!state.pivotWorld || state.ids.length === 0) {
+      return
+    }
+
+    const currentAngle = this._angleFromPivot(
+      state.pivotWorld,
+      state.latestWorld
+    )
+    if (state.lastRotateAngle === undefined) {
+      state.lastRotateAngle = currentAngle
+    }
+    const delta = this._normalizeAngle(currentAngle - state.lastRotateAngle)
+    state.totalRotateAngle += delta
+    state.lastRotateAngle = currentAngle
+
+    if (state.totalRotateAngle === 0 && !state.hasFlushedUpdate) {
+      return
+    }
+
+    state.hasFlushedUpdate = true
+    this._transformInteraction.rotate(state.ids, {
+      mode: 'total-delta',
+      angle: this._normalizeOutputAngle(state.totalRotateAngle),
+      space: 'world',
+      pivot: {
+        kind: 'world-point',
+        point: [state.pivotWorld.x, state.pivotWorld.y],
+      },
+    })
+  }
+
+  private _angleFromPivot(pivot: PointerPoint, point: PointerPoint) {
+    return (Math.atan2(point.y - pivot.y, point.x - pivot.x) * 180) / Math.PI
+  }
+
+  private _normalizeAngle(degrees: number) {
+    const normalized = (((degrees % 360) + 540) % 360) - 180
+    return Object.is(normalized, -0) ? 0 : normalized
+  }
+
+  private _normalizeOutputAngle(degrees: number) {
+    const rounded = Math.abs(degrees) < 1e-10 ? 0 : degrees
+    return Number(rounded.toFixed(6))
+  }
+
   private _handleResizePointerDown(
     event: InputMouseEvent,
     overlayHit: Extract<
@@ -519,6 +583,27 @@ export class SelectionInteractionTool implements IInputMouseHandler {
       intent: SelectionInteractionIntent.ResizeSelection,
       ids: [...overlayHit.ids],
       direction: overlayHit.direction,
+      clickAction: SelectionInteractionClickAction.Preserve,
+    })
+  }
+
+  private _handleRotatePointerDown(
+    event: InputMouseEvent,
+    overlayHit: Extract<
+      SelectionOverlayHitData,
+      { type: SelectionOverlayHitType.RotateHandle }
+    >
+  ): EventResult {
+    if (overlayHit.ids.length === 0) {
+      event.preventDefault()
+      return EventResult.CONSUMED
+    }
+
+    return this._startPendingInteraction(event, {
+      kind: SelectionOverlayInteractionKind.Rotate,
+      intent: SelectionInteractionIntent.RotateSelection,
+      ids: [...overlayHit.ids],
+      pivotWorld: overlayHit.pivotWorld,
       clickAction: SelectionInteractionClickAction.Preserve,
     })
   }
@@ -600,7 +685,8 @@ export class SelectionInteractionTool implements IInputMouseHandler {
     const candidate = data as SelectionOverlayHitData
     return (
       (candidate.type === SelectionOverlayHitType.SelectionBounds ||
-        candidate.type === SelectionOverlayHitType.ResizeHandle) &&
+        candidate.type === SelectionOverlayHitType.ResizeHandle ||
+        candidate.type === SelectionOverlayHitType.RotateHandle) &&
       Array.isArray(candidate.ids)
     )
   }

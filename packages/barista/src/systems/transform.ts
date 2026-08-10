@@ -16,6 +16,7 @@ import {
   NodeType,
   type AbsoluteSizeResizeRequest,
   type IDType,
+  type ResizeRequest,
   type ResizeHandleDirection,
   type RotateRequest,
 } from '@latte-js/bean'
@@ -44,6 +45,122 @@ interface TransformTarget {
   readonly id: IDType
   readonly index: number
 }
+
+type AbsoluteSizeRequest = Required<
+  Pick<AbsoluteSizeResizeRequest, 'width' | 'height'>
+>
+
+interface ResizePolicyContext {
+  resizeLocalOnly(target: TransformTarget, width: number, height: number): void
+  resizeGroup(target: TransformTarget, width: number, height: number): void
+  unsupported(target: TransformTarget): never
+}
+
+interface ResizePolicy {
+  readonly name: string
+  supports(type: NodeType): boolean
+  setSize(
+    target: TransformTarget,
+    request: AbsoluteSizeRequest,
+    context: ResizePolicyContext
+  ): void
+}
+
+class ResizePolicyRegistry {
+  constructor(
+    private readonly _policies: readonly ResizePolicy[],
+    private readonly _fallback: ResizePolicy
+  ) {}
+
+  public resolve(type: NodeType) {
+    return (
+      this._policies.find(policy => policy.supports(type)) ?? this._fallback
+    )
+  }
+}
+
+class ShapeGeometryResizePolicy implements ResizePolicy {
+  public readonly name = 'shape-geometry'
+  private readonly _types = new Set<NodeType>([
+    NodeType.RECTANGLE,
+    NodeType.CIRCLE,
+    NodeType.ELLIPSE,
+    NodeType.POLYGON,
+    NodeType.STAR,
+    NodeType.LINE,
+    NodeType.POLYLINE,
+    NodeType.PATH,
+  ])
+
+  public supports(type: NodeType) {
+    return this._types.has(type)
+  }
+
+  public setSize(
+    target: TransformTarget,
+    request: AbsoluteSizeRequest,
+    context: ResizePolicyContext
+  ) {
+    context.resizeLocalOnly(target, request.width, request.height)
+  }
+}
+
+class FrameLayoutResizePolicy implements ResizePolicy {
+  public readonly name = 'frame-layout'
+
+  public supports(type: NodeType) {
+    return type === NodeType.FRAME
+  }
+
+  public setSize(
+    target: TransformTarget,
+    request: AbsoluteSizeRequest,
+    context: ResizePolicyContext
+  ) {
+    context.resizeLocalOnly(target, request.width, request.height)
+  }
+}
+
+class GroupScaleResizePolicy implements ResizePolicy {
+  public readonly name = 'group-scale'
+
+  public supports(type: NodeType) {
+    return type === NodeType.GROUP
+  }
+
+  public setSize(
+    target: TransformTarget,
+    request: AbsoluteSizeRequest,
+    context: ResizePolicyContext
+  ) {
+    context.resizeGroup(target, request.width, request.height)
+  }
+}
+
+class UnsupportedResizePolicy implements ResizePolicy {
+  public readonly name = 'unsupported'
+
+  public supports(_type: NodeType) {
+    return true
+  }
+
+  public setSize(
+    target: TransformTarget,
+    _request: AbsoluteSizeRequest,
+    context: ResizePolicyContext
+  ) {
+    context.unsupported(target)
+  }
+}
+
+const RESIZE_POLICY_REGISTRY = new ResizePolicyRegistry(
+  [
+    new ShapeGeometryResizePolicy(),
+    new FrameLayoutResizePolicy(),
+    new GroupScaleResizePolicy(),
+  ],
+  new UnsupportedResizePolicy()
+)
 
 const transformMutationPolicies: MutationPolicyMap = {
   moveTo: {
@@ -436,23 +553,21 @@ export class TransformSystem extends SystemBase {
     this._resizeByIndex(target.id, target.index, width, height)
   }
 
-  private _setSize(
-    target: TransformTarget,
-    request: Required<Pick<AbsoluteSizeResizeRequest, 'width' | 'height'>>
-  ) {
-    const type = this._sceneGraph.type[target.index]
-    if (type === NodeType.TEXT) {
-      throw new Error(
-        `[TransformSystem] setSize is unsupported for ${NodeType[type]}`
-      )
-    }
+  private _setSize(target: TransformTarget, request: AbsoluteSizeRequest) {
+    const type = this._sceneGraph.type[target.index] as NodeType
+    RESIZE_POLICY_REGISTRY.resolve(type).setSize(target, request, {
+      resizeLocalOnly: (item, width, height) =>
+        this._resizeLocalOnly(item, width, height),
+      resizeGroup: (item, width, height) => this._resize(item, width, height),
+      unsupported: item => this._unsupportedSetSize(item),
+    })
+  }
 
-    if (type === NodeType.GROUP) {
-      this._resize(target, request.width, request.height)
-      return
-    }
-
-    this._resizeLocalOnly(target, request.width, request.height)
+  private _unsupportedSetSize(target: TransformTarget): never {
+    const type = this._sceneGraph.type[target.index] as NodeType
+    throw new Error(
+      `[TransformSystem] setSize is unsupported for ${NodeType[type] ?? type}`
+    )
   }
 
   private _resizeLocalOnly(
@@ -623,6 +738,12 @@ export class TransformSystem extends SystemBase {
     }).resolve(targets)
   }
 
+  public resolveInteractionGroupBox(ids: readonly IDType[]) {
+    return this._resolveInteractionGroupBox(
+      this._resolveTransformTargets(ids, 'resolveInteractionGroupBox')
+    )
+  }
+
   private _collectDescendantIds(index: number): IDType[] {
     const ids: IDType[] = []
     const stack = [this._sceneGraph.firstChild[index]]
@@ -774,10 +895,34 @@ export class TransformSystem extends SystemBase {
     return baseLength > EPSILON ? targetLength / baseLength : 1
   }
 
-  public resize(ids: IDType[], width: number, height: number) {
+  public resize(ids: IDType[], request: ResizeRequest): void
+  public resize(ids: IDType[], width: number, height: number): void
+  public resize(
+    ids: IDType[],
+    requestOrWidth: ResizeRequest | number,
+    height?: number
+  ) {
+    if (typeof requestOrWidth !== 'number') {
+      this._resizeWithRequest(ids, requestOrWidth)
+      return
+    }
+
+    const width = requestOrWidth
+    if (height === undefined) {
+      throw new Error('[TransformSystem] Invalid resize dimensions')
+    }
     this._assertValidSize(width, height)
     const targets = this._prepareTargets(ids, 'resize')
     targets.forEach(target => this._resize(target, width, height))
+  }
+
+  private _resizeWithRequest(ids: IDType[], request: ResizeRequest) {
+    if (request.mode === 'absolute-size') {
+      this.setSize(ids, request)
+      return
+    }
+
+    this.resizeByHandle(ids, request.direction, request.pointerWorld)
   }
 
   public setSize(ids: IDType[], request: AbsoluteSizeResizeRequest) {

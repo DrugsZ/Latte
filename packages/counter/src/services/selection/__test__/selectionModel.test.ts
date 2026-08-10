@@ -84,4 +84,22 @@ describe('SelectionModel', () => {
 
     expect(model.getSnapshot(1)).toBeNull()
   })
+
+  it('does not return cached snapshots while the projection revision is being written', () => {
+    const graph = new SceneGraph()
+    const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    graph.size[rect * 2] = 20
+    graph.size[rect * 2 + 1] = 10
+    setWorldMatrix(graph, rect, [1, 0, 0, 1, 0, 0])
+
+    const selection = new SelectionService(graph)
+    const model = new SelectionModel(selection, graph)
+    selection.select(['test:rect'])
+
+    expect(model.getSnapshot(1)).not.toBeNull()
+
+    graph.beginPublicationWrite()
+
+    expect(model.getSnapshot(1)).toBeNull()
+  })
 })

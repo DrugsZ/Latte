@@ -68,7 +68,7 @@ export class BlobManager {
       bytes.buffer instanceof SharedArrayBuffer ? Uint8Array.from(bytes) : bytes
     const jsonStr = decoder.decode(decodeBytes)
 
-    let result: string | object | null = null
+    let result: string | object | null
     try {
       if (isRawString) {
         result = jsonStr

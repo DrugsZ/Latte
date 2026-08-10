@@ -26,6 +26,7 @@ const WORKER_SERVICE_CHANNELS = [
   Channels.Query,
   Channels.UndoRedo,
   Channels.Style,
+  Channels.Property,
 ] as const
 
 // FIXME(di): Replace channel-string service registration with typed service
@@ -56,9 +57,11 @@ export class EditorRuntime {
 
   public get transformInteraction() {
     if (!this._transformInteraction) {
-      const transformService = this.baristaClient.getService(Channels.Transform)
-      this._transformInteraction = new TransformInteractionController(
-        transformService
+      this._transformInteraction = new TransformInteractionController(() =>
+        this.baristaClient.getService(
+          Channels.Transform,
+          this.editorHost.activeDocument?.id ?? null
+        )
       )
     }
     return this._transformInteraction
@@ -155,9 +158,11 @@ export class EditorRuntime {
       inputService: this._inputService,
       renderer: this._renderer,
       transformInteraction: this.transformInteraction,
-      documentService: this._baristaClient.getService(Channels.Document),
+      getDocumentService: sessionId =>
+        this._baristaClient!.getService(Channels.Document, sessionId),
       nodeService: this._baristaClient.getService(Channels.Node),
-      queryService: this._baristaClient.getService(Channels.Query),
+      getQueryService: sessionId =>
+        this._baristaClient!.getService(Channels.Query, sessionId),
     })
 
     this._started = true
@@ -212,6 +217,11 @@ export class EditorRuntime {
 
   public setActiveDocument(id: string | null) {
     const doc = id === null ? null : this._getDocument(id)
+    const currentId = this.editorHost.activeDocument?.id ?? null
+
+    if (currentId !== (doc?.id ?? null)) {
+      this._cancelActiveTransformInteraction()
+    }
 
     this.baristaClient.setTargetSession(doc?.id ?? null)
     this.editorHost.setActiveDocument(doc)
@@ -250,6 +260,12 @@ export class EditorRuntime {
     this._worker = null
     this._baristaClient = null
     this._started = false
+  }
+
+  private _cancelActiveTransformInteraction() {
+    if (this._transformInteraction?.isActive) {
+      void this._transformInteraction.cancelTransform()
+    }
   }
 
   private _registerWorkerServices() {

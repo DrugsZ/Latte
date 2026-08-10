@@ -56,10 +56,8 @@ export class KeybindingService extends Disposable {
   }
 
   private _doDispatch(userKeypress: ResolvedKeybinding) {
-    let userPressedChord: string | null = null
-    let currentChords: string[] | null = null
-    ;[userPressedChord] = userKeypress.getDispatchChords()
-    currentChords = this._currentChords.map(({ keypress }) => keypress)
+    const [userPressedChord] = userKeypress.getDispatchChords()
+    const currentChords = this._currentChords.map(({ keypress }) => keypress)
     if (userPressedChord === null) {
       return
     }

@@ -133,6 +133,115 @@ describe('TransformService transactions', () => {
     expect(cursor.x).toBe(17)
   })
 
+  it('begins a transform session with frozen ids, revision, and group box for v2 updates', async () => {
+    const graph = new SceneGraph()
+    const firstIndex = graph.createNode(NodeType.RECTANGLE, 'test:first')
+    const secondIndex = graph.createNode(NodeType.RECTANGLE, 'test:second')
+    const first = new NodeCursor(graph, firstIndex)
+    const second = new NodeCursor(graph, secondIndex)
+    first.x = 10
+    first.y = 20
+    first.width = 30
+    first.height = 40
+    second.x = 100
+    second.y = 20
+    second.width = 30
+    second.height = 40
+
+    const transform = createTransformChannel(graph)
+    const publishedRevision = graph.publicationRevision
+
+    const session = await transform.call(ctx(), 'beginTransform', {
+      ids: ['test:first', 'test:second'],
+      operation: 'rotate',
+      label: 'Rotate Selection',
+    })
+
+    expect(session).toMatchObject({
+      baseRevision: publishedRevision,
+      groupBox: {
+        ids: ['test:first', 'test:second'],
+        width: 120,
+        height: 40,
+      },
+    })
+    expect(session.sessionId).toMatch(/^transform:/)
+    expect(session.sessionId).not.toBe(DEFAULT_SCENE_GRAPH_NAME)
+
+    await transform.call(ctx(), 'updateTransform', {
+      operation: {
+        kind: 'rotate',
+        request: {
+          mode: 'total-delta',
+          angle: 90,
+          space: 'world',
+          pivot: 'interaction-group-center',
+        },
+      },
+    })
+    await transform.call(ctx(), 'commitTransform')
+
+    expect(first.x).not.toBe(10)
+    expect(second.x).not.toBe(100)
+  })
+
+  it('rejects a stale transform token without ending the current session', async () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.width = 20
+    cursor.height = 10
+    const transform = createTransformChannel(graph)
+
+    const first = await transform.call(ctx(), 'beginTransform', {
+      ids: ['test:rect'],
+      operation: 'move',
+    })
+    await transform.call(ctx(), 'cancelTransform', first.sessionId)
+
+    const second = await transform.call(ctx(), 'beginTransform', {
+      ids: ['test:rect'],
+      operation: 'move',
+    })
+    expect(second.sessionId).not.toBe(first.sessionId)
+
+    await expect(
+      Promise.resolve().then(() =>
+        transform.call(ctx(), 'commitTransform', first.sessionId)
+      )
+    ).rejects.toThrow('Unknown transform session')
+
+    await transform.call(ctx(), 'updateTransform', {
+      sessionId: second.sessionId,
+      operation: { kind: 'move-by', delta: [15, 5] },
+    })
+    await transform.call(ctx(), 'commitTransform', second.sessionId)
+
+    expect(cursor.x).toBe(15)
+    expect(cursor.y).toBe(5)
+  })
+
+  it('rejects legacy transform updates that do not match the frozen session ids', async () => {
+    const graph = new SceneGraph()
+    const firstIndex = graph.createNode(NodeType.RECTANGLE, 'test:first')
+    const secondIndex = graph.createNode(NodeType.RECTANGLE, 'test:second')
+    const first = new NodeCursor(graph, firstIndex)
+    const second = new NodeCursor(graph, secondIndex)
+
+    const transform = createTransformChannel(graph)
+
+    await transform.call(ctx(), 'beginTransform', ['test:first'], 'Drag Layer')
+    await expect(
+      Promise.resolve().then(() =>
+        transform.call(ctx(), 'moveBy$', ['test:second'], [10, 0])
+      )
+    ).rejects.toThrow('do not match active transform session ids')
+    await transform.call(ctx(), 'cancelTransform')
+
+    expect(first.x).toBe(0)
+    expect(second.x).toBe(0)
+  })
+
   it('cancels transform interaction edits inside the worker', async () => {
     const graph = new SceneGraph()
     const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')

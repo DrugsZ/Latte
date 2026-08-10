@@ -2,14 +2,7 @@ import type { mat2d, vec2 } from '../math/matrix'
 import type { IDType } from '../schema/index'
 
 export type ResizeHandleDirection =
-  | 'nw'
-  | 'n'
-  | 'ne'
-  | 'e'
-  | 'se'
-  | 's'
-  | 'sw'
-  | 'w'
+  'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
 export interface AbsoluteSizeResizeRequest {
   readonly mode?: 'absolute-size'
@@ -50,12 +43,65 @@ export type RotateRequest =
       }
     }
 
+export interface BeginTransformRequest {
+  readonly ids: IDType[]
+  readonly operation: 'move' | 'resize' | 'rotate' | 'transform'
+  readonly label?: string
+}
+
+export interface TransformGroupBoxSnapshot {
+  readonly ids: readonly IDType[]
+  readonly width: number
+  readonly height: number
+  readonly matrix: mat2d
+}
+
+export interface BeginTransformResult {
+  readonly sessionId: string
+  readonly baseRevision: number
+  readonly groupBox: TransformGroupBoxSnapshot | null
+}
+
+export type TransformUpdateOperation =
+  | {
+      readonly kind: 'move-by'
+      readonly delta: vec2
+    }
+  | {
+      readonly kind: 'move-to'
+      readonly position: vec2
+    }
+  | {
+      readonly kind: 'transform-around'
+      readonly matrixPayload: mat2d
+      readonly pivot: vec2
+    }
+  | {
+      readonly kind: 'rotate'
+      readonly request: RotateRequest
+    }
+  | {
+      readonly kind: 'resize'
+      readonly request: ResizeRequest
+    }
+
+export interface UpdateTransformRequest {
+  readonly sessionId?: string
+  readonly operation: TransformUpdateOperation
+}
+
 export interface ITransformService {
   beginTransform(ids: IDType[], label?: string): Promise<void>
 
-  commitTransform(): Promise<void>
+  beginTransform(request: BeginTransformRequest): Promise<BeginTransformResult>
 
-  cancelTransform(): Promise<void>
+  updateTransform(request: UpdateTransformRequest): Promise<void>
+
+  updateTransform$(request: UpdateTransformRequest): void
+
+  commitTransform(sessionId?: string): Promise<void>
+
+  cancelTransform(sessionId?: string): Promise<void>
 
   /**
    * Moves the object to the specified position (Request).
@@ -109,7 +155,11 @@ export interface ITransformService {
 
   setSize$(ids: IDType[], request: AbsoluteSizeResizeRequest): void
 
+  resize(ids: IDType[], request: ResizeRequest): Promise<void>
+
   resize(ids: IDType[], width: number, height: number): Promise<void>
+
+  resize$(ids: IDType[], request: ResizeRequest): void
 
   resize$(ids: IDType[], width: number, height: number): void
 

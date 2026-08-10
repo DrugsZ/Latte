@@ -78,6 +78,15 @@ describe('SelectionPropertyModel', () => {
     expect(properties.read(snapshot, 'cornerRadius')).toEqual({
       kind: 'unavailable',
     })
+
+    selection.select(['test:group'])
+    snapshot = model.getSnapshot(5)
+    if (!snapshot) {
+      throw new Error('expected a consistent selection snapshot')
+    }
+    expect(properties.read(snapshot, 'strokeWeight')).toEqual({
+      kind: 'unavailable',
+    })
   })
 
   it('reads x/y/rotation in the containing-parent coordinate space', () => {
@@ -148,5 +157,68 @@ describe('SelectionPropertyModel', () => {
     graph.beginPublicationWrite()
 
     expect(properties.read(snapshot, 'height')).toBeNull()
+  })
+
+  it('does not return cached property reads while the projection revision is being written', () => {
+    const graph = new SceneGraph()
+    const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, rect)
+    cursor.width = 20
+    cursor.height = 10
+    setWorldMatrix(graph, rect, [1, 0, 0, 1, 0, 0])
+
+    const selection = new SelectionService(graph)
+    const model = new SelectionModel(selection, graph)
+    const properties = new SelectionPropertyModel(graph)
+    selection.select(['test:rect'])
+    const snapshot = model.getSnapshot(1)
+    if (!snapshot) {
+      throw new Error('expected a consistent selection snapshot')
+    }
+
+    expect(properties.read(snapshot, 'height')).toEqual({
+      kind: 'uniform',
+      value: 10,
+    })
+
+    graph.beginPublicationWrite()
+
+    expect(properties.read(snapshot, 'height')).toBeNull()
+  })
+
+  it('reports text width and height as unavailable to match worker resize policy', () => {
+    const graph = new SceneGraph()
+    const text = graph.createNode(NodeType.TEXT, 'test:text')
+    const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    new NodeCursor(graph, text).width = 20
+    new NodeCursor(graph, rect).width = 20
+
+    const selection = new SelectionService(graph)
+    const model = new SelectionModel(selection, graph)
+    const properties = new SelectionPropertyModel(graph)
+
+    selection.select(['test:text'])
+    let snapshot = model.getSnapshot(1)
+    if (!snapshot) {
+      throw new Error('expected a consistent selection snapshot')
+    }
+    expect(properties.read(snapshot, 'width')).toEqual({
+      kind: 'unavailable',
+    })
+    expect(properties.read(snapshot, 'height')).toEqual({
+      kind: 'unavailable',
+    })
+
+    selection.select(['test:text', 'test:rect'])
+    snapshot = model.getSnapshot(2)
+    if (!snapshot) {
+      throw new Error('expected a consistent selection snapshot')
+    }
+    expect(properties.read(snapshot, 'width')).toMatchObject({
+      kind: 'partial',
+      value: 20,
+      supported: 1,
+      total: 2,
+    })
   })
 })

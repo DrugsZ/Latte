@@ -62,6 +62,8 @@ export class Renderer {
   private readonly _surface: RenderSurface
   private readonly _frameScheduler: RendererFrameScheduler
   private _activeRootId?: IDType
+  private _pendingSceneIndexRebuild = false
+  private readonly _pendingSceneIndexIds = new Set<IDType>()
 
   constructor(
     private _sceneGraph: SceneGraph,
@@ -100,14 +102,23 @@ export class Renderer {
   public fitToContent(rootId: IDType = this._activeRootId!, padding = 0.1) {
     if (!rootId) return false
 
-    const bounds = this._sceneLayer.computeContentBounds(rootId)
-    if (!bounds) return false
+    const bounds = this._readConsistent(() =>
+      this._sceneLayer.computeContentBounds(rootId)
+    )
+    if (bounds.status === 'inconsistent') {
+      this.requestRender(RenderReason.SceneDirty)
+      return false
+    }
+
+    if (!bounds.value) return false
+
+    const contentBounds = bounds.value
 
     this._camera.fitBounds(
-      bounds.minX,
-      bounds.minY,
-      bounds.maxX,
-      bounds.maxY,
+      contentBounds.minX,
+      contentBounds.minY,
+      contentBounds.maxX,
+      contentBounds.maxY,
       padding
     )
     this.requestRender(RenderReason.CameraChanged)
@@ -210,11 +221,34 @@ export class Renderer {
   }
 
   public rebuildSceneIndex() {
-    this._sceneLayer.rebuildSceneIndex()
+    const result = this._readConsistent(() => {
+      this._sceneLayer.rebuildSceneIndex()
+    })
+    if (result.status === 'ok') {
+      return
+    }
+
+    this._pendingSceneIndexRebuild = true
+    this._pendingSceneIndexIds.clear()
+    this.requestRender(RenderReason.SceneDirty)
   }
 
   public updateSceneIndexByIds(ids: Iterable<IDType>) {
-    this._sceneLayer.updateSceneIndexByIds(ids)
+    const idList = [...ids]
+    const result = this._readConsistent(() => {
+      this._sceneLayer.updateSceneIndexByIds(idList)
+    })
+    if (result.status === 'ok') {
+      return
+    }
+
+    if (result.didRead) {
+      this._pendingSceneIndexRebuild = true
+      this._pendingSceneIndexIds.clear()
+    } else if (!this._pendingSceneIndexRebuild) {
+      idList.forEach(id => this._pendingSceneIndexIds.add(id))
+    }
+    this.requestRender(RenderReason.SceneDirty)
   }
 
   public queryHitTestCandidates(
@@ -238,7 +272,9 @@ export class Renderer {
     }
 
     const reasons = this._renderScheduler.consume()
+    let appliedPendingSceneIndexUpdate = false
     const buffers = this._sceneGraph.readConsistent(() => {
+      appliedPendingSceneIndexUpdate = this._applyPendingSceneIndexUpdates()
       const context = {
         sceneGraph: this._sceneGraph,
         camera: this._camera,
@@ -261,13 +297,56 @@ export class Renderer {
     })
 
     if (buffers === null) {
+      if (appliedPendingSceneIndexUpdate) {
+        this._pendingSceneIndexRebuild = true
+        this._pendingSceneIndexIds.clear()
+      }
       this.requestRender(RenderReason.SceneDirty)
       return
+    }
+
+    if (appliedPendingSceneIndexUpdate) {
+      this._pendingSceneIndexRebuild = false
+      this._pendingSceneIndexIds.clear()
     }
 
     for (const commands of buffers) {
       this._backend.submit(commands)
     }
+  }
+
+  private _applyPendingSceneIndexUpdates() {
+    if (this._pendingSceneIndexRebuild) {
+      this._sceneLayer.rebuildSceneIndex()
+      return true
+    }
+
+    if (this._pendingSceneIndexIds.size === 0) {
+      return false
+    }
+
+    const ids = [...this._pendingSceneIndexIds]
+    this._sceneLayer.updateSceneIndexByIds(ids)
+    return true
+  }
+
+  private _readConsistent<T>(
+    reader: () => T
+  ):
+    | { readonly status: 'ok'; readonly value: T }
+    | { readonly status: 'inconsistent'; readonly didRead: boolean } {
+    const before = this._sceneGraph.publicationRevision
+    if ((before & 1) === 1) {
+      return { status: 'inconsistent', didRead: false }
+    }
+
+    const value = reader()
+    const after = this._sceneGraph.publicationRevision
+    if (before !== after || (after & 1) === 1) {
+      return { status: 'inconsistent', didRead: true }
+    }
+
+    return { status: 'ok', value }
   }
 
   public renderFrame() {

@@ -62,5 +62,5 @@ export function getServiceCallMethodNames(
 }
 
 export function isServiceEventMethodName(name: string) {
-  return /^(onDid|onWill)[A-Z]/.test(name)
+  return /^on[A-Z]/.test(name)
 }

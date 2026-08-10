@@ -8,5 +8,6 @@ export enum TransactionLabel {
   TransformLayer = 'Transform Layer',
   ResizeLayer = 'Resize Layer',
   StyleLayer = 'Style Layer',
+  PropertyLayer = 'Property Layer',
   FinalizeHistoryTombstones = 'Finalize History Tombstones',
 }

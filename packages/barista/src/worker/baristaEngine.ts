@@ -90,13 +90,15 @@ export class BaristaEngine {
       },
       listen: (ctx: IChannelCallContext, event: string) => {
         const context = this._sessionManager.getContext(ctx.sessionId)
-        return this._sessionManager.runWithContext(context, () => {
-          const service = this._serviceManager.getService(name)
-          return fromService(service as object, {
-            channelName: name,
-            mutationGate: this._mutationGate,
-          }).listen({ sessionId: context.currentSessionId }, event)
-        })
+        return (listener: (data: unknown) => void) =>
+          this._sessionManager.runWithContext(context, () => {
+            const service = this._serviceManager.getService(name)
+            const subscribe = fromService(service as object, {
+              channelName: name,
+              mutationGate: this._mutationGate,
+            }).listen({ sessionId: context.currentSessionId }, event)
+            return subscribe(listener)
+          })
       },
     }
   }
@@ -129,6 +131,8 @@ export class BaristaEngine {
   private _tickSession(sessionId: string) {
     const session = this._sessionManager.getSession(sessionId)
     const context = this._sessionManager.getContext(sessionId)
+    let payload: ISceneDirtyPayload | null = null
+
     this._sessionManager.runWithContext(context, () => {
       try {
         const batch = DirtyBatch.from(session.sceneGraph.tracker.flush())
@@ -139,17 +143,18 @@ export class BaristaEngine {
 
         this._pipelineRunner.process(batch)
 
-        const payload = this._notificationPlanner.createDirtyPayload(
+        payload = this._notificationPlanner.createDirtyPayload(
           batch,
           session.nextProjectionVersion()
         )
-        if (payload) {
-          this._sendDirtyNotification(sessionId, payload)
-        }
       } finally {
         session.sceneGraph.publishRevision()
       }
     })
+
+    if (payload) {
+      this._sendDirtyNotification(sessionId, payload)
+    }
   }
 
   private _sendDirtyNotification(

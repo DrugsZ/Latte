@@ -11,25 +11,39 @@ import {
   BlendModeType,
   Channels,
   FillType,
-  type FillColor,
   type IDType,
   type ILatteFile,
   type IPaint,
 } from '@latte-js/bean'
-import { CreationToolId } from '@latte-js/counter'
+import {
+  CreationToolId,
+  SelectionModel,
+  SelectionPropertyModel,
+  type SelectionPropertyValue,
+} from '@latte-js/counter'
 import { EditorRuntime } from '@latte-js/crema'
-import { NodeCursor, NULL_INDEX } from '@latte-js/espresso'
+import { NodeCursor } from '@latte-js/espresso'
 
 import data from './assets/sample.json'
+import {
+  INSPECTOR_PROPERTY_FIELDS,
+  createSolidPaint,
+  fillColorToHex,
+  isInspectorPropertyEditable,
+  toPropertyPatch,
+  type InspectorPropertyFieldKey,
+  type InspectorValueState,
+} from './inspectorModel'
+
+interface InspectorField {
+  readonly value: string
+  readonly state: InspectorValueState
+}
 
 interface InspectorSnapshot {
-  readonly id: IDType
-  readonly name: string
-  readonly x: number
-  readonly y: number
-  readonly width: number
-  readonly height: number
-  readonly fill: string
+  readonly ids: readonly IDType[]
+  readonly name: InspectorField
+  readonly fields: Record<InspectorPropertyFieldKey, InspectorField>
 }
 
 interface InspectorForm {
@@ -38,10 +52,18 @@ interface InspectorForm {
   y: string
   width: string
   height: string
+  rotation: string
+  opacity: string
   fill: string
+  stroke: string
+  strokeWeight: string
+  cornerRadius: string
+  visible: boolean
+  locked: boolean
 }
 
 const DEFAULT_FILL = '#d9d9d9'
+const DEFAULT_STROKE_COLOR = '#000000'
 const IDENTITY = [1, 0, 0, 1, 0, 0] as const
 const DEFAULT_STROKE = {
   strokeAlign: 'CENTER',
@@ -49,34 +71,6 @@ const DEFAULT_STROKE = {
   strokeStyle: 'SOLID',
   dashCap: 'NONE',
 } as const
-
-const createSolidFill = (hex: string): IPaint => ({
-  type: FillType.SOLID,
-  visible: true,
-  opacity: 1,
-  blendMode: BlendModeType.NORMAL,
-  color: hexToFillColor(hex),
-})
-
-const fillColorToHex = (color: FillColor) => {
-  const toByte = (value: number) =>
-    Math.max(0, Math.min(255, Math.round(value * 255)))
-      .toString(16)
-      .padStart(2, '0')
-  return `#${toByte(color.r)}${toByte(color.g)}${toByte(color.b)}`
-}
-
-const hexToFillColor = (hex: string): FillColor => {
-  const normalized = hex.replace('#', '')
-  const read = (offset: number) =>
-    Number.parseInt(normalized.slice(offset, offset + 2), 16) / 255
-  return {
-    r: read(0),
-    g: read(2),
-    b: read(4),
-    a: 1,
-  }
-}
 
 const createBlankDocumentData = (): ILatteFile => ({
   elements: [
@@ -106,7 +100,7 @@ const createBlankDocumentData = (): ILatteFile => ({
       strokeWeight: 0,
       ...DEFAULT_STROKE,
       locked: false,
-      backgrounds: [createSolidFill('#f5f5f5')],
+      backgrounds: [createSolidPaint('#f5f5f5')],
     },
   ],
 })
@@ -115,48 +109,187 @@ const readInspectorSnapshot = (
   runtime: EditorRuntime | null,
   selectedIds: readonly IDType[]
 ): InspectorSnapshot | null => {
-  if (!runtime || selectedIds.length !== 1) {
+  if (!runtime || selectedIds.length === 0 || !runtime.workbench) {
     return null
   }
 
-  const graph = runtime.editorHost.activeDocument?.graph
-  if (!graph) {
+  const document = runtime.editorHost.activeDocument
+  const graph = document?.graph
+  if (!document || !graph) {
     return null
   }
 
-  const id = selectedIds[0]
-  const index = graph.getIndex(id)
-  if (index === NULL_INDEX) {
+  const selectionModel = new SelectionModel(
+    runtime.workbench.selectionService,
+    graph,
+    { documentId: document.id }
+  )
+  const selectionSnapshot = selectionModel.getSnapshot(
+    graph.publicationRevision
+  )
+  if (!selectionSnapshot || selectionSnapshot.targets.length === 0) {
     return null
   }
 
-  const cursor = new NodeCursor(graph, index)
-  const fill = cursor.fills.find(
-    paint => paint.type === FillType.SOLID && paint.visible
+  const properties = new SelectionPropertyModel(graph)
+  const name =
+    selectionSnapshot.targets.length === 1
+      ? {
+          value: new NodeCursor(graph, selectionSnapshot.targets[0].index).name,
+          state: 'uniform' as const,
+        }
+      : { value: 'Mixed', state: 'mixed' as const }
+  const fill = formatPaintProperty(
+    properties.read(selectionSnapshot, 'fills') as SelectionPropertyValue<
+      IPaint[]
+    > | null
+  )
+  const stroke = formatPaintProperty(
+    properties.read(selectionSnapshot, 'strokes') as SelectionPropertyValue<
+      IPaint[]
+    > | null,
+    DEFAULT_STROKE_COLOR
   )
 
   return {
-    id,
-    name: cursor.name,
-    x: cursor.x,
-    y: cursor.y,
-    width: cursor.width,
-    height: cursor.height,
-    fill:
-      fill && fill.type === FillType.SOLID
-        ? fillColorToHex(fill.color)
-        : DEFAULT_FILL,
+    ids: selectionSnapshot.targets.map(target => target.id),
+    name,
+    fields: {
+      x: formatNumberProperty(properties.read(selectionSnapshot, 'x')),
+      y: formatNumberProperty(properties.read(selectionSnapshot, 'y')),
+      width: formatNumberProperty(properties.read(selectionSnapshot, 'width')),
+      height: formatNumberProperty(
+        properties.read(selectionSnapshot, 'height')
+      ),
+      rotation: formatNumberProperty(
+        properties.read(selectionSnapshot, 'rotation')
+      ),
+      opacity: formatNumberProperty(
+        properties.read(selectionSnapshot, 'opacity')
+      ),
+      fill,
+      stroke,
+      strokeWeight: formatNumberProperty(
+        properties.read(selectionSnapshot, 'strokeWeight')
+      ),
+      cornerRadius: formatCornerRadiusProperty(
+        properties.read(
+          selectionSnapshot,
+          'cornerRadius'
+        ) as SelectionPropertyValue<number[]> | null
+      ),
+      visible: formatBooleanProperty(
+        properties.read(selectionSnapshot, 'visible')
+      ),
+      locked: formatBooleanProperty(
+        properties.read(selectionSnapshot, 'locked')
+      ),
+    },
   }
 }
 
 const toInspectorForm = (snapshot: InspectorSnapshot): InspectorForm => ({
-  name: snapshot.name,
-  x: String(Math.round(snapshot.x * 100) / 100),
-  y: String(Math.round(snapshot.y * 100) / 100),
-  width: String(Math.round(snapshot.width * 100) / 100),
-  height: String(Math.round(snapshot.height * 100) / 100),
-  fill: snapshot.fill,
+  name: snapshot.name.value,
+  x: snapshot.fields.x.value,
+  y: snapshot.fields.y.value,
+  width: snapshot.fields.width.value,
+  height: snapshot.fields.height.value,
+  rotation: snapshot.fields.rotation.value,
+  opacity: snapshot.fields.opacity.value,
+  fill: snapshot.fields.fill.value,
+  stroke: snapshot.fields.stroke.value,
+  strokeWeight: snapshot.fields.strokeWeight.value,
+  cornerRadius: snapshot.fields.cornerRadius.value,
+  visible: snapshot.fields.visible.value === 'true',
+  locked: snapshot.fields.locked.value === 'true',
 })
+
+const formatNumber = (value: number) => String(Math.round(value * 100) / 100)
+
+const formatNumberProperty = (
+  value: SelectionPropertyValue<unknown> | null
+): InspectorField => {
+  if (!value) {
+    return { value: 'Unavailable', state: 'unavailable' }
+  }
+  switch (value.kind) {
+    case 'uniform':
+      return { value: formatNumber(Number(value.value)), state: 'uniform' }
+    case 'mixed':
+      return { value: 'Mixed', state: 'mixed' }
+    case 'partial':
+      return {
+        value:
+          value.value === undefined
+            ? 'Partial'
+            : formatNumber(Number(value.value)),
+        state: 'partial',
+      }
+    case 'unavailable':
+      return { value: 'Unavailable', state: 'unavailable' }
+  }
+}
+
+const formatPaintProperty = (
+  value: SelectionPropertyValue<IPaint[]> | null,
+  fallback = DEFAULT_FILL
+): InspectorField => {
+  if (!value) {
+    return { value: fallback, state: 'unavailable' }
+  }
+  if (value.kind !== 'uniform') {
+    return { value: fallback, state: value.kind }
+  }
+
+  const fill = value.value.find(
+    paint => paint.type === FillType.SOLID && paint.visible
+  )
+  return {
+    value:
+      fill && fill.type === FillType.SOLID
+        ? fillColorToHex(fill.color)
+        : fallback,
+    state: 'uniform',
+  }
+}
+
+const formatCornerRadiusProperty = (
+  value: SelectionPropertyValue<number[]> | null
+): InspectorField => {
+  if (!value) {
+    return { value: 'Unavailable', state: 'unavailable' }
+  }
+  if (value.kind !== 'uniform') {
+    return {
+      value:
+        value.kind === 'mixed'
+          ? 'Mixed'
+          : value.kind === 'partial'
+            ? 'Partial'
+            : 'Unavailable',
+      state: value.kind,
+    }
+  }
+  return {
+    value: formatNumber(value.value[0] ?? 0),
+    state: 'uniform',
+  }
+}
+
+const formatBooleanProperty = (
+  value: SelectionPropertyValue<unknown> | null
+): InspectorField => {
+  if (!value) {
+    return { value: 'false', state: 'unavailable' }
+  }
+  if (value.kind !== 'uniform') {
+    return { value: 'false', state: value.kind }
+  }
+  return { value: String(Boolean(value.value)), state: 'uniform' }
+}
+
+const fieldTitle = (label: string, field: InspectorField) =>
+  field.state === 'uniform' ? label : `${label} (${field.state})`
 
 const CanvasArea = (props: {
   readonly onReady: (runtime: EditorRuntime) => void
@@ -211,9 +344,11 @@ const Inspector = (props: {
 
   const updateField = (field: keyof InspectorForm) => {
     return (event: ChangeEvent<HTMLInputElement>) => {
-      setForm(current =>
-        current ? { ...current, [field]: event.target.value } : current
-      )
+      const value =
+        event.target.type === 'checkbox'
+          ? event.target.checked
+          : event.target.value
+      setForm(current => (current ? { ...current, [field]: value } : current))
     }
   }
 
@@ -228,36 +363,21 @@ const Inspector = (props: {
     }
 
     if (field === 'name') {
+      if (snapshot.ids.length !== 1) {
+        return
+      }
       await runtime.baristaClient
         .getService(Channels.Node, sessionId)
-        .setName(snapshot.id, form.name)
+        .setName(snapshot.ids[0], form.name)
       return
     }
 
     if (field === 'fill') {
-      await commitFill(form.fill)
+      await commitProperty(field, form.fill)
       return
     }
 
-    const value = Number(form[field])
-    if (!Number.isFinite(value)) {
-      setForm(toInspectorForm(snapshot))
-      return
-    }
-
-    const transform = runtime.baristaClient.getService(
-      Channels.Transform,
-      sessionId
-    )
-    if (field === 'x') {
-      await transform.moveTo([snapshot.id], [value, snapshot.y])
-    } else if (field === 'y') {
-      await transform.moveTo([snapshot.id], [snapshot.x, value])
-    } else if (field === 'width') {
-      await transform.resize([snapshot.id], Math.max(0, value), snapshot.height)
-    } else if (field === 'height') {
-      await transform.resize([snapshot.id], snapshot.width, Math.max(0, value))
-    }
+    await commitProperty(field, form[field])
   }
 
   const handleKey = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -269,7 +389,10 @@ const Inspector = (props: {
     }
   }
 
-  const commitFill = async (fill: string) => {
+  const commitProperty = async (
+    field: Exclude<keyof InspectorForm, 'name'>,
+    value: string | boolean
+  ) => {
     if (!runtime || !snapshot) {
       return
     }
@@ -279,9 +402,20 @@ const Inspector = (props: {
       return
     }
 
-    await runtime.baristaClient
-      .getService(Channels.Style, sessionId)
-      .setFill(snapshot.id, createSolidFill(fill))
+    const patch = toPropertyPatch(field, value)
+    if (!patch) {
+      setForm(toInspectorForm(snapshot))
+      return
+    }
+
+    try {
+      await runtime.baristaClient
+        .getService(Channels.Property, sessionId)
+        .setProperties([...snapshot.ids], patch)
+    } catch (error) {
+      setForm(toInspectorForm(snapshot))
+      console.error('[Inspector] Property update failed:', error)
+    }
   }
 
   const selectionState =
@@ -299,68 +433,61 @@ const Inspector = (props: {
       ) : (
         <div className="property-grid">
           <label>
-            <span>Name</span>
+            <span>{fieldTitle('Name', snapshot.name)}</span>
             <input
               value={form.name}
+              disabled={snapshot.ids.length !== 1}
               onChange={updateField('name')}
               onBlur={() => void commit('name')}
               onKeyDown={handleKey}
             />
           </label>
-          <label>
-            <span>X</span>
-            <input
-              type="number"
-              value={form.x}
-              onChange={updateField('x')}
-              onBlur={() => void commit('x')}
-              onKeyDown={handleKey}
-            />
-          </label>
-          <label>
-            <span>Y</span>
-            <input
-              type="number"
-              value={form.y}
-              onChange={updateField('y')}
-              onBlur={() => void commit('y')}
-              onKeyDown={handleKey}
-            />
-          </label>
-          <label>
-            <span>W</span>
-            <input
-              type="number"
-              min="0"
-              value={form.width}
-              onChange={updateField('width')}
-              onBlur={() => void commit('width')}
-              onKeyDown={handleKey}
-            />
-          </label>
-          <label>
-            <span>H</span>
-            <input
-              type="number"
-              min="0"
-              value={form.height}
-              onChange={updateField('height')}
-              onBlur={() => void commit('height')}
-              onKeyDown={handleKey}
-            />
-          </label>
-          <label>
-            <span>Fill</span>
-            <input
-              type="color"
-              value={form.fill}
-              onChange={event => {
-                const fill = event.target.value
-                setForm(current => (current ? { ...current, fill } : current))
-                void commitFill(fill)
-              }}
-            />
-          </label>
+          {INSPECTOR_PROPERTY_FIELDS.map(field => {
+            const snapshotField = snapshot.fields[field.key]
+            const disabled = !isInspectorPropertyEditable(
+              field,
+              snapshotField.state
+            )
+            return (
+              <label key={field.key}>
+                <span>{fieldTitle(field.label, snapshotField)}</span>
+                {field.input === 'checkbox' ? (
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form[field.key])}
+                    disabled={disabled}
+                    onChange={event => {
+                      const checked = event.target.checked
+                      setForm(current =>
+                        current ? { ...current, [field.key]: checked } : current
+                      )
+                      void commitProperty(field.key, checked)
+                    }}
+                  />
+                ) : (
+                  <input
+                    type={field.input === 'color' ? 'color' : undefined}
+                    inputMode={field.input === 'number' ? 'decimal' : undefined}
+                    min={field.min}
+                    max={field.max}
+                    value={String(form[field.key])}
+                    disabled={disabled}
+                    onChange={event => {
+                      const value = event.target.value
+                      setForm(current =>
+                        current ? { ...current, [field.key]: value } : current
+                      )
+                      if (field.input === 'color') {
+                        void commitProperty(field.key, value)
+                      }
+                    }}
+                    onBlur={() => void commit(field.key)}
+                    onKeyDown={handleKey}
+                  />
+                )}
+              </label>
+            )
+          })}
         </div>
       )}
     </aside>

@@ -31,6 +31,7 @@ export enum SelectionOverlayInteractionPhase {
 export enum SelectionOverlayInteractionLabel {
   MoveSelection = 'move selection',
   ResizeSelection = 'resize selection',
+  RotateSelection = 'rotate selection',
 }
 
 export enum SelectionInteractionIntent {

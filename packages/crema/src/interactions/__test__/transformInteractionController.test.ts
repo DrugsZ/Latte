@@ -8,7 +8,13 @@ describe('TransformInteractionController', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     transformService = {
-      beginTransform: vi.fn().mockResolvedValue(undefined),
+      beginTransform: vi.fn().mockResolvedValue({
+        sessionId: 'doc:a',
+        baseRevision: 7,
+        groupBox: null,
+      }),
+      updateTransform: vi.fn().mockResolvedValue(undefined),
+      updateTransform$: vi.fn(),
       commitTransform: vi.fn().mockResolvedValue(undefined),
       cancelTransform: vi.fn().mockResolvedValue(undefined),
       moveBy: vi.fn().mockResolvedValue(undefined),
@@ -37,8 +43,12 @@ describe('TransformInteractionController', () => {
 
     vi.advanceTimersByTime(16)
 
-    expect(transformService.moveBy$).toHaveBeenCalledTimes(1)
-    expect(transformService.moveBy$).toHaveBeenCalledWith(['test:rect'], [5, 8])
+    expect(transformService.updateTransform$).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform$).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: { kind: 'move-by', delta: [5, 8] },
+    })
+    expect(transformService.moveBy$).not.toHaveBeenCalled()
   })
 
   it('coalesces world-position targets without replaying intermediate positions', async () => {
@@ -50,11 +60,12 @@ describe('TransformInteractionController', () => {
 
     vi.advanceTimersByTime(16)
 
-    expect(transformService.moveTo$).toHaveBeenCalledTimes(1)
-    expect(transformService.moveTo$).toHaveBeenCalledWith(
-      ['test:rect'],
-      [50, 80]
-    )
+    expect(transformService.updateTransform$).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform$).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: { kind: 'move-to', position: [50, 80] },
+    })
+    expect(transformService.moveTo$).not.toHaveBeenCalled()
   })
 
   it('flushes pending update before committing the transform interaction', async () => {
@@ -64,12 +75,16 @@ describe('TransformInteractionController', () => {
     controller.moveBy(['test:rect'], [2, 3])
     await controller.commitTransform()
 
-    expect(transformService.moveBy).toHaveBeenCalledWith(['test:rect'], [2, 3])
-    expect(transformService.moveBy$).not.toHaveBeenCalled()
-    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
-    expect(transformService.moveBy.mock.invocationCallOrder[0]).toBeLessThan(
-      transformService.commitTransform.mock.invocationCallOrder[0]
-    )
+    expect(transformService.updateTransform).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: { kind: 'move-by', delta: [2, 3] },
+    })
+    expect(transformService.updateTransform$).not.toHaveBeenCalled()
+    expect(transformService.moveBy).not.toHaveBeenCalled()
+    expect(transformService.commitTransform).toHaveBeenCalledWith('doc:a')
+    expect(
+      transformService.updateTransform.mock.invocationCallOrder[0]
+    ).toBeLessThan(transformService.commitTransform.mock.invocationCallOrder[0])
   })
 
   it('coalesces resize updates and flushes the final size on commit', async () => {
@@ -81,22 +96,38 @@ describe('TransformInteractionController', () => {
 
     vi.advanceTimersByTime(16)
 
-    expect(transformService.resize$).toHaveBeenCalledTimes(1)
-    expect(transformService.resize$).toHaveBeenCalledWith(
-      ['test:rect'],
-      140,
-      90
-    )
+    expect(transformService.updateTransform$).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform$).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: {
+        kind: 'resize',
+        request: {
+          mode: 'absolute-size',
+          width: 140,
+          height: 90,
+          anchor: 'local-origin',
+        },
+      },
+    })
+    expect(transformService.resize$).not.toHaveBeenCalled()
 
     controller.resize(['test:rect'], 160, 100)
     await controller.commitTransform()
 
-    expect(transformService.resize).toHaveBeenCalledWith(
-      ['test:rect'],
-      160,
-      100
-    )
-    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: {
+        kind: 'resize',
+        request: {
+          mode: 'absolute-size',
+          width: 160,
+          height: 100,
+          anchor: 'local-origin',
+        },
+      },
+    })
+    expect(transformService.resize).not.toHaveBeenCalled()
+    expect(transformService.commitTransform).toHaveBeenCalledWith('doc:a')
   })
 
   it('coalesces resize-by-handle updates and flushes the final pointer target on commit', async () => {
@@ -108,22 +139,38 @@ describe('TransformInteractionController', () => {
 
     vi.advanceTimersByTime(16)
 
-    expect(transformService.resizeByHandle$).toHaveBeenCalledTimes(1)
-    expect(transformService.resizeByHandle$).toHaveBeenCalledWith(
-      ['test:rect'],
-      'se',
-      [140, 90]
-    )
+    expect(transformService.updateTransform$).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform$).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: {
+        kind: 'resize',
+        request: {
+          mode: 'handle',
+          direction: 'se',
+          pointerWorld: [140, 90],
+          anchor: 'opposite-handle',
+        },
+      },
+    })
+    expect(transformService.resizeByHandle$).not.toHaveBeenCalled()
 
     controller.resizeByHandle(['test:rect'], 'se', [160, 100])
     await controller.commitTransform()
 
-    expect(transformService.resizeByHandle).toHaveBeenCalledWith(
-      ['test:rect'],
-      'se',
-      [160, 100]
-    )
-    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: {
+        kind: 'resize',
+        request: {
+          mode: 'handle',
+          direction: 'se',
+          pointerWorld: [160, 100],
+          anchor: 'opposite-handle',
+        },
+      },
+    })
+    expect(transformService.resizeByHandle).not.toHaveBeenCalled()
+    expect(transformService.commitTransform).toHaveBeenCalledWith('doc:a')
   })
 
   it('drops pending update before canceling the transform interaction', async () => {
@@ -133,8 +180,58 @@ describe('TransformInteractionController', () => {
     controller.moveBy(['test:rect'], [2, 3])
     await controller.cancelTransform()
 
-    expect(transformService.moveBy$).not.toHaveBeenCalled()
-    expect(transformService.cancelTransform).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform$).not.toHaveBeenCalled()
+    expect(transformService.cancelTransform).toHaveBeenCalledWith('doc:a')
+  })
+
+  it('cancels a pending begin through the service captured for that document', async () => {
+    let resolveBegin!: (value: {
+      sessionId: string
+      baseRevision: number
+      groupBox: null
+    }) => void
+    const serviceA = {
+      ...transformService,
+      beginTransform: vi.fn(
+        () =>
+          new Promise(resolve => {
+            resolveBegin = resolve
+          })
+      ),
+      cancelTransform: vi.fn().mockResolvedValue(undefined),
+    }
+    const serviceB = {
+      ...transformService,
+      cancelTransform: vi.fn().mockResolvedValue(undefined),
+    }
+    let currentService = serviceA
+    const controller = new TransformInteractionController(() => currentService)
+
+    const beginTask = controller.beginTransform(['test:rect'])
+    expect(controller.isActive).toBe(true)
+
+    await controller.cancelTransform()
+    currentService = serviceB
+    resolveBegin({ sessionId: 'transform:a', baseRevision: 8, groupBox: null })
+
+    await expect(beginTask).rejects.toThrow('Transform begin canceled')
+    expect(serviceA.cancelTransform).toHaveBeenCalledWith('transform:a')
+    expect(serviceB.cancelTransform).not.toHaveBeenCalled()
+    expect(controller.isActive).toBe(false)
+  })
+
+  it('cancels an active worker transform session when disposed', async () => {
+    const controller = new TransformInteractionController(transformService)
+
+    await controller.beginTransform(['test:rect'])
+    controller.moveBy(['test:rect'], [2, 3])
+    controller.dispose()
+    await Promise.resolve()
+
+    vi.advanceTimersByTime(16)
+
+    expect(transformService.updateTransform$).not.toHaveBeenCalled()
+    expect(transformService.cancelTransform).toHaveBeenCalledWith('doc:a')
   })
 
   it('runTransform commits a successful interaction', async () => {
@@ -150,12 +247,17 @@ describe('TransformInteractionController', () => {
     )
 
     expect(result).toBe('ok')
-    expect(transformService.beginTransform).toHaveBeenCalledWith(
-      ['test:rect'],
-      'Move Layer'
-    )
-    expect(transformService.moveBy).toHaveBeenCalledWith(['test:rect'], [8, 13])
-    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
+    expect(transformService.beginTransform).toHaveBeenCalledWith({
+      ids: ['test:rect'],
+      operation: 'transform',
+      label: 'Move Layer',
+    })
+    expect(transformService.updateTransform).toHaveBeenCalledWith({
+      sessionId: 'doc:a',
+      operation: { kind: 'move-by', delta: [8, 13] },
+    })
+    expect(transformService.moveBy).not.toHaveBeenCalled()
+    expect(transformService.commitTransform).toHaveBeenCalledWith('doc:a')
   })
 
   it('runTransform cancels when the callback fails', async () => {
@@ -172,8 +274,8 @@ describe('TransformInteractionController', () => {
       )
     ).rejects.toThrow('boom')
 
-    expect(transformService.moveBy).not.toHaveBeenCalled()
-    expect(transformService.moveBy$).not.toHaveBeenCalled()
-    expect(transformService.cancelTransform).toHaveBeenCalledTimes(1)
+    expect(transformService.updateTransform).not.toHaveBeenCalled()
+    expect(transformService.updateTransform$).not.toHaveBeenCalled()
+    expect(transformService.cancelTransform).toHaveBeenCalledWith('doc:a')
   })
 })

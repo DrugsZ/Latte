@@ -62,9 +62,17 @@ export interface SelectionOverlayHandle {
   readonly viewportBounds: ViewportRect
 }
 
+export interface SelectionOverlayRotateHandle {
+  readonly id: string
+  readonly type: SelectionOverlayHitType.RotateHandle
+  readonly viewportBounds: ViewportRect
+  readonly pivotWorld: ViewportPoint
+}
+
 export interface SelectionOverlayGeometry {
   readonly group: InteractionGroup
   readonly handles: readonly SelectionOverlayHandle[]
+  readonly rotateHandle: SelectionOverlayRotateHandle
 }
 
 export interface SelectionOverlayGeometryOptions {
@@ -75,6 +83,7 @@ export interface SelectionOverlayGeometryOptions {
 }
 
 const HANDLE_SIZE = 8
+const ROTATE_HANDLE_OFFSET = 28
 
 const HANDLE_DIRECTIONS: readonly ResizeHandleDirection[] = [
   'nw',
@@ -167,6 +176,7 @@ export class SelectionOverlayGeometryBuilder {
         viewportCorners,
       },
       handles: this._createHandles(viewportCorners),
+      rotateHandle: this._createRotateHandle(worldCorners, viewportCorners),
     }
   }
 
@@ -373,6 +383,44 @@ export class SelectionOverlayGeometryBuilder {
       direction,
       viewportBounds: this._centeredRect(positions[direction], HANDLE_SIZE),
     }))
+  }
+
+  private _createRotateHandle(
+    worldCorners: WorldQuad,
+    viewportCorners: ViewportQuad
+  ): SelectionOverlayRotateHandle {
+    const [nw, ne] = viewportCorners
+    const topCenter = {
+      x: (nw.x + ne.x) / 2,
+      y: (nw.y + ne.y) / 2,
+    }
+    const edge = {
+      x: ne.x - nw.x,
+      y: ne.y - nw.y,
+    }
+    const edgeLength = Math.hypot(edge.x, edge.y) || 1
+    const outward = {
+      x: edge.y / edgeLength,
+      y: -edge.x / edgeLength,
+    }
+    const handleCenter = {
+      x: topCenter.x + outward.x * ROTATE_HANDLE_OFFSET,
+      y: topCenter.y + outward.y * ROTATE_HANDLE_OFFSET,
+    }
+
+    return {
+      id: 'rotate',
+      type: SelectionOverlayHitType.RotateHandle,
+      viewportBounds: this._centeredRect(handleCenter, HANDLE_SIZE),
+      pivotWorld: this._centerPoint(worldCorners),
+    }
+  }
+
+  private _centerPoint(points: readonly ViewportPoint[]): ViewportPoint {
+    return {
+      x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+      y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+    }
   }
 
   private _centeredRect(

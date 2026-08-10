@@ -113,7 +113,7 @@ export class KeybindingResolver {
       return NoMatchingKb
     }
 
-    let lookupMap: ResolvedKeybindingItem[] | null = null
+    let lookupMap: ResolvedKeybindingItem[]
 
     if (pressedChords.length < 2) {
       lookupMap = kbCandidates

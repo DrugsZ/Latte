@@ -1,4 +1,5 @@
-import { SceneGraph } from '@latte-js/espresso'
+import { NodeType } from '@latte-js/bean'
+import { NodeCursor, SceneGraph } from '@latte-js/espresso'
 import { describe, expect, it, vi } from 'vitest'
 
 import { Renderer } from '../render'
@@ -49,6 +50,21 @@ const createCommandLayer = (id: string, zIndex: number): RenderLayer => ({
     return buffer
   },
 })
+
+const setAABB = (
+  graph: SceneGraph,
+  index: number,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number
+) => {
+  const ptr = index * 4
+  graph.aabb[ptr] = minX
+  graph.aabb[ptr + 1] = minY
+  graph.aabb[ptr + 2] = maxX
+  graph.aabb[ptr + 3] = maxY
+}
 
 describe('Renderer render layers', () => {
   it('submits visible layers by ascending z-index after the scene layer', () => {
@@ -101,5 +117,96 @@ describe('Renderer render layers', () => {
         world: { x: 10, y: 10 },
       })
     ).toEqual({ layerId: 'high', targetId: 'high-target' })
+  })
+
+  it('does not fit to content while the scene revision is being written', () => {
+    const graph = new SceneGraph()
+    const page = graph.createNode(NodeType.CANVAS, 'test:page')
+    graph.appendChild(0, page)
+    const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    graph.appendChild(page, rect)
+    const cursor = new NodeCursor(graph, rect)
+    cursor.width = 100
+    cursor.height = 50
+
+    const backend = createBackend()
+    const renderer = new Renderer(graph, backend, {
+      surface: { type: 'wasm-surface', handle: 1 },
+      size: { width: 100, height: 100, dpr: 1 },
+      autoStart: false,
+    })
+
+    graph.beginPublicationWrite()
+
+    expect(renderer.fitToContent('test:page')).toBe(false)
+  })
+
+  it('defers scene index updates that arrive while the scene revision is being written', () => {
+    const graph = new SceneGraph()
+    const page = graph.createNode(NodeType.CANVAS, 'test:page')
+    graph.appendChild(0, page)
+    const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    graph.appendChild(page, rect)
+    setAABB(graph, rect, 1000, 1000, 1100, 1100)
+
+    const backend = createBackend()
+    const renderer = new Renderer(graph, backend, {
+      surface: { type: 'wasm-surface', handle: 1 },
+      size: { width: 100, height: 100, dpr: 1 },
+      activeRootId: 'test:page',
+      autoStart: false,
+    })
+
+    expect(renderer.queryHitTestCandidates(10, 10, 'test:page')).toEqual([])
+
+    graph.beginPublicationWrite()
+    setAABB(graph, rect, 0, 0, 100, 100)
+    renderer.updateSceneIndexByIds(['test:rect'])
+    graph.publishRevision()
+
+    expect(renderer.queryHitTestCandidates(10, 10, 'test:page')).toEqual([])
+    ;(renderer as unknown as { _render(): void })._render()
+
+    expect(renderer.queryHitTestCandidates(10, 10, 'test:page')).toEqual([rect])
+  })
+
+  it('rebuilds the scene index when revision changes during a deferred update', () => {
+    const graph = new SceneGraph()
+    const page = graph.createNode(NodeType.CANVAS, 'test:page')
+    graph.appendChild(0, page)
+    const rect = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    graph.appendChild(page, rect)
+    setAABB(graph, rect, 1000, 1000, 1100, 1100)
+
+    const renderer = new Renderer(graph, createBackend(), {
+      surface: { type: 'wasm-surface', handle: 1 },
+      size: { width: 100, height: 100, dpr: 1 },
+      activeRootId: 'test:page',
+      autoStart: false,
+    })
+    const internals = renderer as any
+    const sceneLayer = internals._sceneLayer
+    const update = sceneLayer.updateSceneIndexByIds.bind(sceneLayer)
+    const rebuild = vi.spyOn(sceneLayer, 'rebuildSceneIndex')
+
+    graph.beginPublicationWrite()
+    setAABB(graph, rect, 0, 0, 100, 100)
+    renderer.updateSceneIndexByIds(['test:rect'])
+    graph.publishRevision()
+
+    vi.spyOn(sceneLayer, 'updateSceneIndexByIds').mockImplementationOnce(
+      (...args: unknown[]) => {
+        update(args[0] as Iterable<string>)
+        graph.beginPublicationWrite()
+        graph.publishRevision()
+      }
+    )
+
+    internals._render()
+    expect(internals._pendingSceneIndexRebuild).toBe(true)
+
+    internals._render()
+    expect(rebuild).toHaveBeenCalledTimes(1)
+    expect(renderer.queryHitTestCandidates(10, 10, 'test:page')).toEqual([rect])
   })
 })

@@ -40,6 +40,11 @@ export type SelectionOverlayHitData =
       readonly direction: ResizeHandleDirection
     }
   | {
+      readonly type: SelectionOverlayHitType.RotateHandle
+      readonly ids: readonly IDType[]
+      readonly pivotWorld: { readonly x: number; readonly y: number }
+    }
+  | {
       readonly type: SelectionOverlayHitType.SelectionBounds
       readonly ids: readonly IDType[]
     }
@@ -69,6 +74,7 @@ export class SelectionOverlayLayer implements RenderLayer {
     for (const handle of geometry.handles) {
       this._drawHandle(buffer, handle.viewportBounds)
     }
+    this._drawRotateHandle(buffer, geometry.rotateHandle.viewportBounds)
     return buffer
   }
 
@@ -92,6 +98,20 @@ export class SelectionOverlayLayer implements RenderLayer {
             direction: handle.direction,
           },
         }
+      }
+    }
+
+    if (
+      this._containsPoint(geometry.rotateHandle.viewportBounds, point.viewport)
+    ) {
+      return {
+        layerId: this.id,
+        targetId: geometry.rotateHandle.id,
+        data: {
+          type: SelectionOverlayHitType.RotateHandle,
+          ids: geometry.group.ids,
+          pivotWorld: geometry.rotateHandle.pivotWorld,
+        },
       }
     }
 
@@ -162,6 +182,36 @@ export class SelectionOverlayLayer implements RenderLayer {
       width: bounds.width,
       height: bounds.height,
       cornerRadius: 1,
+      paint: {
+        style: PaintStyle.Stroke,
+        color: SELECTION_BLUE,
+        stroke: { width: 1 },
+      },
+    })
+  }
+
+  private _drawRotateHandle(buffer: RenderCommandBuffer, bounds: ViewportRect) {
+    buffer.push({
+      type: RenderCommandType.DrawEllipse,
+      transform: Float32Array.from(IDENTITY_TRANSFORM),
+      cx: bounds.x + bounds.width / 2,
+      cy: bounds.y + bounds.height / 2,
+      rx: bounds.width / 2,
+      ry: bounds.height / 2,
+      rotation: 0,
+      paint: {
+        style: PaintStyle.Fill,
+        color: HANDLE_FILL,
+      },
+    })
+    buffer.push({
+      type: RenderCommandType.DrawEllipse,
+      transform: Float32Array.from(IDENTITY_TRANSFORM),
+      cx: bounds.x + bounds.width / 2,
+      cy: bounds.y + bounds.height / 2,
+      rx: bounds.width / 2,
+      ry: bounds.height / 2,
+      rotation: 0,
       paint: {
         style: PaintStyle.Stroke,
         color: SELECTION_BLUE,

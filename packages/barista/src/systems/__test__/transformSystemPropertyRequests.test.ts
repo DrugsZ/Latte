@@ -1,4 +1,8 @@
-import { NodeType, type RotateRequest } from '@latte-js/bean'
+import {
+  NodeType,
+  type ResizeRequest,
+  type RotateRequest,
+} from '@latte-js/bean'
 import {
   DIRTY_LOCAL_MATRIX,
   NodeCursor,
@@ -127,6 +131,25 @@ describe('TransformSystem property requests', () => {
     expect(() => system.setSize(['test:text'], { width: 100 })).toThrow(
       '[TransformSystem] setSize is unsupported for TEXT'
     )
+  })
+
+  it('accepts ResizeRequest absolute-size through the unified resize entrypoint', () => {
+    const graph = new SceneGraph()
+    const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    const cursor = new NodeCursor(graph, index)
+    cursor.width = 100
+    cursor.height = 50
+    const request: ResizeRequest = {
+      mode: 'absolute-size',
+      width: 140,
+      anchor: 'local-origin',
+    }
+
+    const system = new TransformSystem(graph)
+    system.resize(['test:rect'], request)
+
+    expect(cursor.width).toBe(140)
+    expect(cursor.height).toBe(50)
   })
 
   it('absolute rotation sets each target angle while preserving each center', () => {

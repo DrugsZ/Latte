@@ -62,5 +62,6 @@ export type {
   ResizeHandleDirection,
   SelectionOverlayGeometry,
   SelectionOverlayHandle,
+  SelectionOverlayRotateHandle,
   ViewportRect,
 } from './overlay/selectionOverlayGeometry'

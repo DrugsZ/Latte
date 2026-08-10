@@ -72,6 +72,19 @@ const PAINT_TYPES = new Set<NodeType>([
   NodeTypeValue.FRAME,
 ])
 
+const RESIZE_TYPES = new Set<NodeType>([
+  NodeTypeValue.RECTANGLE,
+  NodeTypeValue.CIRCLE,
+  NodeTypeValue.ELLIPSE,
+  NodeTypeValue.POLYGON,
+  NodeTypeValue.STAR,
+  NodeTypeValue.LINE,
+  NodeTypeValue.POLYLINE,
+  NodeTypeValue.PATH,
+  NodeTypeValue.FRAME,
+  NodeTypeValue.GROUP,
+])
+
 const CORNER_RADIUS_TYPES = new Set<NodeType>([
   NodeTypeValue.RECTANGLE,
   NodeTypeValue.FRAME,
@@ -89,6 +102,10 @@ export class SelectionPropertyModel {
     snapshot: SelectionSnapshot,
     key: K
   ): SelectionPropertyValue<unknown> | null {
+    if (this._sceneGraph.isPublicationWriting) {
+      return null
+    }
+
     const cacheKey = `${snapshot.selectionVersion}:${snapshot.documentRevision}:${key}`
     const cached = this._cache.get(cacheKey)
     if (cached) {
@@ -158,12 +175,14 @@ export class SelectionPropertyModel {
       case 'width':
         return this._numericDescriptor(
           'width',
-          target => this._sceneGraph.size[target.index * 2]
+          target => this._sceneGraph.size[target.index * 2],
+          target => RESIZE_TYPES.has(target.type)
         )
       case 'height':
         return this._numericDescriptor(
           'height',
-          target => this._sceneGraph.size[target.index * 2 + 1]
+          target => this._sceneGraph.size[target.index * 2 + 1],
+          target => RESIZE_TYPES.has(target.type)
         )
       case 'opacity':
         return this._numericDescriptor(
@@ -174,7 +193,8 @@ export class SelectionPropertyModel {
       case 'strokeWeight':
         return this._numericDescriptor(
           'strokeWeight',
-          target => new NodeCursor(this._sceneGraph, target.index).strokeWeight
+          target => new NodeCursor(this._sceneGraph, target.index).strokeWeight,
+          target => PAINT_TYPES.has(target.type)
         )
       case 'visible':
         return this._booleanDescriptor(

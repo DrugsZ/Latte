@@ -45,6 +45,10 @@ export class SelectionModel {
       documentRevision,
     ].join(':')
 
+    if (this._sceneGraph.isPublicationWriting) {
+      return null
+    }
+
     if (this._cachedKey === key && this._cachedSnapshot) {
       return this._cachedSnapshot
     }

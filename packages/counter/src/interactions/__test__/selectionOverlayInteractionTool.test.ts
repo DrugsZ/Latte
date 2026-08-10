@@ -33,6 +33,7 @@ const createTransformInteraction = () => ({
   isActive: false,
   beginTransform: vi.fn(async () => {}),
   moveBy: vi.fn(),
+  rotate: vi.fn(),
   resize: vi.fn(),
   resizeByHandle: vi.fn(),
   transformAround: vi.fn(),
@@ -496,6 +497,98 @@ describe('SelectionInteractionTool', () => {
     )
     expect(transform.commitTransform).toHaveBeenCalled()
     expect(up.releasePointer).toHaveBeenCalled()
+  })
+
+  it('rotates from the rotate handle using total angle delta around the frozen pivot', async () => {
+    const transform = createTransformInteraction()
+    const tool = new SelectionInteractionTool(transform)
+
+    tool.onEvent(
+      pointerEvent(InputPointerEventType.Down, {
+        hitResult: overlayHit(
+          {
+            type: SelectionOverlayHitType.RotateHandle,
+            ids: ['test:rect', 'test:other'],
+            pivotWorld: { x: 0, y: 0 },
+          },
+          'rotate'
+        ),
+        world: { x: 1, y: 0 },
+      }) as any
+    )
+    tool.onEvent(
+      pointerEvent(InputPointerEventType.Move, {
+        world: { x: 0, y: 1 },
+        viewport: { x: 10, y: 10 },
+      }) as any
+    )
+    await waitForMicrotasks()
+
+    expect(transform.beginTransform).toHaveBeenCalledWith(
+      ['test:rect', 'test:other'],
+      SelectionOverlayInteractionLabel.RotateSelection
+    )
+    expect(transform.rotate).toHaveBeenLastCalledWith(
+      ['test:rect', 'test:other'],
+      {
+        mode: 'total-delta',
+        angle: 90,
+        space: 'world',
+        pivot: {
+          kind: 'world-point',
+          point: [0, 0],
+        },
+      }
+    )
+  })
+
+  it('keeps rotate total delta continuous across the 180 degree boundary', async () => {
+    const transform = createTransformInteraction()
+    const tool = new SelectionInteractionTool(transform)
+    const pointAt = (degrees: number) => {
+      const radians = (degrees * Math.PI) / 180
+      return {
+        x: Math.cos(radians),
+        y: Math.sin(radians),
+      }
+    }
+
+    tool.onEvent(
+      pointerEvent(InputPointerEventType.Down, {
+        hitResult: overlayHit(
+          {
+            type: SelectionOverlayHitType.RotateHandle,
+            ids: ['test:rect'],
+            pivotWorld: { x: 0, y: 0 },
+          },
+          'rotate'
+        ),
+        world: pointAt(0),
+      }) as any
+    )
+    tool.onEvent(
+      pointerEvent(InputPointerEventType.Move, {
+        world: pointAt(170),
+        viewport: { x: 30, y: 30 },
+      }) as any
+    )
+    await waitForMicrotasks()
+    tool.onEvent(
+      pointerEvent(InputPointerEventType.Move, {
+        world: pointAt(-170),
+        viewport: { x: 40, y: 40 },
+      }) as any
+    )
+
+    expect(transform.rotate).toHaveBeenLastCalledWith(['test:rect'], {
+      mode: 'total-delta',
+      angle: 190,
+      space: 'world',
+      pivot: {
+        kind: 'world-point',
+        point: [0, 0],
+      },
+    })
   })
 
   it('does not cancel transform when pointer is cancelled before drag threshold', async () => {

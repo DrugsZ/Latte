@@ -94,7 +94,7 @@ describe('SelectionOverlayLayer', () => {
     const buffer = fixture.layer.encode(createEncodeContext(fixture))!
 
     expect(buffer.pass.clear).toBeUndefined()
-    expect(buffer.commands).toHaveLength(17)
+    expect(buffer.commands).toHaveLength(19)
     expect(buffer.commands[0]).toMatchObject({
       type: RenderCommandType.DrawRect,
       x: 0,
@@ -149,6 +149,29 @@ describe('SelectionOverlayLayer', () => {
         type: SelectionOverlayHitType.ResizeHandle,
         ids: ['test:rect'],
         direction: 'nw',
+      },
+    })
+  })
+
+  it('hit-tests the rotate handle with a frozen world pivot', () => {
+    const fixture = createFixture()
+    fixture.selection.select(['test:rect'])
+
+    const result = fixture.layer.hitTest(
+      {
+        viewport: { x: 160, y: 92 },
+        world: { x: 60, y: -8 },
+      },
+      createHitTestContext(fixture)
+    )
+
+    expect(result).toEqual({
+      layerId: SELECTION_OVERLAY_LAYER_ID,
+      targetId: 'rotate',
+      data: {
+        type: SelectionOverlayHitType.RotateHandle,
+        ids: ['test:rect'],
+        pivotWorld: { x: 60, y: 45 },
       },
     })
   })

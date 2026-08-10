@@ -93,6 +93,13 @@ describe('SelectionOverlayGeometryBuilder', () => {
       'sw',
       'w',
     ])
+    expect(geometry.rotateHandle.viewportBounds).toEqual({
+      x: 156,
+      y: 88,
+      width: 8,
+      height: 8,
+    })
+    expect(geometry.rotateHandle.pivotWorld).toEqual({ x: 60, y: 45 })
   })
 
   it('uses the selected node oriented bounds for single selection', () => {

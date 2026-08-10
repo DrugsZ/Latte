@@ -30,9 +30,9 @@ export interface WorkbenchOptions {
   inputService: IInputService
   renderer: IRenderLayerHost
   transformInteraction: ISelectionTransformInteraction
-  documentService: IDocumentService
+  getDocumentService: (sessionId: string) => IDocumentService
   nodeService: INodeService
-  queryService: IQueryService
+  getQueryService: (sessionId: string) => IQueryService
 }
 
 export class Workbench {
@@ -60,10 +60,11 @@ export class Workbench {
     this._renderer = options.renderer
     this.selectionService = new SelectionService(this._editor.graph)
     this.creationPreviewStore = new CreationPreviewStore()
-    this.pageService = new PageService(
-      options.documentService,
-      options.queryService
-    )
+    this.pageService = new PageService({
+      editor: this._editor,
+      getDocumentService: options.getDocumentService,
+      getQueryService: options.getQueryService,
+    })
     this._rectangleTool = new RectangleTool({
       nodeService: options.nodeService,
       selectionService: this.selectionService,

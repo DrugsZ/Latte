@@ -23,6 +23,7 @@ const createTransformInteraction = () => ({
   isActive: false,
   beginTransform: vi.fn(async () => {}),
   moveBy: vi.fn(),
+  rotate: vi.fn(),
   resize: vi.fn(),
   resizeByHandle: vi.fn(),
   transformAround: vi.fn(),
@@ -43,15 +44,15 @@ describe('Workbench', () => {
       inputService,
       renderer,
       transformInteraction: createTransformInteraction(),
-      documentService: {
+      getDocumentService: vi.fn(() => ({
         onLoad: vi.fn(() => ({ dispose: vi.fn() })),
-      } as any,
+      })) as any,
       nodeService: {
         createRectangle: vi.fn(async () => 'test:rect'),
       } as any,
-      queryService: {
+      getQueryService: vi.fn(() => ({
         getElementsByType: vi.fn(async () => []),
-      } as any,
+      })) as any,
     })
 
     expect(renderer.registerLayer).toHaveBeenCalledWith(
