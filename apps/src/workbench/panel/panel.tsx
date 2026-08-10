@@ -1,1 +1,0 @@
-export const Panel = (props) => <div className="panel"></div>
