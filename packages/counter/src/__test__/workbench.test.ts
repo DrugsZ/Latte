@@ -1,5 +1,6 @@
 import { RenderReason } from '@latte-js/art'
 import { SceneGraph } from '@latte-js/espresso'
+import { Emitter } from '@latte-js/kit'
 import { EditorHost } from '@latte-js/syrup'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -8,7 +9,7 @@ import { SELECTION_OVERLAY_INTERACTION_TOOL_ID } from '../interactions/selection
 import { CREATION_PREVIEW_LAYER_ID } from '../overlay/creationPreviewLayer'
 import { CreationPreviewType } from '../overlay/creationPreviewState'
 import { SELECTION_OVERLAY_LAYER_ID } from '../overlay/selectionOverlayLayer'
-import { Workbench } from '../workbench'
+import { Workbench, type IWorkbenchProjectionIdMapEvent } from '../workbench'
 
 const createInputService = () => ({
   onKeyDown: vi.fn(),
@@ -39,11 +40,13 @@ describe('Workbench', () => {
       registerLayer: vi.fn(() => layerDisposables.shift()!),
       requestRender: vi.fn(),
     }
+    const idMapChanges = new Emitter<IWorkbenchProjectionIdMapEvent>()
     const workbench = new Workbench({
       editor: new EditorHost(new SceneGraph()),
       inputService,
       renderer,
       transformInteraction: createTransformInteraction(),
+      projection: { onDidChangeIdMap: idMapChanges.event },
       getDocumentService: vi.fn(() => ({
         onLoad: vi.fn(() => ({ dispose: vi.fn() })),
       })) as any,
@@ -79,6 +82,21 @@ describe('Workbench', () => {
     })
     workbench.selectionService.select(['test:rect'])
 
+    idMapChanges.fire({
+      kind: 'unregister',
+      sessionId: 'doc:inactive',
+      nodes: [['test:rect', 1]],
+    })
+    expect(workbench.selectionService.ids).toEqual(['test:rect'])
+
+    idMapChanges.fire({
+      kind: 'unregister',
+      sessionId: null,
+      nodes: [['test:rect', 1]],
+    })
+
+    expect(workbench.selectionService.isEmpty).toBe(true)
+
     expect(renderer.requestRender).toHaveBeenCalledWith(
       RenderReason.LayerChanged
     )
@@ -95,5 +113,6 @@ describe('Workbench', () => {
     expect(inputService.removeHandler).toHaveBeenCalledWith(
       SELECTION_OVERLAY_INTERACTION_TOOL_ID
     )
+    idMapChanges.dispose()
   })
 })

@@ -15,10 +15,23 @@ import type { EditorHost, IInputService } from '@latte-js/syrup'
 import type { SceneGraph } from '@latte-js/espresso'
 import type {
   IDocumentService,
+  IDType,
   IDisposable,
   INodeService,
   IQueryService,
 } from '@latte-js/bean'
+
+export interface IWorkbenchProjectionIdMapEvent {
+  readonly kind: 'reset' | 'register' | 'unregister'
+  readonly sessionId: string | null
+  readonly nodes: readonly [id: IDType, index: number][]
+}
+
+export interface IWorkbenchProjectionEvents {
+  onDidChangeIdMap(
+    listener: (event: IWorkbenchProjectionIdMapEvent) => void
+  ): IDisposable
+}
 
 export interface IRenderLayerHost {
   registerLayer(layer: RenderLayer): IDisposable
@@ -30,6 +43,7 @@ export interface WorkbenchOptions {
   inputService: IInputService
   renderer: IRenderLayerHost
   transformInteraction: ISelectionTransformInteraction
+  projection: IWorkbenchProjectionEvents
   getDocumentService: (sessionId: string) => IDocumentService
   nodeService: INodeService
   getQueryService: (sessionId: string) => IQueryService
@@ -49,6 +63,7 @@ export class Workbench {
   private readonly _creationPreviewLayer: CreationPreviewLayer
   private readonly _selectionOverlayLayer: SelectionOverlayLayer
   private _activeDocumentListener: IDisposable | null = null
+  private _projectionIdMapListener: IDisposable | null = null
   private _selectionChangeListener: IDisposable | null = null
   private _creationPreviewChangeListener: IDisposable | null = null
   private _creationPreviewLayerDisposable: IDisposable | null = null
@@ -88,6 +103,20 @@ export class Workbench {
     )
     this.toolService = new ToolService(this._editor)
     this._registerDefaultTools()
+    this._projectionIdMapListener = options.projection.onDidChangeIdMap(
+      event => {
+        const activeSessionId = this._editor.activeDocument?.id ?? null
+        if (event.sessionId !== activeSessionId) {
+          return
+        }
+
+        if (event.kind === 'reset') {
+          this.selectionService.clear()
+        } else if (event.kind === 'unregister') {
+          this.selectionService.remove(event.nodes.map(([id]) => id))
+        }
+      }
+    )
   }
 
   private _registerDefaultTools() {
@@ -120,6 +149,8 @@ export class Workbench {
   }
 
   public dispose() {
+    this._projectionIdMapListener?.dispose()
+    this._projectionIdMapListener = null
     this._activeDocumentListener?.dispose()
     this._activeDocumentListener = null
     this._selectionChangeListener?.dispose()

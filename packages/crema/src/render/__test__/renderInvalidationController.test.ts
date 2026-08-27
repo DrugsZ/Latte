@@ -1,7 +1,7 @@
 import { RenderReason } from '@latte-js/art'
 import { DIRTY_TREE, SceneGraph } from '@latte-js/espresso'
 import { Emitter } from '@latte-js/kit'
-import { EditorHost } from '@latte-js/syrup'
+import { EditorHost, LatteDocument } from '@latte-js/syrup'
 import { describe, expect, it, vi } from 'vitest'
 
 import { RenderInvalidationController } from '../renderInvalidationController'
@@ -41,6 +41,8 @@ describe('RenderInvalidationController', () => {
     const { dirty, requestRender, updateSceneIndexByIds } = createHarness()
 
     dirty.fire({
+      sessionId: null,
+      version: 1,
       renderIds: ['test:rect'],
       affectedIds: ['test:rect'],
       nodes: [],
@@ -55,6 +57,8 @@ describe('RenderInvalidationController', () => {
       createHarness()
 
     dirty.fire({
+      sessionId: null,
+      version: 1,
       renderIds: ['test:rect'],
       affectedIds: ['test:rect'],
       nodes: [{ id: 'test:rect', flags: DIRTY_TREE }],
@@ -69,6 +73,8 @@ describe('RenderInvalidationController', () => {
     const { dirty, requestRender } = createHarness()
 
     dirty.fire({
+      sessionId: null,
+      version: 1,
       renderIds: [],
       affectedIds: ['test:rect'],
       nodes: [],
@@ -77,11 +83,41 @@ describe('RenderInvalidationController', () => {
     expect(requestRender).not.toHaveBeenCalled()
   })
 
+  it('ignores dirty events from an inactive document session', () => {
+    const editor = new EditorHost(new SceneGraph())
+    const requestRender = vi.fn()
+    const dirty = new Emitter<IProjectionDirtyEvent>()
+    editor.setRenderer({
+      setGraph: vi.fn(),
+      fitToContent: vi.fn().mockReturnValue(true),
+      requestRender,
+    })
+    editor.addDocument(
+      new LatteDocument('doc:active', 'latte://active', new SceneGraph())
+    )
+    const controller = new RenderInvalidationController(editor, {
+      onDidMarkDirty: dirty.event,
+    })
+
+    dirty.fire({
+      sessionId: 'doc:inactive',
+      version: 1,
+      renderIds: ['test:rect'],
+      affectedIds: ['test:rect'],
+      nodes: [],
+    })
+
+    expect(requestRender).not.toHaveBeenCalled()
+    controller.dispose()
+  })
+
   it('stops listening after dispose', () => {
     const { controller, dirty, requestRender } = createHarness()
 
     controller.dispose()
     dirty.fire({
+      sessionId: null,
+      version: 1,
       renderIds: ['test:rect'],
       affectedIds: ['test:rect'],
       nodes: [],

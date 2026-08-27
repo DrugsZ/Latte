@@ -19,10 +19,17 @@ interface NormalizedDirtyPayload {
   nodes: ISceneDirtyNode[]
 }
 
-export interface IProjectionDirtyEvent {
-  readonly renderIds: IDType[]
-  readonly affectedIds: IDType[]
-  readonly nodes: ISceneDirtyNode[]
+export interface IProjectionDirtyEvent extends NormalizedDirtyPayload {
+  readonly sessionId: string | null
+  readonly version: number
+}
+
+export type ProjectionIdMapChangeKind = 'reset' | 'register' | 'unregister'
+
+export interface IProjectionIdMapChangeEvent {
+  readonly kind: ProjectionIdMapChangeKind
+  readonly sessionId: string | null
+  readonly nodes: NodeIdMapPayload
 }
 
 export interface IProjectionSyncServices {
@@ -30,29 +37,36 @@ export interface IProjectionSyncServices {
   getSceneService(sessionId: string | null): ISceneService
 }
 
+const uniqueIds = (ids: readonly IDType[]) => Array.from(new Set(ids))
+
 const normalizeDirtyPayload = (
   payload: DirtyPayload
 ): NormalizedDirtyPayload => {
   if (Array.isArray(payload)) {
+    const ids = uniqueIds(payload)
     return {
-      renderIds: payload,
-      affectedIds: payload,
+      renderIds: ids,
+      affectedIds: ids,
       nodes: [],
     }
   }
 
-  const renderIds = payload.renderIds ?? payload.ids ?? []
-
-  return {
-    renderIds,
-    affectedIds: payload.allIds ?? payload.ids ?? renderIds,
-    nodes: payload.nodes ?? [],
+  const flagsById = new Map<IDType, number>()
+  for (const node of payload.nodes ?? []) {
+    flagsById.set(node.id, (flagsById.get(node.id) ?? 0) | node.flags)
   }
+
+  const nodes = Array.from(flagsById, ([id, flags]) => ({ id, flags }))
+  const renderIds = uniqueIds(payload.renderIds ?? payload.ids ?? [])
+  const affectedIds = uniqueIds([
+    ...(payload.allIds ?? payload.ids ?? renderIds),
+    ...renderIds,
+    ...nodes.map(node => node.id),
+  ])
+
+  return { renderIds, affectedIds, nodes }
 }
 
-// FIXME(projection-events): Promote projection dirty events to a broader
-// projection event model once outline, selection, or inspector consumers need
-// targeted updates beyond render invalidation.
 export class ProjectionSyncController extends Disposable {
   private readonly _sessionDisposables = this._register(new DisposableStore())
   private readonly _onDidMarkDirty = this._register(
@@ -61,9 +75,15 @@ export class ProjectionSyncController extends Disposable {
   public readonly onDidMarkDirty: Event<IProjectionDirtyEvent> =
     this._onDidMarkDirty.event
 
+  private readonly _onDidChangeIdMap = this._register(
+    new Emitter<IProjectionIdMapChangeEvent>()
+  )
+  public readonly onDidChangeIdMap: Event<IProjectionIdMapChangeEvent> =
+    this._onDidChangeIdMap.event
+
+  private readonly _sessionVersions = new Map<string | null, number>()
   private _started = false
   private _sessionId: string | null | undefined
-  private _version = 0
   private _renderDirtyIds: IDType[] = []
   private _affectedDirtyIds: IDType[] = []
   private _dirtyNodes: ISceneDirtyNode[] = []
@@ -76,7 +96,7 @@ export class ProjectionSyncController extends Disposable {
   }
 
   public get version() {
-    return this._version
+    return this._sessionVersions.get(this._sessionId ?? null) ?? 0
   }
 
   public get renderDirtyIds() {
@@ -108,49 +128,34 @@ export class ProjectionSyncController extends Disposable {
 
   public applyLoadedDocument(idMap: Map<IDType, number>, graph: SceneGraph) {
     graph.resetUUIDMap(idMap)
-    this._version++
+    if (graph === this._host.graph) {
+      this._resetDirtyState()
+    }
+    this._onDidChangeIdMap.fire({
+      kind: 'reset',
+      sessionId: this._resolveSessionId(graph),
+      nodes: Array.from(idMap),
+    })
     return { idMap }
   }
 
   public applyCreated(nodes: NodeIdMapPayload) {
-    for (const [id, index] of nodes) {
-      this._host.graph.registerIdMap(id, index)
-    }
-    if (nodes.length > 0) {
-      this._version++
-    }
+    this._applyCreated(this._sessionId ?? null, this._host.graph, nodes)
   }
 
   public applyDeleted(nodes: NodeIdMapPayload) {
-    for (const [id, index] of nodes) {
-      this._host.graph.unregisterIdMap(id, index)
-    }
-    if (nodes.length > 0) {
-      this._version++
-    }
+    this._applyDeleted(this._sessionId ?? null, this._host.graph, nodes)
   }
 
   public markDirty(payload: DirtyPayload) {
-    const normalized = normalizeDirtyPayload(payload)
-
-    this._renderDirtyIds = [...normalized.renderIds]
-    this._affectedDirtyIds = [...normalized.affectedIds]
-    this._dirtyNodes = [...normalized.nodes]
-    this._version++
-
-    this._onDidMarkDirty.fire({
-      renderIds: this.renderDirtyIds,
-      affectedIds: this.affectedDirtyIds,
-      nodes: this.dirtyNodes,
-    })
+    return this._markDirty(this._sessionId ?? null, payload)
   }
 
   public dispose() {
     super.dispose()
     this._sessionId = undefined
-    this._renderDirtyIds = []
-    this._affectedDirtyIds = []
-    this._dirtyNodes = []
+    this._sessionVersions.clear()
+    this._resetDirtyState()
     this._started = false
   }
 
@@ -161,24 +166,108 @@ export class ProjectionSyncController extends Disposable {
 
     this._sessionDisposables.clear()
     this._sessionId = sessionId
+    this._resetDirtyState()
 
+    const graph = this._host.graph
     const nodeService = this._services.getNodeService(sessionId)
     const sceneService = this._services.getSceneService(sessionId)
 
     this._sessionDisposables.add(
       nodeService.onDidCreateNode(event => {
-        this.applyCreated(event.nodes)
+        if (this._isCurrentBinding(sessionId, graph)) {
+          this._applyCreated(sessionId, graph, event.nodes)
+        }
       })
     )
     this._sessionDisposables.add(
       nodeService.onDidDeleteNode(event => {
-        this.applyDeleted(event.nodes)
+        if (this._isCurrentBinding(sessionId, graph)) {
+          this._applyDeleted(sessionId, graph, event.nodes)
+        }
       })
     )
     this._sessionDisposables.add(
       sceneService.onDirty(payload => {
-        this.markDirty(payload as DirtyPayload)
+        if (this._isCurrentBinding(sessionId, graph)) {
+          this._markDirty(sessionId, payload as DirtyPayload)
+        }
       })
     )
+  }
+
+  private _applyCreated(
+    sessionId: string | null,
+    graph: SceneGraph,
+    nodes: NodeIdMapPayload
+  ) {
+    for (const [id, index] of nodes) {
+      graph.registerIdMap(id, index)
+    }
+    if (nodes.length > 0) {
+      this._onDidChangeIdMap.fire({
+        kind: 'register',
+        sessionId,
+        nodes: [...nodes],
+      })
+    }
+  }
+
+  private _applyDeleted(
+    sessionId: string | null,
+    graph: SceneGraph,
+    nodes: NodeIdMapPayload
+  ) {
+    for (const [id, index] of nodes) {
+      graph.unregisterIdMap(id, index)
+    }
+    if (nodes.length > 0) {
+      this._onDidChangeIdMap.fire({
+        kind: 'unregister',
+        sessionId,
+        nodes: [...nodes],
+      })
+    }
+  }
+
+  private _markDirty(sessionId: string | null, payload: DirtyPayload) {
+    const currentVersion = this._sessionVersions.get(sessionId) ?? 0
+    const payloadVersion = Array.isArray(payload) ? undefined : payload.version
+    const version = payloadVersion ?? currentVersion + 1
+
+    if (!Number.isSafeInteger(version) || version <= currentVersion) {
+      return false
+    }
+
+    const normalized = normalizeDirtyPayload(payload)
+    this._sessionVersions.set(sessionId, version)
+    this._renderDirtyIds = normalized.renderIds
+    this._affectedDirtyIds = normalized.affectedIds
+    this._dirtyNodes = normalized.nodes
+
+    this._onDidMarkDirty.fire({
+      sessionId,
+      version,
+      renderIds: this.renderDirtyIds,
+      affectedIds: this.affectedDirtyIds,
+      nodes: this.dirtyNodes,
+    })
+    return true
+  }
+
+  private _isCurrentBinding(sessionId: string | null, graph: SceneGraph) {
+    return this._sessionId === sessionId && this._host.graph === graph
+  }
+
+  private _resolveSessionId(graph: SceneGraph) {
+    return (
+      this._host.documents.find(document => document.graph === graph)?.id ??
+      null
+    )
+  }
+
+  private _resetDirtyState() {
+    this._renderDirtyIds = []
+    this._affectedDirtyIds = []
+    this._dirtyNodes = []
   }
 }

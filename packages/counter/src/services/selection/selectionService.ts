@@ -39,6 +39,25 @@ export class SelectionService {
     this._fireChange()
   }
 
+  remove(ids: Iterable<IDType>) {
+    let changed = false
+    for (const id of ids) {
+      changed = this._selectedIds.delete(id) || changed
+    }
+
+    if (!changed) {
+      return
+    }
+
+    if (this._activeId && !this._selectedIds.has(this._activeId)) {
+      this._activeId = Array.from(this._selectedIds).at(-1) ?? null
+    }
+    if (this._anchorId && !this._selectedIds.has(this._anchorId)) {
+      this._anchorId = this._selectedIds.values().next().value ?? null
+    }
+    this._fireChange()
+  }
+
   toggle(id: IDType) {
     if (this._selectedIds.has(id)) {
       this._selectedIds.delete(id)

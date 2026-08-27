@@ -1,6 +1,6 @@
 # Latte RoadMap
 
-> 更新日期：2026-06-08
+> 更新日期：2026-08-10
 >
 > 项目目标：把 Latte 演进为“Figma 级画布编辑能力 + VSCode 级工程化扩展平台”的可商业化开源编辑器内核。
 
@@ -220,12 +220,9 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 
 ### 3.2 仍缺的关键能力
 
-- 可交互单文档编辑闭环：创建矩形、选择、拖动、属性修改、undo/redo、save/load。
-- `apps/src` 废弃树清理，避免旧架构继续干扰 review。
-- 完整稳定的 release gate：type-check/test/build/e2e/license/diff-check 一键可信。
-- Projection version、graph switch、ID map、metadata shared pointer 的一致性测试。
-- delete/reparent 可逆历史。
-- StyleService、LayoutService、Frame/constraints/auto layout。
+- DerivedScheduler freshness boundary 与 bounds/world matrix 等 QueryService 契约。
+- reparent/reorder 可逆历史与更完整的结构操作 RPC。
+- StyleService 完整化、LayoutService、Frame/constraints/auto layout。
 - VSCode 风格 ContextKey、Configuration、Contribution Registry、Manifest/Activation。
 - Figma 风格 Components/Instances/Variants、Variables、Libraries、Dev Mode、Export。
 - 插件 public facade 与 extension host 隔离。
@@ -233,7 +230,9 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 - 性能基线与生产部署模板。
 - Rust/WASM native engine 的基线评估、构建发布策略和替换边界。
 
-## 4. P0：可交互单文档编辑闭环
+## 4. P0：可交互单文档编辑闭环（已完成）
+
+> 完成日期：2026-08-10。Cafe 已覆盖创建矩形、选择、拖动、属性修改、undo/redo、save/load；`apps/src` 已移除；统一 release gate 已覆盖 lint、type-check、unit test、workspace build、package artifacts、安全审计、Playwright E2E 与 diff check。
 
 ### 目标
 
@@ -306,11 +305,19 @@ Rust/WASM 是 Latte 的长期性能和存储方向，但不应在 P0/P1 阶段�
 - 新增平台基础设施必须至少有一个真实产品功能消费。
 - 相关 type-check、unit test、cafe build、diff-check 通过。
 
-## 5. P1：编辑闭环加固与数据一致性
+## 5. P1：编辑闭环加固与数据一致性（进行中）
 
 ### 目标
 
 在 P0 的真实编辑闭环基础上，加固 projection、derived data、metadata、history 和常见 service/API 边界。
+
+### 当前进度
+
+- 已完成 worker scene version 到主线程 projection 的权威版本同步，并按 document session 隔离版本。
+- 已完成 graph reset/register/unregister 事件、dirty ID/flags 规范化、旧版本与已解绑会话事件防护。
+- 已完成删除节点与重载文档后的 selection 清理，以及非 active session 的渲染/selection 事件隔离。
+- shared metadata pointer、StyleService/NodeService/QueryService 基础版本、delete snapshot history 和统一 release gate 已具备。
+- 下一批优先实现 DerivedScheduler / pipeline freshness barrier，再扩展 QueryService 与结构历史覆盖。
 
 ### 要做什么
 
@@ -709,20 +716,20 @@ Rust/WASM 可以成为 Latte 的长期性能护城河，但只有在语义层稳
 
 ## 13. 包职责演进
 
-| 包                   | 长期职责                                                                                    | 许可证策略                     |
-| -------------------- | ------------------------------------------------------------------------------------------- | ------------------------------ |
-| `@latte-js/bean`     | 类型、RPC contract、文件 schema 类型、公共 enum                                             | MIT，未来可评估 Apache-2.0     |
-| `@latte-js/schema`   | 未来新增，Zod schemas、manifest/file/config validation、migration validation                | MIT 或 Apache-2.0              |
-| `@latte-js/espresso` | SAB/SoA 数据内核、SceneGraph、NodeCursor、Loader/Serializer、临时 shared heap/blob contract | AGPL-3.0-or-later + commercial |
-| `@latte-js/barista`  | worker services/systems、MutationGate、TransactionManager、HistoryManager、UndoRedoService、native compute bridge | AGPL-3.0-or-later + commercial |
-| `@latte-js/native`   | 未来可选，Rust/WASM 存储、几何、snapshot/diff、replay 热路径                                | AGPL-3.0-or-later + commercial |
-| `@latte-js/crema`    | editor runtime assembly、worker client、projection sync、transform interaction controller   | AGPL-3.0-or-later + commercial |
-| `@latte-js/art`      | renderer、camera、hit test、RTree、render backends                                          | AGPL-3.0-or-later + commercial |
+| 包                   | 长期职责                                                                                                                 | 许可证策略                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| `@latte-js/bean`     | 类型、RPC contract、文件 schema 类型、公共 enum                                                                          | MIT，未来可评估 Apache-2.0     |
+| `@latte-js/schema`   | 未来新增，Zod schemas、manifest/file/config validation、migration validation                                             | MIT 或 Apache-2.0              |
+| `@latte-js/espresso` | SAB/SoA 数据内核、SceneGraph、NodeCursor、Loader/Serializer、临时 shared heap/blob contract                              | AGPL-3.0-or-later + commercial |
+| `@latte-js/barista`  | worker services/systems、MutationGate、TransactionManager、HistoryManager、UndoRedoService、native compute bridge        | AGPL-3.0-or-later + commercial |
+| `@latte-js/native`   | 未来可选，Rust/WASM 存储、几何、snapshot/diff、replay 热路径                                                             | AGPL-3.0-or-later + commercial |
+| `@latte-js/crema`    | editor runtime assembly、worker client、projection sync、transform interaction controller                                | AGPL-3.0-or-later + commercial |
+| `@latte-js/art`      | renderer、camera、hit test、RTree、render backends                                                                       | AGPL-3.0-or-later + commercial |
 | `@latte-js/syrup`    | main-thread platform、commands、menus、keybindings、input、future DI/contribution registry；平台能力必须由真实消费者驱动 | MIT                            |
-| `@latte-js/counter`  | built-in workbench/contrib、tools、selection、built-in commands、最小属性面板业务            | AGPL-3.0-or-later + commercial |
-| `@latte-js/milk`     | 未来 React UI components and panels；真实面板接入前视为占位包                               | MIT                            |
-| `@latte-js/kit`      | shared runtime utilities                                                                    | MIT                            |
-| `apps/cafe`          | integration demo and smoke target                                                           | UNLICENSED demo app            |
+| `@latte-js/counter`  | built-in workbench/contrib、tools、selection、built-in commands、最小属性面板业务                                        | AGPL-3.0-or-later + commercial |
+| `@latte-js/milk`     | 未来 React UI components and panels；真实面板接入前视为占位包                                                            | MIT                            |
+| `@latte-js/kit`      | shared runtime utilities                                                                                                 | MIT                            |
+| `apps/cafe`          | integration demo and smoke target                                                                                        | UNLICENSED demo app            |
 
 ## 14. 暂缓项
 

@@ -1,5 +1,10 @@
 export { Workbench } from './workbench'
-export type { IRenderLayerHost, WorkbenchOptions } from './workbench'
+export type {
+  IRenderLayerHost,
+  IWorkbenchProjectionEvents,
+  IWorkbenchProjectionIdMapEvent,
+  WorkbenchOptions,
+} from './workbench'
 export { RectangleTool } from './contrib/create/rectangleTool'
 export {
   CreationToolId,

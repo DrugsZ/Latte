@@ -20,6 +20,7 @@ export class EditorHost<TGraph = unknown> extends Disposable {
   public readonly id: string
 
   private _renderer: IEditorRenderer<TGraph> | null = null
+  private readonly _defaultGraph: TGraph
   // FIXME(di): This is a temporary host-local registry. Move to typed service
   // identifiers and a ServiceCollection/ServicesAccessor before exposing it as
   // a stable platform or extension API.
@@ -35,6 +36,7 @@ export class EditorHost<TGraph = unknown> extends Disposable {
 
   constructor(private _graph: TGraph) {
     super()
+    this._defaultGraph = _graph
     this.id = `editor_${EditorHost.COUNT++}`
   }
 
@@ -81,9 +83,7 @@ export class EditorHost<TGraph = unknown> extends Disposable {
     }
 
     this._activeDocument = doc
-    if (doc) {
-      this.setGraph(doc.graph)
-    }
+    this.setGraph(doc?.graph ?? this._defaultGraph)
 
     this._onDidChangeActiveDocument.fire(doc)
   }

@@ -94,8 +94,8 @@ pnpm release:check
 
 See the detailed plan in [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md).
 
-- P0: stabilize the kernel, projection, transform, history boundaries and release gates.
-- P1: complete projection consistency, typed DI/service collection, shared metadata, style/node/query services and structural history.
+- P0 (completed): stabilize the kernel, projection, transform, history boundaries and release gates.
+- P1 (in progress): complete projection consistency, typed DI/service collection, shared metadata, style/node/query services and structural history.
 - P2: implement Figma-aligned geometry and layout semantics: constraints, auto layout and group auto-bounds.
 - P3: build VSCode-style platform features: context keys, configuration, contribution registry and plugin manifest.
 - P4: add design semantics: components, instances, variants, variables, styles, text/vector and libraries.

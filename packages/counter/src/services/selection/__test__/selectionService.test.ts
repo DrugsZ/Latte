@@ -62,6 +62,22 @@ describe('SelectionService', () => {
     expect(spy).toHaveBeenCalledTimes(2)
   })
 
+  it('removes deleted ids while preserving active and anchor ids', () => {
+    const spy = vi.fn()
+    selectionService.select(['test:a', 'test:b', 'test:c'])
+    selectionService.onSelectChange(spy)
+
+    selectionService.remove(['test:a', 'test:c', 'test:missing'])
+
+    expect(selectionService.ids).toEqual(['test:b'])
+    expect(selectionService.activeId).toBe('test:b')
+    expect(selectionService.anchorId).toBe('test:b')
+    expect(spy).toHaveBeenCalledOnce()
+
+    selectionService.remove(['test:missing'])
+    expect(spy).toHaveBeenCalledOnce()
+  })
+
   it('should iterate over selected cursors', () => {
     const a = sceneGraph.createNode(NodeType.RECTANGLE, 'test:a')
     const b = sceneGraph.createNode(NodeType.FRAME, 'test:b')

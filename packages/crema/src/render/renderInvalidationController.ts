@@ -20,6 +20,11 @@ export class RenderInvalidationController extends Disposable {
 
     this._register(
       projection.onDidMarkDirty(event => {
+        const activeSessionId = this._host.activeDocument?.id ?? null
+        if (event.sessionId !== activeSessionId) {
+          return
+        }
+
         const renderer = this._host.renderer
         if (!renderer) {
           return

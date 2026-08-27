@@ -94,8 +94,8 @@ pnpm release:check
 
 详版计划见 [docs/roadmap.zh-CN.md](./docs/roadmap.zh-CN.md)。
 
-- P0：稳定内核、投影、变换、历史边界与发布门禁。
-- P1：补齐 projection 一致性、typed DI/service collection、shared metadata、style/node/query services 与结构历史。
+- P0（已完成）：稳定内核、投影、变换、历史边界与发布门禁。
+- P1（进行中）：补齐 projection 一致性、typed DI/service collection、shared metadata、style/node/query services 与结构历史。
 - P2：实现 Figma 对齐的几何与布局语义：constraints、auto layout、group auto-bounds。
 - P3：建设 VSCode 风格平台能力：context keys、configuration、contribution registry、plugin manifest。
 - P4：补齐设计语义：components、instances、variants、variables、styles、text/vector 与 libraries。

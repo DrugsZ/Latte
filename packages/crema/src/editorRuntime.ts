@@ -158,6 +158,7 @@ export class EditorRuntime {
       inputService: this._inputService,
       renderer: this._renderer,
       transformInteraction: this.transformInteraction,
+      projection: this._projection,
       getDocumentService: sessionId =>
         this._baristaClient!.getService(Channels.Document, sessionId),
       nodeService: this._baristaClient.getService(Channels.Node),
