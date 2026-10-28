@@ -77,6 +77,7 @@ for (const [index, step] of steps.entries()) {
 
   const result = spawnSync(executable(step.command), step.args, {
     stdio: 'inherit',
+    shell: isWindows && step.command === 'pnpm',
   })
 
   if (result.error) {
