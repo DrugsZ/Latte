@@ -47,7 +47,11 @@ export function App() {
     }
 
     setSelectionCount(selectionService.ids.length)
-    return selectionService.onSelectChange(ids => setSelectionCount(ids.length))
+    const subscription = selectionService.onSelectChange(ids =>
+      setSelectionCount(ids.length)
+    )
+
+    return () => subscription.dispose()
   }, [runtime])
 
   return (
