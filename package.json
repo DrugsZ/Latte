@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "eslint \"apps/cafe/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" scripts --no-error-on-unmatched-pattern",
     "type-check": "turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules",
     "test": "vitest run",
