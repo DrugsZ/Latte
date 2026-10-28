@@ -1,17 +1,20 @@
 import { SelectionTool } from './contrib/select/selectionTool'
+import { RectangleTool } from './contrib/rectangle/rectangleTool'
 import { SelectionOverlayLayer } from './overlay/selectionOverlayLayer'
 import { SelectionService } from './services/selection/selectionService'
 import { ToolService } from './services/tools/toolService'
 import { PageService } from './services/page/pageService'
 
 import { RenderReason, type RenderLayer } from '@latte-js/art'
+import {
+  Channels,
+  type IDocumentService,
+  type IDisposable,
+  type INodeService,
+  type IQueryService,
+} from '@latte-js/bean'
 import type { EditorHost, IInputService } from '@latte-js/syrup'
 import type { SceneGraph } from '@latte-js/espresso'
-import type {
-  IDocumentService,
-  IDisposable,
-  IQueryService,
-} from '@latte-js/bean'
 
 export interface IRenderLayerHost {
   registerLayer(layer: RenderLayer): IDisposable
@@ -35,6 +38,7 @@ export class Workbench {
   private readonly _inputService: IInputService
   private readonly _renderer: IRenderLayerHost
   private readonly _selectionTool: SelectionTool
+  private readonly _rectangleTool: RectangleTool | null
   private readonly _selectionOverlayLayer: SelectionOverlayLayer
   private _activeDocumentListener: IDisposable | null = null
   private _selectionChangeListener: IDisposable | null = null
@@ -54,12 +58,22 @@ export class Workbench {
       options.documentService,
       options.queryService
     )
+    this._rectangleTool = this._editor.hasService(Channels.Node)
+      ? new RectangleTool(
+          this._editor.getService<INodeService>(Channels.Node),
+          this.pageService,
+          this.selectionService
+        )
+      : null
     this._registerDefaultTools()
   }
 
   private _registerDefaultTools() {
     this._inputService.registerHandler(this.toolService)
     this._inputService.registerHandler(this._selectionTool)
+    if (this._rectangleTool) {
+      this.toolService.registerTool(this._rectangleTool)
+    }
     this._selectionOverlayLayerDisposable = this._renderer.registerLayer(
       this._selectionOverlayLayer
     )

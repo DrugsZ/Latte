@@ -21,6 +21,15 @@ export class PageService {
     return this._activePageId
   }
 
+  public async ensureActivePage(): Promise<IDType | null> {
+    if (this._activePageId) {
+      return this._activePageId
+    }
+
+    await this._resetActivePageId()
+    return this._activePageId
+  }
+
   private async _resetActivePageId() {
     const allPages = await this._queryService.getElementsByType(NodeType.CANVAS)
     this._activePageId = allPages.length > 0 ? allPages[0] : null
