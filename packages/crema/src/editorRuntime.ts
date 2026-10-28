@@ -155,6 +155,7 @@ export class EditorRuntime {
       renderer: this._renderer,
       documentService: this._baristaClient.getService(Channels.Document),
       queryService: this._baristaClient.getService(Channels.Query),
+      transformInteraction: this.transformInteraction,
     })
 
     this._started = true

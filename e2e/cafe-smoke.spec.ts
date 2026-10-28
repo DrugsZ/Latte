@@ -64,3 +64,24 @@ test('cafe renders sample document with SharedArrayBuffer enabled', async ({
   expect(result.nonBlankPixelCount).toBeGreaterThan(100)
   expect(renderMs).toBeLessThan(10_000)
 })
+
+test('cafe creates a rectangle through the workbench tool', async ({
+  page,
+}) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', error => {
+    pageErrors.push(error.message)
+  })
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('canvas')
+  await page.getByTestId('rectangle-tool').click()
+
+  const canvas = page.locator('canvas')
+  const box = await canvas.boundingBox()
+  expect(box).not.toBeNull()
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2)
+
+  await expect(page.getByTestId('selection-count')).toHaveText('Selected: 1')
+  expect(pageErrors).toEqual([])
+})

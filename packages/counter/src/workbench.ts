@@ -1,4 +1,7 @@
-import { SelectionTool } from './contrib/select/selectionTool'
+import {
+  SelectionTool,
+  type ITransformInteraction,
+} from './contrib/select/selectionTool'
 import { RectangleTool } from './contrib/rectangle/rectangleTool'
 import { SelectionOverlayLayer } from './overlay/selectionOverlayLayer'
 import { SelectionService } from './services/selection/selectionService'
@@ -27,6 +30,7 @@ export interface WorkbenchOptions {
   renderer: IRenderLayerHost
   documentService: IDocumentService
   queryService: IQueryService
+  transformInteraction?: ITransformInteraction
 }
 
 export class Workbench {
@@ -49,7 +53,10 @@ export class Workbench {
     this._inputService = options.inputService
     this._renderer = options.renderer
     this.selectionService = new SelectionService(this._editor.graph)
-    this._selectionTool = new SelectionTool(this.selectionService)
+    this._selectionTool = new SelectionTool(
+      this.selectionService,
+      options.transformInteraction
+    )
     this._selectionOverlayLayer = new SelectionOverlayLayer(
       this.selectionService
     )

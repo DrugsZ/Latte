@@ -37,6 +37,18 @@ const CanvasArea = ({ onRuntimeChange }: CanvasAreaProps) => {
 
 export function App() {
   const [runtime, setRuntime] = useState<EditorRuntime | null>(null)
+  const [selectionCount, setSelectionCount] = useState(0)
+
+  useEffect(() => {
+    const selectionService = runtime?.workbench?.selectionService
+    if (!selectionService) {
+      setSelectionCount(0)
+      return
+    }
+
+    setSelectionCount(selectionService.ids.length)
+    return selectionService.onSelectChange(ids => setSelectionCount(ids.length))
+  }, [runtime])
 
   return (
     <div className="app-layout">
@@ -59,6 +71,9 @@ export function App() {
         >
           Rectangle
         </button>
+        <output data-testid="selection-count">
+          Selected: {selectionCount}
+        </output>
       </div>
 
       <div className="main-content">
