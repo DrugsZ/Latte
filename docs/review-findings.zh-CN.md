@@ -80,3 +80,13 @@
 4. 然后选择“图层管理与多选”或“Frame/layout”等一条产品主线。性能基线先行；Rust/WASM、插件与协作由明确消费者或测量结果触发。
 
 每项任务至少留下：负责人、触发条件、固定基线、复现步骤、代码证据、验收用例和延后理由。总体成熟度以真实用户闭环、数据一致性和可部署/可消费证据判断。
+
+## CI 后续修复（2026-10-30）
+
+首批交付 `82bacb7` 的 [GitHub Actions](https://github.com/DrugsZ/Latte/actions/runs/41025517355) 中，Quality Gates 和 E2E 通过；Unit Tests 在加载 10 份测试文件时因 `ReferenceError: navigator is not defined` 失败，Build 随之跳过。原因是 [platform.ts](../packages/kit/src/platform/platform.ts) 在公共包导入时直接访问浏览器全局对象；本机 Node 22 提供 `navigator`，CI Node 20 没有。
+
+修复为缺少 navigator 时安全使用空 user agent，并通过 window / importScripts 判断 Web 环境，避免把 Node 22 自带的 navigator 当作浏览器。CI 保留 Node 20 环境。[6 项回归测试](../packages/kit/src/platform/__test__/platform.test.ts) 覆盖公共工具包在无 navigator 下的导入、Node 22、Windows Chrome、Mac Safari、iPad 与无 window 的 Worker。
+
+本次使用 `NODE_OPTIONS=--no-experimental-global-navigator` 运行完整 coverage，**60 个测试文件 / 452 个测试通过**。语句 73.84%（4912/6652）、分支 62.30%（1785/2865）、函数 73.23%（952/1300）、行 74.20%（4780/6442）；覆盖率分母限制与前述相同。此结果更新首批交付的测试记录；远程兼容性仍需以 [开发分支最新 CI](https://github.com/DrugsZ/Latte/actions?query=branch%3Acodex%2Fdevelopment) 的实际结果确认。
+
+随后标准 `pnpm release:check` 同样通过（148.9 秒）：452 个单测、10/10 workspace 构建、6/6 Chromium E2E，以及 license、lint、type-check 和 diff 检查。修复范围仅为平台检测、6 项回归与这两份 review 文档的追补记录。

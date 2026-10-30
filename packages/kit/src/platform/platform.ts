@@ -4,7 +4,10 @@ let _isLinux = false
 let _isWeb = false
 let _isIOS = false
 let _isMobile = false
-const _userAgent = navigator.userAgent
+const $globalThis: any = globalThis
+const _navigator = typeof navigator === 'undefined' ? undefined : navigator
+const _userAgent =
+  typeof _navigator?.userAgent === 'string' ? _navigator.userAgent : ''
 
 _isWindows = _userAgent.indexOf('Windows') >= 0
 _isMacintosh = _userAgent.indexOf('Macintosh') >= 0
@@ -12,11 +15,14 @@ _isIOS =
   (_userAgent.indexOf('Macintosh') >= 0 ||
     _userAgent.indexOf('iPad') >= 0 ||
     _userAgent.indexOf('iPhone') >= 0) &&
-  !!navigator.maxTouchPoints &&
-  navigator.maxTouchPoints > 0
+  !!_navigator?.maxTouchPoints &&
+  _navigator.maxTouchPoints > 0
 _isLinux = _userAgent.indexOf('Linux') >= 0
 _isMobile = _userAgent?.indexOf('Mobi') >= 0
-_isWeb = true
+// Node.js may expose navigator too; browser globals identify web runtimes.
+_isWeb =
+  typeof window !== 'undefined' ||
+  typeof $globalThis.importScripts === 'function'
 
 export const enum Platform {
   Web,
@@ -34,8 +40,6 @@ if (_isMacintosh) {
 } else if (_isLinux) {
   _platform = Platform.Linux
 }
-
-const $globalThis: any = globalThis
 
 export const isWindows = _isWindows
 export const isMacintosh = _isMacintosh
