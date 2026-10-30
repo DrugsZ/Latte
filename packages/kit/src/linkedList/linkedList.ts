@@ -7,6 +7,8 @@ class Node<E> {
 
   prev: Node<E>
 
+  attached = false
+
   constructor(element: E) {
     this.element = element
     this.next = Node.Undefined
@@ -28,11 +30,12 @@ export class LinkedList<E> {
   }
 
   clear(): void {
-    let node = this.#first.next
-    while (node) {
+    let node = this.#first
+    while (node !== Node.Undefined) {
       const { next } = node
       node.prev = Node.Undefined
       node.next = Node.Undefined
+      node.attached = false
       node = next
     }
     this.#first = Node.Undefined
@@ -68,6 +71,7 @@ export class LinkedList<E> {
 
   #insert(element: E, atTheEnd: boolean): () => void {
     const newNode = new Node(element)
+    newNode.attached = true
     if (this.#first === Node.Undefined) {
       this.#first = newNode
       this.#last = newNode
@@ -96,11 +100,17 @@ export class LinkedList<E> {
   }
 
   #remove(node: Node<E>): void {
+    // A node can be removed by its returned disposer after `clear()`. In that
+    // case it is already detached and must not affect the current list.
+    if (!node.attached) {
+      return
+    }
+
     if (node.prev !== Node.Undefined && node.next !== Node.Undefined) {
       // middle
       const anchor = node.prev
       anchor.next = node.next
-       
+
       node.next.prev = anchor
     } else if (node.prev === Node.Undefined && node.next === Node.Undefined) {
       // only node
@@ -117,6 +127,7 @@ export class LinkedList<E> {
     }
 
     // done
+    node.attached = false
     this.#size -= 1
   }
 

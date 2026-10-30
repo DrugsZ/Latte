@@ -69,4 +69,76 @@ describe('LinkedList', () => {
     expect(list.isEmpty()).toBe(true)
     expect(list.pop()).toBeUndefined()
   })
+
+  it('should clear an empty list repeatedly', () => {
+    const list = new LinkedList<number>()
+
+    list.clear()
+    list.clear()
+
+    expect(list.size).toBe(0)
+    expect([...list]).toEqual([])
+  })
+
+  it('should clear a single-node list repeatedly', () => {
+    const list = new LinkedList<number>()
+    list.push(1)
+
+    list.clear()
+    list.clear()
+
+    expect(list.size).toBe(0)
+    expect(list.isEmpty()).toBe(true)
+    expect([...list]).toEqual([])
+  })
+
+  it('should clear a multi-node list and leave it reusable', () => {
+    const list = new LinkedList<number>()
+    list.push(1)
+    list.push(2)
+    list.push(3)
+
+    list.clear()
+    list.clear()
+    const remove = list.push(4)
+
+    expect(list.size).toBe(1)
+    expect([...list]).toEqual([4])
+    remove()
+    expect(list.size).toBe(0)
+  })
+
+  it('should ignore stale removers after clear', () => {
+    const list = new LinkedList<number>()
+    const removeOld = list.push(1)
+
+    list.clear()
+    const removeNew = list.push(2)
+    removeOld()
+
+    expect(list.size).toBe(1)
+    expect([...list]).toEqual([2])
+
+    removeOld()
+    removeNew()
+    expect(list.size).toBe(0)
+  })
+
+  it('should keep iterating when the current node removes itself', () => {
+    const list = new LinkedList<number>()
+    const removeFirst = list.push(1)
+    list.push(2)
+    const visited: number[] = []
+
+    for (const value of list) {
+      visited.push(value)
+      if (value === 1) {
+        removeFirst()
+      }
+    }
+
+    expect(visited).toEqual([1, 2])
+    expect([...list]).toEqual([2])
+    expect(list.size).toBe(1)
+  })
 })
