@@ -5,7 +5,11 @@ import {
   type ISceneDirtyPayload,
   type ISceneService,
 } from '@latte-js/bean'
-import type { SceneGraph } from '@latte-js/espresso'
+import {
+  MutationScopeKind,
+  type ISceneGraphMutationAuthority,
+  type SceneGraph,
+} from '@latte-js/espresso'
 import { Disposable, DisposableStore, Emitter, type Event } from '@latte-js/kit'
 
 import type { EditorHost } from '@latte-js/syrup'
@@ -60,6 +64,8 @@ export class ProjectionSyncController extends Disposable {
   )
   public readonly onDidMarkDirty: Event<IProjectionDirtyEvent> =
     this._onDidMarkDirty.event
+  private readonly _onDidChange = this._register(new Emitter<void>())
+  public readonly onDidChange = this._onDidChange.event
 
   private _started = false
   private _sessionId: string | null | undefined
@@ -67,6 +73,10 @@ export class ProjectionSyncController extends Disposable {
   private _renderDirtyIds: IDType[] = []
   private _affectedDirtyIds: IDType[] = []
   private _dirtyNodes: ISceneDirtyNode[] = []
+  private readonly _graphAuthorities = new WeakMap<
+    SceneGraph,
+    ISceneGraphMutationAuthority
+  >()
 
   constructor(
     private readonly _host: EditorHost<SceneGraph>,
@@ -77,6 +87,15 @@ export class ProjectionSyncController extends Disposable {
 
   public get version() {
     return this._version
+  }
+
+  public protectGraph(graph: SceneGraph) {
+    if (this._graphAuthorities.has(graph)) {
+      return
+    }
+    const authority = graph.createMutationAuthority('projection-id-map')
+    graph.setMutationGuardEnabled(true)
+    this._graphAuthorities.set(graph, authority)
   }
 
   public get renderDirtyIds() {
@@ -107,26 +126,35 @@ export class ProjectionSyncController extends Disposable {
   }
 
   public applyLoadedDocument(idMap: Map<IDType, number>, graph: SceneGraph) {
-    graph.resetUUIDMap(idMap)
+    this._syncIdMap(graph, () => graph.resetUUIDMap(idMap))
     this._version++
+    this._onDidChange.fire()
     return { idMap }
   }
 
   public applyCreated(nodes: NodeIdMapPayload) {
-    for (const [id, index] of nodes) {
-      this._host.graph.registerIdMap(id, index)
-    }
+    const graph = this._host.graph
+    this._syncIdMap(graph, () => {
+      for (const [id, index] of nodes) {
+        graph.registerIdMap(id, index)
+      }
+    })
     if (nodes.length > 0) {
       this._version++
+      this._onDidChange.fire()
     }
   }
 
   public applyDeleted(nodes: NodeIdMapPayload) {
-    for (const [id, index] of nodes) {
-      this._host.graph.unregisterIdMap(id, index)
-    }
+    const graph = this._host.graph
+    this._syncIdMap(graph, () => {
+      for (const [id, index] of nodes) {
+        graph.unregisterIdMap(id, index)
+      }
+    })
     if (nodes.length > 0) {
       this._version++
+      this._onDidChange.fire()
     }
   }
 
@@ -143,6 +171,7 @@ export class ProjectionSyncController extends Disposable {
       affectedIds: this.affectedDirtyIds,
       nodes: this.dirtyNodes,
     })
+    this._onDidChange.fire()
   }
 
   public dispose() {
@@ -152,6 +181,22 @@ export class ProjectionSyncController extends Disposable {
     this._affectedDirtyIds = []
     this._dirtyNodes = []
     this._started = false
+  }
+
+  private _syncIdMap(graph: SceneGraph, callback: () => void) {
+    const authority = this._graphAuthorities.get(graph)
+    if (!authority) {
+      callback()
+      return
+    }
+    graph.runWithMutationScope(
+      authority,
+      {
+        kind: MutationScopeKind.WriteNoHistory,
+        source: 'ProjectionSyncController.syncIdMap',
+      },
+      callback
+    )
   }
 
   private _bindSession(sessionId: string | null) {

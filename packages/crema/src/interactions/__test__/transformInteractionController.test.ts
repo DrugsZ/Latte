@@ -118,4 +118,78 @@ describe('TransformInteractionController', () => {
     expect(transformService.moveBy$).not.toHaveBeenCalled()
     expect(transformService.cancelTransform).toHaveBeenCalledTimes(1)
   })
+
+  it('reserves the interaction while worker begin acknowledgement is pending', async () => {
+    let completeBegin!: () => void
+    transformService.beginTransform.mockReturnValue(
+      new Promise<void>(resolve => {
+        completeBegin = resolve
+      })
+    )
+    const controller = new TransformInteractionController(transformService)
+    const beginning = controller.beginTransform(['test:rect'])
+
+    expect(controller.isActive).toBe(true)
+    await expect(controller.beginTransform(['test:other'])).rejects.toThrow(
+      'Cannot begin'
+    )
+    expect(transformService.beginTransform).toHaveBeenCalledTimes(1)
+    completeBegin()
+    await beginning
+    await controller.cancelTransform()
+  })
+
+  it('shares one commit request for duplicate end calls', async () => {
+    let completeCommit!: () => void
+    transformService.commitTransform.mockReturnValue(
+      new Promise<void>(resolve => {
+        completeCommit = resolve
+      })
+    )
+    const controller = new TransformInteractionController(transformService)
+    await controller.beginTransform(['test:rect'])
+    const first = controller.commitTransform()
+    const second = controller.commitTransform()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(transformService.commitTransform).toHaveBeenCalledTimes(1)
+    expect(() => controller.moveBy(['test:rect'], [1, 1])).toThrow(
+      'beginTransform'
+    )
+    completeCommit()
+    await Promise.all([first, second])
+    expect(controller.isActive).toBe(false)
+  })
+
+  it('allows cancellation to recover from a rejected commit', async () => {
+    transformService.commitTransform.mockRejectedValueOnce(
+      new Error('commit failed')
+    )
+    const controller = new TransformInteractionController(transformService)
+    await controller.beginTransform(['test:rect'])
+    await expect(controller.commitTransform()).rejects.toThrow('commit failed')
+    await controller.cancelTransform()
+    expect(transformService.cancelTransform).toHaveBeenCalledTimes(1)
+    expect(controller.isActive).toBe(false)
+  })
+
+  it('cancels a begin acknowledgement arriving after disposal', async () => {
+    let completeBegin!: () => void
+    transformService.beginTransform.mockReturnValue(
+      new Promise<void>(resolve => {
+        completeBegin = resolve
+      })
+    )
+    const controller = new TransformInteractionController(transformService)
+    const beginning = controller.beginTransform(['test:rect'])
+    controller.dispose()
+    completeBegin()
+    await beginning
+    expect(transformService.cancelTransform).toHaveBeenCalledTimes(1)
+    expect(controller.isActive).toBe(false)
+    await expect(controller.beginTransform(['test:rect'])).rejects.toThrow(
+      'disposed'
+    )
+  })
 })

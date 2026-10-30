@@ -35,6 +35,7 @@ interface IInputEventDispatchContext {
 
 class InputEventState {
   private _activeHandlerId: string | null = null
+  private _captureOwnerId: string | null = null
   private _defaultPrevented = false
   private _propagationStopped = false
 
@@ -75,13 +76,15 @@ class InputEventState {
       return
     }
     this._capture.capturePointer(pointerId, this._activeHandlerId)
+    this._captureOwnerId = this._activeHandlerId
   }
 
   public releasePointer(pointerId = this._pointerId) {
-    if (pointerId === undefined || this._activeHandlerId === null) {
+    const handlerId = this._activeHandlerId ?? this._captureOwnerId
+    if (pointerId === undefined || handlerId === null) {
       return
     }
-    this._capture.releasePointer(pointerId, this._activeHandlerId)
+    this._capture.releasePointer(pointerId, handlerId)
   }
 }
 
@@ -218,6 +221,10 @@ export class InputService extends Disposable implements IInputService {
     this._target.addEventListener('pointermove', this._handleRaw)
     this._target.addEventListener('pointerup', this._handleRaw)
     this._target.addEventListener('pointercancel', this._handleRaw)
+    this._target.addEventListener(
+      'lostpointercapture',
+      this._handleLostPointerCapture
+    )
     this._target.addEventListener('dblclick', this._handleRaw)
     this._target.addEventListener('wheel', this._handleRaw, { passive: false })
     this._target.addEventListener('contextmenu', this._handleRaw)
@@ -238,13 +245,18 @@ export class InputService extends Disposable implements IInputService {
     this._handlers = this._handlers.filter(h => h.id !== id)
     for (const [pointerId, handlerId] of this._capturedPointers) {
       if (handlerId === id) {
-        this._capturedPointers.delete(pointerId)
+        this.releasePointer(pointerId, id)
       }
     }
   }
 
   public capturePointer(pointerId: number, handlerId: string) {
     this._capturedPointers.set(pointerId, handlerId)
+    try {
+      this._target.setPointerCapture?.(pointerId)
+    } catch {
+      // Synthetic events may not have a browser-owned active pointer.
+    }
   }
 
   public releasePointer(pointerId: number, handlerId?: string) {
@@ -256,13 +268,27 @@ export class InputService extends Disposable implements IInputService {
       return
     }
     this._capturedPointers.delete(pointerId)
+    try {
+      if (this._target.hasPointerCapture?.(pointerId)) {
+        this._target.releasePointerCapture(pointerId)
+      }
+    } catch {
+      // The browser may already have released a cancelled pointer.
+    }
   }
 
   public override dispose() {
+    for (const pointerId of this._capturedPointers.keys()) {
+      this.releasePointer(pointerId)
+    }
     this._target.removeEventListener('pointerdown', this._handleRaw)
     this._target.removeEventListener('pointermove', this._handleRaw)
     this._target.removeEventListener('pointerup', this._handleRaw)
     this._target.removeEventListener('pointercancel', this._handleRaw)
+    this._target.removeEventListener(
+      'lostpointercapture',
+      this._handleLostPointerCapture
+    )
     this._target.removeEventListener('dblclick', this._handleRaw)
     this._target.removeEventListener('wheel', this._handleRaw)
     this._target.removeEventListener('contextmenu', this._handleRaw)
@@ -277,6 +303,18 @@ export class InputService extends Disposable implements IInputService {
 
   private _handleKeyUp = (e: KeyboardEvent) => {
     this._onKeyUp.fire(e)
+  }
+
+  private _handleLostPointerCapture = (event: PointerEvent) => {
+    if (!this._capturedPointers.has(event.pointerId)) {
+      return
+    }
+    const cancel = new MouseEvent('pointercancel', {
+      clientX: event.clientX,
+      clientY: event.clientY,
+    })
+    Object.defineProperty(cancel, 'pointerId', { value: event.pointerId })
+    this._handleRaw(cancel)
   }
 
   private _handleRaw = (rawEvent: MouseEvent | WheelEvent) => {
@@ -331,7 +369,7 @@ export class InputService extends Disposable implements IInputService {
         if (capturedHandler) {
           return [capturedHandler]
         }
-        this._capturedPointers.delete(pointerId)
+        this.releasePointer(pointerId)
       }
     }
 

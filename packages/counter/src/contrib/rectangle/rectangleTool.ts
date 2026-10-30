@@ -1,4 +1,6 @@
 import {
+  BlendModeType,
+  FillType,
   NodeType,
   type IDType,
   type INodeService,
@@ -31,6 +33,9 @@ export class RectangleTool {
   public deactivate() {}
 
   public onPointerDown(event: IMouseEvent) {
+    if (event.rightButton || event.middleButton) {
+      return
+    }
     const pointer = event as RectanglePointerEvent
     if (!pointer.world) {
       return
@@ -53,12 +58,22 @@ export class RectangleTool {
     await this._nodeService.createNode({
       id,
       type: NodeType.RECTANGLE,
+      parentId,
+      name: 'Rectangle',
+      fills: [
+        {
+          type: FillType.SOLID,
+          visible: true,
+          opacity: 1,
+          blendMode: BlendModeType.NORMAL,
+          color: { r: 0.75, g: 0.78, b: 0.84, a: 1 },
+        },
+      ],
       x,
       y,
       width: 100,
       height: 100,
     })
-    await this._nodeService.appendChild(parentId, id)
     this._selectionService.select([id])
   }
 }

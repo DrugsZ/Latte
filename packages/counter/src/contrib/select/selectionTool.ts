@@ -14,6 +14,7 @@ export interface ITransformInteraction {
 interface DragState {
   readonly ids: IDType[]
   readonly origin: vec2
+  readonly pointerId: number | undefined
   delta: vec2
   started: boolean
   readonly begin: Promise<void>
@@ -23,6 +24,7 @@ export class SelectionTool implements IInputMouseHandler {
   public readonly id = 'selection-tool'
   public priority = 100
   private _drag: DragState | null = null
+  private _pendingFinish: Promise<void> = Promise.resolve()
 
   constructor(
     private readonly _selectionService: SelectionService,
@@ -55,6 +57,12 @@ export class SelectionTool implements IInputMouseHandler {
   }
 
   private _handlePointerDown(e: InputMouseEvent): EventResult {
+    if (e.button !== undefined && e.button !== 0) {
+      return EventResult.IGNORED
+    }
+    if (this._drag) {
+      return EventResult.CONSUMED
+    }
     const isMultiSelect = e.ctrlKey || e.metaKey || e.shiftKey
     if (e.hitResult?.kind === 'render-layer') {
       return EventResult.IGNORED
@@ -88,13 +96,13 @@ export class SelectionTool implements IInputMouseHandler {
 
     const ids = this._selectionService.ids
     const origin: vec2 = [e.world.x, e.world.y]
-    const begin = this._transformInteraction.beginTransform(
-      ids,
-      'Move selection'
+    const begin = this._pendingFinish.then(() =>
+      this._transformInteraction!.beginTransform(ids, 'Move selection')
     )
     const drag: DragState = {
       ids,
       origin,
+      pointerId: e.pointerId,
       delta: [0, 0],
       started: false,
       begin,
@@ -104,23 +112,21 @@ export class SelectionTool implements IInputMouseHandler {
 
     void begin
       .then(() => {
-        if (this._drag !== drag) {
-          return this._transformInteraction?.cancelTransform()
-        }
         drag.started = true
         this._flushDrag(drag)
       })
-      .catch(() => {
+      .catch(error => {
         if (this._drag === drag) {
           this._drag = null
           e.releasePointer()
         }
+        console.error('[SelectionTool] Failed to begin drag', error)
       })
   }
 
   private _handlePointerMove(e: InputMouseEvent) {
     const drag = this._drag
-    if (!drag) {
+    if (!drag || !this._matchesPointer(drag, e)) {
       return EventResult.IGNORED
     }
 
@@ -139,21 +145,35 @@ export class SelectionTool implements IInputMouseHandler {
 
   private _handlePointerEnd(e: InputMouseEvent, cancel: boolean) {
     const drag = this._drag
-    if (!drag) {
+    if (!drag || !this._matchesPointer(drag, e)) {
       return
     }
 
     this._drag = null
     e.releasePointer()
 
-    void drag.begin
+    if (!cancel) {
+      drag.delta = [e.world.x - drag.origin[0], e.world.y - drag.origin[1]]
+    }
+
+    this._pendingFinish = drag.begin
       .then(async () => {
         if (cancel) {
           await this._transformInteraction?.cancelTransform()
         } else {
+          this._transformInteraction?.moveBy(drag.ids, drag.delta)
           await this._transformInteraction?.commitTransform()
         }
       })
-      .catch(() => undefined)
+      .catch(async error => {
+        await this._transformInteraction
+          ?.cancelTransform()
+          .catch(() => undefined)
+        console.error('[SelectionTool] Failed to finish drag', error)
+      })
+  }
+
+  private _matchesPointer(drag: DragState, e: InputMouseEvent) {
+    return drag.pointerId === e.pointerId
   }
 }

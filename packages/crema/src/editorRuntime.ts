@@ -25,6 +25,7 @@ const WORKER_SERVICE_CHANNELS = [
   Channels.Document,
   Channels.Query,
   Channels.UndoRedo,
+  Channels.Style,
 ] as const
 
 // FIXME(di): Replace channel-string service registration with typed service
@@ -139,6 +140,7 @@ export class EditorRuntime {
       getSceneService: sessionId =>
         this.baristaClient.getService(Channels.Scene, sessionId),
     })
+    this._projection.protectGraph(this.editorHost.graph)
     this._projection.start()
     this._renderInvalidation = new RenderInvalidationController(
       this.editorHost,
@@ -322,6 +324,7 @@ export class EditorRuntime {
 
     const id = this._createDocumentId()
     const doc = new LatteDocument(id, uri, new SceneGraph())
+    this.projection.protectGraph(doc.graph)
     await this.baristaClient.initSession(
       doc.id,
       doc.graph.buffer,

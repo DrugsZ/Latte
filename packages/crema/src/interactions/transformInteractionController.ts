@@ -10,6 +10,9 @@ interface IActiveTransformInteraction {
   readonly ids: IDType[]
   pendingUpdate: PendingTransformUpdate | null
   frameId: number | null
+  ready: boolean
+  begin: Promise<void>
+  finish: Promise<void> | null
 }
 
 export type TransformInteractionCallback<T> = (
@@ -33,6 +36,7 @@ const cancelFrame = (frameId: number) => {
 
 export class TransformInteractionController {
   private _active: IActiveTransformInteraction | null = null
+  private _disposed = false
 
   constructor(private readonly _transformService: ITransformService) {}
 
@@ -41,18 +45,38 @@ export class TransformInteractionController {
   }
 
   public async beginTransform(ids: IDType[], label = 'transform') {
+    if (this._disposed) {
+      throw new Error('[TransformInteractionController] Controller is disposed')
+    }
     if (this._active) {
       throw new Error(
         `[TransformInteractionController] Cannot begin ${label} while ${this._active.label} is active`
       )
     }
 
-    await this._transformService.beginTransform(ids, label)
-    this._active = {
+    const active: IActiveTransformInteraction = {
       label,
       ids: [...ids],
       pendingUpdate: null,
       frameId: null,
+      ready: false,
+      begin: Promise.resolve(),
+      finish: null,
+    }
+    this._active = active
+    try {
+      active.begin = this._transformService.beginTransform(ids, label)
+      await active.begin
+      if (this._active !== active) {
+        await this._transformService.cancelTransform()
+        return
+      }
+      active.ready = true
+    } catch (error) {
+      if (this._active === active) {
+        this._active = null
+      }
+      throw error
     }
   }
 
@@ -96,33 +120,63 @@ export class TransformInteractionController {
     })
   }
 
-  public async commitTransform() {
-    if (!this._active) {
-      return
+  public commitTransform(): Promise<void> {
+    const active = this._active
+    if (!active) {
+      return Promise.resolve()
     }
-
-    await this._flushPendingUpdate(true)
-    await this._transformService.commitTransform()
-    this._active = null
+    if (active.finish) {
+      return active.finish
+    }
+    active.finish = (async () => {
+      await active.begin
+      if (this._active !== active) return
+      await this._flushPendingUpdate(true)
+      await this._transformService.commitTransform()
+      if (this._active === active) this._active = null
+    })().finally(() => {
+      active.finish = null
+    })
+    return active.finish
   }
 
-  public async cancelTransform() {
-    if (!this._active) {
-      return
+  public cancelTransform(): Promise<void> {
+    const active = this._active
+    if (!active) {
+      return Promise.resolve()
     }
-
+    if (active.finish) {
+      return active.finish
+    }
     this._cancelPendingUpdate()
-    await this._transformService.cancelTransform()
-    this._active = null
+    active.finish = (async () => {
+      await active.begin
+      if (this._active !== active) return
+      await this._transformService.cancelTransform()
+      if (this._active === active) this._active = null
+    })().finally(() => {
+      active.finish = null
+    })
+    return active.finish
   }
 
   public dispose() {
+    this._disposed = true
+    const active = this._active
     this._cancelPendingUpdate()
     this._active = null
+    if (active?.ready && !active.finish) {
+      void this._transformService.cancelTransform().catch(error => {
+        console.error(
+          '[TransformInteractionController] Failed to cancel on dispose',
+          error
+        )
+      })
+    }
   }
 
   private _scheduleTransformUpdate(update: PendingTransformUpdate) {
-    if (!this._active) {
+    if (!this._active?.ready || this._active.finish) {
       throw new Error(
         '[TransformInteractionController] beginTransform must be called before transform updates'
       )

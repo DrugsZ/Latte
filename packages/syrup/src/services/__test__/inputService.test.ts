@@ -14,6 +14,9 @@ describe('InputService', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       getBoundingClientRect: vi.fn().mockReturnValue({ left: 0, top: 0 }),
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn().mockReturnValue(true),
+      releasePointerCapture: vi.fn(),
     }
 
     hitTestService = {
@@ -201,6 +204,65 @@ describe('InputService', () => {
     listener(mockEvent)
 
     expect(handler.onEvent).not.toHaveBeenCalled()
+  })
+
+  it('captures the native pointer so moves and releases continue outside the canvas', () => {
+    inputService.capturePointer(7, 'drag')
+    expect(mockCanvas.setPointerCapture).toHaveBeenCalledWith(7)
+    inputService.releasePointer(7, 'another-handler')
+    expect(mockCanvas.releasePointerCapture).not.toHaveBeenCalled()
+    inputService.releasePointer(7, 'drag')
+    expect(mockCanvas.releasePointerCapture).toHaveBeenCalledWith(7)
+  })
+
+  it('allows an async capture failure to release the original event pointer', async () => {
+    let event: any
+    inputService.registerHandler({
+      id: 'drag',
+      priority: 1,
+      onEvent: e => {
+        event = e
+        e.capturePointer()
+        return EventResult.CONSUMED
+      },
+    })
+    const listener = mockCanvas.addEventListener.mock.calls.find(
+      (call: any[]) => call[0] === 'pointerdown'
+    )[1]
+    listener({
+      type: 'pointerdown',
+      pointerId: 8,
+      clientX: 0,
+      clientY: 0,
+      preventDefault: vi.fn(),
+    })
+
+    await Promise.resolve()
+    event.releasePointer()
+    expect(mockCanvas.releasePointerCapture).toHaveBeenCalledWith(8)
+  })
+
+  it('cancels the owning gesture when native pointer capture is lost', () => {
+    const onEvent = vi.fn((e: any) => EventResult.CONSUMED)
+    inputService.registerHandler({ id: 'drag', priority: 1, onEvent })
+    inputService.capturePointer(9, 'drag')
+    const listener = mockCanvas.addEventListener.mock.calls.find(
+      (call: any[]) => call[0] === 'lostpointercapture'
+    )[1]
+    listener({ pointerId: 9, clientX: 20, clientY: 30 })
+
+    expect(onEvent).toHaveBeenCalledTimes(1)
+    expect(onEvent.mock.calls[0][0].browserEvent.type).toBe('pointercancel')
+    expect(onEvent.mock.calls[0][0].pointerId).toBe(9)
+    expect(mockCanvas.releasePointerCapture).toHaveBeenCalledWith(9)
+    listener({ pointerId: 9, clientX: 20, clientY: 30 })
+    expect(onEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('releases native capture when its owner is removed', () => {
+    inputService.capturePointer(10, 'drag')
+    inputService.removeHandler('drag')
+    expect(mockCanvas.releasePointerCapture).toHaveBeenCalledWith(10)
   })
 
   it('should handle keyboard events', () => {

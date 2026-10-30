@@ -34,6 +34,18 @@ import type {
 } from '../../contract/renderBackend'
 
 type Canvas2DSurface = HTMLCanvasElement | OffscreenCanvas
+type Canvas2DContext =
+  | CanvasRenderingContext2D
+  | OffscreenCanvasRenderingContext2D
+type CanvasState =
+  | { kind: 'clip'; matrix: Float32Array }
+  | {
+      kind: 'layer'
+      matrix: Float32Array
+      parent: Canvas2DContext
+      alpha: number
+      blendMode: BlendMode
+    }
 
 /**
  * Canvas2D implementation of the render backend
@@ -93,7 +105,8 @@ export class Canvas2DRenderBackend
 
   // CPU state stack
   private _currentMatrix: Float32Array = new Float32Array([1, 0, 0, 1, 0, 0])
-  private _clipStackDepth: number = 0
+  private readonly _stateStack: CanvasState[] = []
+  private readonly _layerPool: Canvas2DSurface[] = []
   // Resource management
   private _paths: Map<number, Path2D> = new Map()
   private _pathIdCounter: number = 1
@@ -196,6 +209,8 @@ export class Canvas2DRenderBackend
   }
 
   dispose(): void {
+    this._stateStack.length = 0
+    this._layerPool.length = 0
     this._canvas = null
     this._ctx = null
   }
@@ -208,7 +223,7 @@ export class Canvas2DRenderBackend
     if (!this._ctx || !this._canvas) return
 
     this._currentMatrix = new Float32Array([1, 0, 0, 1, 0, 0])
-    this._clipStackDepth = 0
+    this._stateStack.length = 0
     this._ctx.setTransform(1, 0, 0, 1, 0, 0)
     this._ctx.scale(this._dpr, this._dpr)
     this._ctx.globalAlpha = 1
@@ -222,8 +237,9 @@ export class Canvas2DRenderBackend
   }
 
   private _endFrame(): void {
-    if (this._clipStackDepth > 0) {
+    if (this._stateStack.length > 0) {
       console.warn('Backend stack imbalance detected at endFrame')
+      while (this._stateStack.length > 0) this._popState()
     }
   }
 
@@ -312,7 +328,10 @@ export class Canvas2DRenderBackend
     if (!this._ctx) return
 
     this._ctx.save()
-    this._clipStackDepth++
+    this._stateStack.push({
+      kind: 'clip',
+      matrix: Float32Array.from(this._currentMatrix),
+    })
 
     this._ctx.beginPath()
     this._ctx.rect(x, y, w, h)
@@ -325,26 +344,68 @@ export class Canvas2DRenderBackend
     if (!path) return
 
     this._ctx.save()
-    this._clipStackDepth++
+    this._stateStack.push({
+      kind: 'clip',
+      matrix: Float32Array.from(this._currentMatrix),
+    })
     this._ctx.clip(path)
   }
 
   private _pushLayer(alpha = 1, blendMode: BlendMode = BlendMode.NORMAL): void {
     if (!this._ctx) return
-
-    this._ctx.save()
-    this._clipStackDepth++
-    this._ctx.globalAlpha *= alpha
-    this._setBlendMode(blendMode)
+    const parent = this._ctx
+    const surface =
+      this._layerPool.pop() ??
+      this._createLayerSurface(parent.canvas.width, parent.canvas.height)
+    // Resizing also clears pixels and resets all context state before reuse.
+    surface.width = parent.canvas.width
+    surface.height = parent.canvas.height
+    const context = surface.getContext('2d') as Canvas2DContext | null
+    if (!context) throw new Error('Could not create opacity layer context')
+    this._stateStack.push({
+      kind: 'layer',
+      matrix: Float32Array.from(this._currentMatrix),
+      parent,
+      alpha,
+      blendMode,
+    })
+    this._ctx = context
+    this._syncTransform()
   }
 
   private _popState(): void {
-    if (!this._ctx || this._clipStackDepth === 0) return
-
-    this._ctx.restore()
-    this._clipStackDepth--
-
+    if (!this._ctx) return
+    const state = this._stateStack.pop()
+    if (!state) return
+    if (state.kind === 'clip') {
+      this._ctx.restore()
+    } else {
+      const surface = this._ctx.canvas
+      this._ctx = state.parent
+      this._ctx.save()
+      this._ctx.setTransform(1, 0, 0, 1, 0, 0)
+      this._ctx.globalAlpha = state.alpha
+      this._setBlendMode(state.blendMode)
+      this._clearShadow()
+      this._ctx.drawImage(surface, 0, 0)
+      this._ctx.restore()
+      this._layerPool.push(surface)
+      this._stats.drawCalls++
+    }
+    this._currentMatrix = state.matrix
     this._syncTransform()
+  }
+
+  private _createLayerSurface(width: number, height: number): Canvas2DSurface {
+    if (typeof OffscreenCanvas !== 'undefined')
+      return new OffscreenCanvas(width, height)
+    if (typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      return canvas
+    }
+    throw new Error('Environment does not support opacity layer surfaces')
   }
 
   private _setBlendMode(mode: BlendMode): void {
