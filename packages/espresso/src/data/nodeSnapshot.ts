@@ -113,8 +113,17 @@ export const captureNodeSnapshot = (
   const strokes = readNodeStrokes(graph, index)
   if (isPage(node)) {
     node.backgrounds = fills
-  } else if (isFrame(node) || isRect(node)) {
+  } else if (isFrame(node) || isRect(node) || node.type === 'ELLIPSE') {
     node.fillPaints = fills
+  }
+  if (isRect(node)) {
+    const [topLeft, topRight, bottomRight, bottomLeft] =
+      StyleOps.getCornerRadius(graph, index)
+    node.cornerRadius = topLeft
+    node.topLeftRadius = topLeft
+    node.topRightRadius = topRight
+    node.bottomRightRadius = bottomRight
+    node.bottomLeftRadius = bottomLeft
   }
   if (strokes.length > 0) {
     node.strokePaints = strokes

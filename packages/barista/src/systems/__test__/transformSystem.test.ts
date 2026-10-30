@@ -413,6 +413,58 @@ describe('TransformSystem', () => {
     expect(child.height).toBe(7.5)
   })
 
+  it('uses initial snapshots for every sibling subtree during repeated resize and cancel', () => {
+    const graph = new SceneGraph()
+    const root = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.GROUP, 'test:root')
+    )
+    const first = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.RECTANGLE, 'test:first')
+    )
+    const second = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.GROUP, 'test:second')
+    )
+    const leaf = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.RECTANGLE, 'test:leaf')
+    )
+    graph.appendChild(root.index, first.index)
+    graph.appendChild(root.index, second.index)
+    graph.appendChild(second.index, leaf.index)
+
+    for (const cursor of [first, second, leaf]) {
+      cursor.x = 10
+      cursor.y = 20
+      cursor.width = 10
+      cursor.height = 10
+    }
+    root.width = 100
+    root.height = 100
+
+    const system = new TransformSystem(graph)
+    const transactions = getTransactionManager(graph)
+    transactions.begin('Resize Group', ['test:root'])
+    system.resize(['test:root'], 200, 50)
+    system.resize(['test:root'], 150, 75)
+
+    for (const cursor of [first, second, leaf]) {
+      expect([cursor.x, cursor.y, cursor.width, cursor.height]).toEqual([
+        15, 15, 15, 7.5,
+      ])
+    }
+
+    transactions.abort()
+    expect([root.width, root.height]).toEqual([100, 100])
+    for (const cursor of [first, second, leaf]) {
+      expect([cursor.x, cursor.y, cursor.width, cursor.height]).toEqual([
+        10, 20, 10, 10,
+      ])
+    }
+  })
+
   it('continues resizing descendants through intermediate nodes without ids', () => {
     const graph = new SceneGraph()
     const rootIndex = graph.createNode(NodeType.GROUP, 'test:root')

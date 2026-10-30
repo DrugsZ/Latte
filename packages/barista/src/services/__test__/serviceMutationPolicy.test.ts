@@ -13,6 +13,7 @@ import {
 import { getRegisteredServices, ServiceBase } from '../serviceBase'
 import { TransformService } from '../transform'
 import { UndoRedoService } from '../undoRedo'
+import { StyleService } from '../style'
 import { MutationPolicyKind } from '../../transactions/mutationPolicy'
 import { TransactionLabel } from '../../transactions/transactionLabels'
 
@@ -103,6 +104,7 @@ describe('service mutation policies', () => {
     void QueryService
     void TransformService
     void UndoRedoService
+    void StyleService
 
     const fallbackPoliciesByService = new Map(
       getRegisteredSystems().map(system => [
@@ -118,6 +120,7 @@ describe('service mutation policies', () => {
         'query',
         'transform',
         'undoRedo',
+        'style',
       ])
     )
     expect(

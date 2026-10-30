@@ -3,17 +3,25 @@ import {
   Channels,
   JsonRpcMessageType,
   NodeType,
+  DEFAULT_SCENE_GRAPH_NAME,
+  type IDType,
   type JsonRpcMessage,
 } from '@latte-js/bean'
 import {
   DEFAULT_HEAP_SIZE,
   MAX_NODES,
   TOTAL_MEMORY_BYTES,
+  NodeCursor,
+  SceneGraph,
 } from '@latte-js/espresso'
 
 import { BaristaEngine } from '../baristaEngine'
 import { BaristaSessionManager } from '../baristaSessionManager'
-import { createJsonRpcRequest } from '../../ipc/ipc'
+import {
+  createJsonRpcListenMessage,
+  createJsonRpcRequest,
+  createJsonRpcUnlistenMessage,
+} from '../../ipc/ipc'
 
 import type { IMessagePassingProtocol } from '../../ipc/protocol/protocol'
 
@@ -65,6 +73,125 @@ function createSessionBuffers() {
 }
 
 describe('BaristaEngine', () => {
+  it('registers lifecycle listeners in the requested document session and delivers projection ids', async () => {
+    const { engine, protocol } = createEngineWithProtocol()
+    const docA = createSessionBuffers()
+    engine.initSession('doc:a', docA.buffer, docA.allocBuffer, docA.heapBuffer)
+    const projection = new SceneGraph(
+      docA.buffer,
+      docA.allocBuffer,
+      docA.heapBuffer
+    )
+    await protocol.receive(
+      createJsonRpcListenMessage(
+        `${Channels.Node}.onDidCreateNode`,
+        100,
+        undefined,
+        'doc:a'
+      )
+    )
+    await protocol.receive(
+      createJsonRpcRequest(
+        `${Channels.Node}.createNode`,
+        1,
+        [
+          {
+            id: 'node:created',
+            type: NodeType.RECTANGLE,
+            name: 'New rectangle',
+            x: 24,
+            y: 36,
+          },
+        ],
+        'doc:a'
+      )
+    )
+
+    const notifications = protocol.send.mock.calls
+      .map(([message]) => message as JsonRpcMessage)
+      .filter(
+        message =>
+          message.type === JsonRpcMessageType.Notification &&
+          message.method === 'node.onDidCreateNode'
+      )
+    expect(notifications).toHaveLength(1)
+    expect(notifications[0]).toMatchObject({
+      sessionId: 'doc:a',
+      params: { nodes: [['node:created', 1]] },
+    })
+    expect(projection.getIndex('node:created')).toBe(-1)
+    const changes = (notifications[0] as any).params.nodes as [IDType, number][]
+    for (const [id, index] of changes) projection.registerIdMap(id, index)
+    const cursor = new NodeCursor(
+      projection,
+      projection.getIndex('node:created')
+    )
+    expect(cursor.name).toBe('New rectangle')
+    expect([cursor.x, cursor.y]).toEqual([24, 36])
+  })
+
+  it('isolates lifecycle subscriptions between documents and releases a listener on unlisten', async () => {
+    const { engine, protocol } = createEngineWithProtocol()
+    for (const session of ['doc:a', 'doc:b']) {
+      const buffers = createSessionBuffers()
+      engine.initSession(
+        session,
+        buffers.buffer,
+        buffers.allocBuffer,
+        buffers.heapBuffer
+      )
+    }
+    for (const [id, session] of [
+      [100, 'doc:a'],
+      [101, 'doc:b'],
+      [102, DEFAULT_SCENE_GRAPH_NAME],
+    ] as const) {
+      await protocol.receive(
+        createJsonRpcListenMessage(
+          `${Channels.Node}.onDidCreateNode`,
+          id,
+          undefined,
+          session
+        )
+      )
+    }
+    for (const [id, session] of [
+      [1, 'doc:a'],
+      [2, 'doc:b'],
+    ] as const) {
+      await protocol.receive(
+        createJsonRpcRequest(
+          `${Channels.Node}.createNode`,
+          id,
+          [{ id: 'node:shared-id', type: NodeType.RECTANGLE }],
+          session
+        )
+      )
+    }
+    const created = () =>
+      protocol.send.mock.calls
+        .map(([message]) => message as JsonRpcMessage)
+        .filter(
+          message =>
+            message.type === JsonRpcMessageType.Notification &&
+            message.method === 'node.onDidCreateNode'
+        )
+    expect(created().map(message => message.sessionId)).toEqual([
+      'doc:a',
+      'doc:b',
+    ])
+    await protocol.receive(createJsonRpcUnlistenMessage(100, 'doc:a'))
+    await protocol.receive(
+      createJsonRpcRequest(
+        `${Channels.Node}.createNode`,
+        3,
+        [{ id: 'node:after-unlisten', type: NodeType.RECTANGLE }],
+        'doc:a'
+      )
+    )
+    expect(created()).toHaveLength(2)
+  })
+
   it('rejects duplicate session ids', () => {
     const engine = createEngine()
     const sessionId = 'session:duplicate'

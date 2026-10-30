@@ -1,12 +1,14 @@
 import { Emitter, type Event } from '@latte-js/kit'
+import { NULL_INDEX } from '@latte-js/espresso'
 import { System, SystemBase, Systems } from './systems'
 
-import type { ICreateNodeOptions, IDType } from '@latte-js/bean'
+import { NodeType, type ICreateNodeOptions, type IDType } from '@latte-js/bean'
 import {
   MutationPolicyKind,
   type MutationPolicyMap,
 } from '../transactions/mutationPolicy'
 import { TransactionLabel } from '../transactions/transactionLabels'
+import { validateStylePatch } from '../validation/stylePatch'
 
 export type NodeChange = [id: IDType, index: number]
 
@@ -63,16 +65,52 @@ export class NodeSystem extends SystemBase {
   }
 
   async createNode(options: ICreateNodeOptions): Promise<IDType> {
+    validateStylePatch({ name: options.name, fills: options.fills })
+    if (options.parentId !== undefined) {
+      const parentIndex = this._sceneGraph.getIndex(options.parentId)
+      if (parentIndex === NULL_INDEX) {
+        throw new Error(`[NodeSystem] Parent not found: ${options.parentId}`)
+      }
+      if (
+        ![
+          NodeType.DOCUMENT,
+          NodeType.CANVAS,
+          NodeType.FRAME,
+          NodeType.GROUP,
+        ].includes(this._sceneGraph.type[parentIndex])
+      ) {
+        throw new Error('[NodeSystem] Parent must be a container')
+      }
+    }
+    for (const key of ['x', 'y', 'width', 'height'] as const) {
+      const value = options[key]
+      if (
+        value !== undefined &&
+        (!Number.isFinite(value) ||
+          !Number.isFinite(Math.fround(value)) ||
+          ((key === 'width' || key === 'height') && value < 0))
+      ) {
+        throw new Error(`[NodeSystem] Invalid ${key}`)
+      }
+    }
     const index = this._mutationWriter.createNode(options.id, options.type)
     this._nodeCursor.to(index)
     this._nodeCursor.x = options.x ?? 0
     this._nodeCursor.y = options.y ?? 0
     this._nodeCursor.width = options.width ?? 100
     this._nodeCursor.height = options.height ?? 100
+    if (options.name !== undefined) this._nodeCursor.name = options.name
+    if (options.fills !== undefined)
+      this._nodeCursor.fills = structuredClone(options.fills)
+    const moved =
+      options.parentId !== undefined
+        ? this._mutationWriter.appendChild(options.parentId, options.id)
+        : null
     this._onDidCreateNode.fire({
       sessionId: this._currentSessionId,
       nodes: [[options.id, index]],
     })
+    this._fireDidMoveNode(moved)
     return options.id
   }
 

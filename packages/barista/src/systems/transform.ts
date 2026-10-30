@@ -184,6 +184,7 @@ export class TransformSystem extends SystemBase {
     for (let i = chain.length - 1; i >= 0; i -= 1) {
       this._getBaseLocalMatrix(chain[i], local)
       mat2d.multiply(out, out, local)
+      this._assertFiniteMatrix(out, 'computed base world matrix')
     }
 
     return out
@@ -194,13 +195,18 @@ export class TransformSystem extends SystemBase {
     parentWorld: mat2d,
     out: mat2d = mat2d.create()
   ) {
+    this._assertFiniteMatrix(world, 'target world matrix')
+    this._assertFiniteMatrix(parentWorld, 'parent world matrix')
     const parentWorldInv = mat2d.invert(mat2d.create(), parentWorld)
     if (parentWorldInv === null) {
       throw new Error(
         '[TransformSystem] Cannot convert world transform through a non-invertible parent matrix'
       )
     }
-    return mat2d.multiply(out, parentWorldInv, world)
+    this._assertFiniteMatrix(parentWorldInv, 'inverse parent matrix')
+    mat2d.multiply(out, parentWorldInv, world)
+    this._assertFiniteMatrix(out, 'computed local matrix')
+    return out
   }
 
   private _buildPivotedWorldStep(matrixPayload: mat2d, pivot: vec2) {
@@ -208,6 +214,7 @@ export class TransformSystem extends SystemBase {
     mat2d.translate(step, step, pivot)
     mat2d.multiply(step, step, matrixPayload)
     mat2d.translate(step, step, [-pivot[0], -pivot[1]])
+    this._assertFiniteMatrix(step, 'pivoted world matrix')
     return step
   }
 
@@ -334,6 +341,7 @@ export class TransformSystem extends SystemBase {
     const worldStep = mat2d.create()
     mat2d.multiply(worldStep, baseWorld, scaleInNodeWorld)
     mat2d.multiply(worldStep, worldStep, baseWorldInv)
+    this._assertFiniteMatrix(worldStep, 'resize world matrix')
 
     this._cursor.to(index)
     this._cursor.width = width
@@ -347,7 +355,9 @@ export class TransformSystem extends SystemBase {
 
   private _collectDescendantIds(index: number): IDType[] {
     const ids: IDType[] = []
-    const stack = [this._sceneGraph.firstChild[index]]
+    // Start at the root so its complete child chain is traversed, including
+    // sibling subtrees that need the same initial resize snapshot.
+    const stack = [index]
     const visited = new Set<number>()
 
     while (stack.length > 0) {
@@ -361,7 +371,7 @@ export class TransformSystem extends SystemBase {
 
       visited.add(current)
       const id = this._sceneGraph.getUUID(current)
-      if (id) {
+      if (current !== index && id) {
         ids.push(id)
       }
 
@@ -431,6 +441,7 @@ export class TransformSystem extends SystemBase {
         item.parentTargetWorld,
         finalLocal
       )
+      this._assertFiniteMatrix(nextParentTargetWorld, 'resized world matrix')
 
       this._cursor.to(item.index)
       this._cursor.transform = finalLocal
@@ -470,9 +481,9 @@ export class TransformSystem extends SystemBase {
     const worldScaleY = this._getAxisScale(baseWorld, targetWorld, 1)
     const finalLocal = mat2d.clone(targetLocal)
 
-    this._cursor.to(index)
-    this._cursor.width = baseSize.width * worldScaleX
-    this._cursor.height = baseSize.height * worldScaleY
+    const width = baseSize.width * worldScaleX
+    const height = baseSize.height * worldScaleY
+    this._assertValidSize(width, height)
 
     if (Math.abs(worldScaleX) > EPSILON) {
       finalLocal[0] /= worldScaleX
@@ -482,6 +493,11 @@ export class TransformSystem extends SystemBase {
       finalLocal[2] /= worldScaleY
       finalLocal[3] /= worldScaleY
     }
+
+    this._assertFiniteMatrix(finalLocal, 'resized local matrix')
+    this._cursor.to(index)
+    this._cursor.width = width
+    this._cursor.height = height
 
     return finalLocal
   }
@@ -503,7 +519,12 @@ export class TransformSystem extends SystemBase {
   }
 
   private _assertFiniteVec2(value: vec2, source: string) {
-    if (Number.isFinite(value[0]) && Number.isFinite(value[1])) {
+    if (
+      Number.isFinite(value[0]) &&
+      Number.isFinite(Math.fround(value[0])) &&
+      Number.isFinite(value[1]) &&
+      Number.isFinite(Math.fround(value[1]))
+    ) {
       return
     }
     throw new Error(`[TransformSystem] Invalid ${source} vector`)
@@ -511,7 +532,10 @@ export class TransformSystem extends SystemBase {
 
   private _assertFiniteMatrix(value: mat2d, source: string) {
     for (let i = 0; i < 6; i += 1) {
-      if (!Number.isFinite(value[i])) {
+      if (
+        !Number.isFinite(value[i]) ||
+        !Number.isFinite(Math.fround(value[i]))
+      ) {
         throw new Error(`[TransformSystem] Invalid ${source}`)
       }
     }
@@ -521,6 +545,8 @@ export class TransformSystem extends SystemBase {
     if (
       Number.isFinite(width) &&
       Number.isFinite(height) &&
+      Number.isFinite(Math.fround(width)) &&
+      Number.isFinite(Math.fround(height)) &&
       width >= 0 &&
       height >= 0
     ) {

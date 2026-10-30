@@ -1,8 +1,10 @@
 import {
+  BlendModeType,
   NodeType,
   type IDType,
   type ILatteFile,
   type ILatteNode,
+  type IPaint,
 } from '@latte-js/bean'
 
 import { DIRTY_LOCAL_MATRIX, DIRTY_TREE, NULL_INDEX } from '../data/config'
@@ -16,6 +18,18 @@ const mapType = (type: string | number): number => {
   }
   return NodeType[type as keyof typeof NodeType] ?? NodeType.GROUP
 }
+
+const normalizePaints = (paints: IPaint[]): IPaint[] =>
+  paints.map(paint => {
+    const mode = paint.blendMode as BlendModeType | keyof typeof BlendModeType
+    return {
+      ...paint,
+      blendMode:
+        typeof mode === 'string'
+          ? (BlendModeType[mode] ?? BlendModeType.NORMAL)
+          : (mode ?? BlendModeType.NORMAL),
+    }
+  })
 
 export class LatteLoader {
   private _node: NodeCursor
@@ -159,12 +173,15 @@ export class LatteLoader {
 
     // Load fill paints
     if ('fillPaints' in node && node.fillPaints) {
-      this._node.fills = node.fillPaints
+      this._node.fills = normalizePaints(node.fillPaints)
+    }
+    if (node.type === 'CANVAS' && node.backgrounds) {
+      this._node.fills = normalizePaints(node.backgrounds)
     }
 
     // Load stroke paints
     if ('strokePaints' in node && node.strokePaints) {
-      this._node.strokes = node.strokePaints
+      this._node.strokes = normalizePaints(node.strokePaints)
     }
 
     // Load corner radius

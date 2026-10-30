@@ -102,6 +102,124 @@ describe('TransformService transactions', () => {
     expect(cursor.y).toBe(27)
   })
 
+  it.each([
+    ['moveTo', [['test:rect'], [1e40, 0]]],
+    ['moveBy', [['test:rect'], [0, -1e40]]],
+    ['resize', [['test:rect'], 1e40, 10]],
+    ['transformAround', [['test:rect'], [1e40, 0, 0, 1, 0, 0], [0, 0]]],
+    ['transformAround', [['test:rect'], [1, 0, 0, 1, 0, 0], [1e40, 0]]],
+  ])(
+    'rejects float32 overflow from %s RPC without model/history changes',
+    async (command, args) => {
+      const graph = new SceneGraph()
+      const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
+      const cursor = new NodeCursor(graph, index)
+      cursor.x = 10
+      cursor.width = 50
+      cursor.height = 60
+      const transform = createTransformChannel(graph)
+      const history = createUndoRedoChannel(graph)
+
+      await expect(
+        transform.call(ctx(), command as string, ...(args as unknown[]))
+      ).rejects.toThrow('Invalid')
+      expect(Array.from(cursor.transform)).toEqual([1, 0, 0, 1, 10, 0])
+      expect([cursor.width, cursor.height]).toEqual([50, 60])
+      expect(await history.call(ctx(), 'canUndo')).toBe(false)
+    }
+  )
+
+  it.each(['x', 'y', 'width', 'height'])(
+    'rejects overflowing create %s before allocation',
+    async key => {
+      const graph = new SceneGraph()
+      const node = createNodeChannel(graph)
+      const history = createUndoRedoChannel(graph)
+      await expect(
+        node.call(ctx(), 'createNode', {
+          id: 'test:overflow',
+          type: NodeType.RECTANGLE,
+          [key]: 1e40,
+        })
+      ).rejects.toThrow(`Invalid ${key}`)
+      expect(graph.getIndex('test:overflow')).toBe(NULL_INDEX)
+      expect(graph.getTombstoneIndex('test:overflow')).toBe(NULL_INDEX)
+      expect(await history.call(ctx(), 'canUndo')).toBe(false)
+    }
+  )
+
+  it('rolls back earlier selection targets when a computed local transform overflows', async () => {
+    const graph = new SceneGraph()
+    const first = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.RECTANGLE, 'test:first')
+    )
+    const parent = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.GROUP, 'test:parent')
+    )
+    const child = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.RECTANGLE, 'test:child')
+    )
+    graph.appendChild(parent.index, child.index)
+    parent.transform = [1e-20, 0, 0, 1e-20, 0, 0]
+    const transform = createTransformChannel(graph)
+    const history = createUndoRedoChannel(graph)
+
+    await expect(
+      transform.call(ctx(), 'moveBy', ['test:first', 'test:child'], [1e20, 0])
+    ).rejects.toThrow('computed local matrix')
+    expect(Array.from(first.transform)).toEqual([1, 0, 0, 1, 0, 0])
+    expect(Array.from(child.transform)).toEqual([1, 0, 0, 1, 0, 0])
+    expect(await history.call(ctx(), 'canUndo')).toBe(false)
+  })
+
+  it('rejects an overflowing computed sum even when both input positions fit float32', async () => {
+    const graph = new SceneGraph()
+    const cursor = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.RECTANGLE, 'test:rect')
+    )
+    cursor.x = 3e38
+    const before = Array.from(cursor.transform)
+    const transform = createTransformChannel(graph)
+    const history = createUndoRedoChannel(graph)
+    await expect(
+      transform.call(ctx(), 'moveBy', ['test:rect'], [3e38, 0])
+    ).rejects.toThrow('target world matrix')
+    expect(Array.from(cursor.transform)).toEqual(before)
+    expect(await history.call(ctx(), 'canUndo')).toBe(false)
+  })
+
+  it('rolls back a parent resize if the resulting descendant dimensions overflow', async () => {
+    const graph = new SceneGraph()
+    const parent = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.GROUP, 'test:parent')
+    )
+    const child = new NodeCursor(
+      graph,
+      graph.createNode(NodeType.RECTANGLE, 'test:child')
+    )
+    graph.appendChild(parent.index, child.index)
+    parent.width = 1
+    parent.height = 1
+    child.width = 3e38
+    child.height = 10
+    const originalChildWidth = child.width
+    const transform = createTransformChannel(graph)
+    const history = createUndoRedoChannel(graph)
+
+    await expect(
+      transform.call(ctx(), 'resize', ['test:parent'], 2, 1)
+    ).rejects.toThrow('Invalid resize dimensions')
+    expect([parent.width, parent.height]).toEqual([1, 1])
+    expect([child.width, child.height]).toEqual([originalChildWidth, 10])
+    expect(Array.from(child.transform)).toEqual([1, 0, 0, 1, 0, 0])
+    expect(await history.call(ctx(), 'canUndo')).toBe(false)
+  })
+
   it('owns transform interaction commit inside the worker', async () => {
     const graph = new SceneGraph()
     const index = graph.createNode(NodeType.RECTANGLE, 'test:rect')
@@ -262,6 +380,100 @@ describe('TransformService transactions', () => {
     expect(cursor.y).toBe(20)
     expect(cursor.width).toBe(100)
     expect(cursor.height).toBe(100)
+  })
+
+  it('creates and attaches a rectangle as one undoable operation', async () => {
+    const graph = new SceneGraph()
+    const parent = graph.createNode(NodeType.CANVAS, 'test:page')
+    const node = createNodeChannel(graph)
+    const history = createUndoRedoChannel(graph)
+
+    await node.call(ctx(), 'createNode', {
+      id: 'test:new',
+      type: NodeType.RECTANGLE,
+      parentId: 'test:page',
+      name: 'Rectangle',
+      fills: [
+        {
+          type: 'SOLID',
+          visible: true,
+          opacity: 1,
+          blendMode: 0,
+          color: { r: 0.75, g: 0.78, b: 0.84, a: 1 },
+        },
+      ],
+      x: 30,
+      y: 40,
+      width: 120,
+      height: 80,
+    })
+    const index = graph.getIndex('test:new')
+    expect(graph.parent[index]).toBe(parent)
+    expect(graph.firstChild[parent]).toBe(index)
+
+    expect(await history.call(ctx(), 'undo')).toBe(true)
+    expect(graph.getIndex('test:new')).toBe(NULL_INDEX)
+    expect(graph.firstChild[parent]).toBe(NULL_INDEX)
+    expect(await history.call(ctx(), 'canUndo')).toBe(false)
+
+    expect(await history.call(ctx(), 'redo')).toBe(true)
+    expect(graph.getIndex('test:new')).toBe(index)
+    expect(graph.parent[index]).toBe(parent)
+    const restored = new NodeCursor(graph, index)
+    expect(restored.name).toBe('Rectangle')
+    expect(restored.fills).toEqual([
+      {
+        type: 'SOLID',
+        visible: true,
+        opacity: 1,
+        blendMode: 0,
+        color: { r: 0.75, g: 0.78, b: 0.84, a: 1 },
+      },
+    ])
+    expect([restored.x, restored.y, restored.width, restored.height]).toEqual([
+      30, 40, 120, 80,
+    ])
+  })
+
+  it('rejects creation under a missing parent without orphan nodes or history', async () => {
+    const graph = new SceneGraph()
+    const node = createNodeChannel(graph)
+    const history = createUndoRedoChannel(graph)
+
+    await expect(
+      node.call(ctx(), 'createNode', {
+        id: 'test:new',
+        type: NodeType.RECTANGLE,
+        parentId: 'test:missing',
+      })
+    ).rejects.toThrow('Parent not found')
+    expect(graph.getIndex('test:new')).toBe(NULL_INDEX)
+    expect(graph.getTombstoneIndex('test:new')).toBe(NULL_INDEX)
+    expect(await history.call(ctx(), 'canUndo')).toBe(false)
+  })
+
+  it('rejects invalid creation style before allocating nodes or recording history', async () => {
+    const graph = new SceneGraph()
+    const node = createNodeChannel(graph)
+    const history = createUndoRedoChannel(graph)
+    await expect(
+      node.call(ctx(), 'createNode', {
+        id: 'test:new',
+        type: NodeType.RECTANGLE,
+        fills: [
+          {
+            type: 'SOLID',
+            visible: true,
+            opacity: 2,
+            blendMode: 0,
+            color: { r: 0, g: 0, b: 0, a: 1 },
+          },
+        ],
+      })
+    ).rejects.toThrow('Invalid solid fill')
+    expect(graph.getIndex('test:new')).toBe(NULL_INDEX)
+    expect(graph.getTombstoneIndex('test:new')).toBe(NULL_INDEX)
+    expect(await history.call(ctx(), 'canUndo')).toBe(false)
   })
 
   it('finalizes abandoned create tombstones when redo history is cleared', async () => {

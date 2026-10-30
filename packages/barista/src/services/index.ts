@@ -3,6 +3,7 @@ export { TransformService } from './transform'
 export { QueryService } from './query'
 export { DocumentService } from './document'
 export { UndoRedoService } from './undoRedo'
+export { StyleService } from './style'
 export { ServiceManager } from './serviceManager'
 export {
   Service,

@@ -90,13 +90,20 @@ export class BaristaEngine {
       },
       listen: (ctx: IChannelCallContext, event: string) => {
         const context = this._sessionManager.getContext(ctx.sessionId)
-        return this._sessionManager.runWithContext(context, () => {
-          const service = this._serviceManager.getService(name)
-          return fromService(service as object, {
-            channelName: name,
-            mutationGate: this._mutationGate,
-          }).listen({ sessionId: context.currentSessionId }, event)
-        })
+        // Event factories defer invoking the service until a listener is
+        // attached. Bind that invocation too, otherwise lifecycle services
+        // capture the fallback kernel session after this method returns.
+        return (listener: (data: unknown) => void) =>
+          this._sessionManager.runWithContext(context, () => {
+            const service = this._serviceManager.getService(name)
+            return fromService(service as object, {
+              channelName: name,
+              mutationGate: this._mutationGate,
+            }).listen(
+              { sessionId: context.currentSessionId },
+              event
+            )(listener)
+          })
       },
     }
   }

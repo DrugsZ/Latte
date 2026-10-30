@@ -1,10 +1,14 @@
-import { type IDType, type NodeType } from '../schema'
+import { type IDType, type IPaint, type NodeType } from '../schema'
 
 import { type IDisposable } from './ipc'
 
 export interface ICreateNodeOptions {
   readonly id: IDType
   readonly type: NodeType
+  /** Attaches the new node in the same undoable creation operation. */
+  readonly parentId?: IDType
+  readonly name?: string
+  readonly fills?: IPaint[]
   readonly x?: number
   readonly y?: number
   readonly width?: number

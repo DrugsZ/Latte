@@ -178,7 +178,9 @@ describe('LatteLoader', () => {
     loader.load(json)
     const idx = graph.getIndex('0:rect-fill')
     const cursor = new NodeCursor(graph, idx)
-    expect(cursor.fills).toEqual(fills)
+    expect(cursor.fills).toEqual(
+      fills.map(paint => ({ ...paint, blendMode: 0 }))
+    )
   })
 
   it('should skip nodes with non-existent parent index', () => {
