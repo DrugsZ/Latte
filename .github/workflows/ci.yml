@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - codex/development
     tags:
       - 'v*'
   pull_request:

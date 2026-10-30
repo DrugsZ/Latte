@@ -88,7 +88,9 @@ Open `http://localhost:5173`.
 pnpm release:check
 ```
 
-`pnpm release:check` runs the local release gate: license metadata, lint, type-check, unit tests, `apps/cafe` build, Playwright browser setup, smoke/e2e and `git diff --check`.
+`pnpm release:check` runs the local release gate: license metadata, lint, type-check, unit tests, full workspace build, Playwright browser setup, smoke/e2e and `git diff --check`.
+
+The active development branch is `codex/development`. Review a milestone using the [full review itinerary](./docs/review-roadmap.zh-CN.md), then merge validated changes into `main` through a pull request.
 
 ## RoadMap
 

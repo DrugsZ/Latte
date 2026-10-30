@@ -24,9 +24,9 @@ const steps = [
     args: ['run', 'test'],
   },
   {
-    label: 'Cafe build',
+    label: 'Workspace build',
     command: 'pnpm',
-    args: ['--filter', '@latte-js/cafe', 'run', 'build'],
+    args: ['run', 'build'],
   },
   {
     label: 'Playwright browser install',

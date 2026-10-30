@@ -88,7 +88,9 @@ pnpm dev
 pnpm release:check
 ```
 
-`pnpm release:check` 会执行本地 release gate：许可证元数据、lint、type-check、单元测试、`apps/cafe` 构建、Playwright 浏览器准备、smoke/e2e，以及 `git diff --check`。
+`pnpm release:check` 会执行本地 release gate：许可证元数据、lint、type-check、单元测试、全仓构建、Playwright 浏览器准备、smoke/e2e，以及 `git diff --check`。
+
+持续开发使用 `codex/development`；阶段成果通过门禁后，经 PR 合并到 `main`。全量审查请从 [Review 路线图](./docs/review-roadmap.zh-CN.md) 开始。
 
 ## RoadMap
 
